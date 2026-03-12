@@ -487,6 +487,12 @@ async def get_leads(
     leads = await db.leads.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
     
     for lead in leads:
+        # Add default values for new fields if missing
+        if "score" not in lead:
+            lead["score"] = 50
+        if "tags" not in lead:
+            lead["tags"] = []
+        
         if isinstance(lead["created_at"], str):
             lead["created_at"] = datetime.fromisoformat(lead["created_at"])
         if isinstance(lead["updated_at"], str):
@@ -502,6 +508,12 @@ async def get_lead(lead_id: str, request: Request):
     lead_doc = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
     if not lead_doc:
         raise HTTPException(status_code=404, detail="Lead not found")
+    
+    # Add default values for new fields if missing
+    if "score" not in lead_doc:
+        lead_doc["score"] = calculate_lead_score(lead_doc)
+    if "tags" not in lead_doc:
+        lead_doc["tags"] = []
     
     if isinstance(lead_doc["created_at"], str):
         lead_doc["created_at"] = datetime.fromisoformat(lead_doc["created_at"])
@@ -1221,6 +1233,10 @@ async def get_dashboard_stats(request: Request, period: str = "30d"):
 
 # Include router
 app.include_router(api_router)
+
+# Include integrations router
+from integrations import integrations_router
+app.include_router(integrations_router)
 
 # CORS
 app.add_middleware(
