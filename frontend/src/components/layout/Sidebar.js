@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { LayoutDashboard, Users, FileText, CheckSquare, Activity, LogOut, TrendingUp, Trello } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, CheckSquare, Activity, LogOut, TrendingUp, Trello, CreditCard, BarChart3 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const Sidebar = () => {
@@ -18,6 +18,8 @@ const Sidebar = () => {
     { to: '/kanban', icon: Trello, label: 'Kanban', testId: 'nav-kanban' },
     { to: '/leads', icon: Users, label: 'Leads', testId: 'nav-leads' },
     { to: '/quotes', icon: FileText, label: 'Devis', testId: 'nav-quotes' },
+    { to: '/invoices', icon: CreditCard, label: 'Factures', testId: 'nav-invoices' },
+    { to: '/finance', icon: BarChart3, label: 'Finance', testId: 'nav-finance' },
     { to: '/tasks', icon: CheckSquare, label: 'Tâches', testId: 'nav-tasks' },
     { to: '/analytics', icon: TrendingUp, label: 'Analytics', testId: 'nav-analytics' },
     { to: '/activity', icon: Activity, label: 'Journal', testId: 'nav-activity' }

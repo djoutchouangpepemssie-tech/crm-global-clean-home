@@ -16,6 +16,9 @@ import TasksList from './components/tasks/TasksList';
 import ActivityLog from './components/activity/ActivityLog';
 import KanbanBoard from './components/kanban/KanbanBoard';
 import Analytics from './components/analytics/Analytics';
+import InvoicesList from './components/invoices/InvoicesList';
+import PaymentSuccess from './components/invoices/PaymentSuccess';
+import FinancialDashboard from './components/invoices/FinancialDashboard';
 import './App.css';
 
 function AppRouter() {
@@ -49,6 +52,9 @@ function AppRouter() {
                   <Route path="/activity" element={<ActivityLog />} />
                   <Route path="/kanban" element={<KanbanBoard />} />
                   <Route path="/analytics" element={<Analytics />} />
+                  <Route path="/invoices" element={<InvoicesList />} />
+                  <Route path="/invoices/:invoiceId/success" element={<PaymentSuccess />} />
+                  <Route path="/finance" element={<FinancialDashboard />} />
                   <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </div>

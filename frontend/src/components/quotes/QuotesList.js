@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Plus, Send } from 'lucide-react';
+import { Plus, Send, FileText } from 'lucide-react';
 import { getStatusColor, getStatusLabel, formatDateTime, formatCurrency } from '../../lib/utils';
 import { toast } from 'sonner';
 
@@ -38,6 +38,18 @@ const QuotesList = () => {
     } catch (error) {
       console.error('Error sending quote:', error);
       toast.error('Erreur lors de l\'envoi du devis');
+    }
+  };
+
+  const handleCreateInvoice = async (quoteId, e) => {
+    e.stopPropagation();
+    try {
+      await axios.post(`${API_URL}/invoices/from-quote/${quoteId}`, {}, { withCredentials: true });
+      toast.success('Facture créée avec succès');
+      navigate('/invoices');
+    } catch (error) {
+      console.error('Error creating invoice:', error);
+      toast.error('Erreur lors de la création de la facture');
     }
   };
 
@@ -114,6 +126,17 @@ const QuotesList = () => {
                 >
                   <Send className="w-4 h-4" />
                   Envoyer le devis
+                </button>
+              )}
+
+              {(quote.status === 'envoyé' || quote.status === 'accepté') && (
+                <button
+                  data-testid={`create-invoice-button-${quote.quote_id}`}
+                  onClick={(e) => handleCreateInvoice(quote.quote_id, e)}
+                  className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm"
+                >
+                  <FileText className="w-4 h-4" />
+                  Créer une facture
                 </button>
               )}
             </div>

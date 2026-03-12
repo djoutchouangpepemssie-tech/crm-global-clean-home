@@ -1252,6 +1252,10 @@ app.include_router(api_router)
 from integrations import integrations_router
 app.include_router(integrations_router)
 
+# Include invoices/payments router
+from invoices import invoices_router
+app.include_router(invoices_router)
+
 @app.on_event("startup")
 async def startup_db_indexes():
     """Create MongoDB indexes for performance."""
@@ -1273,6 +1277,12 @@ async def startup_db_indexes():
     await db.user_sessions.create_index("session_token", unique=True)
     await db.tracking_events.create_index("visitor_id")
     await db.tracking_events.create_index("timestamp")
+    await db.invoices.create_index("invoice_id", unique=True)
+    await db.invoices.create_index("quote_id")
+    await db.invoices.create_index("lead_id")
+    await db.invoices.create_index("status")
+    await db.payment_transactions.create_index("stripe_session_id")
+    await db.payment_transactions.create_index("invoice_id")
     logger.info("MongoDB indexes created successfully")
 
 @app.on_event("shutdown")
