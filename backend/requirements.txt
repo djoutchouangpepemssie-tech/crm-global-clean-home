@@ -94,6 +94,7 @@ pyparsing==3.3.2
 pytest==9.0.2
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.1
+python-http-client==3.3.7
 python-jose==3.5.0
 python-multipart==0.0.22
 pytokens==0.4.1
@@ -110,6 +111,7 @@ s3transfer==0.16.0
 s5cmd==0.2.0
 scikit-learn==1.8.0
 scipy==1.17.1
+sendgrid==6.12.5
 shellingham==1.5.4
 six==1.17.0
 slowapi==0.1.9
@@ -132,6 +134,7 @@ uvicorn==0.25.0
 watchfiles==1.1.1
 webencodings==0.5.1
 websockets==16.0
+Werkzeug==3.1.6
 wrapt==2.1.2
 yarl==1.23.0
 zipp==3.23.0

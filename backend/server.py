@@ -1265,6 +1265,35 @@ async def get_dashboard_stats(request: Request, period: str = "30d"):
         "source_performance": source_performance
     }
 
+# ============= INTEGRATION STATUS ENDPOINTS =============
+
+@api_router.get("/settings/integrations")
+async def get_integration_status(request: Request):
+    """Get status of all external integrations."""
+    await require_auth(request)
+    
+    from email_service import get_sendgrid_status
+    from google_calendar import _is_configured as gcal_configured
+    
+    sendgrid = get_sendgrid_status()
+    
+    stripe_key = os.environ.get("STRIPE_API_KEY", "")
+    stripe_status = {
+        "configured": bool(stripe_key),
+        "mode": "test" if stripe_key.startswith("sk_test") else "live" if stripe_key.startswith("sk_live") else "unknown",
+    }
+    
+    whatsapp_number = os.environ.get("WHATSAPP_NUMBER", "0622665308")
+    
+    return {
+        "sendgrid": sendgrid,
+        "google_calendar": {"configured": gcal_configured()},
+        "stripe": stripe_status,
+        "whatsapp": {"number": whatsapp_number, "configured": bool(whatsapp_number)},
+        "tracking_widget": {"configured": True},
+        "zapier_webhooks": {"configured": True},
+    }
+
 # CORS - must be added before routes
 app.add_middleware(
     CORSMiddleware,
@@ -1304,6 +1333,10 @@ app.include_router(ext_router)
 # Include exports router
 from exports import exports_router
 app.include_router(exports_router)
+
+# Include Google Calendar router
+from google_calendar import gcal_router
+app.include_router(gcal_router)
 
 @app.on_event("startup")
 async def startup_db_indexes():

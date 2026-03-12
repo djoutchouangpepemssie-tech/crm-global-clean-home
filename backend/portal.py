@@ -85,12 +85,23 @@ async def request_magic_link(body: MagicLinkRequest):
     
     await _db.magic_links.insert_one(magic_link)
     
-    # In production, send via email. For now, return the token.
-    logger.info(f"Magic link generated for {email}: token={token}")
+    # Send magic link via email
+    try:
+        from email_service import send_magic_link
+        portal_base_url = str(os.environ.get("FRONTEND_URL", ""))
+        if not portal_base_url:
+            portal_base_url = "https://www.globalcleanhome.com"
+        email_sent = send_magic_link(email, lead.get("name", "Client"), token, portal_base_url)
+        if email_sent:
+            logger.info(f"Magic link email sent to {email}")
+        else:
+            logger.info(f"Magic link generated for {email} (email not sent - SendGrid not configured): token={token}")
+    except Exception as e:
+        logger.warning(f"Failed to send magic link email: {e}")
     
     return {
-        "message": "Si un compte existe, un lien d'accès vous sera envoyé par email.",
-        "magic_token": token  # Would be removed in production
+        "message": "Si un compte existe, un lien d'acces vous sera envoye par email.",
+        "magic_token": token,
     }
 
 

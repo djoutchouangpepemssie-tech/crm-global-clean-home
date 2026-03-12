@@ -305,6 +305,10 @@ async def send_whatsapp(body: WhatsAppMessage, request: Request):
     phone = lead.get("phone", "").replace(" ", "").replace("+", "")
     if not phone:
         raise HTTPException(status_code=400, detail="Le lead n'a pas de numéro de téléphone")
+    
+    # Normalize French phone number
+    if phone.startswith("0") and len(phone) == 10:
+        phone = "33" + phone[1:]
 
     # Resolve template
     message = body.message

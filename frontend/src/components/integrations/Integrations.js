@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { Webhook, Calendar, MessageCircle, Code, Plus, Trash2, ToggleLeft, ToggleRight, Copy, ExternalLink, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Webhook, Calendar, MessageCircle, Code, Plus, Trash2, ToggleLeft, ToggleRight, Copy, ExternalLink, Clock, CheckCircle, XCircle, Mail, Settings, Link2, RefreshCw, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDateTime } from '../../lib/utils';
 
@@ -43,7 +43,7 @@ const WebhooksTab = () => {
     }
     try {
       await axios.post(`${API_URL}/webhooks`, form, { withCredentials: true });
-      toast.success('Webhook créé'); setShowForm(false);
+      toast.success('Webhook cree'); setShowForm(false);
       setForm({ name: '', url: '', events: [] }); fetchData();
     } catch (err) { toast.error(err.response?.data?.detail || 'Erreur'); }
   };
@@ -59,7 +59,7 @@ const WebhooksTab = () => {
     if (!window.confirm('Supprimer ce webhook ?')) return;
     try {
       await axios.delete(`${API_URL}/webhooks/${whId}`, { withCredentials: true });
-      toast.success('Webhook supprimé'); fetchData();
+      toast.success('Webhook supprime'); fetchData();
     } catch { toast.error('Erreur'); }
   };
 
@@ -75,7 +75,7 @@ const WebhooksTab = () => {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-lg font-semibold text-slate-900">Webhooks (Zapier / Make)</h2>
-          <p className="text-sm text-slate-500">Envoyez des données automatiquement vers vos outils</p>
+          <p className="text-sm text-slate-500">Envoyez des donnees automatiquement vers vos outils</p>
         </div>
         <button data-testid="add-webhook-btn" onClick={() => setShowForm(true)}
           className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium">
@@ -83,11 +83,10 @@ const WebhooksTab = () => {
         </button>
       </div>
 
-      {/* Webhook list */}
       {webhooks.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
           <Webhook className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-500">Aucun webhook configuré</p>
+          <p className="text-slate-500">Aucun webhook configure</p>
         </div>
       ) : webhooks.map(wh => (
         <div key={wh.webhook_id} data-testid={`webhook-${wh.webhook_id}`}
@@ -117,14 +116,13 @@ const WebhooksTab = () => {
             ))}
           </div>
           <div className="flex items-center gap-4 text-xs text-slate-400">
-            <span>Déclenché {wh.trigger_count || 0} fois</span>
+            <span>Declenche {wh.trigger_count || 0} fois</span>
             {wh.last_triggered && <span>Dernier: {formatDateTime(wh.last_triggered)}</span>}
             <button onClick={() => fetchLogs(wh.webhook_id)} className="text-violet-600 hover:underline">Voir les logs</button>
           </div>
         </div>
       ))}
 
-      {/* Logs modal */}
       {selectedWh && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedWh(null)}>
           <div className="bg-white rounded-2xl p-6 max-w-2xl w-full shadow-2xl max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -151,7 +149,6 @@ const WebhooksTab = () => {
         </div>
       )}
 
-      {/* Create form modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowForm(false)}>
           <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl" onClick={e => e.stopPropagation()}>
@@ -168,7 +165,7 @@ const WebhooksTab = () => {
                   placeholder="https://hooks.zapier.com/..." required className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-violet-500 focus:outline-none" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Événements</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Evenements</label>
                 <div className="flex flex-wrap gap-2">
                   {events.map(ev => (
                     <button key={ev} type="button" onClick={() => toggleEvent(ev)}
@@ -180,7 +177,7 @@ const WebhooksTab = () => {
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowForm(false)} className="flex-1 px-4 py-2 border border-slate-200 text-slate-600 rounded-lg">Annuler</button>
-                <button type="submit" data-testid="submit-webhook" className="flex-1 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">Créer</button>
+                <button type="submit" data-testid="submit-webhook" className="flex-1 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">Creer</button>
               </div>
             </form>
           </div>
@@ -190,25 +187,71 @@ const WebhooksTab = () => {
   );
 };
 
-// ============= Calendar Sync Tab =============
+// ============= Google Calendar Tab =============
 const CalendarTab = () => {
-  const [snippet, setSnippet] = useState(null);
-
-  const fetchSnippet = useCallback(async () => {
-    try {
-      const res = await axios.get(`${API_URL}/widget/snippet`, { withCredentials: true });
-      setSnippet(res.data);
-    } catch { /* ignore */ }
-  }, []);
-
-  useEffect(() => { fetchSnippet(); }, [fetchSnippet]);
+  const [gcalStatus, setGcalStatus] = useState(null);
+  const [syncing, setSyncing] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const calendarUrl = `${process.env.REACT_APP_BACKEND_URL}/api/calendar/ical`;
 
+  const fetchStatus = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_URL}/gcal/status`, { withCredentials: true });
+      setGcalStatus(res.data);
+    } catch {
+      setGcalStatus({ connected: false, configured: false });
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchStatus(); }, [fetchStatus]);
+
+  // Handle redirect after OAuth
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('gcal') === 'connected') {
+      toast.success('Google Calendar connecte avec succes !');
+      window.history.replaceState({}, '', '/integrations');
+      fetchStatus();
+    }
+  }, [fetchStatus]);
+
+  const connectGCal = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/gcal/auth/login`, { withCredentials: true });
+      window.location.href = res.data.authorization_url;
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erreur de connexion');
+    }
+  };
+
+  const disconnectGCal = async () => {
+    if (!window.confirm('Deconnecter Google Calendar ?')) return;
+    try {
+      await axios.post(`${API_URL}/gcal/disconnect`, {}, { withCredentials: true });
+      toast.success('Google Calendar deconnecte');
+      fetchStatus();
+    } catch { toast.error('Erreur'); }
+  };
+
+  const syncAll = async () => {
+    setSyncing(true);
+    try {
+      const res = await axios.post(`${API_URL}/gcal/sync-all`, {}, { withCredentials: true });
+      toast.success(`${res.data.synced} interventions synchronisees`);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erreur de synchronisation');
+    }
+    setSyncing(false);
+  };
+
   const copyUrl = () => {
     navigator.clipboard.writeText(calendarUrl);
-    toast.success('URL copiée !');
+    toast.success('URL copiee !');
   };
+
+  if (loading) return <div className="text-center py-8 text-slate-400">Chargement...</div>;
 
   return (
     <div className="space-y-6">
@@ -217,53 +260,83 @@ const CalendarTab = () => {
         <p className="text-sm text-slate-500">Synchronisez vos interventions avec Google Calendar</p>
       </div>
 
+      {/* OAuth Connection Card */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm" data-testid="gcal-oauth-card">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-medium text-slate-900 flex items-center gap-2">
+            <Link2 className="w-5 h-5 text-violet-600" />
+            Connexion Google Calendar (OAuth)
+          </h3>
+          {gcalStatus?.connected && (
+            <span className="flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">
+              <CheckCircle className="w-3.5 h-3.5" /> Connecte
+            </span>
+          )}
+        </div>
+
+        {gcalStatus?.connected ? (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Votre compte Google Calendar est connecte. Les interventions peuvent etre synchronisees automatiquement.
+            </p>
+            <div className="flex gap-3">
+              <button data-testid="gcal-sync-all" onClick={syncAll} disabled={syncing}
+                className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium disabled:opacity-50">
+                <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                {syncing ? 'Synchronisation...' : 'Synchroniser toutes les interventions'}
+              </button>
+              <button onClick={disconnectGCal}
+                className="flex items-center gap-2 px-4 py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors text-sm font-medium">
+                Deconnecter
+              </button>
+            </div>
+          </div>
+        ) : gcalStatus?.configured ? (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Connectez votre compte Google pour synchroniser les interventions avec votre calendrier.
+            </p>
+            <button data-testid="gcal-connect-btn" onClick={connectGCal}
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border-2 border-slate-200 text-slate-700 rounded-lg hover:border-violet-400 hover:text-violet-700 transition-all text-sm font-medium">
+              <svg className="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+              Connecter Google Calendar
+            </button>
+          </div>
+        ) : (
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-sm text-amber-800">
+              <strong>Configuration requise :</strong> Les cles API Google (GOOGLE_CLIENT_ID et GOOGLE_CLIENT_SECRET) ne sont pas encore configurees. Contactez l'administrateur.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* iCal Fallback */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
         <h3 className="font-medium text-slate-900 mb-3 flex items-center gap-2">
           <Calendar className="w-5 h-5 text-violet-600" />
-          Lien d'abonnement iCal
+          Lien d'abonnement iCal (alternatif)
         </h3>
         <p className="text-sm text-slate-500 mb-4">
-          Ajoutez ce lien dans Google Calendar pour synchroniser automatiquement les interventions.
+          Ajoutez ce lien dans n'importe quelle app de calendrier pour un flux en lecture seule.
         </p>
         <div className="flex gap-2">
-          <input
-            data-testid="ical-url"
-            value={calendarUrl}
-            readOnly
-            className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono"
-          />
-          <button
-            data-testid="copy-ical-url"
-            onClick={copyUrl}
-            className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium"
-          >
+          <input data-testid="ical-url" value={calendarUrl} readOnly
+            className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono" />
+          <button data-testid="copy-ical-url" onClick={copyUrl}
+            className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium">
             <Copy className="w-4 h-4" /> Copier
           </button>
         </div>
-
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-          <h4 className="font-medium text-blue-900 text-sm mb-2">Comment synchroniser ?</h4>
+        <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+          <h4 className="font-medium text-blue-900 text-sm mb-2">Comment synchroniser manuellement ?</h4>
           <ol className="text-sm text-blue-800 space-y-1 list-decimal pl-4">
             <li>Ouvrez Google Calendar</li>
-            <li>Cliquez sur "+" à côté de "Autres agendas"</li>
-            <li>Sélectionnez "À partir d'une URL"</li>
+            <li>Cliquez sur "+" a cote de "Autres agendas"</li>
+            <li>Selectionnez "A partir d'une URL"</li>
             <li>Collez l'URL ci-dessus et validez</li>
           </ol>
         </div>
-      </div>
-
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-        <h3 className="font-medium text-slate-900 mb-3 flex items-center gap-2">
-          <ExternalLink className="w-5 h-5 text-violet-600" />
-          Télécharger le fichier .ics
-        </h3>
-        <a
-          href={calendarUrl}
-          data-testid="download-ics"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium"
-        >
-          <Calendar className="w-4 h-4" /> Télécharger (.ics)
-        </a>
       </div>
     </div>
   );
@@ -282,6 +355,9 @@ const WhatsAppTab = () => {
 
   useEffect(() => { fetchTemplates(); }, [fetchTemplates]);
 
+  const whatsappNumber = '0622665308';
+  const directLink = `https://wa.me/33622665308`;
+
   return (
     <div className="space-y-6">
       <div>
@@ -289,6 +365,25 @@ const WhatsAppTab = () => {
         <p className="text-sm text-slate-500">Templates de messages et envoi direct via WhatsApp</p>
       </div>
 
+      {/* Direct Contact Card */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+        <h3 className="font-medium text-slate-900 mb-3 flex items-center gap-2">
+          <MessageCircle className="w-5 h-5 text-green-600" />
+          Contact direct WhatsApp
+        </h3>
+        <div className="flex items-center gap-4 p-4 bg-green-50 rounded-lg">
+          <div className="flex-1">
+            <p className="text-sm font-medium text-green-900">Numero : {whatsappNumber}</p>
+            <p className="text-xs text-green-700 mt-1">Les clients peuvent contacter directement via WhatsApp</p>
+          </div>
+          <a href={directLink} target="_blank" rel="noopener noreferrer" data-testid="wa-direct-link"
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium">
+            <ExternalLink className="w-4 h-4" /> Ouvrir WhatsApp
+          </a>
+        </div>
+      </div>
+
+      {/* Templates */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
         <h3 className="font-medium text-slate-900 mb-4">Templates disponibles</h3>
         <div className="space-y-3">
@@ -325,7 +420,7 @@ const TrackingTab = () => {
   const copySnippet = () => {
     if (snippet?.snippet) {
       navigator.clipboard.writeText(snippet.snippet);
-      toast.success('Code copié !');
+      toast.success('Code copie !');
     }
   };
 
@@ -333,13 +428,13 @@ const TrackingTab = () => {
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-semibold text-slate-900">Widget de Tracking</h2>
-        <p className="text-sm text-slate-500">Installez le tracking sur votre site web</p>
+        <p className="text-sm text-slate-500">Installez le tracking sur globalcleanhome.com</p>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
         <h3 className="font-medium text-slate-900 mb-3 flex items-center gap-2">
           <Code className="w-5 h-5 text-violet-600" />
-          Code d'installation
+          Code d'installation pour globalcleanhome.com
         </h3>
         <p className="text-sm text-slate-500 mb-4">{snippet?.description}</p>
 
@@ -347,23 +442,35 @@ const TrackingTab = () => {
           <pre className="bg-slate-900 text-green-400 rounded-lg p-4 text-sm overflow-x-auto font-mono">
             {snippet?.snippet || 'Chargement...'}
           </pre>
-          <button
-            data-testid="copy-tracking-snippet"
-            onClick={copySnippet}
-            className="absolute top-3 right-3 p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
-          >
+          <button data-testid="copy-tracking-snippet" onClick={copySnippet}
+            className="absolute top-3 right-3 p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
             <Copy className="w-4 h-4 text-white" />
           </button>
         </div>
 
-        <div className="mt-6 p-4 bg-green-50 rounded-lg">
-          <h4 className="font-medium text-green-900 text-sm mb-2">Ce qui est tracké</h4>
+        <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <h4 className="font-medium text-amber-900 text-sm mb-2 flex items-center gap-2">
+            <Globe className="w-4 h-4" />
+            Instructions pour globalcleanhome.com
+          </h4>
+          <ol className="text-sm text-amber-800 space-y-2 list-decimal pl-4">
+            <li>Copiez le code ci-dessus</li>
+            <li>Connectez-vous a l'administration de votre site web</li>
+            <li>Allez dans la section <strong>"En-tete"</strong> ou <strong>"Header Scripts"</strong></li>
+            <li>Collez le script juste avant la balise <code className="bg-amber-100 px-1 rounded">&lt;/head&gt;</code></li>
+            <li>Enregistrez les modifications</li>
+          </ol>
+          <p className="text-xs text-amber-700 mt-3">Le script collectera automatiquement les visites, clics, et soumissions de formulaires.</p>
+        </div>
+
+        <div className="mt-4 p-4 bg-green-50 rounded-lg">
+          <h4 className="font-medium text-green-900 text-sm mb-2">Ce qui est tracke</h4>
           <ul className="text-sm text-green-800 space-y-1 list-disc pl-4">
-            <li>Pages visitées et temps passé</li>
+            <li>Pages visitees et temps passe</li>
             <li>Clics sur boutons et liens</li>
             <li>Soumissions de formulaires</li>
             <li>Profondeur de scroll</li>
-            <li>Paramètres UTM (source, campagne...)</li>
+            <li>Parametres UTM (source, campagne...)</li>
             <li>Informations appareil</li>
           </ul>
         </div>
@@ -372,14 +479,104 @@ const TrackingTab = () => {
   );
 };
 
+// ============= Email Tab (SendGrid) =============
+const EmailTab = () => {
+  const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchStatus = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_URL}/settings/integrations`, { withCredentials: true });
+      setStatus(res.data.sendgrid);
+    } catch {
+      setStatus({ configured: false });
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchStatus(); }, [fetchStatus]);
+
+  if (loading) return <div className="text-center py-8 text-slate-400">Chargement...</div>;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-slate-900">Emails (SendGrid)</h2>
+        <p className="text-sm text-slate-500">Configuration de l'envoi d'emails transactionnels</p>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm" data-testid="email-status-card">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-medium text-slate-900 flex items-center gap-2">
+            <Mail className="w-5 h-5 text-violet-600" />
+            Statut SendGrid
+          </h3>
+          <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+            status?.configured ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
+          }`}>
+            {status?.configured ? (
+              <><CheckCircle className="w-3.5 h-3.5" /> Configure</>
+            ) : (
+              <><Clock className="w-3.5 h-3.5" /> En attente de cle API</>
+            )}
+          </span>
+        </div>
+
+        {status?.configured ? (
+          <div className="space-y-3">
+            <div className="p-4 bg-green-50 rounded-lg">
+              <p className="text-sm text-green-800">
+                SendGrid est configure et operationnel. Les emails seront envoyes depuis <strong>{status.sender_email}</strong>.
+              </p>
+            </div>
+            <div className="text-sm text-slate-600">
+              <p className="font-medium mb-2">Emails envoyes automatiquement :</p>
+              <ul className="space-y-1.5 list-disc pl-4">
+                <li>Liens magiques (portail client)</li>
+                <li>Devis aux clients</li>
+                <li>Factures aux clients</li>
+                <li>Rappels d'intervention</li>
+                <li>Notifications</li>
+              </ul>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-sm text-amber-800">
+                <strong>Cle API requise :</strong> Pour activer l'envoi d'emails, configurez votre cle API SendGrid.
+              </p>
+            </div>
+            <div className="p-4 bg-slate-50 rounded-lg">
+              <h4 className="font-medium text-slate-900 text-sm mb-2">Comment obtenir une cle SendGrid ?</h4>
+              <ol className="text-sm text-slate-700 space-y-1.5 list-decimal pl-4">
+                <li>Creez un compte sur <a href="https://sendgrid.com" target="_blank" rel="noopener noreferrer" className="text-violet-600 hover:underline">sendgrid.com</a></li>
+                <li>Allez dans Settings &rarr; API Keys</li>
+                <li>Creez une cle avec les permissions "Full Access"</li>
+                <li>Verifiez votre adresse email d'envoi (Sender Authentication)</li>
+                <li>Communiquez la cle API a votre administrateur</li>
+              </ol>
+            </div>
+            <p className="text-xs text-slate-400">
+              En attendant, les emails sont logges cote serveur mais non envoyes aux destinataires.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ============= Main Integrations Page =============
 const Integrations = () => {
-  const [activeTab, setActiveTab] = useState('webhooks');
+  const [activeTab, setActiveTab] = useState('overview');
 
   const tabs = [
-    { id: 'webhooks', label: 'Webhooks', icon: Webhook },
+    { id: 'overview', label: 'Vue d\'ensemble', icon: Settings },
+    { id: 'email', label: 'Emails', icon: Mail },
     { id: 'calendar', label: 'Google Calendar', icon: Calendar },
     { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
+    { id: 'webhooks', label: 'Webhooks', icon: Webhook },
     { id: 'tracking', label: 'Widget Tracking', icon: Code },
   ];
 
@@ -387,35 +584,137 @@ const Integrations = () => {
     <div className="p-8" data-testid="integrations-page">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
-          Intégrations
+          Integrations
         </h1>
-        <p className="text-slate-600 mt-1">Connectez votre CRM à vos outils externes</p>
+        <p className="text-slate-600 mt-1">Connectez votre CRM a vos outils externes</p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-8" data-testid="integration-tabs">
+      <div className="flex gap-2 mb-8 flex-wrap" data-testid="integration-tabs">
         {tabs.map(tab => (
-          <button
-            key={tab.id}
-            data-testid={`tab-${tab.id}`}
-            onClick={() => setActiveTab(tab.id)}
+          <button key={tab.id} data-testid={`tab-${tab.id}`} onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all ${
               activeTab === tab.id
                 ? 'bg-violet-600 text-white shadow-md'
                 : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
-            }`}
-          >
+            }`}>
             <tab.icon className="w-4 h-4" />
             {tab.label}
           </button>
         ))}
       </div>
 
-      {/* Tab content */}
-      {activeTab === 'webhooks' && <WebhooksTab />}
+      {activeTab === 'overview' && <OverviewTab onNavigate={setActiveTab} />}
+      {activeTab === 'email' && <EmailTab />}
       {activeTab === 'calendar' && <CalendarTab />}
       {activeTab === 'whatsapp' && <WhatsAppTab />}
+      {activeTab === 'webhooks' && <WebhooksTab />}
       {activeTab === 'tracking' && <TrackingTab />}
+    </div>
+  );
+};
+
+// ============= Overview Tab =============
+const OverviewTab = ({ onNavigate }) => {
+  const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/settings/integrations`, { withCredentials: true });
+        setStatus(res.data);
+      } catch { setStatus(null); }
+      setLoading(false);
+    };
+    fetch();
+  }, []);
+
+  if (loading) return <div className="text-center py-8 text-slate-400">Chargement...</div>;
+
+  const integrations = [
+    {
+      id: 'email',
+      name: 'SendGrid (Emails)',
+      icon: Mail,
+      configured: status?.sendgrid?.configured,
+      description: 'Envoi d\'emails transactionnels (devis, factures, liens magiques)',
+      color: 'blue',
+    },
+    {
+      id: 'calendar',
+      name: 'Google Calendar',
+      icon: Calendar,
+      configured: status?.google_calendar?.configured,
+      description: 'Synchronisation des interventions avec Google Calendar',
+      color: 'red',
+    },
+    {
+      id: 'whatsapp',
+      name: 'WhatsApp',
+      icon: MessageCircle,
+      configured: status?.whatsapp?.configured,
+      description: `Contact direct WhatsApp (${status?.whatsapp?.number || ''})`,
+      color: 'green',
+    },
+    {
+      id: 'webhooks',
+      name: 'Zapier / Make',
+      icon: Webhook,
+      configured: status?.zapier_webhooks?.configured,
+      description: 'Webhooks pour automatiser vos workflows',
+      color: 'violet',
+    },
+    {
+      id: 'tracking',
+      name: 'Widget Tracking',
+      icon: Code,
+      configured: status?.tracking_widget?.configured,
+      description: 'Suivi des visiteurs sur globalcleanhome.com',
+      color: 'amber',
+    },
+  ];
+
+  const stripeMode = status?.stripe?.mode;
+
+  return (
+    <div className="space-y-6">
+      {/* Stripe Status Banner */}
+      <div className={`rounded-xl p-5 border ${stripeMode === 'live' ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${stripeMode === 'live' ? 'bg-green-100' : 'bg-amber-100'}`}>
+            <Settings className={`w-5 h-5 ${stripeMode === 'live' ? 'text-green-600' : 'text-amber-600'}`} />
+          </div>
+          <div>
+            <p className={`font-medium text-sm ${stripeMode === 'live' ? 'text-green-900' : 'text-amber-900'}`}>
+              Stripe : mode {stripeMode === 'live' ? 'production' : 'test'}
+            </p>
+            <p className={`text-xs ${stripeMode === 'live' ? 'text-green-700' : 'text-amber-700'}`}>
+              {stripeMode === 'live' ? 'Les paiements reels sont actifs' : 'Les paiements sont en mode test. Fournissez vos cles de production pour activer.'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Integration Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {integrations.map(intg => (
+          <button key={intg.id} data-testid={`overview-${intg.id}`} onClick={() => onNavigate(intg.id)}
+            className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm text-left hover:border-violet-300 hover:shadow-md transition-all group">
+            <div className="flex items-start gap-4">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center bg-${intg.color}-100 group-hover:bg-${intg.color}-200 transition-colors`}>
+                <intg.icon className={`w-5 h-5 text-${intg.color}-600`} />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-slate-900 text-sm">{intg.name}</h3>
+                  <span className={`w-2.5 h-2.5 rounded-full ${intg.configured ? 'bg-green-400' : 'bg-amber-400'}`} />
+                </div>
+                <p className="text-xs text-slate-500 mt-1">{intg.description}</p>
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
     </div>
   );
 };
