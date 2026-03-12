@@ -456,6 +456,21 @@ async def create_lead(input: LeadCreate, request: Request):
     except Exception as e:
         logger.warning(f"Failed to create notification: {e}")
     
+    # Fire webhooks for new lead
+    try:
+        from external_integrations import fire_webhooks
+        await fire_webhooks("new_lead", {
+            "lead_id": lead_id,
+            "name": input.name,
+            "email": input.email,
+            "phone": input.phone,
+            "service_type": input.service_type,
+            "source": input.source,
+            "score": lead_dict["score"],
+        })
+    except Exception as e:
+        logger.warning(f"Failed to fire webhooks: {e}")
+    
     lead_doc = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
     if isinstance(lead_doc["created_at"], str):
         lead_doc["created_at"] = datetime.fromisoformat(lead_doc["created_at"])
@@ -1282,6 +1297,10 @@ app.include_router(planning_router)
 from advanced import advanced_router
 app.include_router(advanced_router)
 
+# Include external integrations router
+from external_integrations import ext_router
+app.include_router(ext_router)
+
 @app.on_event("startup")
 async def startup_db_indexes():
     """Create MongoDB indexes for performance."""
@@ -1320,6 +1339,9 @@ async def startup_db_indexes():
     await db.teams.create_index("team_id", unique=True)
     await db.notifications.create_index([("user_id", 1), ("read", 1)])
     await db.notifications.create_index("created_at")
+    await db.webhooks.create_index("webhook_id", unique=True)
+    await db.webhooks.create_index("events")
+    await db.webhook_logs.create_index("webhook_id")
     logger.info("MongoDB indexes created successfully")
 
 @app.on_event("shutdown")

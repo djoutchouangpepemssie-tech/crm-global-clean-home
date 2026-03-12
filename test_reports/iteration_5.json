@@ -1,0 +1,85 @@
+{
+  "summary": "Phase 6 External Integrations testing completed. All 21 backend tests passed. All frontend features verified: Integrations page with 4 tabs (Webhooks, Google Calendar, WhatsApp, Widget Tracking), WhatsApp button on Lead Detail page, sidebar Intégrations nav item.",
+  
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  
+  "test_report_links": [
+    "/app/backend/tests/test_phase6_integrations.py",
+    "/app/test_reports/pytest/pytest_phase6_results.xml"
+  ],
+  
+  "action_items": [],
+  
+  "critical_code_review_comments": [],
+  
+  "updated_files": [
+    "/app/backend/tests/test_phase6_integrations.py"
+  ],
+  
+  "success_rate": {
+    "backend": "100% (21/21 tests passed)",
+    "frontend": "100% (all pages load, all features work)"
+  },
+  
+  "test_credentials": {
+    "session_token": "test_session_phase6_1773349629903",
+    "user_id": "test-user-phase6-1773349629903",
+    "lead_id_with_phone": "lead_phase6_mmnykzpr"
+  },
+  
+  "seed_data_creation": "Created test user, session, and lead with phone number for WhatsApp testing",
+  
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  
+  "context_for_next_testing_agent": "Phase 6 (External Integrations) fully tested. Webhooks CRUD with event validation, iCal export with text/calendar format, WhatsApp click-to-chat with templates, tracking widget JS generator (public endpoint). Lead creation fires webhooks. All 4 tabs on Integrations page work correctly.",
+  
+  "tests_passed": {
+    "phase_6_backend": [
+      "GET /api/webhooks/events - lists 12 valid webhook event types",
+      "POST /api/webhooks - creates webhook with name, url, events",
+      "POST /api/webhooks with invalid event - returns 400",
+      "GET /api/webhooks - lists all webhooks",
+      "PATCH /api/webhooks/{id} - updates webhook (active/name)",
+      "GET /api/webhooks/{id}/logs - returns delivery logs",
+      "DELETE /api/webhooks/{id} - deletes webhook",
+      "GET /api/calendar/ical - returns valid iCal format (text/calendar)",
+      "GET /api/calendar/ical without auth - returns 401",
+      "GET /api/whatsapp/templates - returns 5 templates (welcome, quote_ready, reminder, invoice, followup)",
+      "POST /api/whatsapp/send - generates WhatsApp click-to-chat link",
+      "POST /api/whatsapp/send with template - works with template resolution",
+      "POST /api/whatsapp/send with invalid lead - returns 404",
+      "GET /api/widget/script - returns JavaScript (PUBLIC, no auth required)",
+      "GET /api/widget/snippet - returns HTML installation snippet (auth required)",
+      "GET /api/widget/snippet without auth - returns 401",
+      "POST /api/leads - creates lead and fires webhooks (public)",
+      "Auth requirement checks for all protected endpoints"
+    ],
+    "phase_6_frontend": [
+      "Login page loads with Google OAuth",
+      "Sidebar has 'Intégrations' nav item (data-testid='nav-integrations')",
+      "Integrations page (/integrations) loads with data-testid='integrations-page'",
+      "4 tabs visible: Webhooks, Google Calendar, WhatsApp, Widget Tracking",
+      "Webhooks tab: add button (data-testid='add-webhook-btn')",
+      "Calendar tab: iCal URL input (data-testid='ical-url'), copy button, download link",
+      "WhatsApp tab: 5 templates displayed (welcome, quote_ready, reminder, invoice, followup)",
+      "Tracking tab: installation snippet with copy button",
+      "Lead detail page: WhatsApp button (data-testid='whatsapp-button')",
+      "All existing pages (Kanban, Planning, Finance, Analytics, Quotes, Invoices) still work"
+    ]
+  },
+  
+  "mocked_apis": {
+    "whatsapp": "Uses click-to-chat links (wa.me/{phone}?text={message}) - no actual WhatsApp Business API integration",
+    "webhook_delivery": "Webhook delivery to external URLs may fail (async, doesn't break app)"
+  }
+}

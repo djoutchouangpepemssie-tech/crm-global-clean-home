@@ -22,6 +22,7 @@ import PaymentSuccess from './components/invoices/PaymentSuccess';
 import FinancialDashboard from './components/invoices/FinancialDashboard';
 import ClientPortal from './components/portal/ClientPortal';
 import PlanningCalendar from './components/planning/PlanningCalendar';
+import Integrations from './components/integrations/Integrations';
 import './App.css';
 
 function AppRouter() {
@@ -60,6 +61,7 @@ function AppRouter() {
                   <Route path="/invoices/:invoiceId/success" element={<PaymentSuccess />} />
                   <Route path="/finance" element={<FinancialDashboard />} />
                   <Route path="/planning" element={<PlanningCalendar />} />
+                  <Route path="/integrations" element={<Integrations />} />
                   <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </div>

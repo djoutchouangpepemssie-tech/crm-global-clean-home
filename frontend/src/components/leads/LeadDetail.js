@@ -132,6 +132,23 @@ const LeadDetail = () => {
               ))}
             </select>
             <button
+              data-testid="whatsapp-button"
+              onClick={async () => {
+                try {
+                  const res = await axios.post(`${API_URL}/whatsapp/send`, {
+                    lead_id: lead.lead_id,
+                    message: `Bonjour ${lead.name}, merci pour votre demande. Notre équipe vous contactera rapidement. - Global Clean Home`,
+                  }, { withCredentials: true });
+                  window.open(res.data.whatsapp_link, '_blank');
+                  toast.success('WhatsApp ouvert');
+                } catch { toast.error('Erreur WhatsApp'); }
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+            >
+              <MessageSquare className="w-5 h-5" />
+              WhatsApp
+            </button>
+            <button
               data-testid="create-quote-button"
               onClick={handleCreateQuote}
               className="flex items-center gap-2 px-6 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors font-medium"
