@@ -1162,7 +1162,7 @@ async def get_dashboard_stats(request: Request, period: str = "30d"):
     leads_by_source = {}
     all_leads = await db.leads.find({"created_at": {"$gte": start_date.isoformat()}}, {"_id": 0, "source": 1}).to_list(1000)
     for lead in all_leads:
-        source = lead.get("source", "Direct")
+        source = lead.get("source") or "Direct"
         leads_by_source[source] = leads_by_source.get(source, 0) + 1
     
     # Leads by service

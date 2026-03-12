@@ -115,7 +115,7 @@ const Dashboard = () => {
 
   // Prepare data for charts
   const sourceData = Object.entries(stats.leads_by_source || {}).map(([name, value]) => ({
-    name: name || 'Direct',
+    name: name || 'Inconnu',
     value
   }));
 
