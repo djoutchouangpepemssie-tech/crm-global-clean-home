@@ -1,18 +1,18 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 export const useRealtimeNotifications = () => {
-  const [lastCheck, setLastCheck] = useState(new Date().toISOString());
   const [newLeadsCount, setNewLeadsCount] = useState(0);
+  const lastCheckRef = useRef(new Date().toISOString());
   const intervalRef = useRef(null);
 
-  const checkForNewLeads = async () => {
+  const checkForNewLeads = useCallback(async () => {
     try {
       const response = await axios.get(
-        `${API_URL}/leads/recent?since=${lastCheck}`,
+        `${API_URL}/leads/recent?since=${lastCheckRef.current}`,
         { withCredentials: true }
       );
       
@@ -21,10 +21,9 @@ export const useRealtimeNotifications = () => {
       if (count > 0) {
         setNewLeadsCount(prev => prev + count);
         
-        // Show toast notification for each new lead
         leads.forEach(lead => {
           toast.success(
-            `🎯 Nouveau lead: ${lead.name}`,
+            `Nouveau lead: ${lead.name}`,
             {
               description: `${lead.service_type} - ${lead.email}`,
               duration: 8000,
@@ -35,26 +34,15 @@ export const useRealtimeNotifications = () => {
             }
           );
         });
-        
-        // Play notification sound
-        try {
-          const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBjWH0fPTgjMGHm7A7+OZURE');
-          audio.volume = 0.3;
-          audio.play().catch(() => {});
-        } catch (e) {
-          // Ignore audio errors
-        }
       }
       
-      setLastCheck(new Date().toISOString());
+      lastCheckRef.current = new Date().toISOString();
     } catch (error) {
       // Ignore polling errors silently
-      console.log('Polling check skipped');
     }
-  };
+  }, []);
 
   useEffect(() => {
-    // Start polling every 30 seconds
     intervalRef.current = setInterval(checkForNewLeads, 30000);
     
     return () => {
@@ -62,7 +50,7 @@ export const useRealtimeNotifications = () => {
         clearInterval(intervalRef.current);
       }
     };
-  }, [lastCheck]);
+  }, [checkForNewLeads]);
 
   const resetCount = () => setNewLeadsCount(0);
 

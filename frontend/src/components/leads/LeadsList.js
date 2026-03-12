@@ -22,6 +22,7 @@ const LeadsList = () => {
   });
   const [searchTerm, setSearchTerm] = useState('');
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchLeads();
   }, [filters]);

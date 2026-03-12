@@ -11,6 +11,7 @@ const TasksList = () => {
   const [filter, setFilter] = useState('pending');
   const [loading, setLoading] = useState(true);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchTasks();
   }, [filter]);

@@ -11,6 +11,7 @@ const Analytics = () => {
   const [period, setPeriod] = useState('7d');
   const [loading, setLoading] = useState(true);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchStats();
   }, [period]);
@@ -160,7 +161,7 @@ const Analytics = () => {
             <div
               className="h-8 bg-violet-500 rounded-lg"
               style={{
-                width: `${(stats.funnel.cta_clicks / stats.funnel.visitors) * 100}%`
+                width: `${stats.funnel.visitors > 0 ? (stats.funnel.cta_clicks / stats.funnel.visitors) * 100 : 0}%`
               }}
             ></div>
           </div>
@@ -172,7 +173,7 @@ const Analytics = () => {
             <div
               className="h-8 bg-green-500 rounded-lg"
               style={{
-                width: `${(stats.funnel.form_submits / stats.funnel.visitors) * 100}%`
+                width: `${stats.funnel.visitors > 0 ? (stats.funnel.form_submits / stats.funnel.visitors) * 100 : 0}%`
               }}
             ></div>
           </div>

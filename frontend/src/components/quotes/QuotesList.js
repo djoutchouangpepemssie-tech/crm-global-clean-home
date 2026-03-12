@@ -77,8 +77,7 @@ const QuotesList = () => {
             <div
               key={quote.quote_id}
               data-testid={`quote-card-${quote.quote_id}`}
-              onClick={() => navigate(`/quotes/${quote.quote_id}`)}
-              className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-all cursor-pointer"
+              className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-all"
             >
               <div className="flex justify-between items-start mb-4">
                 <div>

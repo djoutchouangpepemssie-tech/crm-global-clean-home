@@ -500,6 +500,118 @@ async def get_leads(
     
     return leads
 
+# IMPORTANT: Static routes (/leads/recent, /leads/export) must be defined BEFORE dynamic route (/leads/{lead_id})
+# to prevent FastAPI from matching "recent" or "export" as a lead_id
+
+@api_router.get("/leads/recent")
+async def get_recent_leads(request: Request, since: Optional[str] = None):
+    """Get recent leads for real-time notifications (polling endpoint)."""
+    await require_auth(request)
+    
+    query = {}
+    if since:
+        try:
+            since_dt = datetime.fromisoformat(since)
+            query["created_at"] = {"$gt": since_dt.isoformat()}
+        except Exception:
+            pass
+    else:
+        query["created_at"] = {"$gt": (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()}
+    
+    leads = await db.leads.find(query, {"_id": 0}).sort("created_at", -1).limit(10).to_list(10)
+    
+    for lead in leads:
+        if "score" not in lead:
+            lead["score"] = 50
+        if "tags" not in lead:
+            lead["tags"] = []
+        if isinstance(lead["created_at"], str):
+            lead["created_at"] = datetime.fromisoformat(lead["created_at"])
+        if isinstance(lead["updated_at"], str):
+            lead["updated_at"] = datetime.fromisoformat(lead["updated_at"])
+    
+    return {"leads": [Lead(**lead) for lead in leads], "count": len(leads)}
+
+@api_router.get("/leads/export")
+async def export_leads(
+    request: Request,
+    status: Optional[str] = None,
+    service_type: Optional[str] = None,
+    source: Optional[str] = None
+):
+    """Export leads to CSV format."""
+    await require_auth(request)
+    
+    from fastapi.responses import StreamingResponse
+    import csv
+    from io import StringIO
+    
+    query = {}
+    if status:
+        query["status"] = status
+    if service_type:
+        query["service_type"] = service_type
+    if source:
+        query["source"] = source
+    
+    leads = await db.leads.find(query, {"_id": 0}).to_list(10000)
+    
+    output = StringIO()
+    if leads:
+        fieldnames = ["lead_id", "name", "email", "phone", "service_type", "surface", 
+                     "address", "source", "status", "score", "created_at", "updated_at"]
+        writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction='ignore')
+        writer.writeheader()
+        
+        for lead in leads:
+            if isinstance(lead.get("created_at"), datetime):
+                lead["created_at"] = lead["created_at"].isoformat()
+            if isinstance(lead.get("updated_at"), datetime):
+                lead["updated_at"] = lead["updated_at"].isoformat()
+            writer.writerow(lead)
+    
+    output.seek(0)
+    
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=leads_export.csv"}
+    )
+
+@api_router.post("/leads/bulk")
+async def bulk_update_leads(input: LeadBulkUpdate, request: Request):
+    """Bulk update multiple leads."""
+    user = await require_auth(request)
+    
+    update_data = {}
+    if input.status:
+        update_data["status"] = input.status
+    if input.assigned_to:
+        update_data["assigned_to"] = input.assigned_to
+    if input.tags is not None:
+        update_data["tags"] = input.tags
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No update data provided")
+    
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    result = await db.leads.update_many(
+        {"lead_id": {"$in": input.lead_ids}},
+        {"$set": update_data}
+    )
+    
+    await log_activity(
+        user.user_id,
+        "bulk_update_leads",
+        "leads",
+        ",".join(input.lead_ids),
+        {"count": result.modified_count, "updates": update_data}
+    )
+    
+    return {"message": f"{result.modified_count} leads updated"}
+
+# Dynamic route MUST come AFTER static routes to prevent matching "recent"/"export" as lead_id
 @api_router.get("/leads/{lead_id}", response_model=Lead)
 async def get_lead(lead_id: str, request: Request):
     """Get a specific lead."""
@@ -541,113 +653,6 @@ async def update_lead(lead_id: str, input: LeadUpdate, request: Request):
     await log_activity(user.user_id, "update_lead", "lead", lead_id, update_data)
     
     return {"message": "Lead updated"}
-
-@api_router.get("/leads/recent")
-async def get_recent_leads(request: Request, since: Optional[str] = None):
-    """Get recent leads for real-time notifications (polling endpoint)."""
-    await require_auth(request)
-    
-    query = {}
-    if since:
-        try:
-            since_dt = datetime.fromisoformat(since)
-            query["created_at"] = {"$gt": since_dt.isoformat()}
-        except:
-            pass
-    else:
-        # Last 5 minutes by default
-        query["created_at"] = {"$gt": (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()}
-    
-    leads = await db.leads.find(query, {"_id": 0}).sort("created_at", -1).limit(10).to_list(10)
-    
-    for lead in leads:
-        if isinstance(lead["created_at"], str):
-            lead["created_at"] = datetime.fromisoformat(lead["created_at"])
-        if isinstance(lead["updated_at"], str):
-            lead["updated_at"] = datetime.fromisoformat(lead["updated_at"])
-    
-    return {"leads": [Lead(**lead) for lead in leads], "count": len(leads)}
-
-@api_router.post("/leads/bulk")
-async def bulk_update_leads(input: LeadBulkUpdate, request: Request):
-    """Bulk update multiple leads."""
-    user = await require_auth(request)
-    
-    update_data = {}
-    if input.status:
-        update_data["status"] = input.status
-    if input.assigned_to:
-        update_data["assigned_to"] = input.assigned_to
-    if input.tags is not None:
-        update_data["tags"] = input.tags
-    
-    if not update_data:
-        raise HTTPException(status_code=400, detail="No update data provided")
-    
-    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
-    
-    result = await db.leads.update_many(
-        {"lead_id": {"$in": input.lead_ids}},
-        {"$set": update_data}
-    )
-    
-    await log_activity(
-        user.user_id,
-        "bulk_update_leads",
-        "leads",
-        ",".join(input.lead_ids),
-        {"count": result.modified_count, "updates": update_data}
-    )
-    
-    return {"message": f"{result.modified_count} leads updated"}
-
-@api_router.get("/leads/export")
-async def export_leads(
-    request: Request,
-    status: Optional[str] = None,
-    service_type: Optional[str] = None,
-    source: Optional[str] = None
-):
-    """Export leads to CSV format."""
-    await require_auth(request)
-    
-    from fastapi.responses import StreamingResponse
-    import csv
-    from io import StringIO
-    
-    query = {}
-    if status:
-        query["status"] = status
-    if service_type:
-        query["service_type"] = service_type
-    if source:
-        query["source"] = source
-    
-    leads = await db.leads.find(query, {"_id": 0}).to_list(10000)
-    
-    # Create CSV
-    output = StringIO()
-    if leads:
-        fieldnames = ["lead_id", "name", "email", "phone", "service_type", "surface", 
-                     "address", "source", "status", "score", "created_at", "updated_at"]
-        writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction='ignore')
-        writer.writeheader()
-        
-        for lead in leads:
-            # Convert dates to strings
-            if isinstance(lead.get("created_at"), datetime):
-                lead["created_at"] = lead["created_at"].isoformat()
-            if isinstance(lead.get("updated_at"), datetime):
-                lead["updated_at"] = lead["updated_at"].isoformat()
-            writer.writerow(lead)
-    
-    output.seek(0)
-    
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=leads_export.csv"}
-    )
 
 # ============= TEMPLATES ENDPOINTS =============
 
@@ -1231,14 +1236,7 @@ async def get_dashboard_stats(request: Request, period: str = "30d"):
         "source_performance": source_performance
     }
 
-# Include router
-app.include_router(api_router)
-
-# Include integrations router
-from integrations import integrations_router
-app.include_router(integrations_router)
-
-# CORS
+# CORS - must be added before routes
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -1246,6 +1244,36 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include router
+app.include_router(api_router)
+
+# Include integrations router
+from integrations import integrations_router
+app.include_router(integrations_router)
+
+@app.on_event("startup")
+async def startup_db_indexes():
+    """Create MongoDB indexes for performance."""
+    await db.leads.create_index("lead_id", unique=True)
+    await db.leads.create_index("status")
+    await db.leads.create_index("created_at")
+    await db.leads.create_index("source")
+    await db.leads.create_index("service_type")
+    await db.quotes.create_index("quote_id", unique=True)
+    await db.quotes.create_index("lead_id")
+    await db.tasks.create_index("task_id", unique=True)
+    await db.tasks.create_index("status")
+    await db.tasks.create_index("due_date")
+    await db.interactions.create_index("lead_id")
+    await db.events.create_index("event_id", unique=True)
+    await db.activity_logs.create_index("created_at")
+    await db.users.create_index("user_id", unique=True)
+    await db.users.create_index("email", unique=True)
+    await db.user_sessions.create_index("session_token", unique=True)
+    await db.tracking_events.create_index("visitor_id")
+    await db.tracking_events.create_index("timestamp")
+    logger.info("MongoDB indexes created successfully")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

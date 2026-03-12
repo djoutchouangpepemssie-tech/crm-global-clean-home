@@ -1,23 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { User, Mail, Phone } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Mail, Phone, GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import { getStatusLabel } from '../../lib/utils';
 import LeadScoreBadge from '../shared/LeadScoreBadge';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
+const COLUMN_DEFS = [
+  { id: 'nouveau', title: 'Nouveau', color: 'bg-blue-50 border-blue-200' },
+  { id: 'contacté', title: 'Contacté', color: 'bg-yellow-50 border-yellow-200' },
+  { id: 'en_attente', title: 'En attente', color: 'bg-orange-50 border-orange-200' },
+  { id: 'devis_envoyé', title: 'Devis envoyé', color: 'bg-purple-50 border-purple-200' },
+  { id: 'gagné', title: 'Gagné', color: 'bg-green-50 border-green-200' },
+  { id: 'perdu', title: 'Perdu', color: 'bg-red-50 border-red-200' }
+];
+
 const KanbanBoard = () => {
-  const [columns, setColumns] = useState({
-    nouveau: { id: 'nouveau', title: 'Nouveau', leads: [] },
-    contacté: { id: 'contacté', title: 'Contacté', leads: [] },
-    en_attente: { id: 'en_attente', title: 'En attente', leads: [] },
-    devis_envoyé: { id: 'devis_envoyé', title: 'Devis envoyé', leads: [] },
-    gagné: { id: 'gagné', title: 'Gagné', leads: [] },
-    perdu: { id: 'perdu', title: 'Perdu', leads: [] }
-  });
+  const navigate = useNavigate();
+  const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [draggedLead, setDraggedLead] = useState(null);
+  const [dragOverColumn, setDragOverColumn] = useState(null);
 
   useEffect(() => {
     fetchLeads();
@@ -27,15 +32,7 @@ const KanbanBoard = () => {
     setLoading(true);
     try {
       const response = await axios.get(`${API_URL}/leads?period=30d`, { withCredentials: true });
-      const leads = response.data;
-
-      // Group leads by status
-      const newColumns = { ...columns };
-      Object.keys(newColumns).forEach(key => {
-        newColumns[key].leads = leads.filter(lead => lead.status === key);
-      });
-
-      setColumns(newColumns);
+      setLeads(response.data);
     } catch (error) {
       console.error('Error fetching leads:', error);
       toast.error('Erreur lors du chargement des leads');
@@ -44,50 +41,55 @@ const KanbanBoard = () => {
     }
   };
 
-  const onDragEnd = async (result) => {
-    const { source, destination, draggableId } = result;
+  const handleDragStart = (e, lead) => {
+    setDraggedLead(lead);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', lead.lead_id);
+  };
 
-    if (!destination) return;
-    if (source.droppableId === destination.droppableId && source.index === destination.index) return;
+  const handleDragOver = (e, columnId) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverColumn(columnId);
+  };
 
-    const sourceColumn = columns[source.droppableId];
-    const destColumn = columns[destination.droppableId];
-    const sourceLead = sourceColumn.leads.find(lead => lead.lead_id === draggableId);
+  const handleDragLeave = () => {
+    setDragOverColumn(null);
+  };
 
-    // Update UI immediately
-    const newColumns = { ...columns };
-    newColumns[source.droppableId].leads = sourceColumn.leads.filter(lead => lead.lead_id !== draggableId);
-    newColumns[destination.droppableId].leads = [...destColumn.leads];
-    newColumns[destination.droppableId].leads.splice(destination.index, 0, sourceLead);
-    setColumns(newColumns);
+  const handleDrop = async (e, targetColumnId) => {
+    e.preventDefault();
+    setDragOverColumn(null);
 
-    // Update backend
+    if (!draggedLead || draggedLead.status === targetColumnId) {
+      setDraggedLead(null);
+      return;
+    }
+
+    // Optimistic update
+    setLeads(prev =>
+      prev.map(l =>
+        l.lead_id === draggedLead.lead_id ? { ...l, status: targetColumnId } : l
+      )
+    );
+
     try {
       await axios.patch(
-        `${API_URL}/leads/${draggableId}`,
-        { status: destination.droppableId },
+        `${API_URL}/leads/${draggedLead.lead_id}`,
+        { status: targetColumnId },
         { withCredentials: true }
       );
-      toast.success(`Lead déplacé vers "${getStatusLabel(destination.droppableId)}"`);
+      toast.success(`Lead déplacé vers "${getStatusLabel(targetColumnId)}"`);
     } catch (error) {
       console.error('Error updating lead:', error);
       toast.error('Erreur lors de la mise à jour');
-      // Revert on error
       fetchLeads();
     }
+
+    setDraggedLead(null);
   };
 
-  const getColumnColor = (columnId) => {
-    const colors = {
-      nouveau: 'bg-blue-50 border-blue-200',
-      contacté: 'bg-yellow-50 border-yellow-200',
-      en_attente: 'bg-orange-50 border-orange-200',
-      devis_envoyé: 'bg-purple-50 border-purple-200',
-      gagné: 'bg-green-50 border-green-200',
-      perdu: 'bg-red-50 border-red-200'
-    };
-    return colors[columnId] || 'bg-slate-50 border-slate-200';
-  };
+  const getColumnLeads = (columnId) => leads.filter(l => l.status === columnId);
 
   if (loading) {
     return (
@@ -109,83 +111,86 @@ const KanbanBoard = () => {
         <p className="text-slate-600 mt-1">Glissez-déposez les leads pour changer leur statut</p>
       </div>
 
-      <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          {Object.values(columns).map((column) => (
+      <div className="flex gap-4 overflow-x-auto pb-4">
+        {COLUMN_DEFS.map((column) => {
+          const columnLeads = getColumnLeads(column.id);
+          const isOver = dragOverColumn === column.id;
+
+          return (
             <div
               key={column.id}
               className="flex-shrink-0 w-80"
               data-testid={`kanban-column-${column.id}`}
             >
-              <div className={`rounded-xl border-2 ${getColumnColor(column.id)} p-4 h-full`}>
+              <div
+                className={`rounded-xl border-2 ${column.color} p-4 min-h-[400px] transition-all ${
+                  isOver ? 'ring-2 ring-violet-400 bg-violet-50/50' : ''
+                }`}
+                onDragOver={(e) => handleDragOver(e, column.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, column.id)}
+              >
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-semibold text-slate-900">{column.title}</h2>
                   <span className="px-2 py-1 bg-white rounded-full text-xs font-semibold text-slate-600">
-                    {column.leads.length}
+                    {columnLeads.length}
                   </span>
                 </div>
 
-                <Droppable droppableId={column.id}>
-                  {(provided, snapshot) => (
+                <div className="space-y-3">
+                  {columnLeads.map((lead) => (
                     <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className={`space-y-3 min-h-[200px] ${
-                        snapshot.isDraggingOver ? 'bg-white/50 rounded-lg' : ''
+                      key={lead.lead_id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, lead)}
+                      data-testid={`kanban-card-${lead.lead_id}`}
+                      className={`bg-white rounded-lg border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing ${
+                        draggedLead?.lead_id === lead.lead_id ? 'opacity-50' : ''
                       }`}
                     >
-                      {column.leads.map((lead, index) => (
-                        <Draggable key={lead.lead_id} draggableId={lead.lead_id} index={index}>
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              className={`bg-white rounded-lg border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow cursor-move ${
-                                snapshot.isDragging ? 'rotate-2 shadow-lg' : ''
-                              }`}
-                              data-testid={`kanban-card-${lead.lead_id}`}
-                            >
-                              <div className="flex items-start gap-3 mb-3">
-                                <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-semibold flex-shrink-0">
-                                  {lead.name.charAt(0).toUpperCase()}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <h3 className="font-medium text-slate-900 truncate">{lead.name}</h3>
-                                  <p className="text-sm text-slate-600">{lead.service_type}</p>
-                                </div>
-                              </div>
-
-                              <div className="space-y-2 text-sm text-slate-600 mb-3">
-                                <div className="flex items-center gap-2">
-                                  <Mail className="w-4 h-4 flex-shrink-0" />
-                                  <span className="truncate">{lead.email}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Phone className="w-4 h-4 flex-shrink-0" />
-                                  <span>{lead.phone}</span>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center justify-between">
-                                <LeadScoreBadge score={lead.score || 50} />
-                                {lead.surface && (
-                                  <span className="text-xs text-slate-500">{lead.surface} m²</span>
-                                )}
-                              </div>
+                      <div className="flex items-start gap-3 mb-3">
+                        <GripVertical className="w-4 h-4 text-slate-300 mt-1 flex-shrink-0" />
+                        <div
+                          className="flex-1 min-w-0 cursor-pointer"
+                          onClick={() => navigate(`/leads/${lead.lead_id}`)}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-semibold text-sm flex-shrink-0">
+                              {lead.name.charAt(0).toUpperCase()}
                             </div>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
+                            <div className="min-w-0">
+                              <h3 className="font-medium text-slate-900 truncate text-sm">{lead.name}</h3>
+                              <p className="text-xs text-slate-600">{lead.service_type}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1 text-xs text-slate-600 mb-3 pl-7">
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-3 h-3 flex-shrink-0" />
+                          <span className="truncate">{lead.email}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-3 h-3 flex-shrink-0" />
+                          <span>{lead.phone}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pl-7">
+                        <LeadScoreBadge score={lead.score || 50} />
+                        {lead.surface && (
+                          <span className="text-xs text-slate-500">{lead.surface} m²</span>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </Droppable>
+                  ))}
+                </div>
               </div>
             </div>
-          ))}
-        </div>
-      </DragDropContext>
+          );
+        })}
+      </div>
     </div>
   );
 };

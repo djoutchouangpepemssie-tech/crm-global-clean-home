@@ -9,6 +9,7 @@ import Sidebar from './components/layout/Sidebar';
 import Dashboard from './components/dashboard/Dashboard';
 import LeadsList from './components/leads/LeadsList';
 import LeadDetail from './components/leads/LeadDetail';
+import LeadForm from './components/leads/LeadForm';
 import QuotesList from './components/quotes/QuotesList';
 import QuoteForm from './components/quotes/QuoteForm';
 import TasksList from './components/tasks/TasksList';
@@ -39,10 +40,11 @@ function AppRouter() {
               <div className="flex-1 ml-64">
                 <Routes>
                   <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/leads" element={<LeadsList />} />
+                  <Route path="/leads/new" element={<LeadForm />} />
                   <Route path="/leads/:id" element={<LeadDetail />} />
-                  <Route path="/quotes" element={<QuotesList />} />
+                  <Route path="/leads" element={<LeadsList />} />
                   <Route path="/quotes/new" element={<QuoteForm />} />
+                  <Route path="/quotes" element={<QuotesList />} />
                   <Route path="/tasks" element={<TasksList />} />
                   <Route path="/activity" element={<ActivityLog />} />
                   <Route path="/kanban" element={<KanbanBoard />} />
