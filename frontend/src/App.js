@@ -1,53 +1,76 @@
-import { useEffect } from "react";
-import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Toaster } from 'sonner';
+import { AuthProvider } from './contexts/AuthContext';
+import Login from './components/auth/Login';
+import AuthCallback from './components/auth/AuthCallback';
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import Sidebar from './components/layout/Sidebar';
+import Dashboard from './components/dashboard/Dashboard';
+import LeadsList from './components/leads/LeadsList';
+import LeadDetail from './components/leads/LeadDetail';
+import QuotesList from './components/quotes/QuotesList';
+import QuoteForm from './components/quotes/QuoteForm';
+import TasksList from './components/tasks/TasksList';
+import ActivityLog from './components/activity/ActivityLog';
+import './App.css';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+function AppRouter() {
+  const location = useLocation();
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
-
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
+  // Check URL fragment (not query params) for session_id BEFORE any routing
+  if (location.hash?.includes('session_id=')) {
+    return <AuthCallback />;
+  }
 
   return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      
+      {/* Protected routes with sidebar layout */}
+      <Route
+        path="/*"
+        element={
+          <ProtectedRoute>
+            <div className="flex">
+              <Sidebar />
+              <div className="flex-1 ml-64">
+                <Routes>
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/leads" element={<LeadsList />} />
+                  <Route path="/leads/:id" element={<LeadDetail />} />
+                  <Route path="/quotes" element={<QuotesList />} />
+                  <Route path="/quotes/new" element={<QuoteForm />} />
+                  <Route path="/tasks" element={<TasksList />} />
+                  <Route path="/activity" element={<ActivityLog />} />
+                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                </Routes>
+              </div>
+            </div>
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
   );
-};
+}
 
 function App() {
   return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </div>
+    <BrowserRouter>
+      <AuthProvider>
+        <AppRouter />
+        <Toaster 
+          position="top-right" 
+          richColors 
+          closeButton
+          toastOptions={{
+            style: {
+              fontFamily: 'Inter, sans-serif'
+            }
+          }}
+        />
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
