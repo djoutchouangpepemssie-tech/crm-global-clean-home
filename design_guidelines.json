@@ -1,0 +1,182 @@
+{
+  "project_name": "Global Clean Home CRM",
+  "version": "1.0",
+  "persona": "E1 - The Anti-AI Designer",
+  "design_philosophy": {
+    "core": "Clean Professionalism meets Vibrant Modernity",
+    "theme": "Light Mode (Default) - emphasizing hygiene and clarity",
+    "principles": [
+      "Fusion over Imitation: SaaS precision mixed with Hospitality warmth",
+      "Density with Breathability: High data density in dashboards, but ample padding in containers",
+      "Color as Function: Violet/Rose/Blue are not just decoration, they map to Lead Status and Urgency",
+      "Motion is Feedback: Every action has a micro-reaction"
+    ]
+  },
+  "typography": {
+    "font_family": {
+      "headings": "Manrope, sans-serif",
+      "body": "Inter, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "scale": {
+      "h1": "text-4xl font-bold tracking-tight md:text-5xl",
+      "h2": "text-3xl font-semibold tracking-tight",
+      "h3": "text-2xl font-semibold tracking-tight",
+      "h4": "text-xl font-medium tracking-tight",
+      "body_lg": "text-lg leading-relaxed",
+      "body_base": "text-base leading-normal",
+      "caption": "text-sm text-muted-foreground",
+      "tiny": "text-xs font-medium uppercase tracking-wider"
+    },
+    "weights": {
+      "light": 300,
+      "normal": 400,
+      "medium": 500,
+      "semibold": 600,
+      "bold": 700
+    },
+    "imports": [
+      "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');"
+    ]
+  },
+  "colors": {
+    "palette": {
+      "brand": {
+        "primary": "#7C3AED",
+        "primary_foreground": "#FFFFFF",
+        "secondary": "#E11D48",
+        "secondary_foreground": "#FFFFFF",
+        "accent": "#2563EB",
+        "accent_foreground": "#FFFFFF"
+      },
+      "neutral": {
+        "background": "#F8FAFC",
+        "surface": "#FFFFFF",
+        "border": "#E2E8F0",
+        "text_main": "#0F172A",
+        "text_muted": "#64748B"
+      },
+      "status": {
+        "success": "#10B981",
+        "warning": "#F59E0B",
+        "error": "#EF4444",
+        "info": "#3B82F6"
+      }
+    },
+    "usage_rules": {
+      "dashboard_bg": "bg-slate-50",
+      "card_bg": "bg-white",
+      "primary_action": "bg-violet-600 hover:bg-violet-700 text-white",
+      "secondary_action": "bg-white border border-slate-200 hover:bg-slate-50 text-slate-900",
+      "accent_element": "text-rose-600",
+      "sidebar_bg": "bg-white border-r border-slate-200"
+    }
+  },
+  "layout_system": {
+    "grid_strategy": {
+      "dashboard_mode": "Bento Grid (High Density)",
+      "columns": "grid-cols-1 md:grid-cols-2 lg:grid-cols-4",
+      "gap": "gap-4 md:gap-6",
+      "padding": "p-4 md:p-8"
+    },
+    "containers": {
+      "card": "rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow duration-200",
+      "main_content": "max-w-7xl mx-auto w-full",
+      "sidebar": "w-64 flex-shrink-0 hidden md:flex flex-col h-screen fixed left-0 top-0 z-40"
+    },
+    "spacing": {
+      "section_gap": "space-y-8",
+      "item_gap": "space-y-4",
+      "internal_padding": "p-6"
+    }
+  },
+  "components": {
+    "buttons": {
+      "base": "inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+      "sizes": {
+        "default": "h-10 px-4 py-2",
+        "sm": "h-9 rounded-md px-3",
+        "lg": "h-11 rounded-md px-8",
+        "icon": "h-10 w-10"
+      },
+      "variants": {
+        "default": "bg-violet-600 text-white hover:bg-violet-700 shadow-sm",
+        "destructive": "bg-rose-500 text-white hover:bg-rose-600 shadow-sm",
+        "outline": "border border-input bg-background hover:bg-slate-50 hover:text-accent-foreground",
+        "secondary": "bg-slate-100 text-slate-900 hover:bg-slate-200/80",
+        "ghost": "hover:bg-slate-100 hover:text-slate-900",
+        "link": "text-violet-600 underline-offset-4 hover:underline"
+      }
+    },
+    "cards": {
+      "kpi": "relative overflow-hidden rounded-xl border bg-white p-6 shadow-sm",
+      "table_container": "rounded-xl border bg-white shadow-sm overflow-hidden"
+    },
+    "inputs": {
+      "base": "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+    },
+    "status_badges": {
+      "base": "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+      "new": "bg-blue-100 text-blue-800",
+      "contacted": "bg-yellow-100 text-yellow-800",
+      "quote_sent": "bg-purple-100 text-purple-800",
+      "won": "bg-green-100 text-green-800",
+      "lost": "bg-red-100 text-red-800"
+    }
+  },
+  "assets": {
+    "images": {
+      "login_background": {
+        "url": "https://images.unsplash.com/photo-1725042893312-5ec0dea9e369?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTJ8MHwxfHNlYXJjaHw0fHxtb2Rlcm4lMjBjbGVhbiUyMGJyaWdodCUyMGxpdmluZyUyMHJvb20lMjBpbnRlcmlvcnxlbnwwfHx8fDE3NzMzMzIwMzV8MA&ixlib=rb-4.1.0&q=85",
+        "alt": "Modern clean bright living room",
+        "usage": "Full screen background for Auth pages with overlay"
+      },
+      "placeholder_avatar": {
+        "url": "https://ui-avatars.com/api/?background=random",
+        "usage": "Fallback for user profiles"
+      }
+    },
+    "icons": {
+      "library": "lucide-react",
+      "preferred_style": "Stroke width 1.5px, size 20px for UI, 24px for Nav"
+    }
+  },
+  "motion": {
+    "transitions": {
+      "default": "transition-all duration-200 ease-in-out",
+      "slow": "transition-all duration-500 ease-out",
+      "hover_lift": "hover:-translate-y-1 hover:shadow-md transition-all duration-200"
+    },
+    "animations": {
+      "fade_in": "animate-in fade-in zoom-in-95 duration-200",
+      "slide_in": "animate-in slide-in-from-right-4 duration-300"
+    }
+  },
+  "code_guidelines": {
+    "file_extension": ".js",
+    "jsx_usage": "Use JSX syntax within .js files",
+    "component_structure": {
+      "import_order": [
+        "React/Hooks",
+        "Third-party libraries (recharts, framer-motion)",
+        "UI Components (Shadcn)",
+        "Icons",
+        "Local Utils/Hooks"
+      ],
+      "export_style": "Named exports for components, Default for pages"
+    },
+    "state_management": "Use React Context for global state (Auth, Theme), Local state for UI",
+    "testing": "All interactive elements MUST have data-testid attributes (kebab-case)"
+  },
+  "universal_guidelines": [
+    "Do NOT use gradients for backgrounds, use solid colors or subtle patterns.",
+    "Do NOT use 'Inter' for Headings, use 'Manrope'.",
+    "Ensure 2-3x padding in containers for breathing room.",
+    "Use 'sonner' for all toast notifications.",
+    "Use 'recharts' for data visualization.",
+    "Accessibility: Ensure 4.5:1 contrast ratio for normal text.",
+    "Interactive elements must have distinct hover and focus states.",
+    "Never use transparent backgrounds on dropdowns or overlays without blur/scrim.",
+    "Mobile First: Always ensure grid cols start at 1 and expand on md/lg screens."
+  ]
+}
