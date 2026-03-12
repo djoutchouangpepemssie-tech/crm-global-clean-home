@@ -1,0 +1,95 @@
+{
+  "summary": "CRM Global Clean Home Phases 3, 4, 5 testing completed. All 62 backend tests passed (47 new Phase 3-5 tests + 15 public/auth-check tests from existing files). All frontend pages load correctly. Full portal magic-link authentication flow works. Planning calendar with interventions and check-in/out flow verified. Notifications, lead scoring, and client retention endpoints functional.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "test_report_links": [
+    "/app/backend/tests/test_phases_345_api.py",
+    "/app/backend/tests/test_crm_api.py",
+    "/app/backend/tests/test_invoices_api.py",
+    "/app/test_reports/pytest/pytest_all_results_phase345.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [],
+
+  "updated_files": [
+    "/app/backend/tests/test_phases_345_api.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (62/62 tests passed, 32 skipped due to missing env var in older test files)",
+    "frontend": "100% (all 10 pages load correctly including new /portal, /planning, /finance)"
+  },
+
+  "test_credentials": {
+    "session_token": "test_session_ui_1773348964217",
+    "user_id": "test-user-ui-1773348964217"
+  },
+
+  "seed_data_creation": "Created test leads, teams, interventions, and reviews via API tests. Portal magic-link flow tested end-to-end.",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "All Phases 1-5 now fully tested. Phase 3 (Portal): Magic-link auth works, portal cookies managed correctly, reviews submitted. Phase 4 (Planning): Teams CRUD, interventions with check-in/out, calendar view with month navigation. Phase 5 (Advanced): Notifications get/mark-read, scoring rules/recalculate, users list, clients retention with history.",
+
+  "tests_passed": {
+    "phase_3_portal": [
+      "POST /api/portal/magic-link - Returns magic token for existing lead",
+      "POST /api/portal/magic-link - Non-existent email doesn't expose info",
+      "POST /api/portal/auth/{token} - Authenticates and sets portal_token cookie",
+      "Magic link single-use - Returns 400 on reuse",
+      "GET /api/portal/me - Returns session info with auth",
+      "GET /api/portal/me - Returns 401 without auth",
+      "GET /api/portal/quotes - Returns client quotes",
+      "GET /api/portal/invoices - Returns client invoices",
+      "POST /api/portal/reviews - Submits review with rating 1-5",
+      "POST /api/portal/reviews - Rejects invalid rating (>5)",
+      "GET /api/portal/reviews - Returns client's reviews"
+    ],
+    "phase_4_planning": [
+      "POST /api/teams - Creates team with name/color",
+      "GET /api/teams - Lists all teams (auth required)",
+      "POST /api/teams/{id}/members - Adds member to team",
+      "POST /api/teams/{id}/members - 404 for non-existent team",
+      "POST /api/interventions - Creates intervention linked to lead",
+      "GET /api/interventions - Lists interventions (auth required)",
+      "GET /api/interventions with filters - Date range filtering works",
+      "POST /api/interventions/{id}/check (check_in) - Records check-in, status->en_cours",
+      "POST /api/interventions/{id}/check (check_out) - Records check-out, status->terminée",
+      "GET /api/calendar - Returns interventions/teams for month",
+      "GET /api/calendar?month=YYYY-MM - Specific month filtering works"
+    ],
+    "phase_5_advanced": [
+      "GET /api/notifications - Returns notifications with unread_count",
+      "GET /api/notifications?unread_only=true - Filters unread",
+      "POST /api/notifications/read - Marks notifications as read",
+      "GET /api/scoring/rules - Returns scoring configuration",
+      "POST /api/scoring/recalculate - Recalculates all lead scores",
+      "GET /api/users - Lists users (auth required)",
+      "GET /api/clients - Lists converted clients with total_spent",
+      "GET /api/clients/{lead_id}/history - Returns full client history"
+    ],
+    "frontend_pages": [
+      "Login page loads with Google OAuth button",
+      "Portal page (/portal) loads with magic-link form",
+      "Dashboard with KPIs, charts, recent leads",
+      "Sidebar has all 10 nav items: Dashboard, Kanban, Leads, Devis, Factures, Finance, Planning, Tâches, Analytics, Journal",
+      "Invoices page (/invoices) with filters, summary cards, invoice table, Pay button",
+      "Financial Dashboard (/finance) with KPIs, AreaChart, BarChart, transactions",
+      "Planning Calendar (/planning) with month navigation, interventions display, add intervention button",
+      "All existing pages work: Leads, Kanban, Tasks, Analytics, Activity"
+    ]
+  }
+}

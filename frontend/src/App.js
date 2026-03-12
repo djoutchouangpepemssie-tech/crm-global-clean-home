@@ -6,6 +6,7 @@ import Login from './components/auth/Login';
 import AuthCallback from './components/auth/AuthCallback';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Sidebar from './components/layout/Sidebar';
+import Header from './components/layout/Header';
 import Dashboard from './components/dashboard/Dashboard';
 import LeadsList from './components/leads/LeadsList';
 import LeadDetail from './components/leads/LeadDetail';
@@ -19,6 +20,8 @@ import Analytics from './components/analytics/Analytics';
 import InvoicesList from './components/invoices/InvoicesList';
 import PaymentSuccess from './components/invoices/PaymentSuccess';
 import FinancialDashboard from './components/invoices/FinancialDashboard';
+import ClientPortal from './components/portal/ClientPortal';
+import PlanningCalendar from './components/planning/PlanningCalendar';
 import './App.css';
 
 function AppRouter() {
@@ -32,6 +35,7 @@ function AppRouter() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/portal" element={<ClientPortal />} />
       
       {/* Protected routes with sidebar layout */}
       <Route
@@ -40,7 +44,7 @@ function AppRouter() {
           <ProtectedRoute>
             <div className="flex">
               <Sidebar />
-              <div className="flex-1 ml-64">
+              <div className="flex-1 ml-64 min-h-screen bg-slate-50">
                 <Routes>
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/leads/new" element={<LeadForm />} />
@@ -55,6 +59,7 @@ function AppRouter() {
                   <Route path="/invoices" element={<InvoicesList />} />
                   <Route path="/invoices/:invoiceId/success" element={<PaymentSuccess />} />
                   <Route path="/finance" element={<FinancialDashboard />} />
+                  <Route path="/planning" element={<PlanningCalendar />} />
                   <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </div>

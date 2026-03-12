@@ -442,6 +442,20 @@ async def create_lead(input: LeadCreate, request: Request):
     }
     await db.tasks.insert_one(task)
     
+    # Create notification for new lead
+    try:
+        from advanced import create_notification
+        score_label = "chaud" if lead_dict["score"] >= 70 else "tiède" if lead_dict["score"] >= 40 else "froid"
+        await create_notification(
+            user_id="all",
+            title=f"Nouveau lead {score_label}",
+            message=f"{input.name} - {input.service_type} ({input.source})",
+            notification_type="success" if lead_dict["score"] >= 70 else "info",
+            link=f"/leads/{lead_id}",
+        )
+    except Exception as e:
+        logger.warning(f"Failed to create notification: {e}")
+    
     lead_doc = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
     if isinstance(lead_doc["created_at"], str):
         lead_doc["created_at"] = datetime.fromisoformat(lead_doc["created_at"])
@@ -1256,6 +1270,18 @@ app.include_router(integrations_router)
 from invoices import invoices_router
 app.include_router(invoices_router)
 
+# Include client portal router
+from portal import portal_router
+app.include_router(portal_router)
+
+# Include planning/interventions router
+from planning import planning_router
+app.include_router(planning_router)
+
+# Include advanced features router
+from advanced import advanced_router
+app.include_router(advanced_router)
+
 @app.on_event("startup")
 async def startup_db_indexes():
     """Create MongoDB indexes for performance."""
@@ -1283,6 +1309,17 @@ async def startup_db_indexes():
     await db.invoices.create_index("status")
     await db.payment_transactions.create_index("stripe_session_id")
     await db.payment_transactions.create_index("invoice_id")
+    await db.magic_links.create_index("token", unique=True)
+    await db.magic_links.create_index("email")
+    await db.portal_sessions.create_index("token", unique=True)
+    await db.reviews.create_index("lead_id")
+    await db.interventions.create_index("intervention_id", unique=True)
+    await db.interventions.create_index("scheduled_date")
+    await db.interventions.create_index("team_id")
+    await db.interventions.create_index("lead_id")
+    await db.teams.create_index("team_id", unique=True)
+    await db.notifications.create_index([("user_id", 1), ("read", 1)])
+    await db.notifications.create_index("created_at")
     logger.info("MongoDB indexes created successfully")
 
 @app.on_event("shutdown")

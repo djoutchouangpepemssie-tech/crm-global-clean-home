@@ -1,5 +1,6 @@
 import React from 'react';
 import { Calendar } from 'lucide-react';
+import NotificationCenter from '../notifications/NotificationCenter';
 
 const Header = ({ title, subtitle, actions }) => {
   return (
@@ -13,6 +14,7 @@ const Header = ({ title, subtitle, actions }) => {
         </div>
         <div className="flex items-center gap-4">
           {actions}
+          <NotificationCenter />
           <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-lg text-sm text-slate-600">
             <Calendar className="w-4 h-4" />
             {new Date().toLocaleDateString('fr-FR', { 
