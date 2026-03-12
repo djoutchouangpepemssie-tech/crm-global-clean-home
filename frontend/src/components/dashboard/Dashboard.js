@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { TrendingUp, Users, FileText, CheckCircle, Clock, DollarSign } from 'lucide-react';
+import { TrendingUp, Users, FileText, CheckCircle, Clock, DollarSign, Award, Target } from 'lucide-react';
 import { formatCurrency, getStatusColor, getStatusLabel, formatDate } from '../../lib/utils';
 import { toast } from 'sonner';
+import { useRealtimeNotifications } from '../../hooks/useRealtimeNotifications';
+import LeadScoreBadge from '../shared/LeadScoreBadge';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
@@ -12,6 +14,9 @@ const Dashboard = () => {
   const [leads, setLeads] = useState([]);
   const [period, setPeriod] = useState('30d');
   const [loading, setLoading] = useState(true);
+  
+  // Enable real-time notifications
+  const { newLeadsCount } = useRealtimeNotifications();
 
   useEffect(() => {
     fetchData();
@@ -89,6 +94,21 @@ const Dashboard = () => {
       icon: Clock,
       color: 'bg-orange-500',
       testId: 'kpi-pending-tasks'
+    },
+    {
+      title: 'Score moyen leads',
+      value: stats.avg_lead_score + '/100',
+      icon: Award,
+      color: 'bg-cyan-500',
+      testId: 'kpi-avg-score'
+    },
+    {
+      title: 'Meilleure source',
+      value: stats.best_source.name,
+      subtitle: `${stats.best_source.conversion_rate}% conv.`,
+      icon: Target,
+      color: 'bg-pink-500',
+      testId: 'kpi-best-source'
     }
   ];
 
@@ -132,7 +152,7 @@ const Dashboard = () => {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {kpiCards.map((kpi, index) => (
           <div
             key={index}
@@ -143,6 +163,7 @@ const Dashboard = () => {
               <div>
                 <p className="text-sm text-slate-600 mb-1">{kpi.title}</p>
                 <p className="text-3xl font-bold text-slate-900">{kpi.value}</p>
+                {kpi.subtitle && <p className="text-xs text-slate-500 mt-1">{kpi.subtitle}</p>}
               </div>
               <div className={`w-12 h-12 rounded-lg ${kpi.color} flex items-center justify-center`}>
                 <kpi.icon className="w-6 h-6 text-white" />
@@ -248,6 +269,7 @@ const Dashboard = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
+                    <LeadScoreBadge score={lead.score || 50} />
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(lead.status)}`}>
                       {getStatusLabel(lead.status)}
                     </span>

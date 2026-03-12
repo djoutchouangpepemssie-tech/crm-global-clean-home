@@ -65,6 +65,8 @@ class Lead(BaseModel):
     utm_campaign: Optional[str] = None
     status: str = "nouveau"  # nouveau, contacté, en_attente, devis_envoyé, gagné, perdu
     probability: int = 50
+    score: int = 50  # Score intelligent 0-100
+    tags: List[str] = []  # Tags personnalisables
     created_at: datetime
     updated_at: datetime
     assigned_to: Optional[str] = None
@@ -88,6 +90,27 @@ class LeadUpdate(BaseModel):
     probability: Optional[int] = None
     assigned_to: Optional[str] = None
     notes: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+class LeadBulkUpdate(BaseModel):
+    lead_ids: List[str]
+    status: Optional[str] = None
+    assigned_to: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+class Template(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    template_id: str
+    name: str
+    type: str  # email, note, relance
+    content: str
+    created_by: str
+    created_at: datetime
+
+class TemplateCreate(BaseModel):
+    name: str
+    type: str
+    content: str
 
 class Quote(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -232,6 +255,59 @@ async def log_activity(user_id: str, action: str, entity_type: str, entity_id: s
     }
     await db.activity_logs.insert_one(log)
 
+def calculate_lead_score(lead_data: Dict[str, Any]) -> int:
+    """Calculate intelligent lead score (0-100) based on multiple factors."""
+    score = 50  # Base score
+    
+    # Source quality (max +20)
+    source_scores = {
+        "Google Ads": 15,
+        "SEO": 12,
+        "Meta Ads": 10,
+        "Direct": 8,
+        "Referral": 10
+    }
+    score += source_scores.get(lead_data.get("source"), 5)
+    
+    # Service type (max +15)
+    service_scores = {
+        "Bureaux": 15,  # Higher value contracts
+        "Ménage": 12,
+        "Canapé": 10,
+        "Matelas": 10,
+        "Tapis": 8
+    }
+    score += service_scores.get(lead_data.get("service_type"), 5)
+    
+    # Has surface info (+10)
+    if lead_data.get("surface"):
+        score += 10
+    
+    # Has address (+5)
+    if lead_data.get("address"):
+        score += 5
+    
+    # Has detailed message (+10)
+    if lead_data.get("message") and len(lead_data.get("message", "")) > 20:
+        score += 10
+    
+    # Time-based penalty (decreases over time)
+    created_at = lead_data.get("created_at")
+    if created_at:
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at)
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        
+        hours_old = (datetime.now(timezone.utc) - created_at).total_seconds() / 3600
+        
+        # Penalty after 2 hours
+        if hours_old > 2:
+            penalty = min(20, int((hours_old - 2) / 2))
+            score -= penalty
+    
+    return max(0, min(100, score))
+
 # ============= AUTH ENDPOINTS =============
 
 @api_router.post("/auth/session")
@@ -333,16 +409,20 @@ async def create_lead(input: LeadCreate, request: Request):
     now = datetime.now(timezone.utc)
     lead_id = f"lead_{uuid.uuid4().hex[:12]}"
     
-    lead = {
+    lead_dict = {
         "lead_id": lead_id,
         **input.model_dump(),
         "status": "nouveau",
         "probability": 50,
+        "tags": [],
         "created_at": now.isoformat(),
         "updated_at": now.isoformat()
     }
     
-    await db.leads.insert_one(lead)
+    # Calculate intelligent score
+    lead_dict["score"] = calculate_lead_score(lead_dict)
+    
+    await db.leads.insert_one(lead_dict)
     
     # Log activity if authenticated
     user = await get_current_user(request)
@@ -449,6 +529,169 @@ async def update_lead(lead_id: str, input: LeadUpdate, request: Request):
     await log_activity(user.user_id, "update_lead", "lead", lead_id, update_data)
     
     return {"message": "Lead updated"}
+
+@api_router.get("/leads/recent")
+async def get_recent_leads(request: Request, since: Optional[str] = None):
+    """Get recent leads for real-time notifications (polling endpoint)."""
+    await require_auth(request)
+    
+    query = {}
+    if since:
+        try:
+            since_dt = datetime.fromisoformat(since)
+            query["created_at"] = {"$gt": since_dt.isoformat()}
+        except:
+            pass
+    else:
+        # Last 5 minutes by default
+        query["created_at"] = {"$gt": (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()}
+    
+    leads = await db.leads.find(query, {"_id": 0}).sort("created_at", -1).limit(10).to_list(10)
+    
+    for lead in leads:
+        if isinstance(lead["created_at"], str):
+            lead["created_at"] = datetime.fromisoformat(lead["created_at"])
+        if isinstance(lead["updated_at"], str):
+            lead["updated_at"] = datetime.fromisoformat(lead["updated_at"])
+    
+    return {"leads": [Lead(**lead) for lead in leads], "count": len(leads)}
+
+@api_router.post("/leads/bulk")
+async def bulk_update_leads(input: LeadBulkUpdate, request: Request):
+    """Bulk update multiple leads."""
+    user = await require_auth(request)
+    
+    update_data = {}
+    if input.status:
+        update_data["status"] = input.status
+    if input.assigned_to:
+        update_data["assigned_to"] = input.assigned_to
+    if input.tags is not None:
+        update_data["tags"] = input.tags
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No update data provided")
+    
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    result = await db.leads.update_many(
+        {"lead_id": {"$in": input.lead_ids}},
+        {"$set": update_data}
+    )
+    
+    await log_activity(
+        user.user_id,
+        "bulk_update_leads",
+        "leads",
+        ",".join(input.lead_ids),
+        {"count": result.modified_count, "updates": update_data}
+    )
+    
+    return {"message": f"{result.modified_count} leads updated"}
+
+@api_router.get("/leads/export")
+async def export_leads(
+    request: Request,
+    status: Optional[str] = None,
+    service_type: Optional[str] = None,
+    source: Optional[str] = None
+):
+    """Export leads to CSV format."""
+    await require_auth(request)
+    
+    from fastapi.responses import StreamingResponse
+    import csv
+    from io import StringIO
+    
+    query = {}
+    if status:
+        query["status"] = status
+    if service_type:
+        query["service_type"] = service_type
+    if source:
+        query["source"] = source
+    
+    leads = await db.leads.find(query, {"_id": 0}).to_list(10000)
+    
+    # Create CSV
+    output = StringIO()
+    if leads:
+        fieldnames = ["lead_id", "name", "email", "phone", "service_type", "surface", 
+                     "address", "source", "status", "score", "created_at", "updated_at"]
+        writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction='ignore')
+        writer.writeheader()
+        
+        for lead in leads:
+            # Convert dates to strings
+            if isinstance(lead.get("created_at"), datetime):
+                lead["created_at"] = lead["created_at"].isoformat()
+            if isinstance(lead.get("updated_at"), datetime):
+                lead["updated_at"] = lead["updated_at"].isoformat()
+            writer.writerow(lead)
+    
+    output.seek(0)
+    
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=leads_export.csv"}
+    )
+
+# ============= TEMPLATES ENDPOINTS =============
+
+@api_router.post("/templates", response_model=Template)
+async def create_template(input: TemplateCreate, request: Request):
+    """Create a response template."""
+    user = await require_auth(request)
+    now = datetime.now(timezone.utc)
+    template_id = f"tpl_{uuid.uuid4().hex[:12]}"
+    
+    template = {
+        "template_id": template_id,
+        **input.model_dump(),
+        "created_by": user.user_id,
+        "created_at": now.isoformat()
+    }
+    
+    await db.templates.insert_one(template)
+    await log_activity(user.user_id, "create_template", "template", template_id)
+    
+    template_doc = await db.templates.find_one({"template_id": template_id}, {"_id": 0})
+    if isinstance(template_doc["created_at"], str):
+        template_doc["created_at"] = datetime.fromisoformat(template_doc["created_at"])
+    
+    return Template(**template_doc)
+
+@api_router.get("/templates", response_model=List[Template])
+async def get_templates(request: Request, type: Optional[str] = None):
+    """Get all templates."""
+    await require_auth(request)
+    
+    query = {}
+    if type:
+        query["type"] = type
+    
+    templates = await db.templates.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    
+    for template in templates:
+        if isinstance(template["created_at"], str):
+            template["created_at"] = datetime.fromisoformat(template["created_at"])
+    
+    return templates
+
+@api_router.delete("/templates/{template_id}")
+async def delete_template(template_id: str, request: Request):
+    """Delete a template."""
+    user = await require_auth(request)
+    
+    result = await db.templates.delete_one({"template_id": template_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    await log_activity(user.user_id, "delete_template", "template", template_id)
+    
+    return {"message": "Template deleted"}
 
 # ============= QUOTES ENDPOINTS =============
 
@@ -769,6 +1012,27 @@ async def get_dashboard_stats(request: Request, period: str = "30d"):
     # Pending tasks
     pending_tasks = await db.tasks.count_documents({"status": "pending"})
     
+    # Average lead score
+    all_leads_full = await db.leads.find({"created_at": {"$gte": start_date.isoformat()}}, {"_id": 0, "score": 1, "source": 1, "service_type": 1}).to_list(1000)
+    avg_score = sum([lead.get("score", 50) for lead in all_leads_full]) / len(all_leads_full) if all_leads_full else 50
+    
+    # Top performing source (by conversion rate)
+    source_performance = {}
+    for lead in await db.leads.find({"created_at": {"$gte": start_date.isoformat()}}, {"_id": 0, "lead_id": 1, "source": 1, "status": 1}).to_list(1000):
+        source = lead.get("source", "Direct")
+        if source not in source_performance:
+            source_performance[source] = {"total": 0, "won": 0}
+        source_performance[source]["total"] += 1
+        if lead.get("status") == "gagné":
+            source_performance[source]["won"] += 1
+    
+    # Calculate ROI estimates per source (assuming avg deal value 500€)
+    for source, data in source_performance.items():
+        data["conversion_rate"] = (data["won"] / data["total"] * 100) if data["total"] > 0 else 0
+        data["estimated_revenue"] = data["won"] * 500  # Avg deal
+    
+    best_source = max(source_performance.items(), key=lambda x: x[1]["conversion_rate"]) if source_performance else ("N/A", {"conversion_rate": 0})
+    
     return {
         "period": period,
         "total_leads": total_leads,
@@ -783,7 +1047,14 @@ async def get_dashboard_stats(request: Request, period: str = "30d"):
         "leads_by_source": leads_by_source,
         "leads_by_service": leads_by_service,
         "leads_by_day": leads_by_day,
-        "pending_tasks": pending_tasks
+        "pending_tasks": pending_tasks,
+        "avg_lead_score": round(avg_score, 1),
+        "best_source": {
+            "name": best_source[0],
+            "conversion_rate": round(best_source[1]["conversion_rate"], 1),
+            "revenue": best_source[1].get("estimated_revenue", 0)
+        },
+        "source_performance": source_performance
     }
 
 # Include router
