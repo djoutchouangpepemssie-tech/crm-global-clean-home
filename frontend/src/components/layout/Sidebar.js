@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { LayoutDashboard, Users, FileText, CheckSquare, Activity, LogOut, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, CheckSquare, Activity, LogOut, TrendingUp, Trello } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const Sidebar = () => {
@@ -15,10 +15,12 @@ const Sidebar = () => {
 
   const navItems = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', testId: 'nav-dashboard' },
+    { to: '/kanban', icon: Trello, label: 'Kanban', testId: 'nav-kanban' },
     { to: '/leads', icon: Users, label: 'Leads', testId: 'nav-leads' },
     { to: '/quotes', icon: FileText, label: 'Devis', testId: 'nav-quotes' },
     { to: '/tasks', icon: CheckSquare, label: 'Tâches', testId: 'nav-tasks' },
-    { to: '/activity', icon: Activity, label: 'Activité', testId: 'nav-activity' }
+    { to: '/analytics', icon: TrendingUp, label: 'Analytics', testId: 'nav-analytics' },
+    { to: '/activity', icon: Activity, label: 'Journal', testId: 'nav-activity' }
   ];
 
   return (
@@ -26,13 +28,11 @@ const Sidebar = () => {
       {/* Logo */}
       <div className="p-6 border-b border-slate-200">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-600 to-rose-600 flex items-center justify-center">
-            <Sparkles className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <div className="font-bold text-slate-900 text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>Global Clean</div>
-            <div className="text-xs text-slate-500">CRM</div>
-          </div>
+          <img 
+            src="https://customer-assets.emergentagent.com/job_crm-clean-home/artifacts/2asd8rqs_GLOBAL%20CLEAN%20logo%202%20%281%29.png"
+            alt="Global Clean Home"
+            className="h-10 object-contain"
+          />
         </div>
       </div>
 

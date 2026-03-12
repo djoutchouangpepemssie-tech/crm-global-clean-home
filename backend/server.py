@@ -945,6 +945,168 @@ async def get_activity_logs(request: Request, limit: int = 100):
     
     return logs
 
+# ============= TRACKING ENDPOINTS (PUBLIC) =============
+
+@api_router.post("/tracking/event")
+async def track_event(request: Request):
+    """Public endpoint to receive tracking events from website."""
+    try:
+        data = await request.json()
+        
+        # Add server timestamp
+        data["server_timestamp"] = datetime.now(timezone.utc).isoformat()
+        
+        # Store in tracking_events collection
+        await db.tracking_events.insert_one(data)
+        
+        # If it's a form submit with lead data, create lead automatically
+        if data.get("event_type") == "form_submit" and data.get("lead_data"):
+            lead_data = data["lead_data"]
+            lead_id = f"lead_{uuid.uuid4().hex[:12]}"
+            
+            lead_dict = {
+                "lead_id": lead_id,
+                "name": lead_data.get("name", "Inconnu"),
+                "email": lead_data.get("email", ""),
+                "phone": lead_data.get("phone", ""),
+                "service_type": lead_data.get("service_type", "Ménage"),
+                "surface": lead_data.get("surface"),
+                "address": lead_data.get("address"),
+                "message": lead_data.get("message"),
+                "source": data.get("utm_source", "Direct"),
+                "campaign": data.get("utm_campaign"),
+                "utm_source": data.get("utm_source"),
+                "utm_medium": data.get("utm_medium"),
+                "utm_campaign": data.get("utm_campaign"),
+                "visitor_id": data.get("visitor_id"),
+                "session_id": data.get("session_id"),
+                "status": "nouveau",
+                "probability": 50,
+                "tags": [],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            
+            # Calculate score
+            lead_dict["score"] = calculate_lead_score(lead_dict)
+            
+            await db.leads.insert_one(lead_dict)
+            
+            # Create follow-up task
+            task = {
+                "task_id": f"task_{uuid.uuid4().hex[:12]}",
+                "lead_id": lead_id,
+                "type": "rappel",
+                "title": f"Contacter {lead_dict['name']}",
+                "description": f"Nouveau lead {lead_dict['service_type']} via tracking",
+                "due_date": (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat(),
+                "status": "pending",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.tasks.insert_one(task)
+        
+        return {"status": "tracked", "timestamp": data["server_timestamp"]}
+    
+    except Exception as e:
+        logger.error(f"Tracking error: {e}")
+        return {"status": "error", "message": str(e)}
+
+@api_router.get("/tracking/visitor/{visitor_id}")
+async def get_visitor_journey(visitor_id: str, request: Request):
+    """Get complete journey of a visitor."""
+    await require_auth(request)
+    
+    events = await db.tracking_events.find(
+        {"visitor_id": visitor_id},
+        {"_id": 0}
+    ).sort("timestamp", 1).to_list(1000)
+    
+    return {
+        "visitor_id": visitor_id,
+        "total_events": len(events),
+        "events": events
+    }
+
+@api_router.get("/tracking/stats")
+async def get_tracking_stats(request: Request, period: str = "7d"):
+    """Get tracking analytics."""
+    await require_auth(request)
+    
+    now = datetime.now(timezone.utc)
+    if period == "1d":
+        start_date = now - timedelta(days=1)
+    elif period == "7d":
+        start_date = now - timedelta(days=7)
+    elif period == "30d":
+        start_date = now - timedelta(days=30)
+    else:
+        start_date = now - timedelta(days=7)
+    
+    # Get all tracking events
+    events = await db.tracking_events.find(
+        {"timestamp": {"$gte": start_date.isoformat()}},
+        {"_id": 0}
+    ).to_list(10000)
+    
+    # Calculate stats
+    total_visitors = len(set([e.get("visitor_id") for e in events if e.get("visitor_id")]))
+    total_sessions = len(set([e.get("session_id") for e in events if e.get("session_id")]))
+    total_page_views = len([e for e in events if e.get("event_type") == "page_view"])
+    total_cta_clicks = len([e for e in events if e.get("event_type") == "cta_click"])
+    total_form_submits = len([e for e in events if e.get("event_type") == "form_submit"])
+    
+    # Top pages
+    page_views = [e for e in events if e.get("event_type") == "page_view"]
+    page_counts = {}
+    for pv in page_views:
+        url = pv.get("page_url", "")
+        page_counts[url] = page_counts.get(url, 0) + 1
+    
+    top_pages = sorted(page_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+    
+    # Device breakdown
+    devices = {}
+    for e in events:
+        device = e.get("device_info", {}).get("device_type", "unknown")
+        devices[device] = devices.get(device, 0) + 1
+    
+    # Traffic sources
+    sources = {}
+    for e in page_views:
+        source = e.get("utm_source") or e.get("referrer", "direct")
+        if "google" in source.lower():
+            source = "Google"
+        elif "facebook" in source.lower() or "fb" in source.lower():
+            source = "Facebook"
+        elif source == "direct":
+            source = "Direct"
+        sources[source] = sources.get(source, 0) + 1
+    
+    # Conversion funnel
+    visitors_with_page_views = set([e.get("visitor_id") for e in page_views])
+    visitors_with_cta_clicks = set([e.get("visitor_id") for e in events if e.get("event_type") == "cta_click"])
+    visitors_with_form_submits = set([e.get("visitor_id") for e in events if e.get("event_type") == "form_submit"])
+    
+    conversion_rate = (len(visitors_with_form_submits) / len(visitors_with_page_views) * 100) if visitors_with_page_views else 0
+    
+    return {
+        "period": period,
+        "total_visitors": total_visitors,
+        "total_sessions": total_sessions,
+        "total_page_views": total_page_views,
+        "total_cta_clicks": total_cta_clicks,
+        "total_form_submits": total_form_submits,
+        "conversion_rate": round(conversion_rate, 2),
+        "top_pages": [{"url": url, "views": count} for url, count in top_pages],
+        "devices": devices,
+        "sources": sources,
+        "funnel": {
+            "visitors": len(visitors_with_page_views),
+            "cta_clicks": len(visitors_with_cta_clicks),
+            "form_submits": len(visitors_with_form_submits)
+        }
+    }
+
 # ============= DASHBOARD STATS ENDPOINTS =============
 
 @api_router.get("/stats/dashboard")

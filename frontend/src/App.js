@@ -13,6 +13,8 @@ import QuotesList from './components/quotes/QuotesList';
 import QuoteForm from './components/quotes/QuoteForm';
 import TasksList from './components/tasks/TasksList';
 import ActivityLog from './components/activity/ActivityLog';
+import KanbanBoard from './components/kanban/KanbanBoard';
+import Analytics from './components/analytics/Analytics';
 import './App.css';
 
 function AppRouter() {
@@ -43,6 +45,8 @@ function AppRouter() {
                   <Route path="/quotes/new" element={<QuoteForm />} />
                   <Route path="/tasks" element={<TasksList />} />
                   <Route path="/activity" element={<ActivityLog />} />
+                  <Route path="/kanban" element={<KanbanBoard />} />
+                  <Route path="/analytics" element={<Analytics />} />
                   <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </div>
