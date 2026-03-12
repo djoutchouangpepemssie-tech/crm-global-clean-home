@@ -7,7 +7,7 @@
 Ajoutez ce code avant `</body>` sur toutes les pages :
 
 ```html
-<script src="https://crm-clean-home.preview.emergentagent.com/tracking.js"></script>
+<script src="https://clean-home-hub-3.preview.emergentagent.com/tracking.js"></script>
 <script>
   GCHTracker.init({ apiKey: 'gch_YOUR_API_KEY' });
 </script>
@@ -317,7 +317,7 @@ Nombre leads gagnés × 500€ (valeur moyenne deal)
 ### Créer un Lead depuis votre site :
 
 ```javascript
-fetch('https://crm-clean-home.preview.emergentagent.com/api/leads', {
+fetch('https://clean-home-hub-3.preview.emergentagent.com/api/leads', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json'
@@ -359,7 +359,7 @@ fetch('https://crm-clean-home.preview.emergentagent.com/api/leads', {
 
 **URL du Webhook :**
 ```
-https://crm-clean-home.preview.emergentagent.com/api/webhooks/zapier
+https://clean-home-hub-3.preview.emergentagent.com/api/webhooks/zapier
 ```
 
 **Événements disponibles :**
