@@ -1301,6 +1301,10 @@ app.include_router(advanced_router)
 from external_integrations import ext_router
 app.include_router(ext_router)
 
+# Include exports router
+from exports import exports_router
+app.include_router(exports_router)
+
 @app.on_event("startup")
 async def startup_db_indexes():
     """Create MongoDB indexes for performance."""

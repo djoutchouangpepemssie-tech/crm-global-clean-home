@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Plus, Send, FileText } from 'lucide-react';
+import { Plus, Send, FileText, Download } from 'lucide-react';
 import { getStatusColor, getStatusLabel, formatDateTime, formatCurrency } from '../../lib/utils';
 import { toast } from 'sonner';
 
@@ -114,8 +114,17 @@ const QuotesList = () => {
                 )}
               </div>
 
-              <div className="pt-4 border-t border-slate-200">
-                <p className="text-sm text-slate-600 line-clamp-2">{quote.details}</p>
+              <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
+                <p className="text-sm text-slate-600 line-clamp-1 flex-1">{quote.details}</p>
+                <a
+                  href={`${API_URL}/exports/quote/${quote.quote_id}/pdf`}
+                  data-testid={`download-quote-pdf-${quote.quote_id}`}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-600 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-colors font-medium ml-2"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  PDF
+                </a>
               </div>
 
               {quote.status === 'brouillon' && (

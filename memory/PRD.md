@@ -2,35 +2,25 @@
 
 ## Vue d'ensemble
 **Nom:** CRM Global Clean Home  
-**Version:** 3.0  
+**Version:** 3.1  
 **Date:** Mars 2026  
-**Stack:** React 19 + FastAPI + MongoDB + Stripe (emergentintegrations)
+**Stack:** React 19 + FastAPI + MongoDB + Stripe (emergentintegrations) + ReportLab (PDF)
 
 ## Architecture
 
 ### Backend Modules
 - `server.py` - Core: Auth, Leads, Quotes, Tasks, Interactions, Events, Stats
-- `invoices.py` - Phase 2: Invoices, Stripe Checkout, Financial Stats
-- `portal.py` - Phase 3: Magic-link Auth, Client Portal
-- `planning.py` - Phase 4: Teams, Interventions, Calendar, Check-in/out
-- `advanced.py` - Phase 5: Notifications, Lead Scoring, Roles, Retention
-- `external_integrations.py` - Phase 6: Webhooks, iCal, WhatsApp, Tracking Widget
+- `invoices.py` - Invoices, Stripe Checkout, Financial Stats
+- `portal.py` - Magic-link Auth, Client Portal
+- `planning.py` - Teams, Interventions, Calendar, Check-in/out
+- `advanced.py` - Notifications, Lead Scoring, Roles, Retention
+- `external_integrations.py` - Webhooks, iCal, WhatsApp, Tracking Widget
+- `exports.py` - PDF generation (ReportLab) + CSV exports
 
 ### Frontend Pages
-- `/dashboard` - KPIs + charts
-- `/kanban` - Pipeline drag-and-drop
-- `/leads`, `/leads/new`, `/leads/:id` - Lead management + WhatsApp
-- `/quotes`, `/quotes/new` - Quote management
-- `/invoices`, `/invoices/:id/success` - Invoices + Stripe
-- `/finance` - Financial dashboard
-- `/planning` - Team calendar
-- `/tasks` - Task management
-- `/analytics` - Tracking analytics
-- `/integrations` - Webhooks, Calendar, WhatsApp, Widget
-- `/activity` - Activity log
-- `/portal` - Client self-service (magic-link)
+`/dashboard` `/kanban` `/leads` `/leads/new` `/leads/:id` `/quotes` `/quotes/new` `/invoices` `/invoices/:id/success` `/finance` `/planning` `/tasks` `/analytics` `/integrations` `/activity` `/portal`
 
-### Collections MongoDB
+### Collections MongoDB (20+)
 users, user_sessions, leads, quotes, interactions, events, tasks, activity_logs, tracking_events, templates, invoices, payment_transactions, magic_links, portal_sessions, reviews, teams, interventions, notifications, webhooks, webhook_logs
 
 ## Phases Complètes
@@ -53,15 +43,23 @@ Notifications in-app, Scoring multi-critères, Rôles utilisateurs, Fidélisatio
 ### Phase 6: Intégrations Externes
 Zapier/Make webhooks (12 events), Google Calendar iCal sync, WhatsApp click-to-chat + templates, Widget tracking JavaScript
 
-## Tests
+### Phase 7: UX/Design + Exports PDF/CSV
+- Login redesign (split layout, hero image Unsplash)
+- Dashboard redesign (stagger animations, gradient charts, KPI cards)
+- Sidebar polish (active indicators, portal link)
+- Global CSS (fadeIn/slideIn animations, hover-lift, glass, custom scrollbar)
+- PDF factures, devis, rapport financier (ReportLab, format français)
+- CSV exports: factures, clients, interventions
+
+## Tests Cumulés
 - Phase 1: 22/22 (100%)
 - Phase 2: 47/47 (100%)
 - Phases 3-5: 62/62 (100%)
 - Phase 6: 21/21 (100%)
+- Phase 7: 27/27 (100%)
 
 ## Backlog
-- Export rapports PDF/CSV avancés
-- SMS Twilio pour rappels
-- ML prédictif pour scoring
-- Multi-langue
+- SMS Twilio pour rappels automatiques
+- ML prédictif pour scoring leads
 - WhatsApp Business API complète (vs click-to-chat actuel)
+- Multi-langue

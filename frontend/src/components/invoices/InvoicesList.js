@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { FileText, CreditCard, Clock, CheckCircle, AlertTriangle, Plus } from 'lucide-react';
+import { FileText, CreditCard, Clock, CheckCircle, AlertTriangle, Plus, Download } from 'lucide-react';
 import { formatCurrency, formatDateTime } from '../../lib/utils';
 import { toast } from 'sonner';
 
@@ -72,14 +72,32 @@ const InvoicesList = () => {
           </h1>
           <p className="text-slate-600 mt-1">{invoices.length} facture(s)</p>
         </div>
-        <button
-          data-testid="go-to-quotes-btn"
-          onClick={() => navigate('/quotes')}
-          className="flex items-center gap-2 px-6 py-3 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors shadow-sm font-medium"
-        >
-          <Plus className="w-5 h-5" />
-          Depuis un devis
-        </button>
+        <div className="flex gap-3">
+          <a
+            href={`${API_URL}/exports/invoices/csv`}
+            data-testid="export-invoices-csv"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium"
+          >
+            <Download className="w-4 h-4" />
+            CSV
+          </a>
+          <a
+            href={`${API_URL}/exports/financial/pdf`}
+            data-testid="export-financial-pdf"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium"
+          >
+            <FileText className="w-4 h-4" />
+            Rapport PDF
+          </a>
+          <button
+            data-testid="go-to-quotes-btn"
+            onClick={() => navigate('/quotes')}
+            className="flex items-center gap-2 px-6 py-2.5 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors shadow-sm font-medium text-sm"
+          >
+            <Plus className="w-5 h-5" />
+            Depuis un devis
+          </button>
+        </div>
       </div>
 
       {/* Summary cards */}
@@ -162,21 +180,31 @@ const InvoicesList = () => {
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-500">{formatDateTime(inv.created_at)}</td>
                     <td className="px-6 py-4">
-                      {inv.status === 'en_attente' && (
-                        <button
-                          data-testid={`pay-btn-${inv.invoice_id}`}
-                          onClick={() => handlePay(inv)}
-                          className="flex items-center gap-1.5 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium"
+                      <div className="flex items-center gap-2">
+                        {inv.status === 'en_attente' && (
+                          <button
+                            data-testid={`pay-btn-${inv.invoice_id}`}
+                            onClick={() => handlePay(inv)}
+                            className="flex items-center gap-1.5 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium"
+                          >
+                            <CreditCard className="w-4 h-4" />
+                            Payer
+                          </button>
+                        )}
+                        {inv.status === 'payée' && (
+                          <span className="text-green-600 text-sm font-medium flex items-center gap-1">
+                            <CheckCircle className="w-4 h-4" /> Payée
+                          </span>
+                        )}
+                        <a
+                          href={`${API_URL}/exports/invoice/${inv.invoice_id}/pdf`}
+                          data-testid={`pdf-btn-${inv.invoice_id}`}
+                          className="flex items-center gap-1 px-3 py-2 text-xs text-slate-600 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-colors font-medium"
                         >
-                          <CreditCard className="w-4 h-4" />
-                          Payer
-                        </button>
-                      )}
-                      {inv.status === 'payée' && (
-                        <span className="text-green-600 text-sm font-medium flex items-center gap-1">
-                          <CheckCircle className="w-4 h-4" /> Payée
-                        </span>
-                      )}
+                          <Download className="w-3.5 h-3.5" />
+                          PDF
+                        </a>
+                      </div>
                     </td>
                   </tr>
                 );

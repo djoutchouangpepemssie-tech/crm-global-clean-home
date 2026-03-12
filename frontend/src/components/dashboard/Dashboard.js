@@ -1,284 +1,231 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
-import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { TrendingUp, Users, FileText, CheckCircle, Clock, DollarSign, Award, Target } from 'lucide-react';
-import { formatCurrency, getStatusColor, getStatusLabel, formatDate } from '../../lib/utils';
-import { toast } from 'sonner';
-import { useRealtimeNotifications } from '../../hooks/useRealtimeNotifications';
+import { useNavigate } from 'react-router-dom';
+import { AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Users, UserPlus, Trophy, FileText, Target, CheckSquare, TrendingUp, Star, ArrowUpRight } from 'lucide-react';
+import { getStatusColor, getStatusLabel, formatDateTime } from '../../lib/utils';
 import LeadScoreBadge from '../shared/LeadScoreBadge';
+import { toast } from 'sonner';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
+const CHART_COLORS = ['#7C3AED', '#E11D48', '#2563EB', '#10B981', '#F59E0B', '#6366F1'];
+
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
-  const [leads, setLeads] = useState([]);
   const [period, setPeriod] = useState('30d');
   const [loading, setLoading] = useState(true);
-  
-  // Enable real-time notifications
-  const { newLeadsCount } = useRealtimeNotifications();
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    fetchData();
-  }, [period]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [statsRes, leadsRes] = await Promise.all([
-        axios.get(`${API_URL}/stats/dashboard?period=${period}`, { withCredentials: true }),
-        axios.get(`${API_URL}/leads?period=${period}`, { withCredentials: true })
-      ]);
-      setStats(statsRes.data);
-      setLeads(leadsRes.data.slice(0, 10)); // Top 10 recent leads
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      toast.error('Erreur lors du chargement des données');
+      const response = await axios.get(`${API_URL}/stats/dashboard?period=${period}`, { withCredentials: true });
+      setStats(response.data);
+    } catch {
+      toast.error('Erreur lors du chargement des statistiques');
     } finally {
       setLoading(false);
     }
-  };
+  }, [period]);
 
-  if (loading) {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchData(); }, [period]);
+
+  if (loading || !stats) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto"></div>
-          <p className="mt-4 text-slate-600">Chargement...</p>
+          <p className="mt-4 text-slate-500 text-sm">Chargement du tableau de bord...</p>
         </div>
       </div>
     );
   }
 
-  if (!stats) return null;
-
-  const kpiCards = [
-    {
-      title: 'Leads totaux',
-      value: stats.total_leads,
-      icon: Users,
-      color: 'bg-blue-500',
-      testId: 'kpi-total-leads'
-    },
-    {
-      title: 'Nouveaux leads',
-      value: stats.new_leads,
-      icon: TrendingUp,
-      color: 'bg-violet-500',
-      testId: 'kpi-new-leads'
-    },
-    {
-      title: 'Devis envoyés',
-      value: stats.sent_quotes,
-      icon: FileText,
-      color: 'bg-rose-500',
-      testId: 'kpi-sent-quotes'
-    },
-    {
-      title: 'Leads gagnés',
-      value: stats.won_leads,
-      icon: CheckCircle,
-      color: 'bg-green-500',
-      testId: 'kpi-won-leads'
-    },
-    {
-      title: 'Taux conversion L→D',
-      value: stats.conversion_lead_to_quote + '%',
-      icon: DollarSign,
-      color: 'bg-amber-500',
-      testId: 'kpi-conversion-lead-quote'
-    },
-    {
-      title: 'Tâches en attente',
-      value: stats.pending_tasks,
-      icon: Clock,
-      color: 'bg-orange-500',
-      testId: 'kpi-pending-tasks'
-    },
-    {
-      title: 'Score moyen leads',
-      value: stats.avg_lead_score + '/100',
-      icon: Award,
-      color: 'bg-cyan-500',
-      testId: 'kpi-avg-score'
-    },
-    {
-      title: 'Meilleure source',
-      value: stats.best_source.name,
-      subtitle: `${stats.best_source.conversion_rate}% conv.`,
-      icon: Target,
-      color: 'bg-pink-500',
-      testId: 'kpi-best-source'
-    }
+  const kpis = [
+    { title: 'Total leads', value: stats.total_leads, icon: Users, color: 'text-violet-600', bg: 'bg-violet-50', change: null },
+    { title: 'Nouveaux', value: stats.new_leads, icon: UserPlus, color: 'text-blue-600', bg: 'bg-blue-50', change: '+' + stats.new_leads },
+    { title: 'Gagnés', value: stats.won_leads, icon: Trophy, color: 'text-emerald-600', bg: 'bg-emerald-50', change: null },
+    { title: 'Devis envoyés', value: stats.sent_quotes, icon: FileText, color: 'text-amber-600', bg: 'bg-amber-50', change: null },
+    { title: 'Taux conversion', value: `${stats.conversion_lead_to_quote || 0}%`, icon: Target, color: 'text-rose-600', bg: 'bg-rose-50', change: null },
+    { title: 'Tâches en cours', value: stats.pending_tasks, icon: CheckSquare, color: 'text-cyan-600', bg: 'bg-cyan-50', change: null },
+    { title: 'Score moyen', value: stats.avg_lead_score || 0, icon: Star, color: 'text-amber-600', bg: 'bg-amber-50', change: null },
+    { title: 'Meilleure source', value: stats.best_source?.name || '-', icon: TrendingUp, color: 'text-violet-600', bg: 'bg-violet-50', change: null },
   ];
 
-  // Prepare data for charts
   const sourceData = Object.entries(stats.leads_by_source || {}).map(([name, value]) => ({
-    name: name || 'Inconnu',
-    value
+    name: name || 'Inconnu', value
   }));
 
   const serviceData = Object.entries(stats.leads_by_service || {}).map(([name, value]) => ({
-    name,
-    value
+    name, value
   }));
 
-  const COLORS = ['#7C3AED', '#E11D48', '#2563EB', '#10B981', '#F59E0B', '#EC4899'];
-
   return (
-    <div className="p-8 space-y-8" data-testid="dashboard-page">
-      {/* Period selector */}
-      <div className="flex justify-between items-center">
+    <div className="p-6 md:p-8 space-y-8" data-testid="dashboard-page">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>Dashboard</h1>
-          <p className="text-slate-600 mt-1">Vue d'ensemble de votre activité</p>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight" style={{ fontFamily: 'Manrope, sans-serif' }}>
+            Tableau de bord
+          </h1>
+          <p className="text-slate-500 mt-1 text-sm">Vue d'ensemble de votre activité</p>
         </div>
-        <div className="flex gap-2" data-testid="period-selector">
-          {['1d', '7d', '30d'].map((p) => (
+        <div className="flex gap-1.5 bg-white rounded-lg border border-slate-200 p-1" data-testid="period-selector">
+          {[
+            { key: '1d', label: 'Aujourd\'hui' },
+            { key: '7d', label: '7 jours' },
+            { key: '30d', label: '30 jours' },
+          ].map(p => (
             <button
-              key={p}
-              data-testid={`period-${p}`}
-              onClick={() => setPeriod(p)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                period === p
-                  ? 'bg-violet-600 text-white'
-                  : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+              key={p.key}
+              data-testid={`period-${p.key}`}
+              onClick={() => setPeriod(p.key)}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-150 ${
+                period === p.key
+                  ? 'bg-violet-600 text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              {p === '1d' ? 'Aujourd\'hui' : p === '7d' ? '7 jours' : '30 jours'}
+              {p.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {kpiCards.map((kpi, index) => (
+      {/* KPI Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger-children" data-testid="kpi-grid">
+        {kpis.map((kpi, idx) => (
           <div
-            key={index}
-            data-testid={kpi.testId}
-            className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow"
+            key={idx}
+            className="bg-white rounded-xl border border-slate-200 p-5 hover-lift animate-fade-in"
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600 mb-1">{kpi.title}</p>
-                <p className="text-3xl font-bold text-slate-900">{kpi.value}</p>
-                {kpi.subtitle && <p className="text-xs text-slate-500 mt-1">{kpi.subtitle}</p>}
+            <div className="flex items-center justify-between mb-3">
+              <div className={`w-10 h-10 rounded-lg ${kpi.bg} flex items-center justify-center`}>
+                <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
               </div>
-              <div className={`w-12 h-12 rounded-lg ${kpi.color} flex items-center justify-center`}>
-                <kpi.icon className="w-6 h-6 text-white" />
-              </div>
+              {kpi.change && (
+                <span className="flex items-center gap-0.5 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                  <ArrowUpRight className="w-3 h-3" />
+                  {kpi.change}
+                </span>
+              )}
             </div>
+            <p className="text-2xl font-bold text-slate-900 tracking-tight">{kpi.value}</p>
+            <p className="text-xs text-slate-500 mt-1 font-medium">{kpi.title}</p>
           </div>
         ))}
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Leads over time */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm" data-testid="chart-leads-over-time">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Leads au fil du temps</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={stats.leads_by_day}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="date" stroke="#64748b" style={{ fontSize: '12px' }} />
-              <YAxis stroke="#64748b" style={{ fontSize: '12px' }} />
+        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6 hover-lift">
+          <h3 className="text-base font-semibold text-slate-900 mb-4">Leads par jour</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <AreaChart data={stats.leads_by_day || []}>
+              <defs>
+                <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#7C3AED" stopOpacity={0.15}/>
+                  <stop offset="95%" stopColor="#7C3AED" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+              <XAxis dataKey="date" stroke="#94A3B8" style={{ fontSize: '11px' }} tickLine={false} axisLine={false} />
+              <YAxis stroke="#94A3B8" style={{ fontSize: '11px' }} tickLine={false} axisLine={false} allowDecimals={false} />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                }}
+                contentStyle={{ backgroundColor: '#fff', border: '1px solid #E2E8F0', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+                labelStyle={{ fontWeight: 600, color: '#0F172A' }}
               />
-              <Area type="monotone" dataKey="count" stroke="#7C3AED" fill="#7C3AED" fillOpacity={0.2} />
+              <Area type="monotone" dataKey="count" stroke="#7C3AED" strokeWidth={2} fill="url(#colorLeads)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Leads by service */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm" data-testid="chart-leads-by-service">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Leads par service</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={serviceData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="name" stroke="#64748b" style={{ fontSize: '12px' }} />
-              <YAxis stroke="#64748b" style={{ fontSize: '12px' }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                }}
-              />
-              <Bar dataKey="value" fill="#7C3AED" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+        {/* Sources pie chart */}
+        <div className="bg-white rounded-xl border border-slate-200 p-6 hover-lift">
+          <h3 className="text-base font-semibold text-slate-900 mb-4">Sources</h3>
+          {sourceData.length === 0 ? (
+            <div className="flex items-center justify-center h-[280px] text-slate-400 text-sm">Pas de données</div>
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie data={sourceData} cx="50%" cy="50%" outerRadius={80} innerRadius={45} paddingAngle={3} dataKey="value">
+                    {sourceData.map((_, idx) => (
+                      <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => [value, 'Leads']} contentStyle={{ borderRadius: '8px', border: '1px solid #E2E8F0' }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-1.5 mt-2">
+                {sourceData.map((s, idx) => (
+                  <div key={s.name} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}></span>
+                      <span className="text-slate-600">{s.name}</span>
+                    </div>
+                    <span className="font-semibold text-slate-900">{s.value}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Sources and Recent Leads Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Leads by source */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm" data-testid="chart-leads-by-source">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Sources de trafic</h3>
+      {/* Service chart + Recent Leads */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Services */}
+        <div className="bg-white rounded-xl border border-slate-200 p-6 hover-lift">
+          <h3 className="text-base font-semibold text-slate-900 mb-4">Par service</h3>
           <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie
-                data={sourceData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {sourceData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
+            <BarChart data={serviceData} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" horizontal={false} />
+              <XAxis type="number" stroke="#94A3B8" style={{ fontSize: '11px' }} tickLine={false} axisLine={false} allowDecimals={false} />
+              <YAxis dataKey="name" type="category" stroke="#94A3B8" style={{ fontSize: '11px' }} tickLine={false} axisLine={false} width={80} />
+              <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #E2E8F0' }} />
+              <Bar dataKey="value" fill="#7C3AED" radius={[0, 6, 6, 0]} barSize={24} />
+            </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Recent leads */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6 shadow-sm" data-testid="recent-leads-list">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Leads récents</h3>
+        {/* Recent Leads */}
+        <div className="bg-white rounded-xl border border-slate-200 p-6 hover-lift">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-semibold text-slate-900">Leads récents</h3>
+            <button
+              onClick={() => navigate('/leads')}
+              className="text-xs font-medium text-violet-600 hover:text-violet-700 transition-colors"
+            >
+              Voir tout
+            </button>
+          </div>
           <div className="space-y-3">
-            {leads.length === 0 ? (
-              <p className="text-slate-500 text-center py-8">Aucun lead récent</p>
-            ) : (
-              leads.map((lead) => (
-                <div
-                  key={lead.lead_id}
-                  data-testid={`lead-item-${lead.lead_id}`}
-                  className="flex items-center justify-between p-4 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-semibold">
-                        {lead.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-medium text-slate-900">{lead.name}</p>
-                        <p className="text-sm text-slate-600">{lead.service_type} - {lead.email}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <LeadScoreBadge score={lead.score || 50} />
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(lead.status)}`}>
-                      {getStatusLabel(lead.status)}
-                    </span>
-                    <span className="text-sm text-slate-500">{formatDate(lead.created_at)}</span>
-                  </div>
+            {(stats.recent_leads || []).slice(0, 6).map((lead) => (
+              <div
+                key={lead.lead_id}
+                data-testid={`recent-lead-${lead.lead_id}`}
+                onClick={() => navigate(`/leads/${lead.lead_id}`)}
+                className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer group"
+              >
+                <div className="w-9 h-9 rounded-lg bg-violet-100 flex items-center justify-center text-violet-700 font-semibold text-sm flex-shrink-0 group-hover:bg-violet-200 transition-colors">
+                  {lead.name.charAt(0).toUpperCase()}
                 </div>
-              ))
-            )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-900 truncate">{lead.name}</p>
+                  <p className="text-xs text-slate-500">{lead.service_type}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <LeadScoreBadge score={lead.score || 50} />
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${getStatusColor(lead.status)}`}>
+                    {getStatusLabel(lead.status)}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

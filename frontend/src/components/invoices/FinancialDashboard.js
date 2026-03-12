@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { DollarSign, CreditCard, Clock, AlertTriangle, TrendingUp, FileText } from 'lucide-react';
+import { DollarSign, CreditCard, Clock, AlertTriangle, TrendingUp, FileText, Download } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
 import { toast } from 'sonner';
 
@@ -59,7 +59,16 @@ const FinancialDashboard = () => {
           </h1>
           <p className="text-slate-600 mt-1">Vue d'ensemble de vos revenus et paiements</p>
         </div>
-        <div className="flex gap-2" data-testid="period-selector">
+        <div className="flex items-center gap-3">
+          <a
+            href={`${API_URL}/exports/financial/pdf?period=${period}`}
+            data-testid="export-financial-pdf"
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium"
+          >
+            <Download className="w-4 h-4" />
+            Rapport PDF
+          </a>
+          <div className="flex gap-2" data-testid="period-selector">
           {['7d', '30d', '90d'].map(p => (
             <button
               key={p}
@@ -74,6 +83,7 @@ const FinancialDashboard = () => {
               {p === '7d' ? '7 jours' : p === '30d' ? '30 jours' : '90 jours'}
             </button>
           ))}
+          </div>
         </div>
       </div>
 
