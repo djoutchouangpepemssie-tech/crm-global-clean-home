@@ -246,7 +246,7 @@ const Analytics = () => {
         </p>
         <div className="bg-slate-900 text-white p-6 rounded-lg font-mono text-sm overflow-x-auto">
           <code>
-            {`<script src="https://clean-home-hub-3.preview.emergentagent.com/tracking.js"></script>
+            {`<script src="https://clean-business-hub.preview.emergentagent.com/tracking.js"></script>
 <script>
   GCHTracker.init({ apiKey: 'gch_${Math.random().toString(36).substring(7)}' });
 </script>`}

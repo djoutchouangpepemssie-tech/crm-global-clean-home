@@ -3,7 +3,7 @@
  * À intégrer sur globalcleanhome.com
  * 
  * Installation :
- * <script src="https://clean-home-hub-3.preview.emergentagent.com/tracking.js"></script>
+ * <script src="https://clean-business-hub.preview.emergentagent.com/tracking.js"></script>
  * <script>GCHTracker.init({ apiKey: 'YOUR_API_KEY' });</script>
  */
 
@@ -12,7 +12,7 @@
 
   const GCHTracker = {
     config: {
-      apiUrl: 'https://clean-home-hub-3.preview.emergentagent.com/api',
+      apiUrl: 'https://clean-business-hub.preview.emergentagent.com/api',
       apiKey: null,
       sessionId: null,
       visitorId: null
