@@ -2,22 +2,21 @@
 
 ## Vue d'ensemble
 **Nom:** CRM Global Clean Home  
-**Version:** 5.1  
+**Version:** 6.0  
 **Date:** Mars 2026  
-**Stack:** React 19 + FastAPI + MongoDB + Stripe + SendGrid + Google Calendar API + ReportLab (PDF)
+**Stack:** React 19 + FastAPI + MongoDB + Stripe + Gmail API + Google Calendar API + ReportLab (PDF)
 
 ## Architecture
 ### Backend Modules
 - `server.py` - Core: Auth, Leads, Quotes, Tasks, Stats, Integration Status
+- `gmail_service.py` - Gmail OAuth2, Send/Receive emails, Auto follow-ups
 - `invoices.py` - Invoicing, Stripe Checkout, Financial Stats
-- `portal.py` - Magic-link Auth (+ SendGrid email), Client Portal
+- `portal.py` - Magic-link Auth, Client Portal
 - `planning.py` - Teams, Interventions, Calendar, Check-in/out
 - `advanced.py` - Notifications, Lead Scoring, Roles, Retention
 - `external_integrations.py` - Webhooks, iCal, WhatsApp, Tracking Widget
 - `exports.py` - PDF (ReportLab) + CSV exports
-- `email_service.py` - SendGrid email service
 - `google_calendar.py` - Google Calendar OAuth2
-- `integrations.py` - Legacy module
 
 ### Frontend Pages
 `/dashboard` `/kanban` `/leads` `/leads/new` `/leads/:id` `/quotes` `/quotes/new` `/invoices` `/invoices/:id/success` `/finance` `/planning` `/tasks` `/analytics` `/integrations` `/activity` `/portal` `/login`
@@ -28,31 +27,48 @@
 All core CRM, payments, portal, planning, scoring, integrations, UX, PDF/CSV exports.
 
 ### Phase 8: Production Integrations
-SendGrid, Google Calendar OAuth, Integration status dashboard, WhatsApp, Tracking widget.
+Google Calendar OAuth, Integration status dashboard, WhatsApp, Tracking widget.
 
-### Phase 9: Responsive Design + Overflow Fix (Mars 2026)
-- **Global overflow prevention**: html/body overflow-x:hidden, App.js w-0 overflow-x-hidden
-- **Sidebar**: Mobile drawer (translate-x), hamburger menu, overlay close
-- **Planning mobile**: List view groupee par jour au lieu du calendrier 7 colonnes
-- **Tables mobile**: Cards layout pour Leads et Factures (md:hidden)
-- **Zero spinners**: Tous animate-spin remplaces par texte simple ou animate-pulse
-- **Text overflow**: truncate + break-words sur tous les textes
-- **Modales**: max-h-[90vh] overflow-y-auto
-- **Notifications**: Dropdown responsive w-[calc(100vw-2rem)] sm:w-96
-- **Charts**: overflow-hidden, hauteur reduite, fontes 10px, axes compacts
-- **KPI cards**: grid-cols-2 lg:grid-cols-4, valeurs tronquees
+### Phase 9: Responsive Design + Overflow Fix
+- Global overflow prevention, mobile sidebar drawer, mobile planning list view
+- Tables to cards on mobile, zero spinners, text overflow prevention
+
+### Phase 10: Gmail Integration (Mars 2026)
+- **Gmail OAuth 2.0**: Connect/disconnect Gmail via `/api/auth/google` flow
+- **Email sending**: Quotes and invoices sent via Gmail API
+- **Email sync**: Incoming emails matched to leads automatically
+- **Auto follow-ups**: J+2 automatic follow-up for unanswered quotes
+- **Email history**: Per-lead email history in LeadDetail page
+- **Overview tab updated**: Shows Gmail instead of SendGrid
+- **Mobile quote buttons fixed**: touch-manipulation, proper padding, active states
+
+## Key API Endpoints (Gmail)
+- `GET /api/auth/google` - Start Gmail OAuth
+- `GET /api/auth/google/callback` - OAuth callback
+- `GET /api/gmail/status` - Connection status
+- `POST /api/gmail/disconnect` - Disconnect Gmail
+- `POST /api/emails/send` - Send email via Gmail
+- `GET /api/gmail/sync` - Sync inbox emails
+- `GET /api/automations/check-followups` - Auto follow-up check
+- `GET /api/emails/lead/{lead_id}` - Email history for lead
+- `GET /api/emails/stats` - Email statistics
+
+## DB Schema (email_accounts)
+`{ user_id, email, refresh_token (encrypted), access_token, token_expires_at, is_active, connected_at }`
 
 ## Tests
 - Phase 8: 15/15 (100%)
-- Phase 9 Responsive: 100% (11 pages, 375px + 1280px, 0 overflow, 0 spinner)
+- Phase 9 Responsive: 100%
+- Phase 10 Gmail: 100% (10/10 backend, all frontend UI verified)
 
-## Awaiting User API Keys
-- **SendGrid**: SENDGRID_API_KEY
-- **Google Calendar**: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
-- **Stripe Production**: STRIPE_API_KEY (currently sk_test_emergent)
+## Stripe Status
+Currently using test key (sk_test_emergent). Awaiting production keys.
 
-## Backlog
-- SMS Twilio pour rappels automatiques
-- ML predictif pour scoring leads
-- WhatsApp Business API complete
-- Multi-langue
+## Backlog (P1-P2)
+- P1: Stripe production keys
+- P1: Website tracking widget deployment instructions
+- P2: Google Calendar full integration
+- P2: Refactor server.py into sub-routers
+- P2: SMS Twilio, WhatsApp Business API
+- P2: ML predictif pour scoring leads
+- P2: Multi-langue
