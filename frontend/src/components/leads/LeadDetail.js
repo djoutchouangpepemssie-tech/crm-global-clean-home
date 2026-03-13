@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, FileText, MessageSquare, Plus } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, MapPin, Calendar, FileText, MessageSquare, Plus, Send, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { getStatusColor, getStatusLabel, formatDateTime, formatCurrency } from '../../lib/utils';
 import { toast } from 'sonner';
 
@@ -13,33 +13,36 @@ const LeadDetail = () => {
   const [lead, setLead] = useState(null);
   const [interactions, setInteractions] = useState([]);
   const [quotes, setQuotes] = useState([]);
+  const [emails, setEmails] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newInteraction, setNewInteraction] = useState({ type: 'note', content: '' });
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [sendingQuote, setSendingQuote] = useState(null);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    fetchLeadData();
-  }, [id]);
-
-  const fetchLeadData = async () => {
+  const fetchLeadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [leadRes, interactionsRes, quotesRes] = await Promise.all([
+      const [leadRes, interactionsRes, quotesRes, emailsRes] = await Promise.all([
         axios.get(`${API_URL}/leads/${id}`, { withCredentials: true }),
         axios.get(`${API_URL}/interactions?lead_id=${id}`, { withCredentials: true }),
-        axios.get(`${API_URL}/quotes?lead_id=${id}`, { withCredentials: true })
+        axios.get(`${API_URL}/quotes?lead_id=${id}`, { withCredentials: true }),
+        axios.get(`${API_URL}/emails/lead/${id}`, { withCredentials: true }).catch(() => ({ data: { emails: [] } })),
       ]);
       setLead(leadRes.data);
       setInteractions(interactionsRes.data);
       setQuotes(quotesRes.data);
+      setEmails(emailsRes.data.emails || []);
     } catch (error) {
       console.error('Error fetching lead data:', error);
       toast.error('Erreur lors du chargement du lead');
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchLeadData();
+  }, [fetchLeadData]);
 
   const handleStatusChange = async (newStatus) => {
     setUpdatingStatus(true);
@@ -76,6 +79,19 @@ const LeadDetail = () => {
 
   const handleCreateQuote = () => {
     navigate('/quotes/new', { state: { lead } });
+  };
+
+  const handleSendQuote = async (quoteId) => {
+    setSendingQuote(quoteId);
+    try {
+      const res = await axios.post(`${API_URL}/quotes/${quoteId}/send`, {}, { withCredentials: true });
+      toast.success(res.data.email_sent ? 'Devis envoye par email' : 'Devis marque comme envoye');
+      fetchLeadData();
+    } catch (error) {
+      toast.error('Erreur lors de l\'envoi du devis');
+    } finally {
+      setSendingQuote(null);
+    }
   };
 
   if (loading) {
@@ -216,18 +232,73 @@ const LeadDetail = () => {
                   <div
                     key={quote.quote_id}
                     data-testid={`quote-item-${quote.quote_id}`}
-                    className="flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors gap-3"
+                    className="p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
                   >
-                    <div className="min-w-0">
-                      <p className="font-medium text-slate-900 text-sm truncate">{quote.service_type}</p>
-                      <p className="text-xs text-slate-500">{formatDateTime(quote.created_at)}</p>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium text-slate-900 text-sm truncate">{quote.service_type}</p>
+                        <p className="text-xs text-slate-500">{formatDateTime(quote.created_at)}</p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="font-semibold text-slate-900 text-sm">{formatCurrency(quote.amount)}</p>
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${getStatusColor(quote.status)}`}>
+                          {getStatusLabel(quote.status)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="font-semibold text-slate-900 text-sm">{formatCurrency(quote.amount)}</p>
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${getStatusColor(quote.status)}`}>
-                        {getStatusLabel(quote.status)}
-                      </span>
+                    {quote.status === 'brouillon' && (
+                      <button
+                        data-testid={`send-quote-lead-${quote.quote_id}`}
+                        disabled={sendingQuote === quote.quote_id}
+                        onClick={() => handleSendQuote(quote.quote_id)}
+                        className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 bg-violet-600 text-white rounded-lg active:bg-violet-800 hover:bg-violet-700 transition-colors font-medium text-xs touch-manipulation select-none cursor-pointer disabled:opacity-50"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        {sendingQuote === quote.quote_id ? 'Envoi...' : 'Envoyer par email'}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Email History */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm overflow-hidden" data-testid="emails-section">
+            <h2 className="text-base md:text-lg font-semibold text-slate-900 mb-4">
+              Emails ({emails.length})
+            </h2>
+            {emails.length === 0 ? (
+              <p className="text-slate-500 text-center py-6 text-sm">Aucun email echange</p>
+            ) : (
+              <div className="space-y-2">
+                {emails.map((email) => (
+                  <div key={email.email_id} className="flex items-start gap-3 p-3 rounded-lg border border-slate-200">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      email.direction === 'sent' ? 'bg-violet-100' : 'bg-blue-100'
+                    }`}>
+                      {email.direction === 'sent'
+                        ? <ArrowUpRight className="w-4 h-4 text-violet-600" />
+                        : <ArrowDownLeft className="w-4 h-4 text-blue-600" />
+                      }
                     </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-slate-900 truncate">{email.subject}</p>
+                      <p className="text-xs text-slate-500 truncate">
+                        {email.direction === 'sent' ? `Vers ${email.to_email}` : `De ${email.from_email}`}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {formatDateTime(email.sent_at || email.received_at || email.created_at)}
+                      </p>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 ${
+                      email.type === 'quote' ? 'bg-violet-100 text-violet-700'
+                        : email.type === 'invoice' ? 'bg-green-100 text-green-700'
+                        : email.type === 'followup' ? 'bg-amber-100 text-amber-700'
+                        : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {email.type === 'quote' ? 'Devis' : email.type === 'invoice' ? 'Facture' : email.type === 'followup' ? 'Relance' : email.type}
+                    </span>
                   </div>
                 ))}
               </div>

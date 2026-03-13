@@ -790,7 +790,7 @@ async def get_quotes(request: Request, lead_id: Optional[str] = None):
 
 @api_router.post("/quotes/{quote_id}/send")
 async def send_quote(quote_id: str, request: Request):
-    """Mark quote as sent and create follow-up task."""
+    """Mark quote as sent, send email via Gmail if connected, and create follow-up task."""
     user = await require_auth(request)
     now = datetime.now(timezone.utc)
     
@@ -811,6 +811,16 @@ async def send_quote(quote_id: str, request: Request):
         {"$set": {"status": "devis_envoyé", "updated_at": now.isoformat()}}
     )
     
+    # Send email via Gmail if connected
+    email_sent = False
+    lead = await db.leads.find_one({"lead_id": quote["lead_id"]}, {"_id": 0})
+    if lead and lead.get("email"):
+        try:
+            from gmail_service import send_quote_email
+            email_sent = await send_quote_email(user.user_id, lead, quote)
+        except Exception as e:
+            logger.warning(f"Gmail send failed for quote {quote_id}: {e}")
+    
     # Create follow-up task (48h)
     task = {
         "task_id": f"task_{uuid.uuid4().hex[:12]}",
@@ -826,7 +836,7 @@ async def send_quote(quote_id: str, request: Request):
     
     await log_activity(user.user_id, "send_quote", "quote", quote_id)
     
-    return {"message": "Quote sent"}
+    return {"message": "Devis envoye" + (" par email" if email_sent else ""), "email_sent": email_sent}
 
 # ============= INTERACTIONS ENDPOINTS =============
 

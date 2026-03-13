@@ -32,8 +32,8 @@ const QuotesList = () => {
   const handleSendQuote = async (quoteId, e) => {
     e.stopPropagation();
     try {
-      await axios.post(`${API_URL}/quotes/${quoteId}/send`, {}, { withCredentials: true });
-      toast.success('Devis envoyé avec succès');
+      const res = await axios.post(`${API_URL}/quotes/${quoteId}/send`, {}, { withCredentials: true });
+      toast.success(res.data.email_sent ? 'Devis envoye par email' : 'Devis marque comme envoye');
       fetchQuotes();
     } catch (error) {
       console.error('Error sending quote:', error);
@@ -130,8 +130,9 @@ const QuotesList = () => {
               {quote.status === 'brouillon' && (
                 <button
                   data-testid={`send-quote-button-${quote.quote_id}`}
+                  onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => handleSendQuote(quote.quote_id, e)}
-                  className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors font-medium text-sm"
+                  className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-3 bg-violet-600 text-white rounded-lg active:bg-violet-800 hover:bg-violet-700 transition-colors font-medium text-sm touch-manipulation select-none cursor-pointer"
                 >
                   <Send className="w-4 h-4" />
                   Envoyer le devis
@@ -141,8 +142,9 @@ const QuotesList = () => {
               {(quote.status === 'envoyé' || quote.status === 'accepté') && (
                 <button
                   data-testid={`create-invoice-button-${quote.quote_id}`}
+                  onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => handleCreateInvoice(quote.quote_id, e)}
-                  className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm"
+                  className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg active:bg-green-800 hover:bg-green-700 transition-colors font-medium text-sm touch-manipulation select-none cursor-pointer"
                 >
                   <FileText className="w-4 h-4" />
                   Créer une facture

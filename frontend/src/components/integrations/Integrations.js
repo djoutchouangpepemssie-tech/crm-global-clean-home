@@ -734,11 +734,11 @@ const OverviewTab = ({ onNavigate }) => {
   const integrations = [
     {
       id: 'email',
-      name: 'SendGrid (Emails)',
+      name: 'Gmail',
       icon: Mail,
-      configured: status?.sendgrid?.configured,
-      description: 'Envoi d\'emails transactionnels (devis, factures, liens magiques)',
-      color: 'blue',
+      configured: status?.gmail?.connected || status?.gmail?.configured,
+      description: 'Envoi et reception d\'emails via votre compte Gmail',
+      color: 'red',
     },
     {
       id: 'calendar',
