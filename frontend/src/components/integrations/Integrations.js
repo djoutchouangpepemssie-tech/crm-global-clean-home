@@ -479,87 +479,187 @@ const TrackingTab = () => {
   );
 };
 
-// ============= Email Tab (SendGrid) =============
+// ============= Email Tab (Gmail) =============
 const EmailTab = () => {
-  const [status, setStatus] = useState(null);
+  const [gmailStatus, setGmailStatus] = useState(null);
+  const [emailStats, setEmailStats] = useState(null);
+  const [syncing, setSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_URL}/settings/integrations`, { withCredentials: true });
-      setStatus(res.data.sendgrid);
+      const [statusRes, statsRes] = await Promise.all([
+        axios.get(`${API_URL}/gmail/status`, { withCredentials: true }),
+        axios.get(`${API_URL}/emails/stats`, { withCredentials: true }).catch(() => ({ data: {} })),
+      ]);
+      setGmailStatus(statusRes.data);
+      setEmailStats(statsRes.data);
     } catch {
-      setStatus({ configured: false });
+      setGmailStatus({ connected: false });
     }
     setLoading(false);
   }, []);
 
   useEffect(() => { fetchStatus(); }, [fetchStatus]);
 
-  if (loading) return <div className="text-center py-8 text-slate-400">Chargement...</div>;
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('gmail') === 'connected') {
+      toast.success('Gmail connecte avec succes !');
+      window.history.replaceState({}, '', '/integrations');
+      fetchStatus();
+    }
+  }, [fetchStatus]);
+
+  const connectGmail = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/auth/google`, { withCredentials: true });
+      window.location.href = res.data.authorization_url;
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erreur de connexion');
+    }
+  };
+
+  const disconnectGmail = async () => {
+    if (!window.confirm('Deconnecter Gmail ?')) return;
+    try {
+      await axios.post(`${API_URL}/gmail/disconnect`, {}, { withCredentials: true });
+      toast.success('Gmail deconnecte');
+      fetchStatus();
+    } catch { toast.error('Erreur'); }
+  };
+
+  const syncEmails = async () => {
+    setSyncing(true);
+    try {
+      const res = await axios.get(`${API_URL}/gmail/sync`, { withCredentials: true });
+      toast.success(`${res.data.synced} email(s) synchronise(s)`);
+      fetchStatus();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erreur de synchronisation');
+    }
+    setSyncing(false);
+  };
+
+  const checkFollowups = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/automations/check-followups`, { withCredentials: true });
+      toast.success(`${res.data.sent} relance(s) envoyee(s), ${res.data.skipped} ignoree(s)`);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erreur');
+    }
+  };
+
+  if (loading) return <div className="text-center py-8 text-sm text-slate-400">Chargement...</div>;
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-slate-900">Emails (SendGrid)</h2>
-        <p className="text-sm text-slate-500">Configuration de l'envoi d'emails transactionnels</p>
+        <h2 className="text-lg font-semibold text-slate-900">Gmail</h2>
+        <p className="text-sm text-slate-500">Envoi et reception d'emails via votre compte Gmail</p>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm" data-testid="email-status-card">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-medium text-slate-900 flex items-center gap-2">
-            <Mail className="w-5 h-5 text-violet-600" />
-            Statut SendGrid
+      {/* Gmail Connection Card */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm" data-testid="gmail-status-card">
+        <div className="flex items-center justify-between mb-4 gap-3">
+          <h3 className="font-medium text-slate-900 flex items-center gap-2 min-w-0">
+            <Mail className="w-5 h-5 text-red-500 flex-shrink-0" />
+            <span className="truncate">Connexion Gmail</span>
           </h3>
-          <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
-            status?.configured ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
+          <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${
+            gmailStatus?.connected ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
           }`}>
-            {status?.configured ? (
-              <><CheckCircle className="w-3.5 h-3.5" /> Configure</>
+            {gmailStatus?.connected ? (
+              <><CheckCircle className="w-3.5 h-3.5" /> Connecte</>
             ) : (
-              <><Clock className="w-3.5 h-3.5" /> En attente de cle API</>
+              <><Clock className="w-3.5 h-3.5" /> Non connecte</>
             )}
           </span>
         </div>
 
-        {status?.configured ? (
-          <div className="space-y-3">
+        {gmailStatus?.connected ? (
+          <div className="space-y-4">
             <div className="p-4 bg-green-50 rounded-lg">
               <p className="text-sm text-green-800">
-                SendGrid est configure et operationnel. Les emails seront envoyes depuis <strong>{status.sender_email}</strong>.
+                Gmail connecte : <strong className="break-all">{gmailStatus.email}</strong>
+              </p>
+              <p className="text-xs text-green-600 mt-1">
+                Connecte depuis {gmailStatus.since ? new Date(gmailStatus.since).toLocaleDateString('fr-FR') : ''}
               </p>
             </div>
+
+            {/* Stats */}
+            {emailStats && (
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-slate-50 rounded-lg p-3 text-center">
+                  <p className="text-xl font-bold text-slate-900">{emailStats.total_sent || 0}</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Envoyes</p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3 text-center">
+                  <p className="text-xl font-bold text-slate-900">{emailStats.total_received || 0}</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Recus</p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3 text-center">
+                  <p className="text-xl font-bold text-slate-900">{emailStats.total_followups || 0}</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Relances</p>
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex flex-wrap gap-2">
+              <button data-testid="gmail-sync-btn" onClick={syncEmails} disabled={syncing}
+                className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium disabled:opacity-50">
+                <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                {syncing ? 'Synchronisation...' : 'Synchroniser la boite'}
+              </button>
+              <button data-testid="gmail-followup-btn" onClick={checkFollowups}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium">
+                <Clock className="w-4 h-4" />
+                Verifier relances J+2
+              </button>
+              <button onClick={disconnectGmail}
+                className="flex items-center gap-2 px-4 py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors text-sm font-medium">
+                Deconnecter
+              </button>
+            </div>
+
+            {/* Features */}
             <div className="text-sm text-slate-600">
-              <p className="font-medium mb-2">Emails envoyes automatiquement :</p>
-              <ul className="space-y-1.5 list-disc pl-4">
-                <li>Liens magiques (portail client)</li>
-                <li>Devis aux clients</li>
-                <li>Factures aux clients</li>
-                <li>Rappels d'intervention</li>
-                <li>Notifications</li>
+              <p className="font-medium mb-2">Fonctionnalites actives :</p>
+              <ul className="space-y-1.5 list-disc pl-4 text-xs">
+                <li>Envoi de devis et factures par email</li>
+                <li>Reception et matching automatique des reponses aux leads</li>
+                <li>Relance automatique J+2 sans reponse</li>
+                <li>Historique complet des emails par lead</li>
+                <li>Notifications push sur email recu</li>
               </ul>
             </div>
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="text-sm text-amber-800">
-                <strong>Cle API requise :</strong> Pour activer l'envoi d'emails, configurez votre cle API SendGrid.
-              </p>
-            </div>
-            <div className="p-4 bg-slate-50 rounded-lg">
-              <h4 className="font-medium text-slate-900 text-sm mb-2">Comment obtenir une cle SendGrid ?</h4>
-              <ol className="text-sm text-slate-700 space-y-1.5 list-decimal pl-4">
-                <li>Creez un compte sur <a href="https://sendgrid.com" target="_blank" rel="noopener noreferrer" className="text-violet-600 hover:underline">sendgrid.com</a></li>
-                <li>Allez dans Settings &rarr; API Keys</li>
-                <li>Creez une cle avec les permissions "Full Access"</li>
-                <li>Verifiez votre adresse email d'envoi (Sender Authentication)</li>
-                <li>Communiquez la cle API a votre administrateur</li>
+            <p className="text-sm text-slate-600">
+              Connectez votre compte Gmail pour envoyer et recevoir des emails directement depuis le CRM.
+            </p>
+            <button data-testid="gmail-connect-btn" onClick={connectGmail}
+              className="flex items-center gap-3 px-5 py-2.5 bg-white border-2 border-slate-200 text-slate-700 rounded-lg hover:border-red-300 hover:text-red-600 transition-all text-sm font-medium">
+              <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
+              Connecter Gmail (contact@globalcleanhome.com)
+            </button>
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h4 className="font-medium text-blue-900 text-sm mb-2">Comment ca marche ?</h4>
+              <ol className="text-xs text-blue-800 space-y-1 list-decimal pl-4">
+                <li>Cliquez sur "Connecter Gmail"</li>
+                <li>Autorisez l'acces a votre compte Google</li>
+                <li>Les emails seront envoyes depuis contact@globalcleanhome.com</li>
+                <li>Les reponses des clients sont automatiquement synchronisees</li>
               </ol>
             </div>
-            <p className="text-xs text-slate-400">
-              En attendant, les emails sont logges cote serveur mais non envoyes aux destinataires.
-            </p>
           </div>
         )}
       </div>
@@ -573,7 +673,7 @@ const Integrations = () => {
 
   const tabs = [
     { id: 'overview', label: 'Vue d\'ensemble', icon: Settings },
-    { id: 'email', label: 'Emails', icon: Mail },
+    { id: 'email', label: 'Gmail', icon: Mail },
     { id: 'calendar', label: 'Google Calendar', icon: Calendar },
     { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
     { id: 'webhooks', label: 'Webhooks', icon: Webhook },

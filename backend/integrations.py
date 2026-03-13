@@ -372,7 +372,7 @@ async def generate_quote_pdf_endpoint(request: Request, input: PDFQuoteRequest):
     with open(pdf_path, 'wb') as f:
         f.write(pdf_buffer.getvalue())
     
-    pdf_url = f"https://clean-business-hub.preview.emergentagent.com/pdfs/{pdf_filename}"
+    pdf_url = f"https://quote-email-flow.preview.emergentagent.com/pdfs/{pdf_filename}"
     
     # Update quote with PDF URL
     await db.quotes.update_one(

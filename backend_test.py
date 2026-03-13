@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List
 
 class CRMAPITester:
-    def __init__(self, base_url="https://clean-business-hub.preview.emergentagent.com"):
+    def __init__(self, base_url="https://quote-email-flow.preview.emergentagent.com"):
         self.base_url = base_url
         self.session_token = "test_session_1773332631052"  # From MongoDB setup
         self.user_id = "test-user-1773332631052"

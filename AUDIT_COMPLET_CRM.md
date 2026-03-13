@@ -278,7 +278,7 @@ async def create_lead(request: Request, input: LeadCreate):
 ALLOWED_ORIGINS = [
     "https://globalcleanhome.com",
     "https://www.globalcleanhome.com",
-    "https://clean-business-hub.preview.emergentagent.com"
+    "https://quote-email-flow.preview.emergentagent.com"
 ]
 
 app.add_middleware(

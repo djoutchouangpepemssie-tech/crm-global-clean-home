@@ -1270,12 +1270,20 @@ async def get_dashboard_stats(request: Request, period: str = "30d"):
 @api_router.get("/settings/integrations")
 async def get_integration_status(request: Request):
     """Get status of all external integrations."""
-    await require_auth(request)
+    user = await require_auth(request)
     
-    from email_service import get_sendgrid_status
     from google_calendar import _is_configured as gcal_configured
     
-    sendgrid = get_sendgrid_status()
+    # Gmail status
+    gmail_account = await db.email_accounts.find_one(
+        {"user_id": user.user_id, "is_active": True},
+        {"_id": 0, "email": 1, "connected_at": 1},
+    )
+    gmail_status = {
+        "connected": bool(gmail_account),
+        "email": gmail_account.get("email", "") if gmail_account else "",
+        "configured": bool(os.environ.get("GOOGLE_CLIENT_ID")),
+    }
     
     stripe_key = os.environ.get("STRIPE_API_KEY", "")
     stripe_status = {
@@ -1286,7 +1294,7 @@ async def get_integration_status(request: Request):
     whatsapp_number = os.environ.get("WHATSAPP_NUMBER", "0622665308")
     
     return {
-        "sendgrid": sendgrid,
+        "gmail": gmail_status,
         "google_calendar": {"configured": gcal_configured()},
         "stripe": stripe_status,
         "whatsapp": {"number": whatsapp_number, "configured": bool(whatsapp_number)},
@@ -1338,6 +1346,10 @@ app.include_router(exports_router)
 from google_calendar import gcal_router
 app.include_router(gcal_router)
 
+# Include Gmail router
+from gmail_service import gmail_router
+app.include_router(gmail_router)
+
 @app.on_event("startup")
 async def startup_db_indexes():
     """Create MongoDB indexes for performance."""
@@ -1379,6 +1391,10 @@ async def startup_db_indexes():
     await db.webhooks.create_index("webhook_id", unique=True)
     await db.webhooks.create_index("events")
     await db.webhook_logs.create_index("webhook_id")
+    await db.email_accounts.create_index("user_id", unique=True)
+    await db.emails.create_index([("lead_id", 1), ("created_at", -1)])
+    await db.emails.create_index("gmail_message_id", unique=True, sparse=True)
+    await db.emails.create_index("direction")
     logger.info("MongoDB indexes created successfully")
 
 @app.on_event("shutdown")
