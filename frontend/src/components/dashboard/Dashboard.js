@@ -63,18 +63,18 @@ const Dashboard = () => {
   }));
 
   return (
-    <div className="p-6 md:p-8 space-y-8" data-testid="dashboard-page">
+    <div className="p-4 md:p-6 lg:p-8 space-y-6 md:space-y-8" data-testid="dashboard-page">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight" style={{ fontFamily: 'Manrope, sans-serif' }}>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight" style={{ fontFamily: 'Manrope, sans-serif' }}>
             Tableau de bord
           </h1>
-          <p className="text-slate-500 mt-1 text-sm">Vue d'ensemble de votre activité</p>
+          <p className="text-slate-500 mt-1 text-sm">Vue d'ensemble de votre activite</p>
         </div>
-        <div className="flex gap-1.5 bg-white rounded-lg border border-slate-200 p-1" data-testid="period-selector">
+        <div className="flex gap-1 sm:gap-1.5 bg-white rounded-lg border border-slate-200 p-1" data-testid="period-selector">
           {[
-            { key: '1d', label: 'Aujourd\'hui' },
+            { key: '1d', label: "Aujourd'hui" },
             { key: '7d', label: '7 jours' },
             { key: '30d', label: '30 jours' },
           ].map(p => (
@@ -82,7 +82,7 @@ const Dashboard = () => {
               key={p.key}
               data-testid={`period-${p.key}`}
               onClick={() => setPeriod(p.key)}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-150 ${
+              className={`px-3 md:px-4 py-1.5 rounded-md text-xs md:text-sm font-medium transition-all duration-150 ${
                 period === p.key
                   ? 'bg-violet-600 text-white shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'

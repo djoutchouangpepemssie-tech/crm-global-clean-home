@@ -103,15 +103,15 @@ const KanbanBoard = () => {
   }
 
   return (
-    <div className="p-8" data-testid="kanban-board">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
+    <div className="p-4 md:p-6 lg:p-8" data-testid="kanban-board">
+      <div className="mb-4 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
           Pipeline Kanban
         </h1>
-        <p className="text-slate-600 mt-1">Glissez-déposez les leads pour changer leur statut</p>
+        <p className="text-slate-600 mt-1 text-sm">Glissez-deposez les leads pour changer leur statut</p>
       </div>
 
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0">
         {COLUMN_DEFS.map((column) => {
           const columnLeads = getColumnLeads(column.id);
           const isOver = dragOverColumn === column.id;
@@ -119,7 +119,7 @@ const KanbanBoard = () => {
           return (
             <div
               key={column.id}
-              className="flex-shrink-0 w-80"
+              className="flex-shrink-0 w-72 md:w-80"
               data-testid={`kanban-column-${column.id}`}
             >
               <div

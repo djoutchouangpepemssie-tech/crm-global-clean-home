@@ -50,37 +50,37 @@ const FinancialDashboard = () => {
   }));
 
   return (
-    <div className="p-8 space-y-8" data-testid="financial-dashboard">
+    <div className="p-4 md:p-6 lg:p-8 space-y-6 md:space-y-8" data-testid="financial-dashboard">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
             Tableau de bord financier
           </h1>
-          <p className="text-slate-600 mt-1">Vue d'ensemble de vos revenus et paiements</p>
+          <p className="text-slate-600 mt-1 text-sm">Vue d'ensemble de vos revenus et paiements</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <a
             href={`${API_URL}/exports/financial/pdf?period=${period}`}
             data-testid="export-financial-pdf"
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium"
+            className="flex items-center gap-2 px-3 md:px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-xs md:text-sm font-medium"
           >
             <Download className="w-4 h-4" />
-            Rapport PDF
+            <span className="hidden sm:inline">Rapport</span> PDF
           </a>
-          <div className="flex gap-2" data-testid="period-selector">
+          <div className="flex gap-1.5" data-testid="period-selector">
           {['7d', '30d', '90d'].map(p => (
             <button
               key={p}
               data-testid={`period-${p}`}
               onClick={() => setPeriod(p)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-medium transition-colors ${
                 period === p
                   ? 'bg-violet-600 text-white'
                   : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
               }`}
             >
-              {p === '7d' ? '7 jours' : p === '30d' ? '30 jours' : '90 jours'}
+              {p === '7d' ? '7j' : p === '30d' ? '30j' : '90j'}
             </button>
           ))}
           </div>
@@ -88,7 +88,7 @@ const FinancialDashboard = () => {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {kpis.map((kpi, idx) => (
           <div key={idx} className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">

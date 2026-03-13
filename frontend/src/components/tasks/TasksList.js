@@ -47,14 +47,14 @@ const TasksList = () => {
   };
 
   return (
-    <div className="p-8" data-testid="tasks-page">
+    <div className="p-4 md:p-6 lg:p-8" data-testid="tasks-page">
       {/* Header */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 md:mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>Tâches</h1>
-          <p className="text-slate-600 mt-1">{tasks.length} tâche(s) trouvée(s)</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>Taches</h1>
+          <p className="text-slate-600 mt-1 text-sm">{tasks.length} tache(s) trouvee(s)</p>
         </div>
-        <div className="flex gap-2" data-testid="filter-selector">
+        <div className="flex gap-1.5 sm:gap-2 flex-wrap" data-testid="filter-selector">
           <button
             data-testid="filter-pending"
             onClick={() => setFilter('pending')}

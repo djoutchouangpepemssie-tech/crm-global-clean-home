@@ -42,14 +42,19 @@ const Login = () => {
       </div>
 
       {/* Right - Login Form */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-white">
+      <div className="flex-1 flex items-center justify-center p-6 md:p-8 bg-white">
         <div className="w-full max-w-sm">
-          <div className="mb-10">
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight" style={{ fontFamily: 'Manrope, sans-serif' }}>
+          <div className="mb-8 md:mb-10">
+            <div className="lg:hidden mb-6">
+              <h2 className="text-xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                <span className="text-violet-600">Global</span> Clean Home
+              </h2>
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight" style={{ fontFamily: 'Manrope, sans-serif' }}>
               Bienvenue
             </h1>
-            <p className="text-slate-500 mt-2">
-              Connectez-vous à votre espace CRM
+            <p className="text-slate-500 mt-2 text-sm md:text-base">
+              Connectez-vous a votre espace CRM
             </p>
           </div>
 

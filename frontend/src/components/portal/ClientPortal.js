@@ -45,7 +45,7 @@ const PortalLogin = ({ onAuth }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-violet-50 flex items-center justify-center p-4" data-testid="portal-login">
-      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
+      <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 max-w-md w-full mx-4">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-violet-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <FileText className="w-8 h-8 text-violet-600" />

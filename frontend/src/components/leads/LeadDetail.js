@@ -89,7 +89,7 @@ const LeadDetail = () => {
     );
   }
 
-  if (!lead) return <div className="p-8">Lead introuvable</div>;
+  if (!lead) return <div className="p-4 md:p-8">Lead introuvable</div>;
 
   const statusOptions = [
     { value: 'nouveau', label: 'Nouveau' },
@@ -101,31 +101,31 @@ const LeadDetail = () => {
   ];
 
   return (
-    <div className="p-8" data-testid="lead-detail-page">
+    <div className="p-4 md:p-6 lg:p-8" data-testid="lead-detail-page">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6 md:mb-8">
         <button
           data-testid="back-button"
           onClick={() => navigate('/leads')}
-          className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-4 transition-colors"
+          className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-4 transition-colors text-sm"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-4 h-4" />
           Retour aux leads
         </button>
-        <div className="flex justify-between items-start">
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
               {lead.name}
             </h1>
-            <p className="text-slate-600 mt-1">{lead.service_type}</p>
+            <p className="text-slate-600 mt-1 text-sm">{lead.service_type}</p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <select
               data-testid="status-select"
               value={lead.status}
               onChange={(e) => handleStatusChange(e.target.value)}
               disabled={updatingStatus}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold border-0 cursor-pointer ${getStatusColor(lead.status)}`}
+              className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-semibold border-0 cursor-pointer ${getStatusColor(lead.status)}`}
             >
               {statusOptions.map(opt => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -137,24 +137,24 @@ const LeadDetail = () => {
                 try {
                   const res = await axios.post(`${API_URL}/whatsapp/send`, {
                     lead_id: lead.lead_id,
-                    message: `Bonjour ${lead.name}, merci pour votre demande. Notre équipe vous contactera rapidement. - Global Clean Home`,
+                    message: `Bonjour ${lead.name}, merci pour votre demande. Notre equipe vous contactera rapidement. - Global Clean Home`,
                   }, { withCredentials: true });
                   window.open(res.data.whatsapp_link, '_blank');
                   toast.success('WhatsApp ouvert');
                 } catch { toast.error('Erreur WhatsApp'); }
               }}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+              className="flex items-center gap-1.5 px-3 md:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-xs md:text-sm"
             >
-              <MessageSquare className="w-5 h-5" />
-              WhatsApp
+              <MessageSquare className="w-4 h-4" />
+              <span className="hidden sm:inline">WhatsApp</span>
             </button>
             <button
               data-testid="create-quote-button"
               onClick={handleCreateQuote}
-              className="flex items-center gap-2 px-6 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors font-medium"
+              className="flex items-center gap-1.5 px-3 md:px-6 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors font-medium text-xs md:text-sm"
             >
-              <FileText className="w-5 h-5" />
-              Créer un devis
+              <FileText className="w-4 h-4" />
+              <span className="hidden sm:inline">Creer un</span> devis
             </button>
           </div>
         </div>

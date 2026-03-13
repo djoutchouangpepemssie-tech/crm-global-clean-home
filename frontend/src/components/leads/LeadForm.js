@@ -53,7 +53,7 @@ const LeadForm = () => {
   };
 
   return (
-    <div className="p-8" data-testid="lead-form-page">
+    <div className="p-4 md:p-6 lg:p-8" data-testid="lead-form-page">
       <div className="max-w-3xl mx-auto">
         <button
           data-testid="back-button"
@@ -71,7 +71,7 @@ const LeadForm = () => {
           <p className="text-slate-600 mt-1">Ajoutez un nouveau prospect</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm space-y-6">
+        <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 lg:p-8 shadow-sm space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-slate-900 mb-2">

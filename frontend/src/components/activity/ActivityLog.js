@@ -49,11 +49,11 @@ const ActivityLog = () => {
   };
 
   return (
-    <div className="p-8" data-testid="activity-page">
+    <div className="p-4 md:p-6 lg:p-8" data-testid="activity-page">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>Journal d'activité</h1>
-        <p className="text-slate-600 mt-1">Suivi de toutes les actions dans le CRM</p>
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>Journal d'activite</h1>
+        <p className="text-slate-600 mt-1 text-sm">Suivi de toutes les actions dans le CRM</p>
       </div>
 
       {/* Activity list */}
@@ -68,7 +68,7 @@ const ActivityLog = () => {
         ) : logs.length === 0 ? (
           <div className="text-center py-12">
             <ActivityIcon className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-            <p className="text-slate-500">Aucune activité enregistrée</p>
+            <p className="text-slate-500">Aucune activite enregistree</p>
           </div>
         ) : (
           <div className="divide-y divide-slate-200">
@@ -76,9 +76,9 @@ const ActivityLog = () => {
               <div
                 key={log.log_id}
                 data-testid={`activity-log-${log.log_id}`}
-                className="p-6 hover:bg-slate-50 transition-colors"
+                className="p-4 md:p-6 hover:bg-slate-50 transition-colors"
               >
-                <div className="flex items-start gap-4">
+                <div className="flex items-start gap-3 md:gap-4">
                   <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
                     <ActivityIcon className="w-5 h-5 text-violet-600" />
                   </div>

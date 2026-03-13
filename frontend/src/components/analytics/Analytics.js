@@ -96,34 +96,34 @@ const Analytics = () => {
   const COLORS = ['#7C3AED', '#E11D48', '#2563EB', '#10B981', '#F59E0B', '#EC4899'];
 
   return (
-    <div className="p-8 space-y-8" data-testid="analytics-page">
+    <div className="p-4 md:p-6 lg:p-8 space-y-6 md:space-y-8" data-testid="analytics-page">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
             Analytics Visiteurs
           </h1>
-          <p className="text-slate-600 mt-1">Suivez le comportement des prospects sur votre site</p>
+          <p className="text-slate-600 mt-1 text-sm">Suivez le comportement des prospects sur votre site</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-1.5">
           {['1d', '7d', '30d'].map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-medium transition-colors ${
                 period === p
                   ? 'bg-violet-600 text-white'
                   : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
               }`}
             >
-              {p === '1d' ? 'Aujourd\'hui' : p === '7d' ? '7 jours' : '30 jours'}
+              {p === '1d' ? "Aujourd'hui" : p === '7d' ? '7 jours' : '30 jours'}
             </button>
           ))}
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {kpiCards.map((kpi, index) => (
           <div
             key={index}

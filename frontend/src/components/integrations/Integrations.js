@@ -581,18 +581,18 @@ const Integrations = () => {
   ];
 
   return (
-    <div className="p-8" data-testid="integrations-page">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
+    <div className="p-4 md:p-6 lg:p-8" data-testid="integrations-page">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
           Integrations
         </h1>
-        <p className="text-slate-600 mt-1">Connectez votre CRM a vos outils externes</p>
+        <p className="text-slate-600 mt-1 text-sm">Connectez votre CRM a vos outils externes</p>
       </div>
 
-      <div className="flex gap-2 mb-8 flex-wrap" data-testid="integration-tabs">
+      <div className="flex gap-1.5 sm:gap-2 mb-6 md:mb-8 flex-wrap" data-testid="integration-tabs">
         {tabs.map(tab => (
           <button key={tab.id} data-testid={`tab-${tab.id}`} onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-medium transition-all ${
               activeTab === tab.id
                 ? 'bg-violet-600 text-white shadow-md'
                 : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'

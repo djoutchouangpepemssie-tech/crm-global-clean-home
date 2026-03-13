@@ -115,21 +115,21 @@ const PlanningCalendar = () => {
   const [y, m] = currentMonth.split('-').map(Number);
 
   return (
-    <div className="p-8" data-testid="planning-calendar">
+    <div className="p-4 md:p-6 lg:p-8" data-testid="planning-calendar">
       {/* Header */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 md:mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
             Planning
           </h1>
-          <p className="text-slate-600 mt-1">Gestion des interventions et planification</p>
+          <p className="text-slate-600 mt-1 text-sm">Gestion des interventions et planification</p>
         </div>
         <button
           data-testid="add-intervention-btn"
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-6 py-3 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors font-medium shadow-sm"
+          className="flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors font-medium shadow-sm text-sm"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-4 h-4" />
           Nouvelle intervention
         </button>
       </div>
@@ -165,11 +165,12 @@ const PlanningCalendar = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+          <div className="min-w-[640px]">
           {/* Day headers */}
           <div className="grid grid-cols-7 border-b border-slate-200">
             {DAYS_FR.map(d => (
-              <div key={d} className="p-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider bg-slate-50">
+              <div key={d} className="p-2 md:p-3 text-center text-[10px] md:text-xs font-semibold text-slate-600 uppercase tracking-wider bg-slate-50">
                 {d}
               </div>
             ))}
@@ -182,7 +183,7 @@ const PlanningCalendar = () => {
                 <div
                   key={idx}
                   data-testid={`calendar-day-${day.dateStr}`}
-                  className={`min-h-[120px] p-2 border-b border-r border-slate-100 ${
+                  className={`min-h-[80px] md:min-h-[120px] p-1.5 md:p-2 border-b border-r border-slate-100 ${
                     !day.isCurrentMonth ? 'bg-slate-50/50' : ''
                   } ${day.isToday ? 'bg-violet-50/50' : ''}`}
                 >
@@ -214,6 +215,7 @@ const PlanningCalendar = () => {
                 </div>
               );
             })}
+          </div>
           </div>
         </div>
       )}

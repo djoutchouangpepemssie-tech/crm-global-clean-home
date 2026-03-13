@@ -155,28 +155,28 @@ const LeadsList = () => {
   ];
 
   return (
-    <div className="p-8" data-testid="leads-page">
+    <div className="p-4 md:p-6 lg:p-8" data-testid="leads-page">
       {/* Header */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 md:mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>Leads</h1>
-          <p className="text-slate-600 mt-1">{filteredLeads.length} lead(s) trouvé(s)</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>Leads</h1>
+          <p className="text-slate-600 mt-1 text-sm">{filteredLeads.length} lead(s) trouve(s)</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             data-testid="export-csv-button"
             onClick={handleExportCSV}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium"
+            className="flex items-center gap-2 px-3 md:px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium text-sm"
           >
-            <Download className="w-5 h-5" />
-            Exporter CSV
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Exporter CSV</span>
           </button>
           <button
             data-testid="create-lead-button"
             onClick={() => navigate('/leads/new')}
-            className="flex items-center gap-2 px-6 py-3 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors shadow-sm font-medium"
+            className="flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors shadow-sm font-medium text-sm"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4" />
             Nouveau lead
           </button>
         </div>
@@ -184,11 +184,11 @@ const LeadsList = () => {
 
       {/* Bulk actions */}
       {selectedLeads.length > 0 && (
-        <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 mb-6 flex items-center justify-between" data-testid="bulk-actions-bar">
-          <span className="text-violet-900 font-medium">
-            {selectedLeads.length} lead(s) sélectionné(s)
+        <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 md:p-4 mb-4 md:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" data-testid="bulk-actions-bar">
+          <span className="text-violet-900 font-medium text-sm">
+            {selectedLeads.length} lead(s) selectionne(s)
           </span>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <select
               value={bulkAction}
               onChange={(e) => setBulkAction(e.target.value)}
@@ -217,8 +217,8 @@ const LeadsList = () => {
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6 shadow-sm">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 mb-4 md:mb-6 shadow-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
           {/* Search */}
           <div className="lg:col-span-2">
             <div className="relative">
@@ -269,7 +269,7 @@ const LeadsList = () => {
         </div>
       </div>
 
-      {/* Leads table */}
+      {/* Leads table / cards */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden" data-testid="leads-table">
         {loading ? (
           <div className="flex items-center justify-center py-12">
@@ -280,102 +280,99 @@ const LeadsList = () => {
           </div>
         ) : filteredLeads.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-slate-500">Aucun lead trouvé</p>
+            <p className="text-slate-500">Aucun lead trouve</p>
           </div>
         ) : (
-          <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="px-6 py-4 text-left">
-                  <input
-                    type="checkbox"
-                    checked={selectedLeads.length === filteredLeads.length}
-                    onChange={toggleSelectAll}
-                    className="w-4 h-4 text-violet-600 border-slate-300 rounded focus:ring-violet-500"
-                  />
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Nom</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Contact</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Service</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Source</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Score</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Statut</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
+          <>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="px-4 lg:px-6 py-4 text-left">
+                      <input type="checkbox" checked={selectedLeads.length === filteredLeads.length} onChange={toggleSelectAll}
+                        className="w-4 h-4 text-violet-600 border-slate-300 rounded focus:ring-violet-500" />
+                    </th>
+                    <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Nom</th>
+                    <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Contact</th>
+                    <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider hidden lg:table-cell">Service</th>
+                    <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider hidden xl:table-cell">Source</th>
+                    <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Score</th>
+                    <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Statut</th>
+                    <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider hidden xl:table-cell">Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {filteredLeads.map((lead) => (
+                    <tr key={lead.lead_id} data-testid={`lead-row-${lead.lead_id}`} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-4 lg:px-6 py-4">
+                        <input type="checkbox" checked={selectedLeads.includes(lead.lead_id)}
+                          onChange={(e) => { e.stopPropagation(); toggleSelectLead(lead.lead_id); }}
+                          className="w-4 h-4 text-violet-600 border-slate-300 rounded focus:ring-violet-500" />
+                      </td>
+                      <td className="px-4 lg:px-6 py-4 cursor-pointer" onClick={() => navigate(`/leads/${lead.lead_id}`)}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-semibold text-sm flex-shrink-0">
+                            {lead.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="font-medium text-slate-900 text-sm">{lead.name}</div>
+                        </div>
+                      </td>
+                      <td className="px-4 lg:px-6 py-4 cursor-pointer" onClick={() => navigate(`/leads/${lead.lead_id}`)}>
+                        <div className="text-sm text-slate-900">{lead.email}</div>
+                        <div className="text-xs text-slate-500">{lead.phone}</div>
+                      </td>
+                      <td className="px-4 lg:px-6 py-4 hidden lg:table-cell cursor-pointer" onClick={() => navigate(`/leads/${lead.lead_id}`)}>
+                        <div className="text-sm text-slate-900">{lead.service_type}</div>
+                      </td>
+                      <td className="px-4 lg:px-6 py-4 hidden xl:table-cell cursor-pointer" onClick={() => navigate(`/leads/${lead.lead_id}`)}>
+                        <div className="text-sm text-slate-900">{lead.source || 'Direct'}</div>
+                      </td>
+                      <td className="px-4 lg:px-6 py-4 cursor-pointer" onClick={() => navigate(`/leads/${lead.lead_id}`)}>
+                        <LeadScoreBadge score={lead.score || 50} />
+                      </td>
+                      <td className="px-4 lg:px-6 py-4 cursor-pointer" onClick={() => navigate(`/leads/${lead.lead_id}`)}>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusColor(lead.status)}`}>
+                          {getStatusLabel(lead.status)}
+                        </span>
+                      </td>
+                      <td className="px-4 lg:px-6 py-4 text-sm text-slate-500 hidden xl:table-cell cursor-pointer" onClick={() => navigate(`/leads/${lead.lead_id}`)}>
+                        {formatDate(lead.created_at)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="md:hidden divide-y divide-slate-100">
               {filteredLeads.map((lead) => (
-                <tr
-                  key={lead.lead_id}
-                  data-testid={`lead-row-${lead.lead_id}`}
-                  className="hover:bg-slate-50 transition-colors"
-                >
-                  <td className="px-6 py-4">
-                    <input
-                      type="checkbox"
-                      checked={selectedLeads.includes(lead.lead_id)}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        toggleSelectLead(lead.lead_id);
-                      }}
-                      className="w-4 h-4 text-violet-600 border-slate-300 rounded focus:ring-violet-500"
-                    />
-                  </td>
-                  <td
-                    className="px-6 py-4 cursor-pointer"
-                    onClick={() => navigate(`/leads/${lead.lead_id}`)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-semibold">
-                        {lead.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="font-medium text-slate-900">{lead.name}</div>
+                <div key={lead.lead_id} data-testid={`lead-card-${lead.lead_id}`}
+                  onClick={() => navigate(`/leads/${lead.lead_id}`)}
+                  className="p-4 hover:bg-slate-50 transition-colors cursor-pointer active:bg-slate-100">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-semibold text-sm flex-shrink-0">
+                      {lead.name.charAt(0).toUpperCase()}
                     </div>
-                  </td>
-                  <td
-                    className="px-6 py-4 cursor-pointer"
-                    onClick={() => navigate(`/leads/${lead.lead_id}`)}
-                  >
-                    <div className="text-sm text-slate-900">{lead.email}</div>
-                    <div className="text-sm text-slate-500">{lead.phone}</div>
-                  </td>
-                  <td
-                    className="px-6 py-4 cursor-pointer"
-                    onClick={() => navigate(`/leads/${lead.lead_id}`)}
-                  >
-                    <div className="text-sm text-slate-900">{lead.service_type}</div>
-                    {lead.surface && <div className="text-sm text-slate-500">{lead.surface} m²</div>}
-                  </td>
-                  <td
-                    className="px-6 py-4 cursor-pointer"
-                    onClick={() => navigate(`/leads/${lead.lead_id}`)}
-                  >
-                    <div className="text-sm text-slate-900">{lead.source || 'Direct'}</div>
-                  </td>
-                  <td
-                    className="px-6 py-4 cursor-pointer"
-                    onClick={() => navigate(`/leads/${lead.lead_id}`)}
-                  >
-                    <LeadScoreBadge score={lead.score || 50} />
-                  </td>
-                  <td
-                    className="px-6 py-4 cursor-pointer"
-                    onClick={() => navigate(`/leads/${lead.lead_id}`)}
-                  >
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(lead.status)}`}>
-                      {getStatusLabel(lead.status)}
-                    </span>
-                  </td>
-                  <td
-                    className="px-6 py-4 text-sm text-slate-500 cursor-pointer"
-                    onClick={() => navigate(`/leads/${lead.lead_id}`)}
-                  >
-                    {formatDate(lead.created_at)}
-                  </td>
-                </tr>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="font-medium text-slate-900 text-sm truncate">{lead.name}</h3>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 ${getStatusColor(lead.status)}`}>
+                          {getStatusLabel(lead.status)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">{lead.service_type} &middot; {lead.source || 'Direct'}</p>
+                      <div className="flex items-center justify-between mt-2">
+                        <p className="text-xs text-slate-400">{lead.email}</p>
+                        <LeadScoreBadge score={lead.score || 50} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </>
         )}
       </div>
     </div>
