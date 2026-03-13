@@ -332,6 +332,13 @@ async def create_session(input: SessionCreate, response: Response):
         if not email or not session_token:
             raise HTTPException(status_code=400, detail="Invalid session data")
         
+        # Check allowed emails whitelist
+        allowed_raw = os.environ.get("ALLOWED_EMAILS", "")
+        if allowed_raw:
+            allowed_emails = [e.strip().lower() for e in allowed_raw.split(",") if e.strip()]
+            if allowed_emails and email.lower() not in allowed_emails:
+                raise HTTPException(status_code=403, detail="not_authorized")
+        
         # Check if user exists
         existing_user = await db.users.find_one({"email": email}, {"_id": 0})
         

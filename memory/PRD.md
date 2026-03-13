@@ -42,6 +42,12 @@ Google Calendar OAuth, Integration status dashboard, WhatsApp, Tracking widget.
 - **Overview tab updated**: Shows Gmail instead of SendGrid
 - **Mobile quote buttons fixed**: touch-manipulation, proper padding, active states
 
+### Phase 11: Email Whitelist (Mars 2026)
+- **ALLOWED_EMAILS** in `.env`: comma-separated whitelist of authorized emails
+- Backend checks email against whitelist after Google OAuth, returns 403 if not authorized
+- Frontend shows "Acces refuse" banner on `/login?error=not_authorized`
+- Easy to extend: just add emails in `.env` separated by commas
+
 ## Key API Endpoints (Gmail)
 - `GET /api/auth/google` - Start Gmail OAuth
 - `GET /api/auth/google/callback` - OAuth callback

@@ -43,7 +43,11 @@ const AuthCallback = () => {
         navigate('/dashboard', { replace: true, state: { user: userData } });
       } catch (error) {
         console.error('Auth callback error:', error);
-        navigate('/login');
+        if (error?.response?.status === 403 && error?.response?.data?.detail === 'not_authorized') {
+          navigate('/login?error=not_authorized', { replace: true });
+        } else {
+          navigate('/login');
+        }
       }
     };
 

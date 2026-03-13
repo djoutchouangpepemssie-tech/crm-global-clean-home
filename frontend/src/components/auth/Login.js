@@ -1,6 +1,10 @@
 import React from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 const Login = () => {
+  const [searchParams] = useSearchParams();
+  const authError = searchParams.get('error');
+
   const handleLogin = () => {
     // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
     const redirectUrl = window.location.origin + '/dashboard';
@@ -57,6 +61,14 @@ const Login = () => {
               Connectez-vous a votre espace CRM
             </p>
           </div>
+
+          {authError === 'not_authorized' && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl" data-testid="auth-error-banner">
+              <p className="text-sm font-medium text-red-800">
+                Acces refuse. Ce CRM est reserve a l'equipe Global Clean Home.
+              </p>
+            </div>
+          )}
 
           <button
             data-testid="google-login-button"
