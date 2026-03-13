@@ -149,11 +149,11 @@ const PlanningCalendar = () => {
 
       {/* Teams legend */}
       {teams.length > 0 && (
-        <div className="flex gap-3 mb-4 flex-wrap">
+        <div className="flex gap-2 mb-4 flex-wrap">
           {teams.map(t => (
-            <span key={t.team_id} className="flex items-center gap-2 px-3 py-1 bg-white rounded-full border border-slate-200 text-sm">
-              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: t.color }}></span>
-              {t.name}
+            <span key={t.team_id} className="flex items-center gap-1.5 px-2.5 py-1 bg-white rounded-full border border-slate-200 text-xs max-w-[200px]">
+              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: t.color }}></span>
+              <span className="truncate">{t.name}</span>
             </span>
           ))}
         </div>
@@ -161,16 +161,17 @@ const PlanningCalendar = () => {
 
       {/* Calendar grid */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
+        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
+          <p className="text-sm text-slate-400">Chargement du planning...</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
-          <div className="min-w-[640px]">
+        <>
+        {/* Desktop calendar */}
+        <div className="hidden md:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           {/* Day headers */}
           <div className="grid grid-cols-7 border-b border-slate-200">
             {DAYS_FR.map(d => (
-              <div key={d} className="p-2 md:p-3 text-center text-[10px] md:text-xs font-semibold text-slate-600 uppercase tracking-wider bg-slate-50">
+              <div key={d} className="p-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider bg-slate-50">
                 {d}
               </div>
             ))}
@@ -183,7 +184,7 @@ const PlanningCalendar = () => {
                 <div
                   key={idx}
                   data-testid={`calendar-day-${day.dateStr}`}
-                  className={`min-h-[80px] md:min-h-[120px] p-1.5 md:p-2 border-b border-r border-slate-100 ${
+                  className={`min-h-[120px] p-2 border-b border-r border-slate-100 ${
                     !day.isCurrentMonth ? 'bg-slate-50/50' : ''
                   } ${day.isToday ? 'bg-violet-50/50' : ''}`}
                 >
@@ -216,34 +217,101 @@ const PlanningCalendar = () => {
               );
             })}
           </div>
-          </div>
         </div>
+
+        {/* Mobile list view */}
+        <div className="md:hidden space-y-2">
+          {(() => {
+            const daysWithInterventions = days
+              .filter(d => d.isCurrentMonth && getInterventionsForDate(d.dateStr).length > 0);
+            
+            if (daysWithInterventions.length === 0) {
+              return (
+                <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
+                  <p className="text-sm text-slate-400">Aucune intervention ce mois-ci</p>
+                </div>
+              );
+            }
+            
+            return daysWithInterventions.map(day => {
+              const interventions = getInterventionsForDate(day.dateStr);
+              const dayName = DAYS_FR[(day.date.getDay() + 6) % 7];
+              return (
+                <div key={day.dateStr} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  <div className={`px-4 py-2.5 border-b border-slate-100 flex items-center gap-2 ${day.isToday ? 'bg-violet-50' : 'bg-slate-50'}`}>
+                    <span className={`text-sm font-bold ${day.isToday ? 'text-violet-700' : 'text-slate-700'}`}>
+                      {dayName} {day.date.getDate()}
+                    </span>
+                    <span className="text-xs text-slate-400">{MONTHS_FR[day.date.getMonth()]}</span>
+                    {day.isToday && <span className="ml-auto text-[10px] font-semibold text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full">Aujourd'hui</span>}
+                  </div>
+                  <div className="divide-y divide-slate-50">
+                    {interventions.map(intv => {
+                      const team = teams.find(t => t.team_id === intv.team_id);
+                      return (
+                        <div
+                          key={intv.intervention_id}
+                          data-testid={`intervention-mobile-${intv.intervention_id}`}
+                          onClick={() => setSelectedIntervention(intv)}
+                          className="px-4 py-3 cursor-pointer active:bg-slate-50"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-xs font-semibold text-slate-500 flex-shrink-0">{intv.scheduled_time}</span>
+                              <p className="text-sm font-medium text-slate-900 truncate">{intv.title}</p>
+                            </div>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 ${statusColors[intv.status] || statusColors.planifiée}`}>
+                              {intv.status}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-400">
+                            {intv.lead_name && <span className="truncate">{intv.lead_name}</span>}
+                            {intv.address && <span className="truncate flex items-center gap-1"><MapPin className="w-3 h-3 flex-shrink-0" />{intv.address}</span>}
+                            {team && <span className="flex items-center gap-1 flex-shrink-0"><span className="w-2 h-2 rounded-full" style={{backgroundColor: team.color}}></span>{team.name?.length > 15 ? team.name.slice(0, 15) + '...' : team.name}</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            });
+          })()}
+          
+          {/* Days without interventions */}
+          {days.filter(d => d.isCurrentMonth && getInterventionsForDate(d.dateStr).length === 0).length === days.filter(d => d.isCurrentMonth).length && (
+            <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
+              <p className="text-sm text-slate-400">Aucune intervention ce mois-ci</p>
+            </div>
+          )}
+        </div>
+        </>
       )}
 
       {/* Intervention detail modal */}
       {selectedIntervention && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedIntervention(null)}>
-          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl" onClick={e => e.stopPropagation()} data-testid="intervention-detail-modal">
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-xl font-bold text-slate-900">{selectedIntervention.title}</h3>
-              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColors[selectedIntervention.status]}`}>
+          <div className="bg-white rounded-2xl p-5 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()} data-testid="intervention-detail-modal">
+            <div className="flex justify-between items-start mb-4 gap-3">
+              <h3 className="text-lg font-bold text-slate-900 truncate">{selectedIntervention.title}</h3>
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold flex-shrink-0 ${statusColors[selectedIntervention.status]}`}>
                 {selectedIntervention.status}
               </span>
             </div>
-            <div className="space-y-3 mb-6">
+            <div className="space-y-3 mb-5">
               <div className="flex items-center gap-2 text-sm text-slate-600">
-                <Clock className="w-4 h-4" />
-                {selectedIntervention.scheduled_date} à {selectedIntervention.scheduled_time} ({selectedIntervention.duration_hours}h)
+                <Clock className="w-4 h-4 flex-shrink-0" />
+                <span>{selectedIntervention.scheduled_date} a {selectedIntervention.scheduled_time} ({selectedIntervention.duration_hours}h)</span>
               </div>
               {selectedIntervention.address && (
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <MapPin className="w-4 h-4" />
-                  {selectedIntervention.address}
+                <div className="flex items-center gap-2 text-sm text-slate-600 min-w-0">
+                  <MapPin className="w-4 h-4 flex-shrink-0" />
+                  <span className="truncate">{selectedIntervention.address}</span>
                 </div>
               )}
-              <div className="flex items-center gap-2 text-sm text-slate-600">
-                <Users className="w-4 h-4" />
-                {selectedIntervention.lead_name} - {selectedIntervention.lead_phone}
+              <div className="flex items-center gap-2 text-sm text-slate-600 min-w-0">
+                <Users className="w-4 h-4 flex-shrink-0" />
+                <span className="truncate">{selectedIntervention.lead_name} - {selectedIntervention.lead_phone}</span>
               </div>
               {selectedIntervention.description && (
                 <p className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3">{selectedIntervention.description}</p>

@@ -59,9 +59,9 @@ function AppRouter() {
         path="/*"
         element={
           <ProtectedRoute>
-            <div className="flex min-h-screen">
+            <div className="flex min-h-screen w-full max-w-[100vw] overflow-x-hidden">
               <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-              <div className="flex-1 lg:ml-64 min-h-screen bg-slate-50 flex flex-col">
+              <div className="flex-1 w-0 lg:ml-64 min-h-screen bg-slate-50 flex flex-col overflow-x-hidden">
                 <MobileHeader onMenuToggle={() => setSidebarOpen(true)} />
                 <div className="flex-1">
                   <Routes>

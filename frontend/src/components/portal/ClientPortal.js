@@ -228,7 +228,7 @@ const PortalDashboard = ({ user, onLogout }) => {
 
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
+            <div className="animate-pulse bg-slate-200 rounded h-6 w-32"></div>
           </div>
         ) : (
           <>
@@ -442,7 +442,7 @@ const ClientPortal = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
+        <p className="text-sm text-slate-400">Chargement...</p>
       </div>
     );
   }

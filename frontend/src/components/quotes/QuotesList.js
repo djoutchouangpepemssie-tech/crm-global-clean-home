@@ -76,7 +76,7 @@ const QuotesList = () => {
         {loading ? (
           <div className="col-span-full flex items-center justify-center py-12">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto"></div>
+              <div className="animate-pulse bg-slate-200 rounded h-6 w-32 mx-auto"></div>
               <p className="mt-4 text-slate-600">Chargement...</p>
             </div>
           </div>

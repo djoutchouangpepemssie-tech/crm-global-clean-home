@@ -30,7 +30,7 @@ const FinancialDashboard = () => {
   if (loading || !stats) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
+        <div className="animate-pulse bg-slate-200 rounded h-6 w-32 mx-auto"></div>
       </div>
     );
   }
@@ -93,11 +93,11 @@ const FinancialDashboard = () => {
           <div key={idx} className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600 mb-1">{kpi.title}</p>
-                <p className="text-3xl font-bold text-slate-900">{kpi.value}</p>
+                <p className="text-xs text-slate-500 mb-1">{kpi.title}</p>
+                <p className="text-xl md:text-2xl font-bold text-slate-900 truncate">{kpi.value}</p>
               </div>
-              <div className={`w-12 h-12 rounded-lg ${kpi.color} flex items-center justify-center`}>
-                <kpi.icon className="w-6 h-6 text-white" />
+              <div className={`w-10 h-10 rounded-lg ${kpi.color} flex items-center justify-center flex-shrink-0`}>
+                <kpi.icon className="w-5 h-5 text-white" />
               </div>
             </div>
           </div>
@@ -105,18 +105,18 @@ const FinancialDashboard = () => {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* Revenue over time */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Revenus par jour</h3>
-          <ResponsiveContainer width="100%" height={300}>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm overflow-hidden">
+          <h3 className="text-sm md:text-base font-semibold text-slate-900 mb-4">Revenus par jour</h3>
+          <ResponsiveContainer width="100%" height={250}>
             <AreaChart data={stats.revenue_by_day}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="date" stroke="#64748b" style={{ fontSize: '11px' }} />
-              <YAxis stroke="#64748b" style={{ fontSize: '11px' }} tickFormatter={v => `${v}€`} />
+              <XAxis dataKey="date" stroke="#64748b" style={{ fontSize: '10px' }} tickLine={false} interval="preserveStartEnd" />
+              <YAxis stroke="#64748b" style={{ fontSize: '10px' }} tickFormatter={v => `${v}`} width={35} tickLine={false} />
               <Tooltip
-                formatter={(value) => [`${value.toFixed(2)} €`, 'Revenu']}
-                contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                formatter={(value) => [`${value.toFixed(2)} EUR`, 'Revenu']}
+                contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px' }}
               />
               <Area type="monotone" dataKey="revenue" stroke="#10B981" fill="#10B981" fillOpacity={0.2} />
             </AreaChart>
@@ -124,21 +124,21 @@ const FinancialDashboard = () => {
         </div>
 
         {/* Revenue by service */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Revenus par service</h3>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm overflow-hidden">
+          <h3 className="text-sm md:text-base font-semibold text-slate-900 mb-4">Revenus par service</h3>
           {serviceData.length === 0 ? (
-            <div className="flex items-center justify-center h-[300px] text-slate-400">
-              Aucune donnée disponible
+            <div className="flex items-center justify-center h-[250px] text-slate-400 text-sm">
+              Aucune donnee disponible
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <BarChart data={serviceData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="name" stroke="#64748b" style={{ fontSize: '11px' }} />
-                <YAxis stroke="#64748b" style={{ fontSize: '11px' }} tickFormatter={v => `${v}€`} />
+                <XAxis dataKey="name" stroke="#64748b" style={{ fontSize: '10px' }} tickLine={false} interval={0} angle={-20} textAnchor="end" height={50} />
+                <YAxis stroke="#64748b" style={{ fontSize: '10px' }} tickFormatter={v => `${v}`} width={35} tickLine={false} />
                 <Tooltip
-                  formatter={(value) => [`${value.toFixed(2)} €`, 'Revenu']}
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                  formatter={(value) => [`${value.toFixed(2)} EUR`, 'Revenu']}
+                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px' }}
                 />
                 <Bar dataKey="revenue" fill="#7C3AED" radius={[8, 8, 0, 0]} />
               </BarChart>
@@ -148,26 +148,26 @@ const FinancialDashboard = () => {
       </div>
 
       {/* Recent transactions */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-        <h3 className="text-lg font-semibold text-slate-900 mb-4">Transactions récentes</h3>
+      <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm overflow-hidden">
+        <h3 className="text-sm md:text-base font-semibold text-slate-900 mb-4">Transactions recentes</h3>
         {stats.recent_transactions.length === 0 ? (
-          <p className="text-slate-400 text-center py-8">Aucune transaction</p>
+          <p className="text-slate-400 text-center py-6 text-sm">Aucune transaction</p>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {stats.recent_transactions.map((tx, idx) => (
-              <div key={idx} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
-                <div>
-                  <p className="font-mono text-sm text-slate-900">{tx.transaction_id}</p>
-                  <p className="text-xs text-slate-500 mt-1">Facture: {tx.invoice_id}</p>
+              <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg gap-3">
+                <div className="min-w-0">
+                  <p className="font-mono text-xs text-slate-900 truncate">{tx.transaction_id}</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5 truncate">Facture: {tx.invoice_id}</p>
                 </div>
-                <div className="text-right">
-                  <p className="font-semibold text-slate-900">{formatCurrency(tx.amount)}</p>
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                <div className="text-right flex-shrink-0">
+                  <p className="font-semibold text-sm text-slate-900">{formatCurrency(tx.amount)}</p>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                     tx.payment_status === 'paid' ? 'bg-green-100 text-green-800' :
                     tx.payment_status === 'initiated' ? 'bg-yellow-100 text-yellow-800' :
                     'bg-red-100 text-red-800'
                   }`}>
-                    {tx.payment_status === 'paid' ? 'Payé' : tx.payment_status === 'initiated' ? 'Initié' : tx.payment_status}
+                    {tx.payment_status === 'paid' ? 'Paye' : tx.payment_status === 'initiated' ? 'Initie' : tx.payment_status}
                   </span>
                 </div>
               </div>

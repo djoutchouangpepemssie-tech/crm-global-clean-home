@@ -35,10 +35,7 @@ const Dashboard = () => {
   if (loading || !stats) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto"></div>
-          <p className="mt-4 text-slate-500 text-sm">Chargement du tableau de bord...</p>
-        </div>
+        <p className="text-sm text-slate-400">Chargement...</p>
       </div>
     );
   }
@@ -95,35 +92,35 @@ const Dashboard = () => {
       </div>
 
       {/* KPI Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger-children" data-testid="kpi-grid">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 stagger-children" data-testid="kpi-grid">
         {kpis.map((kpi, idx) => (
           <div
             key={idx}
-            className="bg-white rounded-xl border border-slate-200 p-5 hover-lift animate-fade-in"
+            className="bg-white rounded-xl border border-slate-200 p-4 md:p-5 hover-lift animate-fade-in overflow-hidden"
           >
             <div className="flex items-center justify-between mb-3">
-              <div className={`w-10 h-10 rounded-lg ${kpi.bg} flex items-center justify-center`}>
-                <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
+              <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg ${kpi.bg} flex items-center justify-center flex-shrink-0`}>
+                <kpi.icon className={`w-4 h-4 md:w-5 md:h-5 ${kpi.color}`} />
               </div>
               {kpi.change && (
-                <span className="flex items-center gap-0.5 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                <span className="flex items-center gap-0.5 text-[10px] md:text-xs font-semibold text-emerald-600 bg-emerald-50 px-1.5 md:px-2 py-0.5 rounded-full flex-shrink-0">
                   <ArrowUpRight className="w-3 h-3" />
                   {kpi.change}
                 </span>
               )}
             </div>
-            <p className="text-2xl font-bold text-slate-900 tracking-tight">{kpi.value}</p>
-            <p className="text-xs text-slate-500 mt-1 font-medium">{kpi.title}</p>
+            <p className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight truncate">{kpi.value}</p>
+            <p className="text-[10px] md:text-xs text-slate-500 mt-1 font-medium truncate">{kpi.title}</p>
           </div>
         ))}
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Leads over time */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6 hover-lift">
-          <h3 className="text-base font-semibold text-slate-900 mb-4">Leads par jour</h3>
-          <ResponsiveContainer width="100%" height={280}>
+        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-4 md:p-6 hover-lift overflow-hidden">
+          <h3 className="text-sm md:text-base font-semibold text-slate-900 mb-4">Leads par jour</h3>
+          <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={stats.leads_by_day || []}>
               <defs>
                 <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
@@ -132,10 +129,10 @@ const Dashboard = () => {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-              <XAxis dataKey="date" stroke="#94A3B8" style={{ fontSize: '11px' }} tickLine={false} axisLine={false} />
-              <YAxis stroke="#94A3B8" style={{ fontSize: '11px' }} tickLine={false} axisLine={false} allowDecimals={false} />
+              <XAxis dataKey="date" stroke="#94A3B8" style={{ fontSize: '10px' }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+              <YAxis stroke="#94A3B8" style={{ fontSize: '10px' }} tickLine={false} axisLine={false} allowDecimals={false} width={30} />
               <Tooltip
-                contentStyle={{ backgroundColor: '#fff', border: '1px solid #E2E8F0', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+                contentStyle={{ backgroundColor: '#fff', border: '1px solid #E2E8F0', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: '12px' }}
                 labelStyle={{ fontWeight: 600, color: '#0F172A' }}
               />
               <Area type="monotone" dataKey="count" stroke="#7C3AED" strokeWidth={2} fill="url(#colorLeads)" />
@@ -144,15 +141,15 @@ const Dashboard = () => {
         </div>
 
         {/* Sources pie chart */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6 hover-lift">
-          <h3 className="text-base font-semibold text-slate-900 mb-4">Sources</h3>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 hover-lift overflow-hidden">
+          <h3 className="text-sm md:text-base font-semibold text-slate-900 mb-4">Sources</h3>
           {sourceData.length === 0 ? (
-            <div className="flex items-center justify-center h-[280px] text-slate-400 text-sm">Pas de données</div>
+            <div className="flex items-center justify-center h-[200px] text-slate-400 text-sm">Pas de donnees</div>
           ) : (
             <>
-              <ResponsiveContainer width="100%" height={200}>
+              <ResponsiveContainer width="100%" height={180}>
                 <PieChart>
-                  <Pie data={sourceData} cx="50%" cy="50%" outerRadius={80} innerRadius={45} paddingAngle={3} dataKey="value">
+                  <Pie data={sourceData} cx="50%" cy="50%" outerRadius={70} innerRadius={40} paddingAngle={3} dataKey="value">
                     {sourceData.map((_, idx) => (
                       <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
                     ))}
@@ -162,12 +159,12 @@ const Dashboard = () => {
               </ResponsiveContainer>
               <div className="space-y-1.5 mt-2">
                 {sourceData.map((s, idx) => (
-                  <div key={s.name} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}></span>
-                      <span className="text-slate-600">{s.name}</span>
+                  <div key={s.name} className="flex items-center justify-between text-xs gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}></span>
+                      <span className="text-slate-600 truncate">{s.name}</span>
                     </div>
-                    <span className="font-semibold text-slate-900">{s.value}</span>
+                    <span className="font-semibold text-slate-900 flex-shrink-0">{s.value}</span>
                   </div>
                 ))}
               </div>
@@ -177,25 +174,25 @@ const Dashboard = () => {
       </div>
 
       {/* Service chart + Recent Leads */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* Services */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6 hover-lift">
-          <h3 className="text-base font-semibold text-slate-900 mb-4">Par service</h3>
-          <ResponsiveContainer width="100%" height={250}>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 hover-lift overflow-hidden">
+          <h3 className="text-sm md:text-base font-semibold text-slate-900 mb-4">Par service</h3>
+          <ResponsiveContainer width="100%" height={220}>
             <BarChart data={serviceData} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" horizontal={false} />
-              <XAxis type="number" stroke="#94A3B8" style={{ fontSize: '11px' }} tickLine={false} axisLine={false} allowDecimals={false} />
-              <YAxis dataKey="name" type="category" stroke="#94A3B8" style={{ fontSize: '11px' }} tickLine={false} axisLine={false} width={80} />
-              <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #E2E8F0' }} />
-              <Bar dataKey="value" fill="#7C3AED" radius={[0, 6, 6, 0]} barSize={24} />
+              <XAxis type="number" stroke="#94A3B8" style={{ fontSize: '10px' }} tickLine={false} axisLine={false} allowDecimals={false} />
+              <YAxis dataKey="name" type="category" stroke="#94A3B8" style={{ fontSize: '10px' }} tickLine={false} axisLine={false} width={70} />
+              <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '12px' }} />
+              <Bar dataKey="value" fill="#7C3AED" radius={[0, 6, 6, 0]} barSize={20} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         {/* Recent Leads */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6 hover-lift">
+        <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 hover-lift overflow-hidden">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-semibold text-slate-900">Leads récents</h3>
+            <h3 className="text-sm md:text-base font-semibold text-slate-900">Leads recents</h3>
             <button
               onClick={() => navigate('/leads')}
               className="text-xs font-medium text-violet-600 hover:text-violet-700 transition-colors"

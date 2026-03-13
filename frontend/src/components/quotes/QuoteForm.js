@@ -96,7 +96,7 @@ const QuoteForm = () => {
         </button>
 
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
             Nouveau devis
           </h1>
           <p className="text-slate-600 mt-1">Créez un devis pour un lead</p>

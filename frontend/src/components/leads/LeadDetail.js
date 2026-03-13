@@ -82,8 +82,7 @@ const LeadDetail = () => {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto"></div>
-          <p className="mt-4 text-slate-600">Chargement...</p>
+          <div className="animate-pulse bg-slate-200 rounded h-6 w-32 mx-auto"></div>
         </div>
       </div>
     );
@@ -160,72 +159,72 @@ const LeadDetail = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Left column - Info */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4 md:space-y-6 overflow-hidden">
           {/* Contact info */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Informations de contact</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center gap-3">
-                <Mail className="w-5 h-5 text-slate-400" />
-                <div>
-                  <p className="text-sm text-slate-600">Email</p>
-                  <p className="text-slate-900">{lead.email}</p>
+          <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm overflow-hidden">
+            <h2 className="text-base md:text-lg font-semibold text-slate-900 mb-4">Informations de contact</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <Mail className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-500">Email</p>
+                  <p className="text-sm text-slate-900 truncate">{lead.email}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <Phone className="w-5 h-5 text-slate-400" />
-                <div>
-                  <p className="text-sm text-slate-600">Téléphone</p>
-                  <p className="text-slate-900">{lead.phone}</p>
+              <div className="flex items-center gap-3 min-w-0">
+                <Phone className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-500">Telephone</p>
+                  <p className="text-sm text-slate-900">{lead.phone}</p>
                 </div>
               </div>
               {lead.address && (
-                <div className="flex items-center gap-3">
-                  <MapPin className="w-5 h-5 text-slate-400" />
-                  <div>
-                    <p className="text-sm text-slate-600">Adresse</p>
-                    <p className="text-slate-900">{lead.address}</p>
+                <div className="flex items-center gap-3 min-w-0">
+                  <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs text-slate-500">Adresse</p>
+                    <p className="text-sm text-slate-900 truncate">{lead.address}</p>
                   </div>
                 </div>
               )}
-              <div className="flex items-center gap-3">
-                <Calendar className="w-5 h-5 text-slate-400" />
-                <div>
-                  <p className="text-sm text-slate-600">Créé le</p>
-                  <p className="text-slate-900">{formatDateTime(lead.created_at)}</p>
+              <div className="flex items-center gap-3 min-w-0">
+                <Calendar className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-500">Cree le</p>
+                  <p className="text-sm text-slate-900">{formatDateTime(lead.created_at)}</p>
                 </div>
               </div>
             </div>
             {lead.message && (
               <div className="mt-4 pt-4 border-t border-slate-200">
-                <p className="text-sm text-slate-600 mb-2">Message</p>
-                <p className="text-slate-900">{lead.message}</p>
+                <p className="text-xs text-slate-500 mb-2">Message</p>
+                <p className="text-sm text-slate-900 break-words">{lead.message}</p>
               </div>
             )}
           </div>
 
           {/* Quotes */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm" data-testid="quotes-section">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Devis ({quotes.length})</h2>
+          <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm overflow-hidden" data-testid="quotes-section">
+            <h2 className="text-base md:text-lg font-semibold text-slate-900 mb-4">Devis ({quotes.length})</h2>
             {quotes.length === 0 ? (
-              <p className="text-slate-500 text-center py-8">Aucun devis créé</p>
+              <p className="text-slate-500 text-center py-6 text-sm">Aucun devis cree</p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {quotes.map((quote) => (
                   <div
                     key={quote.quote_id}
                     data-testid={`quote-item-${quote.quote_id}`}
-                    className="flex items-center justify-between p-4 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
+                    className="flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors gap-3"
                   >
-                    <div>
-                      <p className="font-medium text-slate-900">{quote.service_type}</p>
-                      <p className="text-sm text-slate-600">{formatDateTime(quote.created_at)}</p>
+                    <div className="min-w-0">
+                      <p className="font-medium text-slate-900 text-sm truncate">{quote.service_type}</p>
+                      <p className="text-xs text-slate-500">{formatDateTime(quote.created_at)}</p>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-slate-900">{formatCurrency(quote.amount)}</p>
-                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(quote.status)}`}>
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-semibold text-slate-900 text-sm">{formatCurrency(quote.amount)}</p>
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${getStatusColor(quote.status)}`}>
                         {getStatusLabel(quote.status)}
                       </span>
                     </div>
@@ -236,8 +235,8 @@ const LeadDetail = () => {
           </div>
 
           {/* Interactions */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm" data-testid="interactions-section">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Historique des interactions</h2>
+          <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm overflow-hidden" data-testid="interactions-section">
+            <h2 className="text-base md:text-lg font-semibold text-slate-900 mb-4">Historique des interactions</h2>
             
             {/* Add interaction form */}
             <form onSubmit={handleAddInteraction} className="mb-6 p-4 bg-slate-50 rounded-lg">
@@ -286,7 +285,7 @@ const LeadDetail = () => {
                         <span className="text-sm font-medium text-slate-900 capitalize">{interaction.type}</span>
                         <span className="text-xs text-slate-500">{formatDateTime(interaction.created_at)}</span>
                       </div>
-                      <p className="text-slate-700">{interaction.content}</p>
+                      <p className="text-sm text-slate-700 break-words">{interaction.content}</p>
                     </div>
                   </div>
                 ))
@@ -296,60 +295,60 @@ const LeadDetail = () => {
         </div>
 
         {/* Right column - Details */}
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6 overflow-hidden">
           {/* Service details */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Détails du service</h2>
+          <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm overflow-hidden">
+            <h2 className="text-base md:text-lg font-semibold text-slate-900 mb-4">Details du service</h2>
             <div className="space-y-3">
               <div>
-                <p className="text-sm text-slate-600">Service</p>
-                <p className="text-slate-900 font-medium">{lead.service_type}</p>
+                <p className="text-xs text-slate-500">Service</p>
+                <p className="text-sm text-slate-900 font-medium truncate">{lead.service_type}</p>
               </div>
               {lead.surface && (
                 <div>
-                  <p className="text-sm text-slate-600">Surface</p>
-                  <p className="text-slate-900 font-medium">{lead.surface} m²</p>
+                  <p className="text-xs text-slate-500">Surface</p>
+                  <p className="text-sm text-slate-900 font-medium">{lead.surface} m2</p>
                 </div>
               )}
               <div>
-                <p className="text-sm text-slate-600">Probabilité</p>
+                <p className="text-xs text-slate-500">Probabilite</p>
                 <div className="flex items-center gap-2 mt-1">
-                  <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-violet-600 rounded-full transition-all"
+                      className="h-full bg-violet-600 rounded-full"
                       style={{ width: `${lead.probability}%` }}
                     ></div>
                   </div>
-                  <span className="text-sm font-medium text-slate-900">{lead.probability}%</span>
+                  <span className="text-xs font-medium text-slate-900 flex-shrink-0">{lead.probability}%</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Source tracking */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Tracking</h2>
+          <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm overflow-hidden">
+            <h2 className="text-base md:text-lg font-semibold text-slate-900 mb-4">Tracking</h2>
             <div className="space-y-3">
               <div>
-                <p className="text-sm text-slate-600">Source</p>
-                <p className="text-slate-900 font-medium">{lead.source || 'Direct'}</p>
+                <p className="text-xs text-slate-500">Source</p>
+                <p className="text-sm text-slate-900 font-medium truncate">{lead.source || 'Direct'}</p>
               </div>
               {lead.campaign && (
                 <div>
-                  <p className="text-sm text-slate-600">Campagne</p>
-                  <p className="text-slate-900 font-medium">{lead.campaign}</p>
+                  <p className="text-xs text-slate-500">Campagne</p>
+                  <p className="text-sm text-slate-900 font-medium truncate">{lead.campaign}</p>
                 </div>
               )}
               {lead.utm_source && (
                 <div>
-                  <p className="text-sm text-slate-600">UTM Source</p>
-                  <p className="text-slate-900 font-medium">{lead.utm_source}</p>
+                  <p className="text-xs text-slate-500">UTM Source</p>
+                  <p className="text-sm text-slate-900 font-medium truncate">{lead.utm_source}</p>
                 </div>
               )}
               {lead.utm_medium && (
                 <div>
-                  <p className="text-sm text-slate-600">UTM Medium</p>
-                  <p className="text-slate-900 font-medium">{lead.utm_medium}</p>
+                  <p className="text-xs text-slate-500">UTM Medium</p>
+                  <p className="text-sm text-slate-900 font-medium truncate">{lead.utm_medium}</p>
                 </div>
               )}
             </div>

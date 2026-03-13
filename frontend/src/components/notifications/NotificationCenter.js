@@ -72,7 +72,7 @@ const NotificationCenter = () => {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)}></div>
-          <div className="absolute right-0 top-12 w-96 bg-white rounded-xl border border-slate-200 shadow-2xl z-50 max-h-[500px] overflow-hidden" data-testid="notification-dropdown">
+          <div className="absolute right-0 sm:right-0 top-12 w-[calc(100vw-2rem)] sm:w-96 max-w-[384px] bg-white rounded-xl border border-slate-200 shadow-2xl z-50 max-h-[500px] overflow-hidden" data-testid="notification-dropdown">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
               <h3 className="font-semibold text-slate-900">Notifications</h3>

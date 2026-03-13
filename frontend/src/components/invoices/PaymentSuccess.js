@@ -56,7 +56,7 @@ const PaymentSuccess = () => {
       <div className="max-w-md w-full text-center">
         {status === 'checking' && (
           <div>
-            <Loader2 className="w-16 h-16 text-violet-600 animate-spin mx-auto mb-4" />
+            <p className="text-sm text-slate-400">Verification du paiement...</p>
             <h1 className="text-2xl font-bold text-slate-900 mb-2">Vérification du paiement...</h1>
             <p className="text-slate-600">Veuillez patienter pendant que nous confirmons votre paiement.</p>
           </div>

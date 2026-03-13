@@ -35,7 +35,7 @@ const Analytics = () => {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto"></div>
+          <div className="animate-pulse bg-slate-200 rounded h-6 w-32 mx-auto"></div>
           <p className="mt-4 text-slate-600">Chargement...</p>
         </div>
       </div>
@@ -131,11 +131,11 @@ const Analytics = () => {
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600 mb-1">{kpi.title}</p>
-                <p className="text-3xl font-bold text-slate-900">{kpi.value}</p>
+                <p className="text-xs text-slate-500 mb-1">{kpi.title}</p>
+                <p className="text-xl md:text-2xl font-bold text-slate-900 truncate">{kpi.value}</p>
               </div>
-              <div className={`w-12 h-12 rounded-lg ${kpi.color} flex items-center justify-center`}>
-                <kpi.icon className="w-6 h-6 text-white" />
+              <div className={`w-10 h-10 rounded-lg ${kpi.color} flex items-center justify-center flex-shrink-0`}>
+                <kpi.icon className="w-5 h-5 text-white" />
               </div>
             </div>
           </div>
@@ -143,35 +143,35 @@ const Analytics = () => {
       </div>
 
       {/* Funnel */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">Entonnoir de conversion</h2>
+      <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm overflow-hidden">
+        <h2 className="text-sm md:text-base font-semibold text-slate-900 mb-4">Entonnoir de conversion</h2>
         <div className="space-y-3">
-          <div className="relative">
+          <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-medium text-slate-700">Visiteurs</span>
-              <span className="text-sm font-semibold text-slate-900">{stats.funnel.visitors}</span>
+              <span className="text-xs font-medium text-slate-700">Visiteurs</span>
+              <span className="text-xs font-semibold text-slate-900">{stats.funnel.visitors}</span>
             </div>
-            <div className="h-8 bg-blue-500 rounded-lg" style={{ width: '100%' }}></div>
+            <div className="h-6 bg-blue-500 rounded-lg" style={{ width: '100%' }}></div>
           </div>
-          <div className="relative">
+          <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-medium text-slate-700">Clics CTA</span>
-              <span className="text-sm font-semibold text-slate-900">{stats.funnel.cta_clicks}</span>
+              <span className="text-xs font-medium text-slate-700">Clics CTA</span>
+              <span className="text-xs font-semibold text-slate-900">{stats.funnel.cta_clicks}</span>
             </div>
             <div
-              className="h-8 bg-violet-500 rounded-lg"
+              className="h-6 bg-violet-500 rounded-lg"
               style={{
                 width: `${stats.funnel.visitors > 0 ? (stats.funnel.cta_clicks / stats.funnel.visitors) * 100 : 0}%`
               }}
             ></div>
           </div>
-          <div className="relative">
+          <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-medium text-slate-700">Formulaires soumis</span>
-              <span className="text-sm font-semibold text-slate-900">{stats.funnel.form_submits}</span>
+              <span className="text-xs font-medium text-slate-700">Formulaires soumis</span>
+              <span className="text-xs font-semibold text-slate-900">{stats.funnel.form_submits}</span>
             </div>
             <div
-              className="h-8 bg-green-500 rounded-lg"
+              className="h-6 bg-green-500 rounded-lg"
               style={{
                 width: `${stats.funnel.visitors > 0 ? (stats.funnel.form_submits / stats.funnel.visitors) * 100 : 0}%`
               }}
@@ -181,19 +181,18 @@ const Analytics = () => {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* Sources */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Sources de trafic</h2>
-          <ResponsiveContainer width="100%" height={300}>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm overflow-hidden">
+          <h2 className="text-sm md:text-base font-semibold text-slate-900 mb-4">Sources de trafic</h2>
+          <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie
                 data={sourceData}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                outerRadius={100}
+                outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
               >
@@ -204,17 +203,28 @@ const Analytics = () => {
               <Tooltip />
             </PieChart>
           </ResponsiveContainer>
+          <div className="space-y-1 mt-2">
+            {sourceData.map((s, idx) => (
+              <div key={s.name} className="flex items-center justify-between text-xs gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></span>
+                  <span className="text-slate-600 truncate">{s.name}</span>
+                </div>
+                <span className="font-semibold text-slate-900 flex-shrink-0">{s.value}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Devices */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Appareils</h2>
-          <ResponsiveContainer width="100%" height={300}>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm overflow-hidden">
+          <h2 className="text-sm md:text-base font-semibold text-slate-900 mb-4">Appareils</h2>
+          <ResponsiveContainer width="100%" height={250}>
             <BarChart data={deviceData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="name" stroke="#64748b" style={{ fontSize: '12px' }} />
-              <YAxis stroke="#64748b" style={{ fontSize: '12px' }} />
-              <Tooltip />
+              <XAxis dataKey="name" stroke="#64748b" style={{ fontSize: '10px' }} tickLine={false} />
+              <YAxis stroke="#64748b" style={{ fontSize: '10px' }} width={30} tickLine={false} />
+              <Tooltip contentStyle={{ fontSize: '12px' }} />
               <Bar dataKey="value" fill="#7C3AED" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -222,16 +232,16 @@ const Analytics = () => {
       </div>
 
       {/* Top pages */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">Pages les plus visitées</h2>
-        <div className="space-y-3">
+      <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm overflow-hidden">
+        <h2 className="text-sm md:text-base font-semibold text-slate-900 mb-4">Pages les plus visitees</h2>
+        <div className="space-y-2">
           {stats.top_pages.slice(0, 10).map((page, index) => (
-            <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+            <div key={index} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-900 truncate">{page.url}</p>
+                <p className="text-xs font-medium text-slate-900 truncate">{page.url}</p>
               </div>
-              <span className="ml-4 px-3 py-1 bg-white rounded-full text-sm font-semibold text-slate-700">
-                {page.views} vues
+              <span className="px-2 py-0.5 bg-white rounded-full text-xs font-semibold text-slate-700 flex-shrink-0">
+                {page.views}
               </span>
             </div>
           ))}
@@ -239,21 +249,18 @@ const Analytics = () => {
       </div>
 
       {/* Installation Instructions */}
-      <div className="bg-gradient-to-br from-violet-50 to-blue-50 rounded-xl border border-violet-200 p-8">
-        <h2 className="text-2xl font-bold text-slate-900 mb-4">Installation du Widget de Tracking</h2>
-        <p className="text-slate-600 mb-4">
-          Pour tracker les visiteurs sur votre site globalcleanhome.com, ajoutez ce code avant la fermeture du &lt;/body&gt; :
+      <div className="bg-gradient-to-br from-violet-50 to-blue-50 rounded-xl border border-violet-200 p-4 md:p-8 overflow-hidden">
+        <h2 className="text-lg md:text-xl font-bold text-slate-900 mb-3">Installation du Widget de Tracking</h2>
+        <p className="text-sm text-slate-600 mb-4">
+          Pour tracker les visiteurs sur globalcleanhome.com, ajoutez ce code avant la fermeture du &lt;/body&gt; :
         </p>
-        <div className="bg-slate-900 text-white p-6 rounded-lg font-mono text-sm overflow-x-auto">
-          <code>
-            {`<script src="https://clean-business-hub.preview.emergentagent.com/tracking.js"></script>
-<script>
-  GCHTracker.init({ apiKey: 'gch_${Math.random().toString(36).substring(7)}' });
-</script>`}
+        <div className="bg-slate-900 text-green-400 p-4 rounded-lg font-mono text-xs overflow-x-auto">
+          <code className="break-all">
+            {`<script src="${process.env.REACT_APP_BACKEND_URL}/tracking.js"></script>`}
           </code>
         </div>
-        <p className="text-sm text-slate-600 mt-4">
-          🔒 Le tracking est automatique : pages vues, clics, formulaires, temps passé, etc.
+        <p className="text-xs text-slate-500 mt-3">
+          Le tracking est automatique : pages vues, clics, formulaires, temps passe.
         </p>
       </div>
     </div>
