@@ -2,7 +2,7 @@
 
 ## Vue d'ensemble
 **Nom:** CRM Global Clean Home  
-**Version:** 5.0  
+**Version:** 5.1  
 **Date:** Mars 2026  
 **Stack:** React 19 + FastAPI + MongoDB + Stripe + SendGrid + Google Calendar API + ReportLab (PDF)
 
@@ -25,30 +25,26 @@
 ## Completed Phases
 
 ### Phase 1-7: Core CRM + Features
-All core CRM features, payments, client portal, planning, scoring, integrations, UX overhaul, PDF/CSV exports.
+All core CRM, payments, portal, planning, scoring, integrations, UX, PDF/CSV exports.
 
-### Phase 8: Production Integrations (Mars 2026)
-- SendGrid email service
-- Google Calendar OAuth
-- Integration status dashboard
-- WhatsApp number (0622665308)
-- Tracking widget for globalcleanhome.com
+### Phase 8: Production Integrations
+SendGrid, Google Calendar OAuth, Integration status dashboard, WhatsApp, Tracking widget.
 
-### Phase 9: Full Responsive Design (Mars 2026)
-- **Sidebar**: Mobile drawer with hamburger menu, overlay on < 1024px
-- **App.js**: MobileHeader component, `lg:ml-64` layout
-- **All pages**: `p-4 md:p-6 lg:p-8` responsive padding
-- **Leads/Invoices**: Mobile card layouts replacing tables on < 768px
-- **Kanban**: Horizontal scroll with negative margin pattern
-- **Planning calendar**: min-w-[640px] wrapper for horizontal scroll
-- **Headers**: Responsive text sizes, stacked layouts on mobile
-- **Login**: Mobile logo, hidden hero image
-- **Buttons**: Hidden text labels on small screens, flex-wrap
-- **Grids**: sm/md/lg breakpoints for proper column collapse
+### Phase 9: Responsive Design + Overflow Fix (Mars 2026)
+- **Global overflow prevention**: html/body overflow-x:hidden, App.js w-0 overflow-x-hidden
+- **Sidebar**: Mobile drawer (translate-x), hamburger menu, overlay close
+- **Planning mobile**: List view groupee par jour au lieu du calendrier 7 colonnes
+- **Tables mobile**: Cards layout pour Leads et Factures (md:hidden)
+- **Zero spinners**: Tous animate-spin remplaces par texte simple ou animate-pulse
+- **Text overflow**: truncate + break-words sur tous les textes
+- **Modales**: max-h-[90vh] overflow-y-auto
+- **Notifications**: Dropdown responsive w-[calc(100vw-2rem)] sm:w-96
+- **Charts**: overflow-hidden, hauteur reduite, fontes 10px, axes compacts
+- **KPI cards**: grid-cols-2 lg:grid-cols-4, valeurs tronquees
 
 ## Tests
 - Phase 8: 15/15 (100%)
-- Phase 9 Responsiveness: 100% all viewports (375px, 768px, 1024px, 1280px)
+- Phase 9 Responsive: 100% (11 pages, 375px + 1280px, 0 overflow, 0 spinner)
 
 ## Awaiting User API Keys
 - **SendGrid**: SENDGRID_API_KEY
