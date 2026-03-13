@@ -48,6 +48,15 @@ Google Calendar OAuth, Integration status dashboard, WhatsApp, Tracking widget.
 - Frontend shows "Acces refuse" banner on `/login?error=not_authorized`
 - Easy to extend: just add emails in `.env` separated by commas
 
+### Phase 12: PWA + Mobile Tab Bar (Mars 2026)
+- **PWA**: manifest.json, service-worker.js (offline cache), icons 192/512, meta tags
+- **Mobile tab bar**: Bottom navigation bar with Dashboard, Leads, Devis, Menu
+- **More menu**: Grid overlay with remaining nav items (Kanban, Factures, Finance, Planning, Taches, Analytics, Integrations, Journal)
+- **Desktop sidebar**: Unchanged, hidden on mobile via `hidden lg:flex`
+- **LeadDetail sticky footer**: Mobile-only action bar with Appeler, WhatsApp, Devis buttons
+- **Form buttons**: min-h-[48px] for tap-friendly mobile experience
+- **Content padding**: pb-16 on mobile to prevent tab bar overlap
+
 ## Key API Endpoints (Gmail)
 - `GET /api/auth/google` - Start Gmail OAuth
 - `GET /api/auth/google/callback` - OAuth callback
