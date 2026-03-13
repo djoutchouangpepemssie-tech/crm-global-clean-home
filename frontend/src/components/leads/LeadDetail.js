@@ -116,7 +116,7 @@ const LeadDetail = () => {
   ];
 
   return (
-    <div className="p-4 md:p-6 lg:p-8" data-testid="lead-detail-page">
+    <div className="p-4 md:p-6 lg:p-8 pb-24 md:pb-6 lg:pb-8" data-testid="lead-detail-page">
       {/* Header */}
       <div className="mb-6 md:mb-8">
         <button
@@ -134,7 +134,8 @@ const LeadDetail = () => {
             </h1>
             <p className="text-slate-600 mt-1 text-sm">{lead.service_type}</p>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          {/* Desktop action buttons */}
+          <div className="hidden sm:flex items-center gap-2 sm:gap-3 flex-wrap">
             <select
               data-testid="status-select"
               value={lead.status}
@@ -158,19 +159,33 @@ const LeadDetail = () => {
                   toast.success('WhatsApp ouvert');
                 } catch { toast.error('Erreur WhatsApp'); }
               }}
-              className="flex items-center gap-1.5 px-3 md:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-xs md:text-sm"
+              className="flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm"
             >
               <MessageSquare className="w-4 h-4" />
-              <span className="hidden sm:inline">WhatsApp</span>
+              WhatsApp
             </button>
             <button
               data-testid="create-quote-button"
               onClick={handleCreateQuote}
-              className="flex items-center gap-1.5 px-3 md:px-6 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors font-medium text-xs md:text-sm"
+              className="flex items-center gap-1.5 px-6 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors font-medium text-sm"
             >
               <FileText className="w-4 h-4" />
-              <span className="hidden sm:inline">Creer un</span> devis
+              Creer un devis
             </button>
+          </div>
+          {/* Mobile status only */}
+          <div className="sm:hidden">
+            <select
+              data-testid="status-select-mobile"
+              value={lead.status}
+              onChange={(e) => handleStatusChange(e.target.value)}
+              disabled={updatingStatus}
+              className={`px-3 py-2 rounded-lg text-xs font-semibold border-0 cursor-pointer ${getStatusColor(lead.status)}`}
+            >
+              {statusOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
@@ -425,6 +440,42 @@ const LeadDetail = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Mobile sticky footer actions */}
+      <div className="fixed bottom-14 left-0 right-0 z-30 bg-white border-t border-slate-200 p-3 flex gap-2 sm:hidden" data-testid="mobile-lead-actions">
+        <a
+          href={`tel:${lead.phone}`}
+          data-testid="mobile-call-btn"
+          className="flex-1 flex items-center justify-center gap-2 min-h-[48px] bg-slate-100 text-slate-700 rounded-xl font-medium text-sm active:bg-slate-200 transition-colors touch-manipulation"
+        >
+          <Phone className="w-4 h-4" />
+          Appeler
+        </a>
+        <button
+          data-testid="mobile-whatsapp-btn"
+          onClick={async () => {
+            try {
+              const res = await axios.post(`${API_URL}/whatsapp/send`, {
+                lead_id: lead.lead_id,
+                message: `Bonjour ${lead.name}, merci pour votre demande. Notre equipe vous contactera rapidement. - Global Clean Home`,
+              }, { withCredentials: true });
+              window.open(res.data.whatsapp_link, '_blank');
+            } catch { toast.error('Erreur WhatsApp'); }
+          }}
+          className="flex-1 flex items-center justify-center gap-2 min-h-[48px] bg-green-600 text-white rounded-xl font-medium text-sm active:bg-green-800 transition-colors touch-manipulation"
+        >
+          <MessageSquare className="w-4 h-4" />
+          WhatsApp
+        </button>
+        <button
+          data-testid="mobile-quote-btn"
+          onClick={handleCreateQuote}
+          className="flex-1 flex items-center justify-center gap-2 min-h-[48px] bg-violet-600 text-white rounded-xl font-medium text-sm active:bg-violet-800 transition-colors touch-manipulation"
+        >
+          <FileText className="w-4 h-4" />
+          Devis
+        </button>
       </div>
     </div>
   );

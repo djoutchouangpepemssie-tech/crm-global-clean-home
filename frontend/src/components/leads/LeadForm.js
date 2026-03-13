@@ -198,7 +198,7 @@ const LeadForm = () => {
             <button
               type="button"
               onClick={() => navigate('/leads')}
-              className="flex-1 px-6 py-3 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors font-medium"
+              className="flex-1 px-6 min-h-[48px] border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors font-medium"
             >
               Annuler
             </button>
@@ -206,7 +206,7 @@ const LeadForm = () => {
               type="submit"
               data-testid="create-lead-submit"
               disabled={loading}
-              className="flex-1 px-6 py-3 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors font-medium disabled:opacity-50"
+              className="flex-1 px-6 min-h-[48px] bg-violet-600 text-white rounded-lg hover:bg-violet-700 active:bg-violet-800 transition-colors font-medium disabled:opacity-50 touch-manipulation"
             >
               {loading ? 'Création...' : 'Créer le lead'}
             </button>
