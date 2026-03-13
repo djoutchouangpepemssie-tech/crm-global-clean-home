@@ -1,8 +1,11 @@
 import React from 'react';
-import { useAuth } from '../../contexts/AuthContext';
 
 const Login = () => {
-  const { login } = useAuth();
+  const handleLogin = () => {
+    // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
+    const redirectUrl = window.location.origin + '/dashboard';
+    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
+  };
 
   return (
     <div className="min-h-screen flex" data-testid="login-page">
@@ -52,7 +55,7 @@ const Login = () => {
 
           <button
             data-testid="google-login-button"
-            onClick={login}
+            onClick={handleLogin}
             className="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-white border-2 border-slate-200 rounded-xl hover:border-violet-300 hover:bg-violet-50/50 transition-all duration-200 group"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
