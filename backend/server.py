@@ -1323,11 +1323,13 @@ async def get_integration_status(request: Request):
     }
 
 # CORS - must be added before routes
+# CORS
+_cors_origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "https://crm.globalcleanhome.com").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
-    allow_methods=["*"],
+    allow_origins=_cors_origins,
+    allow_methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
     allow_headers=["*"],
 )
 
