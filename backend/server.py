@@ -1323,6 +1323,24 @@ async def get_integration_status(request: Request):
     }
 
 # CORS - must be added before routes
+
+@api_router.get("/stats/financial")
+async def get_financial_stats(request: Request, period: str = "30d"):
+    """Get financial statistics."""
+    await require_auth(request)
+    invoices = await db.invoices.find({}, {"_id": 0}).to_list(1000)
+    total_revenue = sum(i.get("amount_ttc", 0) for i in invoices if i.get("status") == "payée")
+    pending = sum(i.get("amount_ttc", 0) for i in invoices if i.get("status") in ["envoyée", "en_attente"])
+    recent_transactions = [i for i in invoices if i.get("status") == "payée"][-10:]
+    return {
+        "total_revenue": total_revenue,
+        "pending_amount": pending,
+        "total_invoices": len(invoices),
+        "paid_invoices": len([i for i in invoices if i.get("status") == "payée"]),
+        "recent_transactions": recent_transactions,
+        "monthly_revenue": total_revenue,
+    }
+
 # CORS
 app.add_middleware(
     CORSMiddleware,

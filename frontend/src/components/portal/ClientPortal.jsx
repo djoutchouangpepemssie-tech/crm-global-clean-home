@@ -125,7 +125,7 @@ const PortalDashboard = ({ user, onLogout }) => {
         axios.get(`${API_URL}/reviews`, { withCredentials: true }),
       ]);
       setQuotes(qRes.data);
-      setInvoices(iRes.data);
+      setInvoices(Array.isArray(iRes.data) ? iRes.data : iRes.data.invoices || []);
       setReviews(rRes.data);
     } catch {
       toast.error('Erreur lors du chargement');
