@@ -47,19 +47,51 @@ async def create_notification(
     link: str = None,
     target_roles: list = None
 ):
-    """Create a notification. Can be called from other modules."""
+    """Create a notification and send Firebase push."""
     notif = {
         "notification_id": f"notif_{uuid.uuid4().hex[:12]}",
-        "user_id": user_id,  # "all" for broadcast
+        "user_id": user_id,
         "title": title,
         "message": message,
-        "type": notification_type,  # info, success, warning, alert
+        "type": notification_type,
         "link": link,
         "target_roles": target_roles,
         "read": False,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await _db.notifications.insert_one(notif)
+
+    # Send Firebase push notification
+    try:
+        import httpx as _httpx
+        firebase_key = os.environ.get("FIREBASE_SERVER_KEY", "")
+        if firebase_key:
+            # Get FCM tokens for target users
+            query = {"user_id": user_id} if user_id != "all" else {}
+            users = await _db.users.find(query, {"_id": 0, "fcm_token": 1}).to_list(100)
+            tokens = [u["fcm_token"] for u in users if u.get("fcm_token")]
+            if tokens:
+                async with _httpx.AsyncClient() as client:
+                    for token in tokens:
+                        await client.post(
+                            "https://fcm.googleapis.com/fcm/send",
+                            headers={
+                                "Authorization": f"key={firebase_key}",
+                                "Content-Type": "application/json"
+                            },
+                            json={
+                                "to": token,
+                                "notification": {
+                                    "title": title,
+                                    "body": message,
+                                    "icon": "/icons/icon-192.png"
+                                },
+                                "data": {"link": link or "/dashboard"}
+                            }
+                        )
+    except Exception as e:
+        logger.warning(f"Firebase push failed: {e}")
+
     return notif["notification_id"]
 
 

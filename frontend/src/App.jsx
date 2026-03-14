@@ -137,10 +137,22 @@ function MobileTabBar() {
 
 function NotificationHandler() {
   useEffect(() => {
-    requestNotificationPermission().then(token => {
+    requestNotificationPermission().then(async token => {
       if (token) {
-        console.log('Push notifications enabled');
+        console.log('Push notifications enabled:', token);
         localStorage.setItem('fcm_token', token);
+        // Save token to backend
+        try {
+          const BACKEND_URL = 'https://crm-global-clean-home-production.up.railway.app';
+          await fetch(`${BACKEND_URL}/api/auth/fcm-token`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('session_token')}`
+            },
+            body: JSON.stringify({ token })
+          });
+        } catch(e) { console.log('FCM token save failed:', e); }
       }
     });
     onMessageListener().then(payload => {

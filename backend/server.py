@@ -395,6 +395,20 @@ async def create_session(input: SessionCreate, response: Response):
         logger.error(f"Error exchanging session: {e}")
         raise HTTPException(status_code=500, detail="Failed to authenticate")
 
+
+@api_router.post("/auth/fcm-token")
+async def save_fcm_token(request: Request):
+    """Save FCM token for push notifications."""
+    user = await require_auth(request)
+    body = await request.json()
+    token = body.get("token")
+    if token:
+        await db.users.update_one(
+            {"user_id": user.user_id},
+            {"$set": {"fcm_token": token}}
+        )
+    return {"status": "ok"}
+
 @api_router.get("/auth/me")
 async def get_me(request: Request):
     """Get current authenticated user."""
