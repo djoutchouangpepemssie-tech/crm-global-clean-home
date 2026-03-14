@@ -239,42 +239,8 @@ async def get_client_invoices(request: Request):
 
 @portal_router.post("/invoices/{invoice_id}/pay")
 async def portal_pay_invoice(invoice_id: str, request: Request):
-    """Create a Stripe checkout session for client payment."""
-    session = await _get_portal_session(request)
-    
-    invoice = await _db.invoices.find_one(
-        {"invoice_id": invoice_id, "lead_id": session["lead_id"]},
-        {"_id": 0}
-    )
-    if not invoice:
-        raise HTTPException(status_code=404, detail="Facture introuvable")
-    
-    if invoice["status"] == "payée":
-        raise HTTPException(status_code=400, detail="Facture déjà payée")
-    
-    )
-    
-    STRIPE_KEY = os.environ.get('STRIPE_API_KEY')
-    origin = str(request.base_url).rstrip("/")
-    
-    success_url = f"{origin}/api/portal/payment-success/{invoice_id}?session_id={{CHECKOUT_SESSION_ID}}"
-    cancel_url = f"{origin}/api/portal/payment-cancel/{invoice_id}"
-    
-    webhook_url = f"{origin}/api/webhook/stripe"
-    stripe_checkout = StripeCheckout(api_key=STRIPE_KEY, webhook_url=webhook_url)
-    
-    checkout_req = CheckoutSessionRequest(
-        amount=float(invoice["amount_ttc"]),
-        currency="eur",
-        success_url=success_url,
-        cancel_url=cancel_url,
-        metadata={"invoice_id": invoice_id, "lead_id": session["lead_id"]},
-    )
-    
-    result = await stripe_checkout.create_checkout_session(checkout_req)
-    
-    return {"url": result.url, "session_id": result.session_id}
-
+    """Stripe non configuré"""
+    raise HTTPException(status_code=503, detail="Paiement Stripe non configuré")
 
 @portal_router.get("/interventions")
 async def get_client_interventions(request: Request):
