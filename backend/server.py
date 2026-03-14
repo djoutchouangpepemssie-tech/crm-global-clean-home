@@ -137,11 +137,11 @@ class QuoteCreate(BaseModel):
 
 class Interaction(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    interaction_id: str
+    interaction_id: Optional[str] = None
     lead_id: str
     type: str  # appel, email, note, relance
     content: str
-    created_by: str
+    created_by: Optional[str] = None
     created_at: datetime
 
 class InteractionCreate(BaseModel):
