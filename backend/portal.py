@@ -252,8 +252,6 @@ async def portal_pay_invoice(invoice_id: str, request: Request):
     if invoice["status"] == "payée":
         raise HTTPException(status_code=400, detail="Facture déjà payée")
     
-    from emergentintegrations.payments.stripe.checkout import (
-        StripeCheckout, CheckoutSessionRequest
     )
     
     STRIPE_KEY = os.environ.get('STRIPE_API_KEY')
