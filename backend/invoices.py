@@ -12,7 +12,6 @@ import os
 import uuid
 import logging
 
-from emergentintegrations.payments.stripe.checkout import (
     StripeCheckout,
     CheckoutSessionRequest,
     CheckoutSessionResponse,
