@@ -19,7 +19,7 @@ const FinancialDashboard = () => {
     setLoading(true);
     try {
       const res = await axios.get(`${API_URL}/stats/financial?period=${period}`, { withCredentials: true });
-      setStats(res.data);
+      setStats(res.data || {});
     } catch {
       toast.error('Erreur lors du chargement des stats financières');
     } finally {

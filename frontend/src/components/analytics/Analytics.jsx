@@ -83,12 +83,12 @@ const Analytics = () => {
     }
   ];
 
-  const sourceData = Object.entries(stats.sources).map(([name, value]) => ({
+  const sourceData = Object.entries(stats.sources || {}).map(([name, value]) => ({
     name,
     value
   }));
 
-  const deviceData = Object.entries(stats.devices).map(([name, value]) => ({
+  const deviceData = Object.entries(stats.devices || {}).map(([name, value]) => ({
     name: name.charAt(0).toUpperCase() + name.slice(1),
     value
   }));
