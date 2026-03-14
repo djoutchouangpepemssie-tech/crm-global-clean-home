@@ -314,22 +314,23 @@ def calculate_lead_score(lead_data: Dict[str, Any]) -> int:
 async def create_session(input: SessionCreate, response: Response):
     """Exchange session_id for user data and session_token."""
     try:
+        # Verify Google token
         async with httpx.AsyncClient() as client:
-            headers = {"X-Session-ID": input.session_id}
             resp = await client.get(
-                "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
-                headers=headers,
+                f"https://www.googleapis.com/oauth2/v3/userinfo",
+                headers={"Authorization": f"Bearer {input.session_id}"},
                 timeout=10.0
             )
-            resp.raise_for_status()
+            if resp.status_code != 200:
+                raise HTTPException(status_code=401, detail="Invalid Google token")
             data = resp.json()
         
         email = data.get("email")
-        name = data.get("name")
-        picture = data.get("picture")
-        session_token = data.get("session_token")
+        name = data.get("name", email)
+        picture = data.get("picture", "")
+        session_token = f"st_{uuid.uuid4().hex}"
         
-        if not email or not session_token:
+        if not email:
             raise HTTPException(status_code=400, detail="Invalid session data")
         
         # Check allowed emails whitelist
