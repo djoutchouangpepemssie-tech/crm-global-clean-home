@@ -21,7 +21,7 @@ const TasksList = () => {
     try {
       const params = filter ? `?status=${filter}` : '';
       const response = await axios.get(`${API_URL}/tasks${params}`, { withCredentials: true });
-      setTasks(response.data);
+      setTasks(Array.isArray(response.data) ? response.data : response.data.tasks || []);
     } catch (error) {
       console.error('Error fetching tasks:', error);
       toast.error('Erreur lors du chargement des tâches');

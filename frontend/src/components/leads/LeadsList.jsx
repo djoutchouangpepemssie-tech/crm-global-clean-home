@@ -39,7 +39,7 @@ const LeadsList = () => {
       const response = await axios.get(`${API_URL}/leads?${params.toString()}`, {
         withCredentials: true
       });
-      setLeads(response.data);
+      setLeads(Array.isArray(response.data) ? response.data : response.data.leads || response.data.items || []);
     } catch (error) {
       console.error('Error fetching leads:', error);
       toast.error('Erreur lors du chargement des leads');

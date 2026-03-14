@@ -20,7 +20,7 @@ const QuotesList = () => {
     setLoading(true);
     try {
       const response = await axios.get(`${API_URL}/quotes`, { withCredentials: true });
-      setQuotes(response.data);
+      setQuotes(Array.isArray(response.data) ? response.data : response.data.quotes || []);
     } catch (error) {
       console.error('Error fetching quotes:', error);
       toast.error('Erreur lors du chargement des devis');

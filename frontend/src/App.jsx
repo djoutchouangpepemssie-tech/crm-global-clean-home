@@ -176,7 +176,7 @@ function AppRouter() {
                     <Route path="/finance" element={<FinancialDashboard />} />
                     <Route path="/planning" element={<PlanningCalendar />} />
                     <Route path="/integrations" element={<Integrations />} />
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                    <Route path="/" element={<Navigate to="/login" replace />} />
                   </Routes>
                 </div>
                 <MobileTabBar />
