@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const FinancialDashboard = () => {
-  const [stats, setStats] = useState(null);
+  const [stats, setStats] = useState({});
   const [period, setPeriod] = useState('30d');
   const [loading, setLoading] = useState(true);
 
@@ -27,7 +27,7 @@ const FinancialDashboard = () => {
     }
   };
 
-  if (loading || !stats) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="animate-pulse bg-slate-200 rounded h-6 w-32 mx-auto"></div>
