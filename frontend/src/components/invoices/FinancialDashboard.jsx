@@ -150,11 +150,11 @@ const FinancialDashboard = () => {
       {/* Recent transactions */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm overflow-hidden">
         <h3 className="text-sm md:text-base font-semibold text-slate-900 mb-4">Transactions recentes</h3>
-        {stats.recent_transactions.length === 0 ? (
+        {(stats?.recent_transactions || []).length === 0 ? (
           <p className="text-slate-400 text-center py-6 text-sm">Aucune transaction</p>
         ) : (
           <div className="space-y-2">
-            {stats.recent_transactions.map((tx, idx) => (
+            {(stats?.recent_transactions || []).map((tx, idx) => (
               <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg gap-3">
                 <div className="min-w-0">
                   <p className="font-mono text-xs text-slate-900 truncate">{tx.transaction_id}</p>

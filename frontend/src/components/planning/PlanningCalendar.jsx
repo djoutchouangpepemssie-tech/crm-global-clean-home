@@ -70,7 +70,7 @@ const PlanningCalendar = () => {
   };
 
   const getInterventionsForDate = (dateStr) =>
-    calendarData.interventions.filter(i => i.scheduled_date === dateStr);
+    ( calendarData?.interventions || []).filter(i => i.scheduled_date === dateStr);
 
   const handleCreate = async (e) => {
     e.preventDefault();
