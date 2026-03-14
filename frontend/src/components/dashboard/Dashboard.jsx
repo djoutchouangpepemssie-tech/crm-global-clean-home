@@ -13,7 +13,7 @@ const CHART_COLORS = ['#7C3AED', '#E11D48', '#2563EB', '#10B981', '#F59E0B', '#6
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [stats, setStats] = useState(null);
+  const [stats, setStats] = useState({});
   const [period, setPeriod] = useState('30d');
   const [loading, setLoading] = useState(true);
 
@@ -21,7 +21,7 @@ const Dashboard = () => {
     setLoading(true);
     try {
       const response = await axios.get(`${API_URL}/stats/dashboard?period=${period}`, { withCredentials: true });
-      setStats(response.data);
+      setStats(response.data || {});
     } catch {
       toast.error('Erreur lors du chargement des statistiques');
     } finally {
@@ -32,7 +32,7 @@ const Dashboard = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchData(); }, [period]);
 
-  if (loading || !stats) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
         <p className="text-sm text-slate-400">Chargement...</p>

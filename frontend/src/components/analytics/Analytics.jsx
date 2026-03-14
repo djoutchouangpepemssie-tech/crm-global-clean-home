@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const Analytics = () => {
-  const [stats, setStats] = useState(null);
+  const [stats, setStats] = useState({});
   const [period, setPeriod] = useState('7d');
   const [loading, setLoading] = useState(true);
 
@@ -22,7 +22,7 @@ const Analytics = () => {
       const response = await axios.get(`${API_URL}/tracking/stats?period=${period}`, {
         withCredentials: true
       });
-      setStats(response.data);
+      setStats(response.data || {});
     } catch (error) {
       console.error('Error fetching stats:', error);
       toast.error('Erreur lors du chargement des statistiques');

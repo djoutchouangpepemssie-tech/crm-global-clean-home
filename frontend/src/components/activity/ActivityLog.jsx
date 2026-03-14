@@ -18,7 +18,7 @@ const ActivityLog = () => {
     setLoading(true);
     try {
       const response = await axios.get(`${API_URL}/activity?limit=100`, { withCredentials: true });
-      setLogs(response.data);
+      setLogs(Array.isArray(response.data) ? response.data : response.data.logs || response.data.items || response.data.results || []);
     } catch (error) {
       console.error('Error fetching activity logs:', error);
       toast.error('Erreur lors du chargement des logs');
