@@ -73,20 +73,22 @@ async def create_notification(
             if tokens:
                 async with _httpx.AsyncClient() as client:
                     for token in tokens:
+                        project_id = os.environ.get("FIREBASE_PROJECT_ID", "crm-global-clean-home")
                         await client.post(
-                            "https://fcm.googleapis.com/fcm/send",
+                            f"https://fcm.googleapis.com/v1/projects/{project_id}/messages:send",
                             headers={
-                                "Authorization": f"key={firebase_key}",
+                                "Authorization": f"Bearer {firebase_key}",
                                 "Content-Type": "application/json"
                             },
                             json={
-                                "to": token,
-                                "notification": {
-                                    "title": title,
-                                    "body": message,
-                                    "icon": "/icons/icon-192.png"
-                                },
-                                "data": {"link": link or "/dashboard"}
+                                "message": {
+                                    "token": token,
+                                    "notification": {
+                                        "title": title,
+                                        "body": message
+                                    },
+                                    "data": {"link": link or "/dashboard"}
+                                }
                             }
                         )
     except Exception as e:
