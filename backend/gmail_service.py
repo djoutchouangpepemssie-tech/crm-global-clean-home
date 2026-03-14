@@ -114,6 +114,7 @@ async def google_auth_callback(request: Request, code: str, state: str):
     user_id = state_doc["user_id"]
     await _db.oauth_states.delete_one({"state": state})
 
+    logger.info(f"Gmail callback - client_id: {GOOGLE_CLIENT_ID[:20]}... redirect_uri: {GOOGLE_REDIRECT_URI}")
     async with httpx.AsyncClient() as client:
         resp = await client.post("https://oauth2.googleapis.com/token", data={
             "client_id": GOOGLE_CLIENT_ID,
@@ -123,6 +124,7 @@ async def google_auth_callback(request: Request, code: str, state: str):
             "redirect_uri": GOOGLE_REDIRECT_URI,
         })
         token_data = resp.json()
+        logger.info(f"Token response: {token_data}")
 
     if "error" in token_data:
         logger.error(f"Google token exchange error: {token_data}")
