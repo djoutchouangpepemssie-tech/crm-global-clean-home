@@ -3,7 +3,7 @@ import axios from 'axios';
 
 const AuthContext = createContext();
 
-import BACKEND_URL from '../../config.js';
+import BACKEND_URL from '../config.js';
 const API_URL = BACKEND_URL + '/api';
 
 export const AuthProvider = ({ children }) => {

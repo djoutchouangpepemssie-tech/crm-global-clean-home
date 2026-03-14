@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
 
-import BACKEND_URL from '../../config.js';
+import BACKEND_URL from '../config.js';
 const API_URL = BACKEND_URL + '/api';
 
 export const useRealtimeNotifications = () => {
