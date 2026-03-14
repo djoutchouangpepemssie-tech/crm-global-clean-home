@@ -387,7 +387,9 @@ async def create_session(input: SessionCreate, response: Response):
         if isinstance(user_doc["created_at"], str):
             user_doc["created_at"] = datetime.fromisoformat(user_doc["created_at"])
         
-        return User(**user_doc)
+        result = dict(user_doc)
+        result["session_token"] = session_token
+        return result
     
     except httpx.HTTPError as e:
         logger.error(f"Error exchanging session: {e}")

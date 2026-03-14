@@ -12,8 +12,11 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuth = useCallback(async () => {
     try {
+      const token = localStorage.getItem('session_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const response = await axios.get(`${API_URL}/auth/me`, {
-        withCredentials: true
+        withCredentials: true,
+        headers
       });
       setUser(response.data);
     } catch (error) {
@@ -39,10 +42,13 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await axios.post(`${API_URL}/auth/logout`, {}, { withCredentials: true });
+      const token = localStorage.getItem('session_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      await axios.post(`${API_URL}/auth/logout`, {}, { withCredentials: true, headers });
     } catch (error) {
       console.error('Logout error:', error);
     }
+    localStorage.removeItem('session_token');
     setUser(null);
   };
 

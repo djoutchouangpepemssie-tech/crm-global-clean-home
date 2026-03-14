@@ -34,6 +34,10 @@ const AuthCallback = () => {
           { withCredentials: true }
         );
 
+        // Store session token in localStorage for cross-domain auth
+        if (response.data?.session_token) {
+          localStorage.setItem('session_token', response.data.session_token);
+        }
         login(response.data);
         navigate('/dashboard', { replace: true });
       } catch (error) {
