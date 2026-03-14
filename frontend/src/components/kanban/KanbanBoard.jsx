@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { getStatusLabel } from '../../lib/utils';
 import LeadScoreBadge from '../shared/LeadScoreBadge';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
+const API_URL = import.meta.env.VITE_BACKEND_URL + '/api';
 
 const COLUMN_DEFS = [
   { id: 'nouveau', title: 'Nouveau', color: 'bg-blue-50 border-blue-200' },

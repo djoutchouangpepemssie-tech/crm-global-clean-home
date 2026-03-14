@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
+const API_URL = import.meta.env.VITE_BACKEND_URL + '/api';
 
 export const useRealtimeNotifications = () => {
   const [newLeadsCount, setNewLeadsCount] = useState(0);

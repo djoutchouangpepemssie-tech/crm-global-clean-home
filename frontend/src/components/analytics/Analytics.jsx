@@ -4,7 +4,7 @@ import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Toolti
 import { Users, Eye, MousePointer, FileText, TrendingUp, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
+const API_URL = import.meta.env.VITE_BACKEND_URL + '/api';
 
 const Analytics = () => {
   const [stats, setStats] = useState({});
@@ -256,7 +256,7 @@ const Analytics = () => {
         </p>
         <div className="bg-slate-900 text-green-400 p-4 rounded-lg font-mono text-xs overflow-x-auto">
           <code className="break-all">
-            {`<script src="${process.env.REACT_APP_BACKEND_URL}/tracking.js"></script>`}
+            {`<script src="${import.meta.env.VITE_BACKEND_URL}/tracking.js"></script>`}
           </code>
         </div>
         <p className="text-xs text-slate-500 mt-3">

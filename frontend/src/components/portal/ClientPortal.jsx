@@ -4,7 +4,7 @@ import { FileText, CreditCard, CheckCircle, XCircle, Star, LogOut, Clock, Send, 
 import { formatCurrency, formatDateTime } from '../../lib/utils';
 import { toast } from 'sonner';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api/portal';
+const API_URL = import.meta.env.VITE_BACKEND_URL + '/api/portal';
 
 // ============= Magic Link Login =============
 const PortalLogin = ({ onAuth }) => {

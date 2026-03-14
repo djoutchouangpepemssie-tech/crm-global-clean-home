@@ -5,7 +5,7 @@ import { Plus, Send, FileText, Download } from 'lucide-react';
 import { getStatusColor, getStatusLabel, formatDateTime, formatCurrency } from '../../lib/utils';
 import { toast } from 'sonner';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
+const API_URL = import.meta.env.VITE_BACKEND_URL + '/api';
 
 const QuotesList = () => {
   const navigate = useNavigate();

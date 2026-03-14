@@ -4,7 +4,7 @@ import { Webhook, Calendar, MessageCircle, Code, Plus, Trash2, ToggleLeft, Toggl
 import { toast } from 'sonner';
 import { formatDateTime } from '../../lib/utils';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
+const API_URL = import.meta.env.VITE_BACKEND_URL + '/api';
 
 // ============= Webhooks Tab =============
 const WebhooksTab = () => {
@@ -193,7 +193,7 @@ const CalendarTab = () => {
   const [syncing, setSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const calendarUrl = `${process.env.REACT_APP_BACKEND_URL}/api/calendar/ical`;
+  const calendarUrl = `${import.meta.env.VITE_BACKEND_URL}/api/calendar/ical`;
 
   const fetchStatus = useCallback(async () => {
     try {

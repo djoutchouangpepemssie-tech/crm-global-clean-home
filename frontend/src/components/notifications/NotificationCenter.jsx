@@ -4,7 +4,7 @@ import { Bell, Check, CheckCheck, Info, AlertTriangle, Zap } from 'lucide-react'
 import { useNavigate } from 'react-router-dom';
 import { formatDateTime } from '../../lib/utils';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
+const API_URL = import.meta.env.VITE_BACKEND_URL + '/api';
 
 const typeIcons = {
   info: { icon: Info, color: 'text-blue-500 bg-blue-50' },
