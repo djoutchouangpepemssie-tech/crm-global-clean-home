@@ -137,7 +137,7 @@ function MobileTabBar() {
 function AppRouter() {
   const location = useLocation();
 
-  if (location.hash?.includes('session_id=')) {
+  if (location.hash?.includes('access_token=')) {
     return <AuthCallback />;
   }
 
