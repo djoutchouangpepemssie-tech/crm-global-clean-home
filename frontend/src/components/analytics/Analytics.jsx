@@ -235,7 +235,7 @@ const Analytics = () => {
       <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm overflow-hidden">
         <h2 className="text-sm md:text-base font-semibold text-slate-900 mb-4">Pages les plus visitees</h2>
         <div className="space-y-2">
-          {stats.top_pages.slice(0, 10).map((page, index) => (
+          {(stats?.top_pages || []).slice(0, 10).map((page, index) => (
             <div key={index} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg gap-3">
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-slate-900 truncate">{page.url}</p>
