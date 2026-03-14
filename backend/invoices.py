@@ -12,11 +12,6 @@ import os
 import uuid
 import logging
 
-    StripeCheckout,
-    CheckoutSessionRequest,
-    CheckoutSessionResponse,
-    CheckoutStatusResponse,
-)
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -168,11 +163,9 @@ async def create_checkout(invoice_id: str, body: CheckoutRequest, request: Reque
 
     host_url = str(request.base_url).rstrip("/")
     webhook_url = f"{host_url}/api/webhook/stripe"
-    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
 
     amount = float(invoice["amount_ttc"])
 
-    checkout_req = CheckoutSessionRequest(
         amount=amount,
         currency="eur",
         success_url=success_url,
@@ -184,7 +177,6 @@ async def create_checkout(invoice_id: str, body: CheckoutRequest, request: Reque
         },
     )
 
-    session: CheckoutSessionResponse = await stripe_checkout.create_checkout_session(checkout_req)
 
     # Record payment transaction
     tx = {
@@ -222,9 +214,7 @@ async def check_payment_status(invoice_id: str, session_id: str, request: Reques
 
     host_url = str(request.base_url).rstrip("/")
     webhook_url = f"{host_url}/api/webhook/stripe"
-    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
 
-    status: CheckoutStatusResponse = await stripe_checkout.get_checkout_status(session_id)
 
     if status.payment_status == "paid":
         now = datetime.now(timezone.utc).isoformat()
@@ -266,7 +256,6 @@ async def stripe_webhook(request: Request):
 
     host_url = str(request.base_url).rstrip("/")
     webhook_url = f"{host_url}/api/webhook/stripe"
-    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
 
     try:
         event = await stripe_checkout.handle_webhook(body, sig)
