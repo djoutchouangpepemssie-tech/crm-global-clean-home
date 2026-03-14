@@ -220,7 +220,7 @@ const CalendarTab = () => {
   const connectGCal = async () => {
     try {
       const res = await axios.get(`${API_URL}/gcal/auth/login`, { withCredentials: true });
-      window.location.href = res.data.authorization_url;
+      console.log("Auth URL:", res.data.authorization_url); window.location.href = res.data.authorization_url;
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Erreur de connexion');
     }
@@ -514,7 +514,7 @@ const EmailTab = () => {
   const connectGmail = async () => {
     try {
       const res = await axios.get(`${API_URL}/auth/google`, { withCredentials: true });
-      window.location.href = res.data.authorization_url;
+      console.log("Auth URL:", res.data.authorization_url); window.location.href = res.data.authorization_url;
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Erreur de connexion');
     }
