@@ -47,48 +47,48 @@ const Analytics = () => {
   const kpiCards = [
     {
       title: 'Visiteurs uniques',
-      value: stats.total_visitors,
+      value: (stats?.total_visitors ?? 0),
       icon: Users,
       color: 'bg-blue-500'
     },
     {
       title: 'Pages vues',
-      value: stats.total_page_views,
+      value: (stats?.total_page_views ?? 0),
       icon: Eye,
       color: 'bg-violet-500'
     },
     {
       title: 'Clics CTA',
-      value: stats.total_cta_clicks,
+      value: (stats?.total_cta_clicks ?? 0),
       icon: MousePointer,
       color: 'bg-rose-500'
     },
     {
       title: 'Formulaires',
-      value: stats.total_form_submits,
+      value: (stats?.total_form_submits ?? 0),
       icon: FileText,
       color: 'bg-green-500'
     },
     {
       title: 'Taux conversion',
-      value: stats.conversion_rate + '%',
+      value: (stats?.conversion_rate ?? 0) + '%',
       icon: TrendingUp,
       color: 'bg-amber-500'
     },
     {
       title: 'Sessions',
-      value: stats.total_sessions,
+      value: (stats?.total_sessions ?? 0),
       icon: Globe,
       color: 'bg-cyan-500'
     }
   ];
 
-  const sourceData = Object.entries(stats.sources || {}).map(([name, value]) => ({
+  const sourceData = Object.entries((stats?.sources ?? 0) || {}).map(([name, value]) => ({
     name,
     value
   }));
 
-  const deviceData = Object.entries(stats.devices || {}).map(([name, value]) => ({
+  const deviceData = Object.entries((stats?.devices ?? 0) || {}).map(([name, value]) => ({
     name: name.charAt(0).toUpperCase() + name.slice(1),
     value
   }));
@@ -149,31 +149,31 @@ const Analytics = () => {
           <div>
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs font-medium text-slate-700">Visiteurs</span>
-              <span className="text-xs font-semibold text-slate-900">{stats.funnel.visitors}</span>
+              <span className="text-xs font-semibold text-slate-900">{(stats?.funnel?.visitors || 0)}</span>
             </div>
             <div className="h-6 bg-blue-500 rounded-lg" style={{ width: '100%' }}></div>
           </div>
           <div>
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs font-medium text-slate-700">Clics CTA</span>
-              <span className="text-xs font-semibold text-slate-900">{stats.funnel.cta_clicks}</span>
+              <span className="text-xs font-semibold text-slate-900">{(stats?.funnel?.cta_clicks || 0)}</span>
             </div>
             <div
               className="h-6 bg-violet-500 rounded-lg"
               style={{
-                width: `${stats.funnel.visitors > 0 ? (stats.funnel.cta_clicks / stats.funnel.visitors) * 100 : 0}%`
+                width: `${(stats?.funnel?.visitors || 0) > 0 ? ((stats?.funnel?.cta_clicks || 0) / (stats?.funnel?.visitors || 0)) * 100 : 0}%`
               }}
             ></div>
           </div>
           <div>
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs font-medium text-slate-700">Formulaires soumis</span>
-              <span className="text-xs font-semibold text-slate-900">{stats.funnel.form_submits}</span>
+              <span className="text-xs font-semibold text-slate-900">{(stats?.funnel?.form_submits || 0)}</span>
             </div>
             <div
               className="h-6 bg-green-500 rounded-lg"
               style={{
-                width: `${stats.funnel.visitors > 0 ? (stats.funnel.form_submits / stats.funnel.visitors) * 100 : 0}%`
+                width: `${(stats?.funnel?.visitors || 0) > 0 ? ((stats?.funnel?.form_submits || 0) / (stats?.funnel?.visitors || 0)) * 100 : 0}%`
               }}
             ></div>
           </div>
