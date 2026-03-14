@@ -24,6 +24,7 @@ import ClientPortal from './components/portal/ClientPortal';
 import PlanningCalendar from './components/planning/PlanningCalendar';
 import Integrations from './components/integrations/Integrations';
 import './App.css';
+import { requestNotificationPermission, onMessageListener } from './firebase';
 
 const moreNavItems = [
   { to: '/kanban', icon: Trello, label: 'Kanban' },
@@ -134,6 +135,21 @@ function MobileTabBar() {
   );
 }
 
+function NotificationHandler() {
+  useEffect(() => {
+    requestNotificationPermission().then(token => {
+      if (token) {
+        console.log('Push notifications enabled');
+        localStorage.setItem('fcm_token', token);
+      }
+    });
+    onMessageListener().then(payload => {
+      console.log('Notification received:', payload);
+    });
+  }, []);
+  return null;
+}
+
 function AppRouter() {
   const location = useLocation();
 
@@ -193,6 +209,7 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <NotificationHandler />
         <AppRouter />
         <Toaster
           position="top-right"
