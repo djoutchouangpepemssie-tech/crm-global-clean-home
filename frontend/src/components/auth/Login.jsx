@@ -6,14 +6,14 @@ const Login = () => {
   const authError = searchParams.get('error');
 
   const handleLogin = () => {
-    // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
-    const redirectUrl = window.location.origin + '/dashboard';
-    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
+    const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+    const redirectUri = encodeURIComponent(window.location.origin + '/auth/callback');
+    const scope = encodeURIComponent('openid email profile');
+    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=token&scope=${scope}`;
   };
 
   return (
     <div className="min-h-screen flex" data-testid="login-page">
-      {/* Left - Hero Image */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <img
           src="https://images.unsplash.com/photo-1725042893312-5ec0dea9e369?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTJ8MHwxfHNlYXJjaHw0fHxtb2Rlcm4lMjBjbGVhbiUyMGJyaWdodCUyMGxpdmluZyUyMHJvb20lMjBpbnRlcmlvcnxlbnwwfHx8fDE3NzMzMzIwMzV8MA&ixlib=rb-4.1.0&q=85"
@@ -29,23 +29,12 @@ const Login = () => {
             Gérez vos leads, devis et interventions en toute simplicité.
           </p>
           <div className="flex gap-8 mt-8">
-            <div>
-              <p className="text-3xl font-bold">500+</p>
-              <p className="text-sm text-white/60">Leads gérés</p>
-            </div>
-            <div>
-              <p className="text-3xl font-bold">98%</p>
-              <p className="text-sm text-white/60">Satisfaction</p>
-            </div>
-            <div>
-              <p className="text-3xl font-bold">24h</p>
-              <p className="text-sm text-white/60">Temps réponse</p>
-            </div>
+            <div><p className="text-3xl font-bold">500+</p><p className="text-sm text-white/60">Leads gérés</p></div>
+            <div><p className="text-3xl font-bold">98%</p><p className="text-sm text-white/60">Satisfaction</p></div>
+            <div><p className="text-3xl font-bold">24h</p><p className="text-sm text-white/60">Temps réponse</p></div>
           </div>
         </div>
       </div>
-
-      {/* Right - Login Form */}
       <div className="flex-1 flex items-center justify-center p-6 md:p-8 bg-white">
         <div className="w-full max-w-sm">
           <div className="mb-8 md:mb-10">
@@ -61,15 +50,13 @@ const Login = () => {
               Connectez-vous a votre espace CRM
             </p>
           </div>
-
           {authError === 'not_authorized' && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl" data-testid="auth-error-banner">
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
               <p className="text-sm font-medium text-red-800">
                 Acces refuse. Ce CRM est reserve a l'equipe Global Clean Home.
               </p>
             </div>
           )}
-
           <button
             data-testid="google-login-button"
             onClick={handleLogin}
@@ -85,11 +72,8 @@ const Login = () => {
               Continuer avec Google
             </span>
           </button>
-
           <div className="mt-8 text-center">
-            <p className="text-xs text-slate-400">
-              Accès réservé aux membres de l'équipe
-            </p>
+            <p className="text-xs text-slate-400">Accès réservé aux membres de l'équipe</p>
           </div>
         </div>
       </div>
