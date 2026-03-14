@@ -5,7 +5,8 @@ import { DollarSign, CreditCard, Clock, AlertTriangle, TrendingUp, FileText, Dow
 import { formatCurrency } from '../../lib/utils';
 import { toast } from 'sonner';
 
-const API_URL = import.meta.env.VITE_BACKEND_URL + '/api';
+import BACKEND_URL from '../../config.js';
+const API_URL = BACKEND_URL + '/api';
 
 const FinancialDashboard = () => {
   const [stats, setStats] = useState({});

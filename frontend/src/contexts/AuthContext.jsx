@@ -3,7 +3,8 @@ import axios from 'axios';
 
 const AuthContext = createContext();
 
-const API_URL = import.meta.env.VITE_BACKEND_URL + '/api';
+import BACKEND_URL from '../../config.js';
+const API_URL = BACKEND_URL + '/api';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);

@@ -4,7 +4,8 @@ import axios from 'axios';
 import { CheckCircle, Loader2, XCircle } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
 
-const API_URL = import.meta.env.VITE_BACKEND_URL + '/api';
+import BACKEND_URL from '../../config.js';
+const API_URL = BACKEND_URL + '/api';
 
 const PaymentSuccess = () => {
   const { invoiceId } = useParams();

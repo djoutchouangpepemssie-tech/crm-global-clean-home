@@ -4,7 +4,8 @@ import { Webhook, Calendar, MessageCircle, Code, Plus, Trash2, ToggleLeft, Toggl
 import { toast } from 'sonner';
 import { formatDateTime } from '../../lib/utils';
 
-const API_URL = import.meta.env.VITE_BACKEND_URL + '/api';
+import BACKEND_URL from '../../config.js';
+const API_URL = BACKEND_URL + '/api';
 
 // ============= Webhooks Tab =============
 const WebhooksTab = () => {

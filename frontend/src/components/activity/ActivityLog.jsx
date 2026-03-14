@@ -4,7 +4,8 @@ import { Activity as ActivityIcon } from 'lucide-react';
 import { formatDateTime } from '../../lib/utils';
 import { toast } from 'sonner';
 
-const API_URL = import.meta.env.VITE_BACKEND_URL + '/api';
+import BACKEND_URL from '../../config.js';
+const API_URL = BACKEND_URL + '/api';
 
 const ActivityLog = () => {
   const [logs, setLogs] = useState([]);

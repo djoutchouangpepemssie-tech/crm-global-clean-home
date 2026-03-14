@@ -6,7 +6,8 @@ import { getStatusColor, getStatusLabel, formatDate } from '../../lib/utils';
 import { toast } from 'sonner';
 import LeadScoreBadge from '../shared/LeadScoreBadge';
 
-const API_URL = import.meta.env.VITE_BACKEND_URL + '/api';
+import BACKEND_URL from '../../config.js';
+const API_URL = BACKEND_URL + '/api';
 
 const LeadsList = () => {
   const navigate = useNavigate();

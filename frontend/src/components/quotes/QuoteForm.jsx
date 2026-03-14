@@ -4,7 +4,8 @@ import axios from 'axios';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
-const API_URL = import.meta.env.VITE_BACKEND_URL + '/api';
+import BACKEND_URL from '../../config.js';
+const API_URL = BACKEND_URL + '/api';
 
 const QuoteForm = () => {
   const navigate = useNavigate();

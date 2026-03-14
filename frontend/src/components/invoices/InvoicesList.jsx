@@ -5,7 +5,8 @@ import { FileText, CreditCard, Clock, CheckCircle, AlertTriangle, Plus, Download
 import { formatCurrency, formatDateTime } from '../../lib/utils';
 import { toast } from 'sonner';
 
-const API_URL = import.meta.env.VITE_BACKEND_URL + '/api';
+import BACKEND_URL from '../../config.js';
+const API_URL = BACKEND_URL + '/api';
 
 const statusConfig = {
   en_attente: { label: 'En attente', color: 'bg-yellow-100 text-yellow-800', icon: Clock },

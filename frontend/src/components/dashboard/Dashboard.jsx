@@ -7,7 +7,8 @@ import { getStatusColor, getStatusLabel, formatDateTime } from '../../lib/utils'
 import LeadScoreBadge from '../shared/LeadScoreBadge';
 import { toast } from 'sonner';
 
-const API_URL = import.meta.env.VITE_BACKEND_URL + '/api';
+import BACKEND_URL from '../../config.js';
+const API_URL = BACKEND_URL + '/api';
 
 const CHART_COLORS = ['#7C3AED', '#E11D48', '#2563EB', '#10B981', '#F59E0B', '#6366F1'];
 
