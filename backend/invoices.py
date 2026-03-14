@@ -147,60 +147,9 @@ async def update_invoice(invoice_id: str, inp: InvoiceUpdate, request: Request):
 
 @invoices_router.post("/invoices/{invoice_id}/checkout")
 async def create_checkout(invoice_id: str, body: CheckoutRequest, request: Request):
-    """Create a Stripe checkout session for an invoice."""
-    await _require_auth(request)
+    """Stripe non configuré - retourne erreur propre"""
+    raise HTTPException(status_code=503, detail="Paiement Stripe non configuré")
 
-    invoice = await _db.invoices.find_one({"invoice_id": invoice_id}, {"_id": 0})
-    if not invoice:
-        raise HTTPException(status_code=404, detail="Facture introuvable")
-
-    if invoice["status"] == "payée":
-        raise HTTPException(status_code=400, detail="Facture déjà payée")
-
-    origin = body.origin_url.rstrip("/")
-    success_url = f"{origin}/invoices/{invoice_id}/success?session_id={{CHECKOUT_SESSION_ID}}"
-    cancel_url = f"{origin}/invoices/{invoice_id}"
-
-    host_url = str(request.base_url).rstrip("/")
-    webhook_url = f"{host_url}/api/webhook/stripe"
-
-    amount = float(invoice["amount_ttc"])
-
-        amount=amount,
-        currency="eur",
-        success_url=success_url,
-        cancel_url=cancel_url,
-        metadata={
-            "invoice_id": invoice_id,
-            "quote_id": invoice.get("quote_id", ""),
-            "lead_id": invoice.get("lead_id", ""),
-        },
-    )
-
-
-    # Record payment transaction
-    tx = {
-        "transaction_id": f"tx_{uuid.uuid4().hex[:12]}",
-        "invoice_id": invoice_id,
-        "stripe_session_id": session.session_id,
-        "amount": amount,
-        "currency": "eur",
-        "payment_status": "initiated",
-        "metadata": checkout_req.metadata,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    await _db.payment_transactions.insert_one(tx)
-
-    # Update invoice with session
-    await _db.invoices.update_one(
-        {"invoice_id": invoice_id},
-        {"$set": {"stripe_session_id": session.session_id}},
-    )
-
-    return {"url": session.url, "session_id": session.session_id}
-
-
-@invoices_router.get("/invoices/{invoice_id}/payment-status")
 async def check_payment_status(invoice_id: str, session_id: str, request: Request):
     """Poll Stripe for payment status and update DB."""
     await _require_auth(request)
@@ -221,22 +170,18 @@ async def check_payment_status(invoice_id: str, session_id: str, request: Reques
         await _db.invoices.update_one(
             {"invoice_id": invoice_id, "status": {"$ne": "payée"}},
             {"$set": {"status": "payée", "paid_at": now, "payment_method": "stripe"}},
-        )
         await _db.payment_transactions.update_one(
             {"stripe_session_id": session_id},
             {"$set": {"payment_status": "paid", "paid_at": now}},
-        )
         # Update lead status to gagné
         if invoice.get("lead_id"):
             await _db.leads.update_one(
                 {"lead_id": invoice["lead_id"]},
                 {"$set": {"status": "gagné", "updated_at": now}},
-            )
     elif status.status == "expired":
         await _db.payment_transactions.update_one(
             {"stripe_session_id": session_id},
             {"$set": {"payment_status": "expired"}},
-        )
 
     return {
         "payment_status": status.payment_status,
@@ -269,11 +214,9 @@ async def stripe_webhook(request: Request):
                 await _db.invoices.update_one(
                     {"invoice_id": invoice_id, "status": {"$ne": "payée"}},
                     {"$set": {"status": "payée", "paid_at": now, "payment_method": "stripe"}},
-                )
             await _db.payment_transactions.update_one(
                 {"stripe_session_id": event.session_id},
                 {"$set": {"payment_status": "paid", "paid_at": now}},
-            )
         return {"status": "ok"}
     except Exception as e:
         logger.error(f"Stripe webhook error: {e}")
