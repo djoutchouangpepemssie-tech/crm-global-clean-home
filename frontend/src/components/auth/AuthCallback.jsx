@@ -2,8 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
-
 import BACKEND_URL from '../../config.js';
+
 const API_URL = BACKEND_URL + '/api';
 
 const AuthCallback = () => {
@@ -22,26 +22,36 @@ const AuthCallback = () => {
         const params = new URLSearchParams(hash.substring(1));
         const accessToken = params.get('access_token');
 
+        console.log('Access token found:', !!accessToken);
+
         if (!accessToken) {
-          console.error('No access_token found');
+          console.error('No access_token found in hash:', hash);
           navigate('/login');
           return;
         }
 
+        console.log('Calling /api/auth/session...');
         const response = await axios.post(
           `${API_URL}/auth/session`,
           { session_id: accessToken },
           { withCredentials: true }
         );
 
-        // Store session token in localStorage for cross-domain auth
+        console.log('Session response:', response.data);
+        console.log('Session token:', response.data?.session_token);
+
         if (response.data?.session_token) {
           localStorage.setItem('session_token', response.data.session_token);
+          console.log('Token saved to localStorage');
+        } else {
+          console.error('No session_token in response!');
         }
+
         login(response.data);
         navigate('/dashboard', { replace: true });
       } catch (error) {
         console.error('Auth callback error:', error);
+        console.error('Error response:', error?.response?.data);
         if (error?.response?.status === 403) {
           navigate('/login?error=not_authorized', { replace: true });
         } else {
