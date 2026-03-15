@@ -76,6 +76,7 @@ class LeadCreate(BaseModel):
     email: EmailStr
     phone: str
     service_type: str
+    services: Optional[List[str]] = None
     surface: Optional[float] = None
     address: Optional[str] = None
     message: Optional[str] = None
@@ -84,6 +85,10 @@ class LeadCreate(BaseModel):
     utm_source: Optional[str] = None
     utm_medium: Optional[str] = None
     utm_campaign: Optional[str] = None
+    page_origine: Optional[str] = None
+    estimated_price: Optional[float] = None
+    service_details: Optional[dict] = None
+    date_preference: Optional[str] = None
 
 class LeadUpdate(BaseModel):
     status: Optional[str] = None
@@ -442,6 +447,55 @@ async def create_lead(input: LeadCreate, request: Request):
         "created_at": now.isoformat(),
         "updated_at": now.isoformat()
     }
+    
+    # Formater le message lisible
+    services_labels = {
+        'menage-domicile': 'Menage a domicile',
+        'nettoyage-canape': 'Nettoyage canape',
+        'nettoyage-matelas': 'Nettoyage matelas',
+        'nettoyage-tapis': 'Nettoyage tapis',
+        'nettoyage-bureaux': 'Nettoyage bureaux',
+    }
+    services_list = lead_dict.get('services') or [lead_dict.get('service_type', '')]
+    parts = []
+    if lead_dict.get('message'):
+        parts.append(lead_dict['message'])
+    parts.append("Services: " + ', '.join(services_labels.get(s, s) for s in services_list))
+    if lead_dict.get('estimated_price'):
+        parts.append("Prix estime: " + str(lead_dict['estimated_price']) + "EUR")
+    if lead_dict.get('date_preference'):
+        parts.append("Date souhaitee: " + str(lead_dict['date_preference']))
+    sd = lead_dict.get('service_details') or {}
+    for svc_id, details in sd.items():
+        svc_label = services_labels.get(svc_id, svc_id)
+        parts.append("-- " + svc_label + " --")
+        if svc_id == 'menage-domicile':
+            if details.get('surface'): parts.append("  Surface: " + str(details['surface']) + " m2")
+            if details.get('nombrePieces'): parts.append("  Pieces: " + str(details['nombrePieces']))
+            if details.get('etatLogement'): parts.append("  Etat: " + str(details['etatLogement']))
+            if details.get('frequence'): parts.append("  Frequence: " + str(details['frequence']))
+            jours = details.get('joursIntervention') or details.get('joursSelectionnes') or []
+            if jours: parts.append("  Jours: " + ', '.join(jours))
+        elif svc_id == 'nettoyage-bureaux':
+            if details.get('surfaceBureau'): parts.append("  Surface: " + str(details['surfaceBureau']) + " m2")
+            if details.get('frequenceBureau'): parts.append("  Frequence: " + str(details['frequenceBureau']))
+            espaces = details.get('espacesInclus') or []
+            if espaces: parts.append("  Espaces: " + ', '.join(espaces))
+        elif svc_id == 'nettoyage-canape':
+            sofas = details.get('sofas') or []
+            parts.append("  Nombre: " + str(len(sofas)) + " canape(s)")
+            for i, s in enumerate(sofas):
+                parts.append("  Canape " + str(i+1) + ": " + str(s.get('places','?')) + " places")
+        elif svc_id == 'nettoyage-matelas':
+            mattresses = details.get('mattresses') or []
+            parts.append("  Nombre: " + str(len(mattresses)) + " matelas")
+            sizes = {1: '1 place', 2: '2 places', 3: 'King size', 4: 'Super King'}
+            for i, m in enumerate(mattresses):
+                parts.append("  Matelas " + str(i+1) + ": " + sizes.get(m.get('places', 2), str(m.get('places','?')) + ' places'))
+        elif svc_id == 'nettoyage-tapis':
+            if details.get('quantity'): parts.append("  Nombre: " + str(details['quantity']) + " tapis")
+            if details.get('surface'): parts.append("  Surface: " + str(details['surface']) + " m2")
+    lead_dict['message'] = '\n'.join(parts)
     
     # Calculate intelligent score
     lead_dict["score"] = calculate_lead_score(lead_dict)
