@@ -164,6 +164,7 @@ function NotificationHandler() {
 
 function AppRouter() {
   const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   if (location.hash?.includes('access_token=')) {
     return <AuthCallback />;
