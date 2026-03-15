@@ -1,12 +1,32 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, FileText, MessageSquare, Plus, Send, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
-import { getStatusColor, getStatusLabel, formatDateTime, formatCurrency } from '../../lib/utils';
+import { ArrowLeft, Mail, Phone, MapPin, Calendar, FileText, MessageSquare, Plus, Send, ArrowUpRight, ArrowDownLeft, User, Tag, TrendingUp, Clock, CheckCircle, XCircle, Zap } from 'lucide-react';
+import { formatDateTime, formatCurrency } from '../../lib/utils';
 import { toast } from 'sonner';
-
 import BACKEND_URL from '../../config.js';
 const API_URL = BACKEND_URL + '/api';
+
+const STATUS_CONFIG = {
+  'nouveau': { label: 'Nouveau', color: '#60a5fa', bg: 'rgba(96,165,250,0.1)', border: 'rgba(96,165,250,0.2)' },
+  'contacté': { label: 'Contacté', color: '#a78bfa', bg: 'rgba(167,139,250,0.1)', border: 'rgba(167,139,250,0.2)' },
+  'contacte': { label: 'Contacté', color: '#a78bfa', bg: 'rgba(167,139,250,0.1)', border: 'rgba(167,139,250,0.2)' },
+  'en_attente': { label: 'En attente', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.2)' },
+  'devis_envoyé': { label: 'Devis envoyé', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.2)' },
+  'gagné': { label: 'Gagné', color: '#34d399', bg: 'rgba(52,211,153,0.1)', border: 'rgba(52,211,153,0.2)' },
+  'gagne': { label: 'Gagné', color: '#34d399', bg: 'rgba(52,211,153,0.1)', border: 'rgba(52,211,153,0.2)' },
+  'perdu': { label: 'Perdu', color: '#f43f5e', bg: 'rgba(244,63,94,0.1)', border: 'rgba(244,63,94,0.2)' },
+};
+
+const INTERACTION_ICONS = {
+  'note': '📝',
+  'appel': '📞',
+  'email': '📧',
+  'relance': '🔔',
+  'email_sent': '📤',
+  'email_received': '📩',
+  'auto_followup': '🤖',
+};
 
 const LeadDetail = () => {
   const { id } = useParams();
@@ -19,6 +39,7 @@ const LeadDetail = () => {
   const [newInteraction, setNewInteraction] = useState({ type: 'note', content: '' });
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [sendingQuote, setSendingQuote] = useState(null);
+  const [activeTab, setActiveTab] = useState('interactions');
 
   const fetchLeadData = useCallback(async () => {
     setLoading(true);
@@ -33,17 +54,14 @@ const LeadDetail = () => {
       setInteractions(interactionsRes.data);
       setQuotes(quotesRes.data);
       setEmails(emailsRes.data.emails || []);
-    } catch (error) {
-      console.error('Error fetching lead data:', error);
+    } catch {
       toast.error('Erreur lors du chargement du lead');
     } finally {
       setLoading(false);
     }
   }, [id]);
 
-  useEffect(() => {
-    fetchLeadData();
-  }, [fetchLeadData]);
+  useEffect(() => { fetchLeadData(); }, [fetchLeadData]);
 
   const handleStatusChange = async (newStatus) => {
     setUpdatingStatus(true);
@@ -51,454 +69,447 @@ const LeadDetail = () => {
       await axios.patch(`${API_URL}/leads/${id}`, { status: newStatus }, { withCredentials: true });
       setLead({ ...lead, status: newStatus });
       toast.success('Statut mis à jour');
-    } catch (error) {
-      console.error('Error updating status:', error);
-      toast.error('Erreur lors de la mise à jour du statut');
-    } finally {
-      setUpdatingStatus(false);
-    }
+    } catch { toast.error('Erreur lors de la mise à jour'); } 
+    finally { setUpdatingStatus(false); }
   };
 
   const handleAddInteraction = async (e) => {
     e.preventDefault();
     if (!newInteraction.content.trim()) return;
-
     try {
-      await axios.post(
-        `${API_URL}/interactions`,
-        { lead_id: id, ...newInteraction },
-        { withCredentials: true }
-      );
+      await axios.post(`${API_URL}/interactions`, { lead_id: id, ...newInteraction }, { withCredentials: true });
       toast.success('Interaction ajoutée');
       setNewInteraction({ type: 'note', content: '' });
       fetchLeadData();
-    } catch (error) {
-      console.error('Error adding interaction:', error);
-      toast.error('Erreur lors de l\'ajout de l\'interaction');
-    }
-  };
-
-  const handleCreateQuote = () => {
-    navigate('/quotes/new', { state: { lead } });
+    } catch { toast.error('Erreur lors de l\'ajout'); }
   };
 
   const handleSendQuote = async (quoteId) => {
     setSendingQuote(quoteId);
     try {
       const res = await axios.post(`${API_URL}/quotes/${quoteId}/send`, {}, { withCredentials: true });
-      toast.success(res.data.email_sent ? 'Devis envoye par email' : 'Devis marque comme envoye');
+      toast.success(res.data.email_sent ? 'Devis envoyé par email ✓' : 'Devis marqué comme envoyé');
       fetchLeadData();
-    } catch (error) {
-      toast.error('Erreur lors de l\'envoi du devis');
-    } finally {
-      setSendingQuote(null);
-    }
+    } catch { toast.error('Erreur lors de l\'envoi'); }
+    finally { setSendingQuote(null); }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <div className="animate-pulse bg-slate-200 rounded h-6 w-32 mx-auto"></div>
+      <div className="p-6 animate-fade-in">
+        <div className="skeleton h-8 w-32 mb-6 rounded-lg" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2 space-y-4">
+            <div className="skeleton h-48 rounded-xl" />
+            <div className="skeleton h-64 rounded-xl" />
+          </div>
+          <div className="space-y-4">
+            <div className="skeleton h-48 rounded-xl" />
+            <div className="skeleton h-32 rounded-xl" />
+          </div>
         </div>
       </div>
     );
   }
 
-  if (!lead) return <div className="p-4 md:p-8">Lead introuvable</div>;
+  if (!lead) return (
+    <div className="p-8 text-center text-slate-500">
+      <p>Lead introuvable</p>
+      <button onClick={() => navigate('/leads')} className="mt-4 text-violet-400 hover:text-violet-300 text-sm">← Retour aux leads</button>
+    </div>
+  );
 
-  const statusOptions = [
-    { value: 'nouveau', label: 'Nouveau' },
-    { value: 'contacté', label: 'Contacté' },
-    { value: 'en_attente', label: 'En attente' },
-    { value: 'devis_envoyé', label: 'Devis envoyé' },
-    { value: 'gagné', label: 'Gagné' },
-    { value: 'perdu', label: 'Perdu' }
-  ];
+  const statusStyle = STATUS_CONFIG[lead.status] || STATUS_CONFIG['nouveau'];
+  const statusOptions = ['nouveau','contacté','en_attente','devis_envoyé','gagné','perdu'];
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 pb-24 md:pb-6 lg:pb-8" data-testid="lead-detail-page">
+    <div className="p-4 md:p-6 lg:p-8 pb-24 md:pb-8 animate-fade-in" data-testid="lead-detail-page">
+      
       {/* Header */}
-      <div className="mb-6 md:mb-8">
-        <button
-          data-testid="back-button"
-          onClick={() => navigate('/leads')}
-          className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-4 transition-colors text-sm"
-        >
-          <ArrowLeft className="w-4 h-4" />
+      <div className="mb-6">
+        <button onClick={() => navigate('/leads')} data-testid="back-button"
+          className="flex items-center gap-2 text-slate-500 hover:text-slate-300 mb-4 transition-colors text-sm group">
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
           Retour aux leads
         </button>
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
-              {lead.name}
-            </h1>
-            <p className="text-slate-600 mt-1 text-sm">{lead.service_type}</p>
+
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-violet-500/15 border border-violet-500/20 flex items-center justify-center text-violet-400 font-bold text-xl flex-shrink-0"
+              style={{boxShadow:'0 0 20px rgba(139,92,246,0.15)'}}>
+              {(lead.name || '?').charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-100" style={{fontFamily:'Manrope,sans-serif'}}>{lead.name}</h1>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-sm text-slate-500">{lead.service_type}</span>
+                <span className="text-slate-700">·</span>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                  style={{color: statusStyle.color, background: statusStyle.bg, border: `1px solid ${statusStyle.border}`}}>
+                  {statusStyle.label}
+                </span>
+              </div>
+            </div>
           </div>
-          {/* Desktop action buttons */}
-          <div className="hidden sm:flex items-center gap-2 sm:gap-3 flex-wrap">
-            <select
-              data-testid="status-select"
-              value={lead.status}
-              onChange={(e) => handleStatusChange(e.target.value)}
-              disabled={updatingStatus}
-              className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-semibold border-0 cursor-pointer ${getStatusColor(lead.status)}`}
-            >
-              {statusOptions.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Status selector */}
+            <select value={lead.status} onChange={(e) => handleStatusChange(e.target.value)}
+              disabled={updatingStatus} data-testid="status-select"
+              className="px-3 py-2 bg-white/5 border border-white/10 text-slate-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-violet-500 cursor-pointer">
+              {statusOptions.map(s => (
+                <option key={s} value={s} className="bg-slate-800">{STATUS_CONFIG[s]?.label || s}</option>
               ))}
             </select>
-            <button
+
+            <button onClick={async () => {
+              try {
+                const res = await axios.post(`${API_URL}/whatsapp/send`, {
+                  lead_id: lead.lead_id,
+                  message: `Bonjour ${lead.name}, merci pour votre demande. Notre équipe vous contactera rapidement. - Global Clean Home`,
+                }, { withCredentials: true });
+                window.open(res.data.whatsapp_link, '_blank');
+                toast.success('WhatsApp ouvert');
+              } catch { toast.error('Erreur WhatsApp'); }
+            }}
               data-testid="whatsapp-button"
-              onClick={async () => {
-                try {
-                  const res = await axios.post(`${API_URL}/whatsapp/send`, {
-                    lead_id: lead.lead_id,
-                    message: `Bonjour ${lead.name}, merci pour votre demande. Notre equipe vous contactera rapidement. - Global Clean Home`,
-                  }, { withCredentials: true });
-                  window.open(res.data.whatsapp_link, '_blank');
-                  toast.success('WhatsApp ouvert');
-                } catch { toast.error('Erreur WhatsApp'); }
-              }}
-              className="flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm"
-            >
+              className="flex items-center gap-1.5 px-3 py-2 bg-green-500/15 hover:bg-green-500/25 border border-green-500/20 text-green-400 rounded-lg transition-all text-sm font-medium">
               <MessageSquare className="w-4 h-4" />
               WhatsApp
             </button>
-            <button
+
+            <button onClick={() => navigate('/quotes/new', { state: { lead } })}
               data-testid="create-quote-button"
-              onClick={handleCreateQuote}
-              className="flex items-center gap-1.5 px-6 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors font-medium text-sm"
-            >
+              className="flex items-center gap-1.5 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-all text-sm font-medium"
+              style={{boxShadow:'0 0 15px rgba(139,92,246,0.25)'}}>
               <FileText className="w-4 h-4" />
-              Creer un devis
+              Créer un devis
             </button>
           </div>
-          {/* Mobile status only */}
-          <div className="sm:hidden">
-            <select
-              data-testid="status-select-mobile"
-              value={lead.status}
-              onChange={(e) => handleStatusChange(e.target.value)}
-              disabled={updatingStatus}
-              className={`px-3 py-2 rounded-lg text-xs font-semibold border-0 cursor-pointer ${getStatusColor(lead.status)}`}
-            >
-              {statusOptions.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
+        </div>
+
+        {/* Score bar */}
+        <div className="mt-4 flex items-center gap-3">
+          <span className="text-xs text-slate-500">Score</span>
+          <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden max-w-xs">
+            <div className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${lead.score || 50}%`,
+                background: lead.score >= 70 ? '#34d399' : lead.score >= 40 ? '#f59e0b' : '#f43f5e'
+              }} />
           </div>
+          <span className="text-xs font-semibold" style={{color: lead.score >= 70 ? '#34d399' : lead.score >= 40 ? '#f59e0b' : '#f43f5e'}}>
+            {lead.score || 50}/100
+          </span>
+          <span className="text-xs text-slate-500">·</span>
+          <span className="text-xs text-slate-500">{lead.probability || 50}% probabilité</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-        {/* Left column - Info */}
-        <div className="lg:col-span-2 space-y-4 md:space-y-6 overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        
+        {/* Left - Main content */}
+        <div className="lg:col-span-2 space-y-4">
+          
           {/* Contact info */}
-          <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm overflow-hidden">
-            <h2 className="text-base md:text-lg font-semibold text-slate-900 mb-4">Informations de contact</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-              <div className="flex items-center gap-3 min-w-0">
-                <Mail className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-xs text-slate-500">Email</p>
-                  <p className="text-sm text-slate-900 truncate">{lead.email}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 min-w-0">
-                <Phone className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-xs text-slate-500">Telephone</p>
-                  <p className="text-sm text-slate-900">{lead.phone}</p>
-                </div>
-              </div>
-              {lead.address && (
-                <div className="flex items-center gap-3 min-w-0">
-                  <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs text-slate-500">Adresse</p>
-                    <p className="text-sm text-slate-900 truncate">{lead.address}</p>
+          <div className="section-card p-5">
+            <h2 className="text-sm font-semibold text-slate-200 mb-4 flex items-center gap-2">
+              <User className="w-4 h-4 text-violet-400" /> Informations de contact
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[
+                { icon: Mail, label: 'Email', value: lead.email, href: `mailto:${lead.email}` },
+                { icon: Phone, label: 'Téléphone', value: lead.phone, href: `tel:${lead.phone}` },
+                lead.address && { icon: MapPin, label: 'Adresse', value: lead.address },
+                { icon: Calendar, label: 'Créé le', value: formatDateTime(lead.created_at) },
+              ].filter(Boolean).map((item, i) => (
+                <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-white/3 hover:bg-white/5 transition-all">
+                  <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
+                    <item.icon className="w-4 h-4 text-slate-500" />
                   </div>
-                </div>
-              )}
-              <div className="flex items-center gap-3 min-w-0">
-                <Calendar className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-xs text-slate-500">Cree le</p>
-                  <p className="text-sm text-slate-900">{formatDateTime(lead.created_at)}</p>
-                </div>
-              </div>
-            </div>
-            {lead.message && (
-              <div className="mt-4 pt-4 border-t border-slate-200">
-                <p className="text-xs text-slate-500 mb-2">Message</p>
-                <p className="text-sm text-slate-900 break-words">{lead.message}</p>
-              </div>
-            )}
-          </div>
-
-          {/* Quotes */}
-          <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm overflow-hidden" data-testid="quotes-section">
-            <h2 className="text-base md:text-lg font-semibold text-slate-900 mb-4">Devis ({quotes.length})</h2>
-            {quotes.length === 0 ? (
-              <p className="text-slate-500 text-center py-6 text-sm">Aucun devis cree</p>
-            ) : (
-              <div className="space-y-2">
-                {quotes.map((quote) => (
-                  <div
-                    key={quote.quote_id}
-                    data-testid={`quote-item-${quote.quote_id}`}
-                    className="p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-medium text-slate-900 text-sm truncate">{quote.service_type}</p>
-                        <p className="text-xs text-slate-500">{formatDateTime(quote.created_at)}</p>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="font-semibold text-slate-900 text-sm">{formatCurrency(quote.amount)}</p>
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${getStatusColor(quote.status)}`}>
-                          {getStatusLabel(quote.status)}
-                        </span>
-                      </div>
-                    </div>
-                    {quote.status === 'brouillon' && (
-                      <button
-                        data-testid={`send-quote-lead-${quote.quote_id}`}
-                        disabled={sendingQuote === quote.quote_id}
-                        onClick={() => handleSendQuote(quote.quote_id)}
-                        className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 bg-violet-600 text-white rounded-lg active:bg-violet-800 hover:bg-violet-700 transition-colors font-medium text-xs touch-manipulation select-none cursor-pointer disabled:opacity-50"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                        {sendingQuote === quote.quote_id ? 'Envoi...' : 'Envoyer par email'}
-                      </button>
+                  <div className="min-w-0">
+                    <p className="text-xs text-slate-500 mb-0.5">{item.label}</p>
+                    {item.href ? (
+                      <a href={item.href} className="text-sm text-violet-400 hover:text-violet-300 truncate block transition-colors">{item.value}</a>
+                    ) : (
+                      <p className="text-sm text-slate-300 truncate">{item.value}</p>
                     )}
                   </div>
-                ))}
+                </div>
+              ))}
+            </div>
+
+            {lead.message && (
+              <div className="mt-4 p-4 bg-white/3 rounded-lg border border-white/5">
+                <p className="text-xs text-slate-500 mb-2 font-medium">💬 Message / Détails</p>
+                <p className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">{lead.message}</p>
               </div>
             )}
           </div>
 
-          {/* Email History */}
-          <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm overflow-hidden" data-testid="emails-section">
-            <h2 className="text-base md:text-lg font-semibold text-slate-900 mb-4">
-              Emails ({emails.length})
-            </h2>
-            {emails.length === 0 ? (
-              <p className="text-slate-500 text-center py-6 text-sm">Aucun email echange</p>
-            ) : (
-              <div className="space-y-2">
-                {emails.map((email) => (
-                  <div key={email.email_id} className={`rounded-lg border p-3 ${
-                    email.direction === 'received' 
-                      ? 'border-blue-200 bg-blue-50' 
-                      : 'border-slate-200 bg-white'
+          {/* Tabs */}
+          <div className="section-card">
+            <div className="flex border-b border-white/5">
+              {[
+                { key: 'interactions', label: 'Interactions', count: interactions.length },
+                { key: 'quotes', label: 'Devis', count: quotes.length },
+                { key: 'emails', label: 'Emails', count: emails.length },
+              ].map(tab => (
+                <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all border-b-2 -mb-px ${
+                    activeTab === tab.key
+                      ? 'text-violet-300 border-violet-500'
+                      : 'text-slate-500 border-transparent hover:text-slate-300'
                   }`}>
-                    <div className="flex items-start gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                        email.direction === 'sent' ? 'bg-violet-100' : 'bg-blue-100'
-                      }`}>
-                        {email.direction === 'sent'
-                          ? <ArrowUpRight className="w-4 h-4 text-violet-600" />
-                          : <ArrowDownLeft className="w-4 h-4 text-blue-600" />
-                        }
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-semibold text-slate-900 truncate">{email.subject}</p>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 ${
-                            email.direction === 'received' ? 'bg-blue-100 text-blue-700'
-                            : email.type === 'quote' ? 'bg-violet-100 text-violet-700'
-                            : email.type === 'invoice' ? 'bg-green-100 text-green-700'
-                            : email.type === 'followup' ? 'bg-amber-100 text-amber-700'
-                            : 'bg-slate-100 text-slate-600'
-                          }`}>
-                            {email.direction === 'received' ? '📩 Réponse client' 
-                              : email.type === 'quote' ? '📄 Devis' 
-                              : email.type === 'invoice' ? '🧾 Facture' 
-                              : email.type === 'followup' ? '🔔 Relance' 
-                              : email.type}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {email.direction === 'sent' ? `→ ${email.to_email}` : `← ${email.from_email}`}
-                          {' · '}{formatDateTime(email.sent_at || email.received_at || email.created_at)}
-                        </p>
-                        {email.direction === 'received' && email.body && (
-                          <div className="mt-2 p-3 bg-white rounded-lg border border-blue-100">
-                            <p className="text-xs font-semibold text-blue-700 mb-1">Message du client :</p>
-                            <p className="text-sm text-slate-700 whitespace-pre-wrap">{email.body}</p>
-                          </div>
-                        )}
-                        {email.direction === 'received' && !email.body && email.snippet && (
-                          <div className="mt-2 p-3 bg-white rounded-lg border border-blue-100">
-                            <p className="text-xs font-semibold text-blue-700 mb-1">Aperçu :</p>
-                            <p className="text-sm text-slate-600 italic">{email.snippet}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Interactions */}
-          <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm overflow-hidden" data-testid="interactions-section">
-            <h2 className="text-base md:text-lg font-semibold text-slate-900 mb-4">Historique des interactions</h2>
-            
-            {/* Add interaction form */}
-            <form onSubmit={handleAddInteraction} className="mb-6 p-4 bg-slate-50 rounded-lg">
-              <div className="flex gap-3">
-                <select
-                  data-testid="interaction-type-select"
-                  value={newInteraction.type}
-                  onChange={(e) => setNewInteraction({ ...newInteraction, type: e.target.value })}
-                  className="px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
-                >
-                  <option value="note">Note</option>
-                  <option value="appel">Appel</option>
-                  <option value="email">Email</option>
-                  <option value="relance">Relance</option>
-                </select>
-                <input
-                  type="text"
-                  data-testid="interaction-content-input"
-                  placeholder="Ajouter une note..."
-                  value={newInteraction.content}
-                  onChange={(e) => setNewInteraction({ ...newInteraction, content: e.target.value })}
-                  className="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
-                />
-                <button
-                  type="submit"
-                  data-testid="add-interaction-button"
-                  className="px-6 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors font-medium"
-                >
-                  Ajouter
+                  {tab.label}
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    activeTab === tab.key ? 'bg-violet-500/20 text-violet-400' : 'bg-white/5 text-slate-500'
+                  }`}>{tab.count}</span>
                 </button>
-              </div>
-            </form>
+              ))}
+            </div>
 
-            {/* Interactions list */}
-            <div className="space-y-4">
-              {interactions.length === 0 ? (
-                <p className="text-slate-500 text-center py-8">Aucune interaction</p>
-              ) : (
-                interactions.map((interaction) => (
-                  <div key={interaction.interaction_id} className="flex gap-4">
-                    <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
-                      <MessageSquare className="w-5 h-5 text-violet-600" />
+            <div className="p-4">
+              {/* Interactions tab */}
+              {activeTab === 'interactions' && (
+                <div>
+                  <form onSubmit={handleAddInteraction} className="mb-4">
+                    <div className="flex gap-2">
+                      <select value={newInteraction.type} onChange={(e) => setNewInteraction({...newInteraction, type: e.target.value})}
+                        data-testid="interaction-type-select"
+                        className="px-3 py-2 bg-white/5 border border-white/10 text-slate-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-violet-500 flex-shrink-0">
+                        <option value="note" className="bg-slate-800">📝 Note</option>
+                        <option value="appel" className="bg-slate-800">📞 Appel</option>
+                        <option value="email" className="bg-slate-800">📧 Email</option>
+                        <option value="relance" className="bg-slate-800">🔔 Relance</option>
+                      </select>
+                      <input type="text" placeholder="Ajouter une note ou interaction..."
+                        value={newInteraction.content} data-testid="interaction-content-input"
+                        onChange={(e) => setNewInteraction({...newInteraction, content: e.target.value})}
+                        className="flex-1 px-3 py-2 bg-white/5 border border-white/10 text-slate-200 placeholder-slate-600 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-violet-500" />
+                      <button type="submit" data-testid="add-interaction-button"
+                        className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-all flex-shrink-0">
+                        <Plus className="w-4 h-4" />
+                      </button>
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-medium text-slate-900 capitalize">{interaction.type}</span>
-                        <span className="text-xs text-slate-500">{formatDateTime(interaction.created_at)}</span>
+                  </form>
+                  <div className="space-y-3">
+                    {interactions.length === 0 ? (
+                      <div className="text-center py-8 text-slate-600">
+                        <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                        <p className="text-sm">Aucune interaction</p>
                       </div>
-                      <p className="text-sm text-slate-700 break-words">{interaction.content}</p>
-                    </div>
+                    ) : interactions.map((interaction) => (
+                      <div key={interaction.interaction_id || Math.random()} className="flex gap-3 p-3 rounded-lg bg-white/3 hover:bg-white/5 transition-all">
+                        <span className="text-lg flex-shrink-0">{INTERACTION_ICONS[interaction.type] || '💬'}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-semibold text-slate-300 capitalize">{interaction.type}</span>
+                            <span className="text-xs text-slate-600">{formatDateTime(interaction.created_at)}</span>
+                          </div>
+                          <p className="text-sm text-slate-400 break-words">{interaction.content}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))
+                </div>
+              )}
+
+              {/* Quotes tab */}
+              {activeTab === 'quotes' && (
+                <div data-testid="quotes-section">
+                  {quotes.length === 0 ? (
+                    <div className="text-center py-8 text-slate-600">
+                      <FileText className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                      <p className="text-sm mb-3">Aucun devis créé</p>
+                      <button onClick={() => navigate('/quotes/new', { state: { lead } })}
+                        className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-all">
+                        + Créer un devis
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {quotes.map((quote) => (
+                        <div key={quote.quote_id} data-testid={`quote-item-${quote.quote_id}`}
+                          className="p-4 rounded-xl bg-white/3 border border-white/5 hover:bg-white/5 transition-all">
+                          <div className="flex items-center justify-between gap-3 mb-2">
+                            <div>
+                              <p className="font-semibold text-slate-200 text-sm">{quote.service_type}</p>
+                              <p className="text-xs text-slate-500">{formatDateTime(quote.created_at)}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-violet-400 text-lg">{formatCurrency(quote.amount)}</p>
+                              <span className="text-xs text-slate-500">{quote.status}</span>
+                            </div>
+                          </div>
+                          {quote.status === 'brouillon' && (
+                            <button disabled={sendingQuote === quote.quote_id}
+                              onClick={() => handleSendQuote(quote.quote_id)}
+                              data-testid={`send-quote-lead-${quote.quote_id}`}
+                              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/20 text-violet-300 rounded-lg text-sm font-medium transition-all disabled:opacity-50">
+                              <Send className="w-3.5 h-3.5" />
+                              {sendingQuote === quote.quote_id ? 'Envoi...' : 'Envoyer par email'}
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Emails tab */}
+              {activeTab === 'emails' && (
+                <div data-testid="emails-section" className="space-y-3">
+                  {emails.length === 0 ? (
+                    <div className="text-center py-8 text-slate-600">
+                      <Mail className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">Aucun email échangé</p>
+                    </div>
+                  ) : emails.map((email) => (
+                    <div key={email.email_id}
+                      className={`rounded-xl p-4 border transition-all ${
+                        email.direction === 'received'
+                          ? 'bg-blue-500/5 border-blue-500/15'
+                          : 'bg-white/3 border-white/5'
+                      }`}>
+                      <div className="flex items-start gap-3">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                          email.direction === 'sent' ? 'bg-violet-500/15' : 'bg-blue-500/15'
+                        }`}>
+                          {email.direction === 'sent'
+                            ? <ArrowUpRight className="w-4 h-4 text-violet-400" />
+                            : <ArrowDownLeft className="w-4 h-4 text-blue-400" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <p className="text-sm font-semibold text-slate-200 truncate">{email.subject}</p>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 ${
+                              email.direction === 'received' ? 'bg-blue-500/15 text-blue-400'
+                              : email.type === 'quote' ? 'bg-violet-500/15 text-violet-400'
+                              : email.type === 'followup' ? 'bg-amber-500/15 text-amber-400'
+                              : 'bg-white/10 text-slate-400'
+                            }`}>
+                              {email.direction === 'received' ? '📩 Réponse' 
+                                : email.type === 'quote' ? '📄 Devis'
+                                : email.type === 'followup' ? '🔔 Relance'
+                                : email.type}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500">
+                            {email.direction === 'sent' ? `→ ${email.to_email}` : `← ${email.from_email}`}
+                            {' · '}{formatDateTime(email.sent_at || email.received_at || email.created_at)}
+                          </p>
+                          {email.direction === 'received' && (email.body || email.snippet) && (
+                            <div className="mt-2 p-3 bg-blue-500/5 rounded-lg border border-blue-500/10">
+                              <p className="text-xs font-semibold text-blue-400 mb-1">Message :</p>
+                              <p className="text-sm text-slate-300 whitespace-pre-wrap">{email.body || email.snippet}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Right column - Details */}
-        <div className="space-y-4 md:space-y-6 overflow-hidden">
+        {/* Right - Details */}
+        <div className="space-y-4">
+          
           {/* Service details */}
-          <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm overflow-hidden">
-            <h2 className="text-base md:text-lg font-semibold text-slate-900 mb-4">Details du service</h2>
+          <div className="section-card p-5">
+            <h2 className="text-sm font-semibold text-slate-200 mb-4 flex items-center gap-2">
+              <Zap className="w-4 h-4 text-violet-400" /> Détails du service
+            </h2>
             <div className="space-y-3">
-              <div>
-                <p className="text-xs text-slate-500">Service</p>
-                <p className="text-sm text-slate-900 font-medium truncate">{lead.service_type}</p>
-              </div>
-              {lead.surface && (
-                <div>
-                  <p className="text-xs text-slate-500">Surface</p>
-                  <p className="text-sm text-slate-900 font-medium">{lead.surface} m2</p>
+              {[
+                { label: 'Service', value: lead.service_type },
+                lead.surface && { label: 'Surface', value: `${lead.surface} m²` },
+                { label: 'Probabilité', value: null, isBar: true },
+              ].filter(Boolean).map((item, i) => (
+                <div key={i}>
+                  <p className="text-xs text-slate-500 mb-1">{item.label}</p>
+                  {item.isBar ? (
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-700"
+                          style={{width:`${lead.probability}%`, background:'linear-gradient(90deg, #7c3aed, #a78bfa)'}} />
+                      </div>
+                      <span className="text-xs font-bold text-violet-400">{lead.probability}%</span>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-300 font-medium">{item.value}</p>
+                  )}
                 </div>
-              )}
-              <div>
-                <p className="text-xs text-slate-500">Probabilite</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-violet-600 rounded-full"
-                      style={{ width: `${lead.probability}%` }}
-                    ></div>
-                  </div>
-                  <span className="text-xs font-medium text-slate-900 flex-shrink-0">{lead.probability}%</span>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
 
-          {/* Source tracking */}
-          <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm overflow-hidden">
-            <h2 className="text-base md:text-lg font-semibold text-slate-900 mb-4">Tracking</h2>
+          {/* Tracking */}
+          <div className="section-card p-5">
+            <h2 className="text-sm font-semibold text-slate-200 mb-4 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-violet-400" /> Tracking
+            </h2>
             <div className="space-y-3">
-              <div>
-                <p className="text-xs text-slate-500">Source</p>
-                <p className="text-sm text-slate-900 font-medium truncate">{lead.source || 'Direct'}</p>
-              </div>
-              {lead.campaign && (
-                <div>
-                  <p className="text-xs text-slate-500">Campagne</p>
-                  <p className="text-sm text-slate-900 font-medium truncate">{lead.campaign}</p>
+              {[
+                { label: 'Source', value: lead.source || 'Direct' },
+                lead.utm_source && { label: 'UTM Source', value: lead.utm_source },
+                lead.utm_medium && { label: 'UTM Medium', value: lead.utm_medium },
+                lead.utm_campaign && { label: 'Campagne', value: lead.utm_campaign },
+                lead.page_origine && { label: 'Page origine', value: lead.page_origine },
+              ].filter(Boolean).map((item, i) => (
+                <div key={i} className="flex items-center justify-between gap-2">
+                  <p className="text-xs text-slate-500">{item.label}</p>
+                  <p className="text-xs font-medium text-slate-300 truncate max-w-[60%] text-right">{item.value}</p>
                 </div>
-              )}
-              {lead.utm_source && (
-                <div>
-                  <p className="text-xs text-slate-500">UTM Source</p>
-                  <p className="text-sm text-slate-900 font-medium truncate">{lead.utm_source}</p>
-                </div>
-              )}
-              {lead.utm_medium && (
-                <div>
-                  <p className="text-xs text-slate-500">UTM Medium</p>
-                  <p className="text-sm text-slate-900 font-medium truncate">{lead.utm_medium}</p>
-                </div>
-              )}
+              ))}
+            </div>
+          </div>
+
+          {/* Quick actions */}
+          <div className="section-card p-5">
+            <h2 className="text-sm font-semibold text-slate-200 mb-3">Actions rapides</h2>
+            <div className="space-y-2">
+              <a href={`tel:${lead.phone}`}
+                className="w-full flex items-center gap-3 px-3 py-2.5 bg-white/3 hover:bg-white/5 border border-white/5 hover:border-white/10 rounded-lg transition-all text-sm text-slate-300 hover:text-slate-100">
+                <Phone className="w-4 h-4 text-green-400" /> Appeler {lead.phone}
+              </a>
+              <a href={`mailto:${lead.email}`}
+                className="w-full flex items-center gap-3 px-3 py-2.5 bg-white/3 hover:bg-white/5 border border-white/5 hover:border-white/10 rounded-lg transition-all text-sm text-slate-300 hover:text-slate-100">
+                <Mail className="w-4 h-4 text-blue-400" /> Envoyer un email
+              </a>
+              <button onClick={() => navigate('/quotes/new', { state: { lead } })}
+                className="w-full flex items-center gap-3 px-3 py-2.5 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/15 hover:border-violet-500/30 rounded-lg transition-all text-sm text-violet-300 hover:text-violet-200">
+                <FileText className="w-4 h-4" /> Créer un devis
+              </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Mobile sticky footer actions */}
-      <div className="fixed bottom-14 left-0 right-0 z-30 bg-white border-t border-slate-200 p-3 flex gap-2 sm:hidden" data-testid="mobile-lead-actions">
-        <a
-          href={`tel:${lead.phone}`}
-          data-testid="mobile-call-btn"
-          className="flex-1 flex items-center justify-center gap-2 min-h-[48px] bg-slate-100 text-slate-700 rounded-xl font-medium text-sm active:bg-slate-200 transition-colors touch-manipulation"
-        >
-          <Phone className="w-4 h-4" />
-          Appeler
+      {/* Mobile actions */}
+      <div className="fixed bottom-14 left-0 right-0 z-30 border-t border-white/5 p-3 flex gap-2 sm:hidden"
+        style={{background:'hsl(224,71%,5%)'}} data-testid="mobile-lead-actions">
+        <a href={`tel:${lead.phone}`} data-testid="mobile-call-btn"
+          className="flex-1 flex items-center justify-center gap-2 py-3 bg-white/5 border border-white/10 text-slate-300 rounded-xl text-sm font-medium transition-all">
+          <Phone className="w-4 h-4" /> Appeler
         </a>
-        <button
-          data-testid="mobile-whatsapp-btn"
+        <button data-testid="mobile-whatsapp-btn"
           onClick={async () => {
             try {
-              const res = await axios.post(`${API_URL}/whatsapp/send`, {
-                lead_id: lead.lead_id,
-                message: `Bonjour ${lead.name}, merci pour votre demande. Notre equipe vous contactera rapidement. - Global Clean Home`,
-              }, { withCredentials: true });
+              const res = await axios.post(`${API_URL}/whatsapp/send`, { lead_id: lead.lead_id, message: `Bonjour ${lead.name}, merci pour votre demande. - Global Clean Home` }, { withCredentials: true });
               window.open(res.data.whatsapp_link, '_blank');
             } catch { toast.error('Erreur WhatsApp'); }
           }}
-          className="flex-1 flex items-center justify-center gap-2 min-h-[48px] bg-green-600 text-white rounded-xl font-medium text-sm active:bg-green-800 transition-colors touch-manipulation"
-        >
-          <MessageSquare className="w-4 h-4" />
-          WhatsApp
+          className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-500/15 border border-green-500/20 text-green-400 rounded-xl text-sm font-medium transition-all">
+          <MessageSquare className="w-4 h-4" /> WhatsApp
         </button>
-        <button
-          data-testid="mobile-quote-btn"
-          onClick={handleCreateQuote}
-          className="flex-1 flex items-center justify-center gap-2 min-h-[48px] bg-violet-600 text-white rounded-xl font-medium text-sm active:bg-violet-800 transition-colors touch-manipulation"
-        >
-          <FileText className="w-4 h-4" />
-          Devis
+        <button data-testid="mobile-quote-btn" onClick={() => navigate('/quotes/new', { state: { lead } })}
+          className="flex-1 flex items-center justify-center gap-2 py-3 bg-violet-600 text-white rounded-xl text-sm font-medium transition-all">
+          <FileText className="w-4 h-4" /> Devis
         </button>
       </div>
     </div>
