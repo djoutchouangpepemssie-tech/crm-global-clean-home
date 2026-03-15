@@ -1513,17 +1513,26 @@ async def startup_db_indexes():
     
     # Lancer la tache de relance automatique toutes les heures
     import asyncio
-    async def auto_followup_task():
+    async def auto_tasks():
         while True:
             try:
-                await asyncio.sleep(3600)  # Attendre 1 heure
+                await asyncio.sleep(3600)  # Toutes les heures
+                
+                # 1. Synchroniser les emails reçus depuis Gmail
+                from gmail_service import _db as gmail_db, _get_any_active_token, _sync_inbox
+                token, uid = await _get_any_active_token()
+                if token and uid:
+                    synced, errors = await _sync_inbox(token, uid)
+                    logger.info(f"Sync Gmail auto: {synced} emails synchronises")
+                
+                # 2. Envoyer les relances 48h
                 from gmail_service import check_followups_auto
                 await check_followups_auto()
-                logger.info("Relance automatique executee")
+                
             except Exception as e:
-                logger.warning(f"Erreur relance auto: {e}")
+                logger.warning(f"Erreur taches auto: {e}")
     
-    asyncio.create_task(auto_followup_task())
+    asyncio.create_task(auto_tasks())
     await db.webhooks.create_index("webhook_id", unique=True)
     await db.webhooks.create_index("events")
     await db.webhook_logs.create_index("webhook_id")
