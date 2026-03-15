@@ -362,6 +362,7 @@ async def send_quote_email(user_id: str, lead: dict, quote: dict) -> bool:
         return False
 
     amount_ht = quote.get("amount", 0)
+    amount_ttc = amount_ht * 1.2
     prenom = lead.get("name", "").split()[0] if lead.get("name") else "Client"
 
     # Formater les details du devis en HTML
@@ -386,30 +387,9 @@ async def send_quote_email(user_id: str, lead: dict, quote: dict) -> bool:
         details_html += "</div>"
 
     html = f"""<!DOCTYPE html>
-<html lang="fr"><head><meta charset="UTF-8">
-<meta name="color-scheme" content="light dark">
-<meta name="supported-color-schemes" content="light dark">
-<style>
-  :root { color-scheme: light dark; }
-  @media (prefers-color-scheme: dark) {
-    body { background-color: #1e1e2e !important; }
-    .email-wrapper { background-color: #1e1e2e !important; }
-    .email-body { background-color: #2d2d3f !important; color: #e2e8f0 !important; }
-    .email-text { color: #cbd5e1 !important; }
-    .email-heading { color: #f1f5f9 !important; }
-    .email-card { background-color: #3d3d50 !important; border-color: #4d4d60 !important; }
-    .email-muted { color: #94a3b8 !important; }
-    .email-footer { background-color: #111827 !important; }
-    .price-box { background: linear-gradient(135deg, #2d1b6b, #1e3a7a) !important; border-color: #4c3f9e !important; }
-    .guarantee-box { background-color: #052e16 !important; border-color: #14532d !important; }
-    .highlight-box { background-color: #1e3a5f !important; border-color: #1e40af !important; }
-    .steps-box { background-color: #2d2d3f !important; }
-    .contact-box { background-color: #2d2d3f !important; }
-  }
-</style>
-</head>
-<body style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,sans-serif;" class="email-wrapper">
-<div class="email-body" style="max-width:620px;margin:32px auto;background:white;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
+<html lang="fr"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,sans-serif;">
+<div style="max-width:620px;margin:32px auto;background:white;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
 <div style="background:linear-gradient(135deg,#7C3AED,#2563eb);padding:36px 32px;text-align:center;">
 <div style="font-size:40px;margin-bottom:8px;">📄</div>
 <h1 style="color:white;margin:0;font-size:22px;">Votre Devis Personnalise</h1>
@@ -418,13 +398,13 @@ async def send_quote_email(user_id: str, lead: dict, quote: dict) -> bool:
 <div style="padding:36px 32px;">
 <h2 style="color:#1e293b;margin:0 0 16px;">Bonjour {prenom},</h2>
 <p style="color:#475569;line-height:1.7;">Suite a votre demande, nous avons le plaisir de vous adresser votre devis personnalise. Notre equipe a analyse vos besoins avec soin pour vous proposer une prestation adaptee au meilleur rapport qualite-prix.</p>
-<div class="price-box" style="background:linear-gradient(135deg,#f5f3ff,#eff6ff);border-radius:12px;padding:24px;margin:20px 0;text-align:center;border:1px solid #ddd6fe;">
+<div style="background:linear-gradient(135deg,#f5f3ff,#eff6ff);border-radius:12px;padding:24px;margin:20px 0;text-align:center;border:1px solid #ddd6fe;">
 <p style="color:#6d28d9;font-size:13px;font-weight:600;margin:0 0 8px;text-transform:uppercase;">Montant du devis</p>
 <p style="color:#1e293b;font-size:36px;font-weight:800;margin:0;">{amount_ht:,.0f} EUR</p>
-<p style="color:#64748b;font-size:12px;margin:4px 0 0;">Montant net - Micro-entreprise (TVA non applicable)</p>
+<p style="color:#64748b;font-size:12px;margin:4px 0 0;">HT - soit {amount_ttc:,.0f} EUR TTC (TVA 20%)</p>
 </div>
 {details_html}
-<div class="guarantee-box" style="background:#f0fdf4;border-radius:8px;padding:16px 20px;margin:20px 0;border:1px solid #bbf7d0;">
+<div style="background:#f0fdf4;border-radius:8px;padding:16px 20px;margin:20px 0;border:1px solid #bbf7d0;">
 <p style="color:#166534;font-weight:700;margin:0 0 8px;">Nos engagements</p>
 <p style="color:#15803d;margin:3px 0;font-size:13px;">Produits professionnels et materiel fourni</p>
 <p style="color:#15803d;margin:3px 0;font-size:13px;">Personnel forme et experimente</p>
@@ -805,36 +785,24 @@ async def get_email_stats(request: Request):
         "total_followups": total_followups,
     }
 
-async def send_confirmation_email(to_email: str, client_name: str, service_type: str, services: list = None):
+async def send_confirmation_email(to_email: str, client_name: str, service_type: str):
     """Envoie un email de confirmation automatique au prospect."""
     
     # Mapping des types de services
     services_map = {
-        'menage': 'Ménage à domicile',
-        'menage-domicile': 'Ménage à domicile',
-        'nettoyage-canape': 'Nettoyage de canapé',
-        'canape': 'Nettoyage de canapé',
-        'nettoyage-matelas': 'Nettoyage de matelas',
-        'matelas': 'Nettoyage de matelas',
-        'nettoyage-tapis': 'Nettoyage de tapis',
-        'tapis': 'Nettoyage de tapis',
-        'nettoyage-bureaux': 'Nettoyage de bureaux',
-        'bureaux': 'Nettoyage de bureaux',
+        'menage': 'ménage à domicile',
+        'menage-domicile': 'ménage à domicile',
+        'nettoyage-canape': 'nettoyage de canapé',
+        'canape': 'nettoyage de canapé',
+        'nettoyage-matelas': 'nettoyage de matelas',
+        'matelas': 'nettoyage de matelas',
+        'nettoyage-tapis': 'nettoyage de tapis',
+        'tapis': 'nettoyage de tapis',
+        'nettoyage-bureaux': 'nettoyage de bureaux',
+        'bureaux': 'nettoyage de bureaux',
     }
-    
-    # Construire la liste de tous les services
-    all_services = services or [service_type]
-    services_labels = [services_map.get(s, s) for s in all_services]
-    service_label = services_labels[0] if services_labels else service_type
-    
-    # HTML pour la liste des services
-    services_html = ""
-    for svc in services_labels:
-        services_html += f'<div style="display:flex;align-items:center;gap:8px;margin:6px 0;"><span style="color:#10b981;font-size:16px;">✓</span><span style="color:#1e293b;font-weight:500;">{svc}</span></div>'
-    
+    service_label = services_map.get(service_type, service_type)
     prenom = client_name.split()[0] if client_name else 'cher(e) client(e)'
-    nb_services = len(all_services)
-    services_titre = f"{nb_services} service{'s' if nb_services > 1 else ''} demandé{'s' if nb_services > 1 else ''}"
     
     subject = "✅ Votre demande de devis a bien été reçue – Global Clean Home"
     
@@ -843,26 +811,6 @@ async def send_confirmation_email(to_email: str, client_name: str, service_type:
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="color-scheme" content="light dark">
-<meta name="supported-color-schemes" content="light dark">
-<style>
-  :root { color-scheme: light dark; }
-  @media (prefers-color-scheme: dark) {
-    body { background-color: #1e1e2e !important; }
-    .email-wrapper { background-color: #1e1e2e !important; }
-    .email-body { background-color: #2d2d3f !important; color: #e2e8f0 !important; }
-    .email-text { color: #cbd5e1 !important; }
-    .email-heading { color: #f1f5f9 !important; }
-    .email-card { background-color: #3d3d50 !important; border-color: #4d4d60 !important; }
-    .email-muted { color: #94a3b8 !important; }
-    .email-footer { background-color: #111827 !important; }
-    .price-box { background: linear-gradient(135deg, #2d1b6b, #1e3a7a) !important; border-color: #4c3f9e !important; }
-    .guarantee-box { background-color: #052e16 !important; border-color: #14532d !important; }
-    .highlight-box { background-color: #1e3a5f !important; border-color: #1e40af !important; }
-    .steps-box { background-color: #2d2d3f !important; }
-    .contact-box { background-color: #2d2d3f !important; }
-  }
-</style>
   <style>
     body {{ font-family: 'Segoe UI', Arial, sans-serif; background: #f4f7fb; margin: 0; padding: 0; }}
     .container {{ max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }}
@@ -904,13 +852,12 @@ async def send_confirmation_email(to_email: str, client_name: str, service_type:
       <div class="checkmark">✅</div>
       <div class="greeting">Bonjour {prenom},</div>
       
-      <p class="message email-text">
-        Nous avons bien reçu votre demande de devis pour les services suivants et nous vous en remercions chaleureusement.</p>
-      <div style="background:#f0fdf4;border-radius:8px;padding:16px 20px;margin:12px 0;border:1px solid #bbf7d0;">
-        {services_html}
-      </div>
+      <p class="message">
+        Nous avons bien reçu votre demande de devis pour un <strong>{service_label}</strong> 
+        et nous vous en remercions chaleureusement.
+      </p>
       
-      <p class="message email-text">
+      <p class="message">
         Notre équipe prend votre demande très au sérieux et s'engage à vous fournir 
         un devis personnalisé dans les <strong>meilleurs délais</strong>.
       </p>
@@ -947,7 +894,7 @@ async def send_confirmation_email(to_email: str, client_name: str, service_type:
         </div>
       </div>
 
-      <p class="message email-text">
+      <p class="message">
         En attendant, n'hésitez pas à nous contacter directement si vous avez 
         des questions ou si vous souhaitez accélérer le traitement de votre dossier.
       </p>
