@@ -1,79 +1,160 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, CheckSquare, Activity, LogOut, TrendingUp, Trello, CreditCard, BarChart3, CalendarDays, Plug } from 'lucide-react';
+import React, { useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { 
+  LayoutDashboard, Users, FileText, CheckSquare, Activity, LogOut, 
+  TrendingUp, Trello, CreditCard, BarChart3, CalendarDays, Plug,
+  Sparkles, ChevronLeft, ChevronRight, Bell, Settings
+} from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
-const Sidebar = () => {
-  const { logout } = useAuth();
+const navGroups = [
+  {
+    label: 'Principal',
+    items: [
+      { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', testId: 'nav-dashboard' },
+      { to: '/kanban', icon: Trello, label: 'Pipeline', testId: 'nav-kanban' },
+      { to: '/leads', icon: Users, label: 'Leads', testId: 'nav-leads', badge: null },
+    ]
+  },
+  {
+    label: 'Commercial',
+    items: [
+      { to: '/quotes', icon: FileText, label: 'Devis', testId: 'nav-quotes' },
+      { to: '/invoices', icon: CreditCard, label: 'Factures', testId: 'nav-invoices' },
+      { to: '/finance', icon: BarChart3, label: 'Finance', testId: 'nav-finance' },
+    ]
+  },
+  {
+    label: 'Opérations',
+    items: [
+      { to: '/planning', icon: CalendarDays, label: 'Planning', testId: 'nav-planning' },
+      { to: '/tasks', icon: CheckSquare, label: 'Tâches', testId: 'nav-tasks' },
+      { to: '/analytics', icon: TrendingUp, label: 'Analytics', testId: 'nav-analytics' },
+    ]
+  },
+  {
+    label: 'Système',
+    items: [
+      { to: '/integrations', icon: Plug, label: 'Intégrations', testId: 'nav-integrations' },
+      { to: '/activity', icon: Activity, label: 'Journal', testId: 'nav-activity' },
+    ]
+  }
+];
 
-  const navItems = [
-    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', testId: 'nav-dashboard' },
-    { to: '/kanban', icon: Trello, label: 'Kanban', testId: 'nav-kanban' },
-    { to: '/leads', icon: Users, label: 'Leads', testId: 'nav-leads' },
-    { to: '/quotes', icon: FileText, label: 'Devis', testId: 'nav-quotes' },
-    { to: '/invoices', icon: CreditCard, label: 'Factures', testId: 'nav-invoices' },
-    { to: '/finance', icon: BarChart3, label: 'Finance', testId: 'nav-finance' },
-    { to: '/planning', icon: CalendarDays, label: 'Planning', testId: 'nav-planning' },
-    { to: '/tasks', icon: CheckSquare, label: 'Taches', testId: 'nav-tasks' },
-    { to: '/analytics', icon: TrendingUp, label: 'Analytics', testId: 'nav-analytics' },
-    { to: '/integrations', icon: Plug, label: 'Integrations', testId: 'nav-integrations' },
-    { to: '/activity', icon: Activity, label: 'Journal', testId: 'nav-activity' }
-  ];
+const Sidebar = () => {
+  const { user, logout } = useAuth();
+  const location = useLocation();
+  const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div
-      className="hidden lg:flex w-64 h-screen fixed left-0 top-0 bg-white border-r border-slate-200 flex-col z-50"
-      data-testid="sidebar"
+    <aside 
+      className={`flex flex-col h-screen sticky top-0 transition-all duration-300 ease-in-out ${
+        collapsed ? 'w-16' : 'w-56'
+      }`}
+      style={{
+        background: 'linear-gradient(180deg, hsl(224,71%,5%) 0%, hsl(224,71%,4%) 100%)',
+        borderRight: '1px solid rgba(255,255,255,0.05)',
+      }}
     >
       {/* Logo */}
-      <div className="px-6 py-5 border-b border-slate-100">
-        <h1 className="text-xl font-bold text-slate-900 tracking-tight" style={{ fontFamily: 'Manrope, sans-serif' }}>
-          <span className="text-violet-600">Global</span> Clean Home
-        </h1>
-        <p className="text-[11px] text-slate-400 font-medium mt-0.5 uppercase tracking-widest">CRM Pro</p>
+      <div className={`flex items-center h-14 px-3 border-b border-white/5 flex-shrink-0 ${collapsed ? 'justify-center' : 'gap-3'}`}>
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center flex-shrink-0 shadow-lg"
+          style={{boxShadow: '0 0 15px rgba(139,92,246,0.3)'}}>
+          <Sparkles className="w-4 h-4 text-white" />
+        </div>
+        {!collapsed && (
+          <div className="overflow-hidden">
+            <p className="text-sm font-bold text-slate-100 truncate" style={{fontFamily:'Manrope,sans-serif'}}>
+              Global Clean
+            </p>
+            <p className="text-[10px] text-slate-500 truncate">CRM Pro</p>
+          </div>
+        )}
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-0.5">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            data-testid={item.testId}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group ${
-                isActive
-                  ? 'bg-violet-50 text-violet-700 nav-active'
-                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-              }`
-            }
-          >
-            <item.icon className="w-[18px] h-[18px] flex-shrink-0 transition-colors" />
-            <span>{item.label}</span>
-          </NavLink>
+      {/* Nav */}
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-2 space-y-4 hide-scrollbar">
+        {navGroups.map((group) => (
+          <div key={group.label}>
+            {!collapsed && (
+              <p className="text-[10px] font-semibold text-slate-600 uppercase tracking-widest px-2 mb-1">
+                {group.label}
+              </p>
+            )}
+            <div className="space-y-0.5">
+              {group.items.map((item) => {
+                const isActive = location.pathname === item.to || location.pathname.startsWith(item.to + '/');
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    data-testid={item.testId}
+                    title={collapsed ? item.label : undefined}
+                    className={`flex items-center gap-3 px-2 py-2 rounded-lg transition-all duration-150 group relative ${
+                      isActive
+                        ? 'bg-violet-500/15 text-violet-300 border border-violet-500/20'
+                        : 'text-slate-500 hover:text-slate-300 hover:bg-white/4'
+                    } ${collapsed ? 'justify-center' : ''}`}
+                  >
+                    {isActive && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-violet-400 rounded-r" />
+                    )}
+                    <item.icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-violet-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
+                    {!collapsed && (
+                      <span className="text-xs font-medium truncate">{item.label}</span>
+                    )}
+                    {!collapsed && item.badge && (
+                      <span className="ml-auto text-[10px] bg-violet-500/20 text-violet-400 px-1.5 py-0.5 rounded-full">
+                        {item.badge}
+                      </span>
+                    )}
+                  </NavLink>
+                );
+              })}
+            </div>
+          </div>
         ))}
       </nav>
 
-      {/* Footer */}
-      <div className="px-3 py-4 border-t border-slate-100">
-        <a
-          href="/portal"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors mb-2"
-        >
-          Portail client
-        </a>
+      {/* Bottom */}
+      <div className="flex-shrink-0 border-t border-white/5 p-2 space-y-1">
+        {/* User */}
+        {!collapsed && user && (
+          <div className="flex items-center gap-2 px-2 py-2 rounded-lg bg-white/3 mb-2">
+            {user.picture ? (
+              <img src={user.picture} alt="" className="w-7 h-7 rounded-full ring-1 ring-violet-500/30 flex-shrink-0" />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-violet-500/20 flex items-center justify-center flex-shrink-0">
+                <span className="text-violet-400 text-xs font-bold">{user.name?.[0] || 'U'}</span>
+              </div>
+            )}
+            <div className="overflow-hidden flex-1 min-w-0">
+              <p className="text-xs font-medium text-slate-300 truncate">{user.name}</p>
+              <p className="text-[10px] text-slate-600 truncate">{user.email}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Collapse toggle */}
         <button
-          data-testid="logout-button"
-          onClick={logout}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors w-full"
+          onClick={() => setCollapsed(!collapsed)}
+          className={`w-full flex items-center gap-3 px-2 py-2 rounded-lg text-slate-600 hover:text-slate-300 hover:bg-white/5 transition-all text-xs ${collapsed ? 'justify-center' : ''}`}
         >
-          <LogOut className="w-[18px] h-[18px]" />
-          Deconnexion
+          {collapsed ? <ChevronRight className="w-4 h-4" /> : <><ChevronLeft className="w-4 h-4" /><span>Réduire</span></>}
+        </button>
+
+        {/* Logout */}
+        <button
+          onClick={logout}
+          data-testid="logout-button"
+          className={`w-full flex items-center gap-3 px-2 py-2 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/5 transition-all text-xs ${collapsed ? 'justify-center' : ''}`}
+          title={collapsed ? 'Déconnexion' : undefined}
+        >
+          <LogOut className="w-4 h-4 flex-shrink-0" />
+          {!collapsed && <span>Déconnexion</span>}
         </button>
       </div>
-    </div>
+    </aside>
   );
 };
 
