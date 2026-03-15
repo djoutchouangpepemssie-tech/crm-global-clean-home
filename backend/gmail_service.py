@@ -626,7 +626,7 @@ async def _sync_inbox(access_token: str, user_id: str) -> tuple:
                 detail_resp = await client.get(
                     f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{msg_ref['id']}",
                     headers={"Authorization": f"Bearer {access_token}"},
-                    params={"format": "metadata", "metadataHeaders": ["From", "Subject", "In-Reply-To", "Date"]},
+                    params={"format": "full"},
                 )
             if detail_resp.status_code != 200:
                 errors += 1
@@ -634,6 +634,7 @@ async def _sync_inbox(access_token: str, user_id: str) -> tuple:
 
             msg_data = detail_resp.json()
             headers = {h["name"]: h["value"] for h in msg_data.get("payload", {}).get("headers", [])}
+            # Format full inclut le corps complet
 
             from_email = headers.get("From", "")
             # Extract email from "Name <email>" format
