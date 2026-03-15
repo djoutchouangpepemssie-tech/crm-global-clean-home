@@ -553,24 +553,31 @@ const ClientPortal = () => {
       const urlToken = params.get('token');
       if (urlToken) {
         try {
-          const res = await axios.post(`${API_URL}/auth/${urlToken}`, {}, { withCredentials: true });
-          // Stocker aussi dans localStorage comme fallback
-          localStorage.setItem('portal_token', res.data.session_token || urlToken);
+          const res = await portalAxios.post(`${API_URL}/auth/${urlToken}`, {});
+          const sessionToken = res.data.session_token;
+          if (sessionToken) localStorage.setItem('portal_token', sessionToken);
           setUser(res.data);
           window.history.replaceState({}, '', '/portal');
           setLoading(false);
           return;
-        } catch { /* token invalide, continuer */ }
+        } catch(e) { 
+          console.error('Token auth failed:', e);
+          localStorage.removeItem('portal_token');
+        }
       }
-      // Vérifier session existante
+      // Vérifier session existante via localStorage token
       const savedToken = localStorage.getItem('portal_token');
-      portalAxios.get(`${API_URL}/me`, { 
-        withCredentials: true,
-        headers: savedToken ? { 'X-Portal-Token': savedToken } : {}
-      })
-        .then(res => setUser(res.data))
-        .catch(() => {})
-        .finally(() => setLoading(false));
+      if (savedToken) {
+        try {
+          const res = await portalAxios.get(`${API_URL}/me`);
+          setUser(res.data);
+          setLoading(false);
+          return;
+        } catch {
+          localStorage.removeItem('portal_token');
+        }
+      }
+      setLoading(false);
     };
     checkAuth();
   }, []);
