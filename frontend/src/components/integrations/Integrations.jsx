@@ -75,7 +75,7 @@ const WebhooksTab = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">Webhooks (Zapier / Make)</h2>
+          <h2 className="text-lg font-semibold text-slate-100">Webhooks (Zapier / Make)</h2>
           <p className="text-sm text-slate-500">Envoyez des donnees automatiquement vers vos outils</p>
         </div>
         <button data-testid="add-webhook-btn" onClick={() => setShowForm(true)}
@@ -85,25 +85,25 @@ const WebhooksTab = () => {
       </div>
 
       {webhooks.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
+        <div className="section-card p-8 text-center">
           <Webhook className="w-10 h-10 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500">Aucun webhook configure</p>
         </div>
       ) : webhooks.map(wh => (
         <div key={wh.webhook_id} data-testid={`webhook-${wh.webhook_id}`}
-          className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+          className="section-card p-5 ">
           <div className="flex items-start justify-between mb-3">
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-slate-900">{wh.name}</h3>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${wh.active ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
+                <h3 className="font-semibold text-slate-100">{wh.name}</h3>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${wh.active ? 'bg-green-500/15 text-green-400' : 'bg-white/5 text-slate-400'}`}>
                   {wh.active ? 'Actif' : 'Inactif'}
                 </span>
               </div>
               <p className="text-sm text-slate-500 font-mono mt-1 break-all">{wh.url}</p>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={() => toggleWebhook(wh)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
+              <button onClick={() => toggleWebhook(wh)} className="p-1.5 hover:bg-white/5 rounded-lg transition-colors">
                 {wh.active ? <ToggleRight className="w-5 h-5 text-green-600" /> : <ToggleLeft className="w-5 h-5 text-slate-400" />}
               </button>
               <button onClick={() => deleteWebhook(wh.webhook_id)} className="p-1.5 hover:bg-red-50 rounded-lg transition-colors">
@@ -113,7 +113,7 @@ const WebhooksTab = () => {
           </div>
           <div className="flex flex-wrap gap-1.5 mb-3">
             {wh.events.map(ev => (
-              <span key={ev} className="px-2 py-0.5 bg-violet-50 text-violet-700 rounded text-xs font-medium">{ev}</span>
+              <span key={ev} className="px-2 py-0.5 bg-violet-500/10 text-violet-400 rounded text-xs font-medium">{ev}</span>
             ))}
           </div>
           <div className="flex items-center gap-4 text-xs text-slate-400">
@@ -127,20 +127,20 @@ const WebhooksTab = () => {
       {selectedWh && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedWh(null)}>
           <div className="bg-white rounded-2xl p-6 max-w-2xl w-full shadow-2xl max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-slate-900 mb-4">Logs de livraison</h3>
+            <h3 className="text-lg font-bold text-slate-100 mb-4">Logs de livraison</h3>
             {logs.length === 0 ? <p className="text-slate-400 text-center py-4">Aucun log</p> : (
               <div className="space-y-2">
                 {logs.map(log => (
-                  <div key={log.log_id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                  <div key={log.log_id} className="flex items-center justify-between p-3 bg-white/3 rounded-lg">
                     <div className="flex items-center gap-3">
                       {log.status === 'delivered' ? <CheckCircle className="w-4 h-4 text-green-500" /> : <XCircle className="w-4 h-4 text-red-500" />}
                       <div>
-                        <p className="text-sm font-medium text-slate-900">{log.event_type}</p>
+                        <p className="text-sm font-medium text-slate-100">{log.event_type}</p>
                         <p className="text-xs text-slate-400">{formatDateTime(log.timestamp)}</p>
                       </div>
                     </div>
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                      log.status === 'delivered' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      log.status === 'delivered' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'
                     }`}>{log.response_code || log.status}</span>
                   </div>
                 ))}
@@ -153,31 +153,31 @@ const WebhooksTab = () => {
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowForm(false)}>
           <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-slate-900 mb-4">Nouveau webhook</h3>
+            <h3 className="text-lg font-bold text-slate-100 mb-4">Nouveau webhook</h3>
             <form onSubmit={createWebhook} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Nom</label>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Nom</label>
                 <input data-testid="webhook-name" value={form.name} onChange={e => setForm(p => ({...p, name: e.target.value}))}
-                  placeholder="Mon webhook Zapier" required className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-violet-500 focus:outline-none" />
+                  placeholder="Mon webhook Zapier" required className="w-full px-4 py-2 border border-white/10 rounded-lg focus:ring-2 focus:ring-violet-500 focus:outline-none" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">URL du webhook</label>
+                <label className="block text-sm font-medium text-slate-300 mb-1">URL du webhook</label>
                 <input data-testid="webhook-url" value={form.url} onChange={e => setForm(p => ({...p, url: e.target.value}))}
-                  placeholder="https://hooks.zapier.com/..." required className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-violet-500 focus:outline-none" />
+                  placeholder="https://hooks.zapier.com/..." required className="w-full px-4 py-2 border border-white/10 rounded-lg focus:ring-2 focus:ring-violet-500 focus:outline-none" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Evenements</label>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Evenements</label>
                 <div className="flex flex-wrap gap-2">
                   {events.map(ev => (
                     <button key={ev} type="button" onClick={() => toggleEvent(ev)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                        form.events.includes(ev) ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        form.events.includes(ev) ? 'bg-violet-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-slate-200'
                       }`}>{ev}</button>
                   ))}
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowForm(false)} className="flex-1 px-4 py-2 border border-slate-200 text-slate-600 rounded-lg">Annuler</button>
+                <button type="button" onClick={() => setShowForm(false)} className="flex-1 px-4 py-2 border border-white/10 text-slate-400 rounded-lg">Annuler</button>
                 <button type="submit" data-testid="submit-webhook" className="flex-1 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">Creer</button>
               </div>
             </form>
@@ -257,19 +257,19 @@ const CalendarTab = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-slate-900">Google Calendar</h2>
+        <h2 className="text-lg font-semibold text-slate-100">Google Calendar</h2>
         <p className="text-sm text-slate-500">Synchronisez vos interventions avec Google Calendar</p>
       </div>
 
       {/* OAuth Connection Card */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm" data-testid="gcal-oauth-card">
+      <div className="section-card p-6 " data-testid="gcal-oauth-card">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-medium text-slate-900 flex items-center gap-2">
+          <h3 className="font-medium text-slate-100 flex items-center gap-2">
             <Link2 className="w-5 h-5 text-violet-600" />
             Connexion Google Calendar (OAuth)
           </h3>
           {gcalStatus?.connected && (
-            <span className="flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">
+            <span className="flex items-center gap-1.5 px-3 py-1 bg-green-500/15 text-green-400 rounded-full text-xs font-semibold">
               <CheckCircle className="w-3.5 h-3.5" /> Connecte
             </span>
           )}
@@ -277,7 +277,7 @@ const CalendarTab = () => {
 
         {gcalStatus?.connected ? (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-slate-400">
               Votre compte Google Calendar est connecte. Les interventions peuvent etre synchronisees automatiquement.
             </p>
             <div className="flex gap-3">
@@ -294,11 +294,11 @@ const CalendarTab = () => {
           </div>
         ) : gcalStatus?.configured ? (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-slate-400">
               Connectez votre compte Google pour synchroniser les interventions avec votre calendrier.
             </p>
             <button data-testid="gcal-connect-btn" onClick={connectGCal}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white border-2 border-slate-200 text-slate-700 rounded-lg hover:border-violet-400 hover:text-violet-700 transition-all text-sm font-medium">
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border-2 border-white/10 text-slate-300 rounded-lg hover:border-violet-400 hover:text-violet-700 transition-all text-sm font-medium">
               <svg className="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
               Connecter Google Calendar
             </button>
@@ -313,8 +313,8 @@ const CalendarTab = () => {
       </div>
 
       {/* iCal Fallback */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-        <h3 className="font-medium text-slate-900 mb-3 flex items-center gap-2">
+      <div className="section-card p-6 ">
+        <h3 className="font-medium text-slate-100 mb-3 flex items-center gap-2">
           <Calendar className="w-5 h-5 text-violet-600" />
           Lien d'abonnement iCal (alternatif)
         </h3>
@@ -323,7 +323,7 @@ const CalendarTab = () => {
         </p>
         <div className="flex gap-2">
           <input data-testid="ical-url" value={calendarUrl} readOnly
-            className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono" />
+            className="flex-1 px-4 py-2 bg-white/3 border border-white/10 rounded-lg text-sm font-mono" />
           <button data-testid="copy-ical-url" onClick={copyUrl}
             className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium">
             <Copy className="w-4 h-4" /> Copier
@@ -362,13 +362,13 @@ const WhatsAppTab = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-slate-900">WhatsApp Business</h2>
+        <h2 className="text-lg font-semibold text-slate-100">WhatsApp Business</h2>
         <p className="text-sm text-slate-500">Templates de messages et envoi direct via WhatsApp</p>
       </div>
 
       {/* Direct Contact Card */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-        <h3 className="font-medium text-slate-900 mb-3 flex items-center gap-2">
+      <div className="section-card p-6 ">
+        <h3 className="font-medium text-slate-100 mb-3 flex items-center gap-2">
           <MessageCircle className="w-5 h-5 text-green-600" />
           Contact direct WhatsApp
         </h3>
@@ -385,15 +385,15 @@ const WhatsAppTab = () => {
       </div>
 
       {/* Templates */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-        <h3 className="font-medium text-slate-900 mb-4">Templates disponibles</h3>
+      <div className="section-card p-6 ">
+        <h3 className="font-medium text-slate-100 mb-4">Templates disponibles</h3>
         <div className="space-y-3">
           {Object.entries(templates).map(([key, text]) => (
-            <div key={key} data-testid={`wa-template-${key}`} className="p-4 bg-slate-50 rounded-lg">
+            <div key={key} data-testid={`wa-template-${key}`} className="p-4 bg-white/3 rounded-lg">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-semibold text-violet-700">{key}</span>
               </div>
-              <p className="text-sm text-slate-700">{text}</p>
+              <p className="text-sm text-slate-300">{text}</p>
             </div>
           ))}
         </div>
@@ -428,19 +428,19 @@ const TrackingTab = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-slate-900">Widget de Tracking</h2>
+        <h2 className="text-lg font-semibold text-slate-100">Widget de Tracking</h2>
         <p className="text-sm text-slate-500">Installez le tracking sur globalcleanhome.com</p>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-        <h3 className="font-medium text-slate-900 mb-3 flex items-center gap-2">
+      <div className="section-card p-6 ">
+        <h3 className="font-medium text-slate-100 mb-3 flex items-center gap-2">
           <Code className="w-5 h-5 text-violet-600" />
           Code d'installation pour globalcleanhome.com
         </h3>
         <p className="text-sm text-slate-500 mb-4">{snippet?.description}</p>
 
         <div className="relative">
-          <pre className="bg-slate-900 text-green-400 rounded-lg p-4 text-sm overflow-x-auto font-mono">
+          <pre className="bg-black/40 text-green-400 border border-white/5 rounded-lg p-4 text-sm overflow-x-auto font-mono">
             {snippet?.snippet || 'Chargement...'}
           </pre>
           <button data-testid="copy-tracking-snippet" onClick={copySnippet}
@@ -556,19 +556,19 @@ const EmailTab = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-slate-900">Gmail</h2>
+        <h2 className="text-lg font-semibold text-slate-100">Gmail</h2>
         <p className="text-sm text-slate-500">Envoi et reception d'emails via votre compte Gmail</p>
       </div>
 
       {/* Gmail Connection Card */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm" data-testid="gmail-status-card">
+      <div className="section-card p-4 md:p-6 " data-testid="gmail-status-card">
         <div className="flex items-center justify-between mb-4 gap-3">
-          <h3 className="font-medium text-slate-900 flex items-center gap-2 min-w-0">
+          <h3 className="font-medium text-slate-100 flex items-center gap-2 min-w-0">
             <Mail className="w-5 h-5 text-red-500 flex-shrink-0" />
             <span className="truncate">Connexion Gmail</span>
           </h3>
           <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${
-            gmailStatus?.connected ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
+            gmailStatus?.connected ? 'bg-green-500/15 text-green-400' : 'bg-amber-100 text-amber-800'
           }`}>
             {gmailStatus?.connected ? (
               <><CheckCircle className="w-3.5 h-3.5" /> Connecte</>
@@ -592,16 +592,16 @@ const EmailTab = () => {
             {/* Stats */}
             {emailStats && (
               <div className="grid grid-cols-3 gap-3">
-                <div className="bg-slate-50 rounded-lg p-3 text-center">
-                  <p className="text-xl font-bold text-slate-900">{emailStats.total_sent || 0}</p>
+                <div className="bg-white/3 rounded-lg p-3 text-center">
+                  <p className="text-xl font-bold text-slate-100">{emailStats.total_sent || 0}</p>
                   <p className="text-[10px] text-slate-500 mt-0.5">Envoyes</p>
                 </div>
-                <div className="bg-slate-50 rounded-lg p-3 text-center">
-                  <p className="text-xl font-bold text-slate-900">{emailStats.total_received || 0}</p>
+                <div className="bg-white/3 rounded-lg p-3 text-center">
+                  <p className="text-xl font-bold text-slate-100">{emailStats.total_received || 0}</p>
                   <p className="text-[10px] text-slate-500 mt-0.5">Recus</p>
                 </div>
-                <div className="bg-slate-50 rounded-lg p-3 text-center">
-                  <p className="text-xl font-bold text-slate-900">{emailStats.total_followups || 0}</p>
+                <div className="bg-white/3 rounded-lg p-3 text-center">
+                  <p className="text-xl font-bold text-slate-100">{emailStats.total_followups || 0}</p>
                   <p className="text-[10px] text-slate-500 mt-0.5">Relances</p>
                 </div>
               </div>
@@ -615,7 +615,7 @@ const EmailTab = () => {
                 {syncing ? 'Synchronisation...' : 'Synchroniser la boite'}
               </button>
               <button data-testid="gmail-followup-btn" onClick={checkFollowups}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium">
+                className="flex items-center gap-2 px-4 py-2 section-card text-slate-300 rounded-lg hover:bg-white/3 transition-colors text-sm font-medium">
                 <Clock className="w-4 h-4" />
                 Verifier relances J+2
               </button>
@@ -626,7 +626,7 @@ const EmailTab = () => {
             </div>
 
             {/* Features */}
-            <div className="text-sm text-slate-600">
+            <div className="text-sm text-slate-400">
               <p className="font-medium mb-2">Fonctionnalites actives :</p>
               <ul className="space-y-1.5 list-disc pl-4 text-xs">
                 <li>Envoi de devis et factures par email</li>
@@ -639,11 +639,11 @@ const EmailTab = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-slate-400">
               Connectez votre compte Gmail pour envoyer et recevoir des emails directement depuis le CRM.
             </p>
             <button data-testid="gmail-connect-btn" onClick={connectGmail}
-              className="flex items-center gap-3 px-5 py-2.5 bg-white border-2 border-slate-200 text-slate-700 rounded-lg hover:border-red-300 hover:text-red-600 transition-all text-sm font-medium">
+              className="flex items-center gap-3 px-5 py-2.5 bg-white border-2 border-white/10 text-slate-300 rounded-lg hover:border-red-300 hover:text-red-600 transition-all text-sm font-medium">
               <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -682,12 +682,12 @@ const Integrations = () => {
   ];
 
   return (
-    <div className="p-4 md:p-6 lg:p-8" data-testid="integrations-page">
+    <div className="p-4 md:p-6 lg:p-8 animate-fade-in" data-testid="integrations-page">
       <div className="mb-6 md:mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
+        <h1 className="text-2xl font-bold text-slate-100" style={{fontFamily:'Manrope,sans-serif'}}>
           Integrations
         </h1>
-        <p className="text-slate-600 mt-1 text-sm">Connectez votre CRM a vos outils externes</p>
+        <p className="text-slate-400 mt-1 text-sm">Connectez votre CRM a vos outils externes</p>
       </div>
 
       <div className="flex gap-1.5 sm:gap-2 mb-6 md:mb-8 flex-wrap" data-testid="integration-tabs">
@@ -695,8 +695,8 @@ const Integrations = () => {
           <button key={tab.id} data-testid={`tab-${tab.id}`} onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-medium transition-all ${
               activeTab === tab.id
-                ? 'bg-violet-600 text-white shadow-md'
-                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+                ? 'bg-violet-600 text-white '
+                : 'bg-white text-slate-400 hover:bg-white/3 border border-white/10'
             }`}>
             <tab.icon className="w-4 h-4" />
             {tab.label}
@@ -800,14 +800,14 @@ const OverviewTab = ({ onNavigate }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {integrations.map(intg => (
           <button key={intg.id} data-testid={`overview-${intg.id}`} onClick={() => onNavigate(intg.id)}
-            className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm text-left hover:border-violet-300 hover:shadow-md transition-all group">
+            className="section-card p-5  text-left hover:border-violet-300 hover: transition-all group">
             <div className="flex items-start gap-4">
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center bg-${intg.color}-100 group-hover:bg-${intg.color}-200 transition-colors`}>
                 <intg.icon className={`w-5 h-5 text-${intg.color}-600`} />
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-slate-900 text-sm">{intg.name}</h3>
+                  <h3 className="font-semibold text-slate-100 text-sm">{intg.name}</h3>
                   <span className={`w-2.5 h-2.5 rounded-full ${intg.configured ? 'bg-green-400' : 'bg-amber-400'}`} />
                 </div>
                 <p className="text-xs text-slate-500 mt-1">{intg.description}</p>
