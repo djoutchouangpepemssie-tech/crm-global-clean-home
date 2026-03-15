@@ -750,3 +750,172 @@ async def get_email_stats(request: Request):
         "total_received": total_received,
         "total_followups": total_followups,
     }
+
+async def send_confirmation_email(to_email: str, client_name: str, service_type: str):
+    """Envoie un email de confirmation automatique au prospect."""
+    
+    # Mapping des types de services
+    services_map = {
+        'menage': 'ménage à domicile',
+        'menage-domicile': 'ménage à domicile',
+        'nettoyage-canape': 'nettoyage de canapé',
+        'canape': 'nettoyage de canapé',
+        'nettoyage-matelas': 'nettoyage de matelas',
+        'matelas': 'nettoyage de matelas',
+        'nettoyage-tapis': 'nettoyage de tapis',
+        'tapis': 'nettoyage de tapis',
+        'nettoyage-bureaux': 'nettoyage de bureaux',
+        'bureaux': 'nettoyage de bureaux',
+    }
+    service_label = services_map.get(service_type, service_type)
+    prenom = client_name.split()[0] if client_name else 'cher(e) client(e)'
+    
+    subject = "✅ Votre demande de devis a bien été reçue – Global Clean Home"
+    
+    html_body = f"""
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {{ font-family: 'Segoe UI', Arial, sans-serif; background: #f4f7fb; margin: 0; padding: 0; }}
+    .container {{ max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }}
+    .header {{ background: linear-gradient(135deg, #2563eb, #7c3aed); padding: 40px 30px; text-align: center; }}
+    .header img {{ width: 60px; height: 60px; margin-bottom: 12px; }}
+    .header h1 {{ color: #ffffff; font-size: 22px; margin: 0; font-weight: 700; }}
+    .header p {{ color: rgba(255,255,255,0.85); font-size: 14px; margin: 8px 0 0; }}
+    .body {{ padding: 36px 32px; }}
+    .greeting {{ font-size: 18px; font-weight: 600; color: #1e293b; margin-bottom: 16px; }}
+    .message {{ font-size: 15px; color: #475569; line-height: 1.7; margin-bottom: 20px; }}
+    .highlight-box {{ background: linear-gradient(135deg, #eff6ff, #f5f3ff); border-left: 4px solid #2563eb; border-radius: 8px; padding: 18px 20px; margin: 24px 0; }}
+    .highlight-box p {{ margin: 6px 0; font-size: 14px; color: #334155; }}
+    .highlight-box strong {{ color: #1e40af; }}
+    .steps {{ margin: 24px 0; }}
+    .step {{ display: flex; align-items: flex-start; margin-bottom: 16px; }}
+    .step-number {{ background: #2563eb; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; margin-right: 14px; margin-top: 2px; }}
+    .step-text {{ font-size: 14px; color: #475569; line-height: 1.6; }}
+    .step-text strong {{ color: #1e293b; }}
+    .cta {{ text-align: center; margin: 28px 0; }}
+    .cta a {{ background: linear-gradient(135deg, #2563eb, #7c3aed); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px; display: inline-block; }}
+    .contact {{ background: #f8fafc; border-radius: 8px; padding: 18px 20px; margin: 20px 0; text-align: center; }}
+    .contact p {{ margin: 4px 0; font-size: 14px; color: #64748b; }}
+    .contact a {{ color: #2563eb; text-decoration: none; font-weight: 600; }}
+    .footer {{ background: #1e293b; padding: 24px 32px; text-align: center; }}
+    .footer p {{ color: rgba(255,255,255,0.6); font-size: 12px; margin: 4px 0; }}
+    .footer a {{ color: rgba(255,255,255,0.8); text-decoration: none; }}
+    .checkmark {{ color: #10b981; font-size: 48px; text-align: center; margin-bottom: 8px; }}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div style="font-size:48px; margin-bottom:12px;">✨</div>
+      <h1>Global Clean Home</h1>
+      <p>Nettoyage Professionnel à Paris & Île-de-France</p>
+    </div>
+    
+    <div class="body">
+      <div class="checkmark">✅</div>
+      <div class="greeting">Bonjour {prenom},</div>
+      
+      <p class="message">
+        Nous avons bien reçu votre demande de devis pour un <strong>{service_label}</strong> 
+        et nous vous en remercions chaleureusement.
+      </p>
+      
+      <p class="message">
+        Notre équipe prend votre demande très au sérieux et s'engage à vous fournir 
+        un devis personnalisé dans les <strong>meilleurs délais</strong>.
+      </p>
+
+      <div class="highlight-box">
+        <p>📋 <strong>Service demandé :</strong> {service_label.capitalize()}</p>
+        <p>⏱️ <strong>Délai de réponse :</strong> Sous 24h ouvrées</p>
+        <p>💼 <strong>Un conseiller dédié</strong> vous contactera personnellement</p>
+      </div>
+
+      <p class="message" style="font-weight: 600; color: #1e293b;">Voici comment va se dérouler la suite :</p>
+      
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-text">
+            <strong>Analyse de votre demande</strong><br>
+            Notre équipe étudie attentivement vos besoins pour vous préparer une offre sur mesure.
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-text">
+            <strong>Envoi de votre devis personnalisé</strong><br>
+            Vous recevrez un devis détaillé et transparent, sans frais cachés.
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-text">
+            <strong>Prise de contact par votre conseiller</strong><br>
+            Un conseiller vous appellera pour répondre à toutes vos questions et planifier l'intervention.
+          </div>
+        </div>
+      </div>
+
+      <p class="message">
+        En attendant, n'hésitez pas à nous contacter directement si vous avez 
+        des questions ou si vous souhaitez accélérer le traitement de votre dossier.
+      </p>
+
+      <div class="contact">
+        <p>📞 <a href="tel:+33622665308">06 22 66 53 08</a></p>
+        <p>📧 <a href="mailto:contact@globalcleanhome.com">contact@globalcleanhome.com</a></p>
+        <p>💬 <a href="https://wa.me/33622665308">WhatsApp</a></p>
+      </div>
+
+      <div class="cta">
+        <a href="https://www.globalcleanhome.com">Visiter notre site</a>
+      </div>
+
+      <p class="message" style="font-style: italic; color: #94a3b8; font-size: 13px; text-align: center;">
+        Merci de votre confiance. Nous mettons tout en œuvre pour vous offrir 
+        un service d'excellence. 🌟
+      </p>
+    </div>
+    
+    <div class="footer">
+      <p><strong style="color:white;">Global Clean Home</strong></p>
+      <p>Nettoyage professionnel à Paris & Île-de-France</p>
+      <p style="margin-top:8px;">
+        <a href="https://www.globalcleanhome.com">www.globalcleanhome.com</a> | 
+        <a href="tel:+33622665308">06 22 66 53 08</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+"""
+
+    # Envoyer via Gmail API
+    try:
+        token = await _get_valid_token()
+        if not token:
+            logger.warning("Gmail non connecté - email de confirmation non envoyé")
+            return
+            
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = f"{GMAIL_FROM_NAME} <{GMAIL_FROM_ADDRESS}>"
+        msg['To'] = to_email
+        msg.attach(MIMEText(html_body, 'html', 'utf-8'))
+        
+        raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+        
+        async with httpx.AsyncClient() as client:
+            await client.post(
+                "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                json={"raw": raw}
+            )
+        logger.info(f"Email de confirmation envoyé à {to_email}")
+    except Exception as e:
+        logger.error(f"Erreur envoi email confirmation: {e}")
+

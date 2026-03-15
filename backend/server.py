@@ -466,6 +466,18 @@ async def create_lead(input: LeadCreate, request: Request):
     }
     await db.tasks.insert_one(task)
     
+    # Envoi email de confirmation au prospect
+    try:
+        from gmail_service import send_confirmation_email
+        if input.email:
+            await send_confirmation_email(
+                to_email=input.email,
+                client_name=input.name,
+                service_type=input.service_type
+            )
+    except Exception as e:
+        logger.warning(f"Email confirmation non envoyé: {e}")
+
     # Create notification for new lead
     try:
         from advanced import create_notification
