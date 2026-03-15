@@ -174,9 +174,9 @@ const PortalDashboard = ({ user, onLogout }) => {
         axios.get(`${API_URL}/invoices`, { withCredentials: true }),
         axios.get(`${API_URL}/reviews`, { withCredentials: true }),
       ]);
-      setQuotes(qRes.data);
+      setQuotes(Array.isArray(qRes.data) ? qRes.data : qRes.data.quotes || []);
       setInvoices(Array.isArray(iRes.data) ? iRes.data : iRes.data.invoices || []);
-      setReviews(rRes.data);
+      setReviews(Array.isArray(rRes.data) ? rRes.data : rRes.data.reviews || []);
     } catch { toast.error('Erreur lors du chargement'); }
     finally { setLoading(false); }
   }, []);
