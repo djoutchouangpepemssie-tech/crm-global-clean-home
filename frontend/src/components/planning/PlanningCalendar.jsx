@@ -1,20 +1,28 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
-import { ChevronLeft, ChevronRight, Plus, Clock, MapPin, Users, CheckCircle, XCircle, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Clock, MapPin, Users, CheckCircle, XCircle, Play, CalendarDays, X } from 'lucide-react';
 import { toast } from 'sonner';
-
 import BACKEND_URL from '../../config.js';
 const API_URL = BACKEND_URL + '/api';
 
 const DAYS_FR = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-const MONTHS_FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 
-const statusColors = {
-  planifiée: 'bg-blue-100 border-blue-300 text-blue-800',
-  en_cours: 'bg-amber-100 border-amber-300 text-amber-800',
-  terminée: 'bg-green-100 border-green-300 text-green-800',
-  annulée: 'bg-red-100 border-red-300 text-red-800',
+const STATUS_CONFIG = {
+  'planifiée': { label: 'Planifiée', color: '#60a5fa', bg: 'rgba(96,165,250,0.15)', border: 'rgba(96,165,250,0.3)' },
+  'en_cours': { label: 'En cours', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)', border: 'rgba(245,158,11,0.3)' },
+  'terminée': { label: 'Terminée', color: '#34d399', bg: 'rgba(52,211,153,0.15)', border: 'rgba(52,211,153,0.3)' },
+  'annulée': { label: 'Annulée', color: '#f43f5e', bg: 'rgba(244,63,94,0.15)', border: 'rgba(244,63,94,0.3)' },
 };
+
+const InputField = ({ label, children }) => (
+  <div>
+    <label className="block text-xs font-medium text-slate-400 mb-1.5">{label}</label>
+    {children}
+  </div>
+);
+
+const inputClass = "w-full px-3 py-2 bg-white/5 border border-white/10 text-slate-200 placeholder-slate-600 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-violet-500 focus:border-violet-500";
 
 const PlanningCalendar = () => {
   const [currentMonth, setCurrentMonth] = useState(() => {
@@ -37,11 +45,8 @@ const PlanningCalendar = () => {
       const res = await axios.get(`${API_URL}/calendar?month=${currentMonth}`, { withCredentials: true });
       setCalendarData(res.data);
       setTeams(res.data.teams || []);
-    } catch {
-      toast.error('Erreur de chargement');
-    } finally {
-      setLoading(false);
-    }
+    } catch { toast.error('Erreur de chargement'); }
+    finally { setLoading(false); }
   }, [currentMonth]);
 
   useEffect(() => { fetchCalendar(); }, [fetchCalendar]);
@@ -71,7 +76,7 @@ const PlanningCalendar = () => {
   };
 
   const getInterventionsForDate = (dateStr) =>
-    ( calendarData?.interventions || []).filter(i => i.scheduled_date === dateStr);
+    (calendarData?.interventions || []).filter(i => i.scheduled_date === dateStr);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -81,24 +86,20 @@ const PlanningCalendar = () => {
     }
     try {
       await axios.post(`${API_URL}/interventions`, formData, { withCredentials: true });
-      toast.success('Intervention planifiée');
+      toast.success('Intervention planifiée ✓');
       setShowForm(false);
       setFormData({ lead_id: '', title: '', description: '', address: '', scheduled_date: '', scheduled_time: '09:00', duration_hours: 2, team_id: '' });
       fetchCalendar();
-    } catch (err) {
-      toast.error(err.response?.data?.detail || 'Erreur');
-    }
+    } catch (err) { toast.error(err.response?.data?.detail || 'Erreur'); }
   };
 
   const handleCheckInOut = async (interventionId, type) => {
     try {
       await axios.post(`${API_URL}/interventions/${interventionId}/check`, { type }, { withCredentials: true });
-      toast.success(type === 'check_in' ? 'Check-in enregistré' : 'Check-out enregistré');
+      toast.success(type === 'check_in' ? 'Check-in enregistré ✓' : 'Check-out enregistré ✓');
       setSelectedIntervention(null);
       fetchCalendar();
-    } catch {
-      toast.error('Erreur');
-    }
+    } catch { toast.error('Erreur'); }
   };
 
   const handleStatusChange = async (interventionId, status) => {
@@ -107,44 +108,46 @@ const PlanningCalendar = () => {
       toast.success('Statut mis à jour');
       setSelectedIntervention(null);
       fetchCalendar();
-    } catch {
-      toast.error('Erreur');
-    }
+    } catch { toast.error('Erreur'); }
   };
 
   const days = getMonthDays();
   const [y, m] = currentMonth.split('-').map(Number);
+  const totalInterventions = calendarData?.interventions?.length || 0;
 
   return (
-    <div className="p-4 md:p-6 lg:p-8" data-testid="planning-calendar">
+    <div className="p-4 md:p-6 lg:p-8 animate-fade-in" data-testid="planning-calendar">
+      
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 md:mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
-            Planning
-          </h1>
-          <p className="text-slate-600 mt-1 text-sm">Gestion des interventions et planification</p>
+          <div className="flex items-center gap-2 mb-1">
+            <CalendarDays className="w-5 h-5 text-violet-400" />
+            <h1 className="text-2xl font-bold text-slate-100" style={{fontFamily:'Manrope,sans-serif'}}>Planning</h1>
+          </div>
+          <p className="text-slate-500 text-sm">
+            <span className="text-violet-400 font-semibold">{totalInterventions}</span> intervention(s) ce mois
+          </p>
         </div>
-        <button
-          data-testid="add-intervention-btn"
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors font-medium shadow-sm text-sm"
-        >
-          <Plus className="w-4 h-4" />
-          Nouvelle intervention
+        <button onClick={() => setShowForm(true)} data-testid="add-intervention-btn"
+          className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-all text-sm font-medium"
+          style={{boxShadow:'0 0 15px rgba(139,92,246,0.25)'}}>
+          <Plus className="w-4 h-4" /> Nouvelle intervention
         </button>
       </div>
 
-      {/* Month navigation */}
-      <div className="flex items-center justify-between bg-white rounded-xl border border-slate-200 p-4 mb-6 shadow-sm">
-        <button onClick={() => navigateMonth(-1)} data-testid="prev-month" className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-          <ChevronLeft className="w-5 h-5 text-slate-600" />
+      {/* Month nav */}
+      <div className="flex items-center justify-between section-card p-3 mb-4">
+        <button onClick={() => navigateMonth(-1)} data-testid="prev-month"
+          className="p-2 hover:bg-white/5 rounded-lg transition-all text-slate-400 hover:text-slate-200">
+          <ChevronLeft className="w-5 h-5" />
         </button>
-        <h2 className="text-xl font-bold text-slate-900">
+        <h2 className="text-lg font-bold text-slate-200" style={{fontFamily:'Manrope,sans-serif'}}>
           {MONTHS_FR[m - 1]} {y}
         </h2>
-        <button onClick={() => navigateMonth(1)} data-testid="next-month" className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-          <ChevronRight className="w-5 h-5 text-slate-600" />
+        <button onClick={() => navigateMonth(1)} data-testid="next-month"
+          className="p-2 hover:bg-white/5 rounded-lg transition-all text-slate-400 hover:text-slate-200">
+          <ChevronRight className="w-5 h-5" />
         </button>
       </div>
 
@@ -152,203 +155,203 @@ const PlanningCalendar = () => {
       {teams.length > 0 && (
         <div className="flex gap-2 mb-4 flex-wrap">
           {teams.map(t => (
-            <span key={t.team_id} className="flex items-center gap-1.5 px-2.5 py-1 bg-white rounded-full border border-slate-200 text-xs max-w-[200px]">
-              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: t.color }}></span>
-              <span className="truncate">{t.name}</span>
+            <span key={t.team_id} className="flex items-center gap-1.5 px-2.5 py-1 bg-white/5 border border-white/10 rounded-full text-xs text-slate-400">
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{backgroundColor: t.color}} />
+              {t.name}
             </span>
           ))}
         </div>
       )}
 
-      {/* Calendar grid */}
       {loading ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
-          <p className="text-sm text-slate-400">Chargement du planning...</p>
+        <div className="section-card p-8 text-center">
+          <div className="skeleton h-8 w-32 mx-auto rounded-lg mb-4" />
+          <div className="grid grid-cols-7 gap-2">
+            {[...Array(35)].map((_, i) => <div key={i} className="skeleton h-20 rounded-lg" />)}
+          </div>
         </div>
       ) : (
         <>
-        {/* Desktop calendar */}
-        <div className="hidden md:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          {/* Day headers */}
-          <div className="grid grid-cols-7 border-b border-slate-200">
-            {DAYS_FR.map(d => (
-              <div key={d} className="p-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider bg-slate-50">
-                {d}
-              </div>
-            ))}
+          {/* Desktop calendar */}
+          <div className="hidden md:block section-card overflow-hidden">
+            {/* Day headers */}
+            <div className="grid grid-cols-7 border-b border-white/5">
+              {DAYS_FR.map(d => (
+                <div key={d} className="p-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider bg-white/2">
+                  {d}
+                </div>
+              ))}
+            </div>
+            {/* Day cells */}
+            <div className="grid grid-cols-7">
+              {days.map((day, idx) => {
+                const interventions = getInterventionsForDate(day.dateStr);
+                return (
+                  <div key={idx} data-testid={`calendar-day-${day.dateStr}`}
+                    className="min-h-[110px] p-2 transition-all"
+                    style={{
+                      borderBottom: '1px solid rgba(255,255,255,0.04)',
+                      borderRight: '1px solid rgba(255,255,255,0.04)',
+                      background: day.isToday ? 'rgba(139,92,246,0.06)' : !day.isCurrentMonth ? 'rgba(0,0,0,0.1)' : 'transparent'
+                    }}>
+                    <span className={`inline-flex items-center justify-center w-6 h-6 text-xs font-semibold rounded-full mb-1 ${
+                      day.isToday ? 'bg-violet-600 text-white' :
+                      !day.isCurrentMonth ? 'text-slate-700' : 'text-slate-400'
+                    }`}>
+                      {day.date.getDate()}
+                    </span>
+                    <div className="space-y-0.5">
+                      {interventions.slice(0, 2).map(intv => {
+                        const sc = STATUS_CONFIG[intv.status] || STATUS_CONFIG['planifiée'];
+                        const team = teams.find(t => t.team_id === intv.team_id);
+                        return (
+                          <div key={intv.intervention_id}
+                            data-testid={`intervention-${intv.intervention_id}`}
+                            onClick={() => setSelectedIntervention(intv)}
+                            className="text-[10px] px-1.5 py-0.5 rounded cursor-pointer truncate font-medium transition-all hover:opacity-80"
+                            style={{
+                              color: sc.color,
+                              background: sc.bg,
+                              borderLeft: team ? `2px solid ${team.color}` : `2px solid ${sc.color}`,
+                            }}>
+                            {intv.scheduled_time} {intv.title}
+                          </div>
+                        );
+                      })}
+                      {interventions.length > 2 && (
+                        <span className="text-[10px] text-slate-600 pl-1">+{interventions.length - 2}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          {/* Day cells */}
-          <div className="grid grid-cols-7">
-            {days.map((day, idx) => {
+
+          {/* Mobile list */}
+          <div className="md:hidden space-y-3">
+            {days.filter(d => d.isCurrentMonth && getInterventionsForDate(d.dateStr).length > 0).length === 0 ? (
+              <div className="section-card p-8 text-center text-slate-600 text-sm">
+                Aucune intervention ce mois-ci
+              </div>
+            ) : days.filter(d => d.isCurrentMonth && getInterventionsForDate(d.dateStr).length > 0).map(day => {
               const interventions = getInterventionsForDate(day.dateStr);
+              const dayName = DAYS_FR[(day.date.getDay() + 6) % 7];
               return (
-                <div
-                  key={idx}
-                  data-testid={`calendar-day-${day.dateStr}`}
-                  className={`min-h-[120px] p-2 border-b border-r border-slate-100 ${
-                    !day.isCurrentMonth ? 'bg-slate-50/50' : ''
-                  } ${day.isToday ? 'bg-violet-50/50' : ''}`}
-                >
-                  <span className={`text-sm font-medium ${
-                    day.isToday ? 'bg-violet-600 text-white px-2 py-0.5 rounded-full' :
-                    !day.isCurrentMonth ? 'text-slate-300' : 'text-slate-700'
-                  }`}>
-                    {day.date.getDate()}
-                  </span>
-                  <div className="mt-1 space-y-1">
-                    {interventions.slice(0, 3).map(intv => {
-                      const team = teams.find(t => t.team_id === intv.team_id);
+                <div key={day.dateStr} className="section-card overflow-hidden">
+                  <div className={`px-4 py-2.5 border-b border-white/5 flex items-center gap-2 ${day.isToday ? 'bg-violet-500/10' : 'bg-white/2'}`}>
+                    <span className="text-sm font-bold text-slate-200">{dayName} {day.date.getDate()}</span>
+                    <span className="text-xs text-slate-500">{MONTHS_FR[day.date.getMonth()]}</span>
+                    {day.isToday && <span className="ml-auto text-[10px] font-semibold text-violet-400 bg-violet-500/15 px-2 py-0.5 rounded-full">Aujourd'hui</span>}
+                  </div>
+                  <div className="divide-y divide-white/5">
+                    {interventions.map(intv => {
+                      const sc = STATUS_CONFIG[intv.status] || STATUS_CONFIG['planifiée'];
                       return (
-                        <div
-                          key={intv.intervention_id}
-                          data-testid={`intervention-${intv.intervention_id}`}
+                        <div key={intv.intervention_id}
+                          data-testid={`intervention-mobile-${intv.intervention_id}`}
                           onClick={() => setSelectedIntervention(intv)}
-                          className={`text-xs px-2 py-1 rounded-md cursor-pointer truncate border ${statusColors[intv.status] || statusColors.planifiée}`}
-                          style={team ? { borderLeftColor: team.color, borderLeftWidth: '3px' } : {}}
-                        >
-                          <span className="font-medium">{intv.scheduled_time}</span> {intv.title}
+                          className="px-4 py-3 cursor-pointer hover:bg-white/3 transition-all">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-xs font-bold text-slate-400">{intv.scheduled_time}</span>
+                              <p className="text-sm font-semibold text-slate-200 truncate">{intv.title}</p>
+                            </div>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0"
+                              style={{color:sc.color,background:sc.bg}}>
+                              {sc.label}
+                            </span>
+                          </div>
+                          {intv.lead_name && (
+                            <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                              <Users className="w-3 h-3" />
+                              <span>{intv.lead_name}</span>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
-                    {interventions.length > 3 && (
-                      <span className="text-xs text-slate-400">+{interventions.length - 3} autres</span>
-                    )}
                   </div>
                 </div>
               );
             })}
           </div>
-        </div>
-
-        {/* Mobile list view */}
-        <div className="md:hidden space-y-2">
-          {(() => {
-            const daysWithInterventions = days
-              .filter(d => d.isCurrentMonth && getInterventionsForDate(d.dateStr).length > 0);
-            
-            if (daysWithInterventions.length === 0) {
-              return (
-                <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
-                  <p className="text-sm text-slate-400">Aucune intervention ce mois-ci</p>
-                </div>
-              );
-            }
-            
-            return daysWithInterventions.map(day => {
-              const interventions = getInterventionsForDate(day.dateStr);
-              const dayName = DAYS_FR[(day.date.getDay() + 6) % 7];
-              return (
-                <div key={day.dateStr} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                  <div className={`px-4 py-2.5 border-b border-slate-100 flex items-center gap-2 ${day.isToday ? 'bg-violet-50' : 'bg-slate-50'}`}>
-                    <span className={`text-sm font-bold ${day.isToday ? 'text-violet-700' : 'text-slate-700'}`}>
-                      {dayName} {day.date.getDate()}
-                    </span>
-                    <span className="text-xs text-slate-400">{MONTHS_FR[day.date.getMonth()]}</span>
-                    {day.isToday && <span className="ml-auto text-[10px] font-semibold text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full">Aujourd'hui</span>}
-                  </div>
-                  <div className="divide-y divide-slate-50">
-                    {interventions.map(intv => {
-                      const team = teams.find(t => t.team_id === intv.team_id);
-                      return (
-                        <div
-                          key={intv.intervention_id}
-                          data-testid={`intervention-mobile-${intv.intervention_id}`}
-                          onClick={() => setSelectedIntervention(intv)}
-                          className="px-4 py-3 cursor-pointer active:bg-slate-50"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-xs font-semibold text-slate-500 flex-shrink-0">{intv.scheduled_time}</span>
-                              <p className="text-sm font-medium text-slate-900 truncate">{intv.title}</p>
-                            </div>
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 ${statusColors[intv.status] || statusColors.planifiée}`}>
-                              {intv.status}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-400">
-                            {intv.lead_name && <span className="truncate">{intv.lead_name}</span>}
-                            {intv.address && <span className="truncate flex items-center gap-1"><MapPin className="w-3 h-3 flex-shrink-0" />{intv.address}</span>}
-                            {team && <span className="flex items-center gap-1 flex-shrink-0"><span className="w-2 h-2 rounded-full" style={{backgroundColor: team.color}}></span>{team.name?.length > 15 ? team.name.slice(0, 15) + '...' : team.name}</span>}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            });
-          })()}
-          
-          {/* Days without interventions */}
-          {days.filter(d => d.isCurrentMonth && getInterventionsForDate(d.dateStr).length === 0).length === days.filter(d => d.isCurrentMonth).length && (
-            <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
-              <p className="text-sm text-slate-400">Aucune intervention ce mois-ci</p>
-            </div>
-          )}
-        </div>
         </>
       )}
 
-      {/* Intervention detail modal */}
+      {/* Detail modal */}
       {selectedIntervention && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedIntervention(null)}>
-          <div className="bg-white rounded-2xl p-5 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()} data-testid="intervention-detail-modal">
-            <div className="flex justify-between items-start mb-4 gap-3">
-              <h3 className="text-lg font-bold text-slate-900 truncate">{selectedIntervention.title}</h3>
-              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold flex-shrink-0 ${statusColors[selectedIntervention.status]}`}>
-                {selectedIntervention.status}
-              </span>
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{background:'rgba(0,0,0,0.7)'}}
+          onClick={() => setSelectedIntervention(null)}>
+          <div className="rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto animate-fade-in"
+            style={{background:'hsl(224,71%,7%)',border:'1px solid rgba(255,255,255,0.08)',boxShadow:'0 20px 60px rgba(0,0,0,0.5)'}}
+            onClick={e => e.stopPropagation()} data-testid="intervention-detail-modal">
+            
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-100 mb-1">{selectedIntervention.title}</h3>
+                {(() => {
+                  const sc = STATUS_CONFIG[selectedIntervention.status] || STATUS_CONFIG['planifiée'];
+                  return (
+                    <span className="text-xs px-2.5 py-1 rounded-full font-semibold"
+                      style={{color:sc.color,background:sc.bg,border:`1px solid ${sc.border}`}}>
+                      {sc.label}
+                    </span>
+                  );
+                })()}
+              </div>
+              <button onClick={() => setSelectedIntervention(null)} className="p-2 text-slate-500 hover:text-slate-300 hover:bg-white/5 rounded-lg transition-all">
+                <X className="w-4 h-4" />
+              </button>
             </div>
+
             <div className="space-y-3 mb-5">
-              <div className="flex items-center gap-2 text-sm text-slate-600">
-                <Clock className="w-4 h-4 flex-shrink-0" />
-                <span>{selectedIntervention.scheduled_date} a {selectedIntervention.scheduled_time} ({selectedIntervention.duration_hours}h)</span>
+              <div className="flex items-center gap-3 text-sm text-slate-400 p-3 bg-white/3 rounded-lg">
+                <Clock className="w-4 h-4 text-violet-400 flex-shrink-0" />
+                <span>{selectedIntervention.scheduled_date} à {selectedIntervention.scheduled_time} ({selectedIntervention.duration_hours}h)</span>
               </div>
               {selectedIntervention.address && (
-                <div className="flex items-center gap-2 text-sm text-slate-600 min-w-0">
-                  <MapPin className="w-4 h-4 flex-shrink-0" />
-                  <span className="truncate">{selectedIntervention.address}</span>
+                <div className="flex items-center gap-3 text-sm text-slate-400 p-3 bg-white/3 rounded-lg">
+                  <MapPin className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                  <span>{selectedIntervention.address}</span>
                 </div>
               )}
-              <div className="flex items-center gap-2 text-sm text-slate-600 min-w-0">
-                <Users className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">{selectedIntervention.lead_name} - {selectedIntervention.lead_phone}</span>
-              </div>
+              {selectedIntervention.lead_name && (
+                <div className="flex items-center gap-3 text-sm text-slate-400 p-3 bg-white/3 rounded-lg">
+                  <Users className="w-4 h-4 text-green-400 flex-shrink-0" />
+                  <span>{selectedIntervention.lead_name} — {selectedIntervention.lead_phone}</span>
+                </div>
+              )}
               {selectedIntervention.description && (
-                <p className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3">{selectedIntervention.description}</p>
+                <p className="text-sm text-slate-400 p-3 bg-white/3 rounded-lg">{selectedIntervention.description}</p>
               )}
               {selectedIntervention.check_in && (
-                <p className="text-xs text-green-600">Check-in: {new Date(selectedIntervention.check_in.time).toLocaleString('fr-FR')}</p>
+                <p className="text-xs text-green-400 bg-green-500/10 px-3 py-2 rounded-lg">✓ Check-in: {new Date(selectedIntervention.check_in.time).toLocaleString('fr-FR')}</p>
               )}
               {selectedIntervention.check_out && (
-                <p className="text-xs text-blue-600">Check-out: {new Date(selectedIntervention.check_out.time).toLocaleString('fr-FR')}</p>
+                <p className="text-xs text-blue-400 bg-blue-500/10 px-3 py-2 rounded-lg">✓ Check-out: {new Date(selectedIntervention.check_out.time).toLocaleString('fr-FR')}</p>
               )}
             </div>
+
             <div className="flex gap-2 flex-wrap">
               {selectedIntervention.status === 'planifiée' && (
-                <button
-                  data-testid="check-in-btn"
+                <button data-testid="check-in-btn"
                   onClick={() => handleCheckInOut(selectedIntervention.intervention_id, 'check_in')}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
-                >
+                  className="flex items-center gap-2 px-4 py-2 bg-green-500/15 hover:bg-green-500/25 border border-green-500/20 text-green-400 rounded-lg text-sm font-medium transition-all">
                   <Play className="w-4 h-4" /> Check-in
                 </button>
               )}
               {selectedIntervention.status === 'en_cours' && (
-                <button
-                  data-testid="check-out-btn"
+                <button data-testid="check-out-btn"
                   onClick={() => handleCheckInOut(selectedIntervention.intervention_id, 'check_out')}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                >
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/20 text-blue-400 rounded-lg text-sm font-medium transition-all">
                   <CheckCircle className="w-4 h-4" /> Check-out
                 </button>
               )}
-              {selectedIntervention.status !== 'annulée' && selectedIntervention.status !== 'terminée' && (
-                <button
-                  data-testid="cancel-intervention-btn"
+              {!['annulée','terminée'].includes(selectedIntervention.status) && (
+                <button data-testid="cancel-intervention-btn"
                   onClick={() => handleStatusChange(selectedIntervention.intervention_id, 'annulée')}
-                  className="flex items-center gap-2 px-4 py-2 bg-white text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors text-sm font-medium"
-                >
+                  className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-lg text-sm font-medium transition-all">
                   <XCircle className="w-4 h-4" /> Annuler
                 </button>
               )}
@@ -357,110 +360,88 @@ const PlanningCalendar = () => {
         </div>
       )}
 
-      {/* Create intervention modal */}
+      {/* Create modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowForm(false)}>
-          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <h3 className="text-xl font-bold text-slate-900 mb-4">Nouvelle intervention</h3>
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{background:'rgba(0,0,0,0.7)'}}
+          onClick={() => setShowForm(false)}>
+          <div className="rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto animate-fade-in"
+            style={{background:'hsl(224,71%,7%)',border:'1px solid rgba(255,255,255,0.08)',boxShadow:'0 20px 60px rgba(0,0,0,0.5)'}}
+            onClick={e => e.stopPropagation()}>
+            
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-lg font-bold text-slate-100">Nouvelle intervention</h3>
+              <button onClick={() => setShowForm(false)} className="p-2 text-slate-500 hover:text-slate-300 hover:bg-white/5 rounded-lg transition-all">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
             <form onSubmit={handleCreate} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">ID Lead *</label>
-                <input
-                  data-testid="intervention-lead-id"
-                  value={formData.lead_id}
+              <InputField label="ID Lead *">
+                <input data-testid="intervention-lead-id" value={formData.lead_id} required
                   onChange={e => setFormData(p => ({...p, lead_id: e.target.value}))}
-                  placeholder="lead_xxxxx"
-                  required
-                  className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Titre *</label>
-                <input
-                  data-testid="intervention-title"
-                  value={formData.title}
+                  placeholder="lead_xxxxx" className={inputClass} />
+              </InputField>
+
+              <InputField label="Titre *">
+                <input data-testid="intervention-title" value={formData.title} required
                   onChange={e => setFormData(p => ({...p, title: e.target.value}))}
-                  placeholder="Nettoyage complet"
-                  required
-                  className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Date *</label>
-                  <input
-                    data-testid="intervention-date"
-                    type="date"
+                  placeholder="Nettoyage complet" className={inputClass} />
+              </InputField>
+
+              <div className="grid grid-cols-2 gap-3">
+                <InputField label="Date *">
+                  <input data-testid="intervention-date" type="date" required
                     value={formData.scheduled_date}
                     onChange={e => setFormData(p => ({...p, scheduled_date: e.target.value}))}
-                    required
-                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Heure</label>
-                  <input
-                    data-testid="intervention-time"
-                    type="time"
+                    className={inputClass} />
+                </InputField>
+                <InputField label="Heure">
+                  <input data-testid="intervention-time" type="time"
                     value={formData.scheduled_time}
                     onChange={e => setFormData(p => ({...p, scheduled_time: e.target.value}))}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                  />
-                </div>
+                    className={inputClass} />
+                </InputField>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Durée (heures)</label>
-                <input
-                  data-testid="intervention-duration"
-                  type="number"
-                  step="0.5"
-                  min="0.5"
-                  value={formData.duration_hours}
-                  onChange={e => setFormData(p => ({...p, duration_hours: parseFloat(e.target.value)}))}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                />
+
+              <div className="grid grid-cols-2 gap-3">
+                <InputField label="Durée (h)">
+                  <input data-testid="intervention-duration" type="number" step="0.5" min="0.5"
+                    value={formData.duration_hours}
+                    onChange={e => setFormData(p => ({...p, duration_hours: parseFloat(e.target.value)}))}
+                    className={inputClass} />
+                </InputField>
+                {teams.length > 0 && (
+                  <InputField label="Équipe">
+                    <select data-testid="intervention-team" value={formData.team_id}
+                      onChange={e => setFormData(p => ({...p, team_id: e.target.value}))}
+                      className={inputClass}>
+                      <option value="" className="bg-slate-800">Sans équipe</option>
+                      {teams.map(t => <option key={t.team_id} value={t.team_id} className="bg-slate-800">{t.name}</option>)}
+                    </select>
+                  </InputField>
+                )}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Adresse</label>
-                <input
-                  data-testid="intervention-address"
-                  value={formData.address}
+
+              <InputField label="Adresse">
+                <input data-testid="intervention-address" value={formData.address}
                   onChange={e => setFormData(p => ({...p, address: e.target.value}))}
-                  placeholder="10 Rue de la Paix, Paris"
-                  className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                />
-              </div>
-              {teams.length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Équipe</label>
-                  <select
-                    data-testid="intervention-team"
-                    value={formData.team_id}
-                    onChange={e => setFormData(p => ({...p, team_id: e.target.value}))}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                  >
-                    <option value="">Sans équipe</option>
-                    {teams.map(t => (
-                      <option key={t.team_id} value={t.team_id}>{t.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-                <textarea
-                  data-testid="intervention-description"
-                  value={formData.description}
+                  placeholder="10 Rue de la Paix, Paris" className={inputClass} />
+              </InputField>
+
+              <InputField label="Description">
+                <textarea data-testid="intervention-description" value={formData.description} rows={3}
                   onChange={e => setFormData(p => ({...p, description: e.target.value}))}
-                  rows={3}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-violet-500 focus:outline-none resize-none"
-                />
-              </div>
+                  className={`${inputClass} resize-none`} />
+              </InputField>
+
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowForm(false)} className="flex-1 px-4 py-3 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors font-medium">
+                <button type="button" onClick={() => setShowForm(false)}
+                  className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 rounded-lg text-sm font-medium transition-all">
                   Annuler
                 </button>
-                <button type="submit" data-testid="submit-intervention" className="flex-1 px-4 py-3 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors font-medium">
+                <button type="submit" data-testid="submit-intervention"
+                  className="flex-1 px-4 py-2.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-all"
+                  style={{boxShadow:'0 0 15px rgba(139,92,246,0.25)'}}>
                   Planifier
                 </button>
               </div>
