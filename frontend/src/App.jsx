@@ -47,11 +47,11 @@ function MobileTabBar() {
       {moreOpen && (
         <div className="fixed inset-0 z-50 lg:hidden" data-testid="more-menu-overlay">
           <div className="absolute inset-0 bg-black/40" onClick={() => setMoreOpen(false)} />
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl pb-safe animate-slide-up">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-              <h3 className="text-base font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>Menu</h3>
-              <button onClick={() => setMoreOpen(false)} className="p-2 rounded-lg hover:bg-slate-100" data-testid="more-menu-close">
-                <X className="w-5 h-5 text-slate-500" />
+          <div className="absolute bottom-0 left-0 right-0 rounded-t-2xl pb-safe animate-slide-up" style={{background:"hsl(224,71%,7%)",border:"1px solid rgba(255,255,255,0.08)",boxShadow:"0 -10px 40px rgba(0,0,0,0.5)"}}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+              <h3 className="text-base font-bold text-slate-100" style={{fontFamily:"Manrope,sans-serif"}}>Menu</h3>
+              <button onClick={() => setMoreOpen(false)} className="p-2 rounded-lg hover:bg-white/10 transition-all" data-testid="more-menu-close">
+                <X className="w-5 h-5 text-slate-400" />
               </button>
             </div>
             <nav className="grid grid-cols-3 gap-1 p-3">
@@ -63,7 +63,7 @@ function MobileTabBar() {
                   data-testid={`more-nav-${item.to.slice(1)}`}
                   className={({ isActive }) =>
                     `flex flex-col items-center gap-1.5 p-3 rounded-xl text-xs font-medium transition-colors touch-manipulation ${
-                      isActive ? "bg-violet-500/10 text-violet-300" : "text-slate-600 active:bg-white/5"
+                      isActive ? "bg-violet-500/10 text-violet-300" : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
                     }`
                   }
                 >
@@ -72,7 +72,7 @@ function MobileTabBar() {
                 </NavLink>
               ))}
             </nav>
-            <div className="px-3 pb-4 pt-1 border-t border-slate-100 mt-1">
+            <div className="px-3 pb-4 pt-1 border-t border-white/5 mt-1">
               <a
                 href="/portal"
                 target="_blank"
@@ -84,7 +84,7 @@ function MobileTabBar() {
               <button
                 onClick={logout}
                 data-testid="mobile-logout-btn"
-                className="w-full flex items-center justify-center gap-2 py-3 text-sm font-medium text-rose-600 hover:bg-rose-50 rounded-xl transition-colors touch-manipulation"
+                className="w-full flex items-center justify-center gap-2 py-3 text-sm font-medium text-red-400 hover:bg-red-500/10 rounded-xl transition-colors touch-manipulation"
               >
                 <LogOut className="w-4 h-4" />
                 Deconnexion
