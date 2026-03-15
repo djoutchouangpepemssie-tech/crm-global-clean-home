@@ -7,6 +7,13 @@ import { toast } from 'sonner';
 import BACKEND_URL from '../../config.js';
 const API_URL = BACKEND_URL + '/api/portal';
 
+const portalAxios = axios.create({ withCredentials: true });
+portalAxios.interceptors.request.use(config => {
+  const token = localStorage.getItem('portal_token');
+  if (token) config.headers['X-Portal-Token'] = token;
+  return config;
+});
+
 // ============= Login =============
 const PortalLogin = ({ onAuth }) => {
   const [email, setEmail] = useState('');
@@ -171,9 +178,9 @@ const PortalDashboard = ({ user, onLogout }) => {
     setLoading(true);
     try {
       const [qRes, iRes, rRes] = await Promise.all([
-        axios.get(`${API_URL}/quotes`, { withCredentials: true }),
-        axios.get(`${API_URL}/invoices`, { withCredentials: true }),
-        axios.get(`${API_URL}/reviews`, { withCredentials: true }),
+        portalAxios.get(`${API_URL}/quotes`, { withCredentials: true }),
+        portalAxios.get(`${API_URL}/invoices`, { withCredentials: true }),
+        portalAxios.get(`${API_URL}/reviews`, { withCredentials: true }),
       ]);
       setQuotes(Array.isArray(qRes.data) ? qRes.data : qRes.data.quotes || []);
       setInvoices(Array.isArray(iRes.data) ? iRes.data : iRes.data.invoices || []);
@@ -186,7 +193,7 @@ const PortalDashboard = ({ user, onLogout }) => {
 
   const respondQuote = async (quoteId, action) => {
     try {
-      await axios.post(`${API_URL}/quotes/${quoteId}/respond`, { action }, { withCredentials: true });
+      await portalAxios.post(`${API_URL}/quotes/${quoteId}/respond`, { action }, { withCredentials: true });
       toast.success(action === 'accept' ? '✓ Devis accepté !' : 'Devis refusé');
       fetchData();
     } catch { toast.error('Erreur'); }
@@ -194,7 +201,7 @@ const PortalDashboard = ({ user, onLogout }) => {
 
   const payInvoice = async (invoiceId) => {
     try {
-      const res = await axios.post(`${API_URL}/invoices/${invoiceId}/pay`, {}, { withCredentials: true });
+      const res = await portalAxios.post(`${API_URL}/invoices/${invoiceId}/pay`, {}, { withCredentials: true });
       window.location.href = res.data.url;
     } catch { toast.error('Erreur de paiement'); }
   };
@@ -202,7 +209,7 @@ const PortalDashboard = ({ user, onLogout }) => {
   const submitReview = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${API_URL}/reviews`, { rating: reviewRating, comment: reviewComment }, { withCredentials: true });
+      await portalAxios.post(`${API_URL}/reviews`, { rating: reviewRating, comment: reviewComment }, { withCredentials: true });
       toast.success('Merci pour votre avis ! ⭐');
       setReviewComment(''); setReviewRating(5);
       fetchData();
@@ -210,7 +217,7 @@ const PortalDashboard = ({ user, onLogout }) => {
   };
 
   const handleLogout = async () => {
-    await axios.post(`${API_URL}/logout`, {}, { withCredentials: true });
+    await portalAxios.post(`${API_URL}/logout`, {}, { withCredentials: true });
     onLogout();
   };
 
@@ -547,15 +554,20 @@ const ClientPortal = () => {
       if (urlToken) {
         try {
           const res = await axios.post(`${API_URL}/auth/${urlToken}`, {}, { withCredentials: true });
+          // Stocker aussi dans localStorage comme fallback
+          localStorage.setItem('portal_token', res.data.session_token || urlToken);
           setUser(res.data);
-          // Nettoyer le token de l'URL
           window.history.replaceState({}, '', '/portal');
           setLoading(false);
           return;
         } catch { /* token invalide, continuer */ }
       }
       // Vérifier session existante
-      axios.get(`${API_URL}/me`, { withCredentials: true })
+      const savedToken = localStorage.getItem('portal_token');
+      portalAxios.get(`${API_URL}/me`, { 
+        withCredentials: true,
+        headers: savedToken ? { 'X-Portal-Token': savedToken } : {}
+      })
         .then(res => setUser(res.data))
         .catch(() => {})
         .finally(() => setLoading(false));

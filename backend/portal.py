@@ -43,8 +43,10 @@ def _generate_token():
     return hashlib.sha256(f"{uuid.uuid4().hex}{datetime.now().isoformat()}".encode()).hexdigest()[:48]
 
 async def _get_portal_session(request: Request):
-    """Validate portal session from cookie."""
+    """Validate portal session from cookie or header."""
     token = request.cookies.get("portal_token")
+    if not token:
+        token = request.headers.get("X-Portal-Token")
     if not token:
         raise HTTPException(status_code=401, detail="Non authentifié")
     
@@ -137,7 +139,8 @@ async def authenticate_magic_link(token: str, response: Response):
         value=session_token,
         httponly=True,
         max_age=7 * 24 * 3600,
-        samesite="lax",
+        samesite="none",
+        secure=True,
     )
     
     return {
@@ -145,6 +148,7 @@ async def authenticate_magic_link(token: str, response: Response):
         "lead_id": link["lead_id"],
         "lead_name": link["lead_name"],
         "email": link["email"],
+        "session_token": session_token,
     }
 
 
