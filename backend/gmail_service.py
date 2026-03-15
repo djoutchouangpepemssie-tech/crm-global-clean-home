@@ -660,8 +660,8 @@ async def _sync_inbox(access_token: str, user_id: str) -> tuple:
 
             # Extraire le corps du message
             body_text = ""
-            snippet = msg_detail.get("snippet", "")
-            payload = msg_detail.get("payload", {})
+            snippet = msg_data.get("snippet", "")
+            payload = msg_data.get("payload", {})
             
             def extract_body(payload):
                 if payload.get("mimeType") == "text/plain":
