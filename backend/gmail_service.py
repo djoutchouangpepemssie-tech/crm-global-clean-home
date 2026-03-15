@@ -658,6 +658,27 @@ async def _sync_inbox(access_token: str, user_id: str) -> tuple:
                 if sent_email and sent_email.get("lead_id"):
                     lead = await _db.leads.find_one({"lead_id": sent_email["lead_id"]}, {"_id": 0})
 
+            # Extraire le corps du message
+            body_text = ""
+            snippet = msg_detail.get("snippet", "")
+            payload = msg_detail.get("payload", {})
+            
+            def extract_body(payload):
+                if payload.get("mimeType") == "text/plain":
+                    data = payload.get("body", {}).get("data", "")
+                    if data:
+                        import base64
+                        return base64.urlsafe_b64decode(data + "==").decode("utf-8", errors="ignore")
+                for part in payload.get("parts", []):
+                    result = extract_body(part)
+                    if result:
+                        return result
+                return ""
+            
+            body_text = extract_body(payload) or snippet
+            # Nettoyer le corps
+            body_text = body_text[:2000] if body_text else ""
+            
             await _db.emails.insert_one({
                 "email_id": f"email_{os.urandom(6).hex()}",
                 "gmail_message_id": msg_ref["id"],
@@ -667,6 +688,8 @@ async def _sync_inbox(access_token: str, user_id: str) -> tuple:
                 "type": "inbound",
                 "lead_id": lead.get("lead_id") if lead else None,
                 "direction": "received",
+                "body": body_text,
+                "snippet": snippet,
                 "received_at": datetime.now(timezone.utc).isoformat(),
                 "created_at": datetime.now(timezone.utc).isoformat(),
             })

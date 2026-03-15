@@ -289,32 +289,55 @@ const LeadDetail = () => {
             ) : (
               <div className="space-y-2">
                 {emails.map((email) => (
-                  <div key={email.email_id} className="flex items-start gap-3 p-3 rounded-lg border border-slate-200">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      email.direction === 'sent' ? 'bg-violet-100' : 'bg-blue-100'
-                    }`}>
-                      {email.direction === 'sent'
-                        ? <ArrowUpRight className="w-4 h-4 text-violet-600" />
-                        : <ArrowDownLeft className="w-4 h-4 text-blue-600" />
-                      }
+                  <div key={email.email_id} className={`rounded-lg border p-3 ${
+                    email.direction === 'received' 
+                      ? 'border-blue-200 bg-blue-50' 
+                      : 'border-slate-200 bg-white'
+                  }`}>
+                    <div className="flex items-start gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        email.direction === 'sent' ? 'bg-violet-100' : 'bg-blue-100'
+                      }`}>
+                        {email.direction === 'sent'
+                          ? <ArrowUpRight className="w-4 h-4 text-violet-600" />
+                          : <ArrowDownLeft className="w-4 h-4 text-blue-600" />
+                        }
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-slate-900 truncate">{email.subject}</p>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 ${
+                            email.direction === 'received' ? 'bg-blue-100 text-blue-700'
+                            : email.type === 'quote' ? 'bg-violet-100 text-violet-700'
+                            : email.type === 'invoice' ? 'bg-green-100 text-green-700'
+                            : email.type === 'followup' ? 'bg-amber-100 text-amber-700'
+                            : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {email.direction === 'received' ? '📩 Réponse client' 
+                              : email.type === 'quote' ? '📄 Devis' 
+                              : email.type === 'invoice' ? '🧾 Facture' 
+                              : email.type === 'followup' ? '🔔 Relance' 
+                              : email.type}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {email.direction === 'sent' ? `→ ${email.to_email}` : `← ${email.from_email}`}
+                          {' · '}{formatDateTime(email.sent_at || email.received_at || email.created_at)}
+                        </p>
+                        {email.direction === 'received' && email.body && (
+                          <div className="mt-2 p-3 bg-white rounded-lg border border-blue-100">
+                            <p className="text-xs font-semibold text-blue-700 mb-1">Message du client :</p>
+                            <p className="text-sm text-slate-700 whitespace-pre-wrap">{email.body}</p>
+                          </div>
+                        )}
+                        {email.direction === 'received' && !email.body && email.snippet && (
+                          <div className="mt-2 p-3 bg-white rounded-lg border border-blue-100">
+                            <p className="text-xs font-semibold text-blue-700 mb-1">Aperçu :</p>
+                            <p className="text-sm text-slate-600 italic">{email.snippet}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-slate-900 truncate">{email.subject}</p>
-                      <p className="text-xs text-slate-500 truncate">
-                        {email.direction === 'sent' ? `Vers ${email.to_email}` : `De ${email.from_email}`}
-                      </p>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        {formatDateTime(email.sent_at || email.received_at || email.created_at)}
-                      </p>
-                    </div>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 ${
-                      email.type === 'quote' ? 'bg-violet-100 text-violet-700'
-                        : email.type === 'invoice' ? 'bg-green-100 text-green-700'
-                        : email.type === 'followup' ? 'bg-amber-100 text-amber-700'
-                        : 'bg-slate-100 text-slate-600'
-                    }`}>
-                      {email.type === 'quote' ? 'Devis' : email.type === 'invoice' ? 'Facture' : email.type === 'followup' ? 'Relance' : email.type}
-                    </span>
                   </div>
                 ))}
               </div>
