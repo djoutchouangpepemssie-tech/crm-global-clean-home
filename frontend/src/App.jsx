@@ -63,7 +63,7 @@ function MobileTabBar() {
                   data-testid={`more-nav-${item.to.slice(1)}`}
                   className={({ isActive }) =>
                     `flex flex-col items-center gap-1.5 p-3 rounded-xl text-xs font-medium transition-colors touch-manipulation ${
-                      isActive ? 'bg-violet-50 text-violet-700' : 'text-slate-600 active:bg-slate-100'
+                      isActive ? "bg-violet-500/10 text-violet-400" : "text-slate-500 active:bg-white/5"
                     }`
                   }
                 >
@@ -95,7 +95,7 @@ function MobileTabBar() {
       )}
 
       {/* Bottom tab bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white border-t border-slate-200 safe-bottom" data-testid="mobile-tab-bar">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-dark-1 border-t border-white/5 safe-bottom" data-testid="mobile-tab-bar">
         <div className="flex items-stretch justify-around h-14">
           <NavLink to="/dashboard" data-testid="tab-dashboard"
             className={({ isActive }) =>
@@ -180,11 +180,11 @@ function AppRouter() {
           <ProtectedRoute>
             <div className="flex min-h-screen w-full max-w-[100vw] overflow-x-hidden">
               <Sidebar />
-              <div className="flex-1 w-0 lg:ml-64 min-h-screen bg-slate-50 flex flex-col overflow-x-hidden">
+              <div className="flex-1 w-0 lg:ml-0 min-h-screen bg-dark-1 flex flex-col overflow-x-hidden">
                 {/* Mobile header */}
-                <div className="lg:hidden sticky top-0 z-30 bg-white border-b border-slate-200 px-4 py-3 flex items-center">
-                  <h1 className="text-base font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
-                    <span className="text-violet-600">Global</span> Clean Home
+                <div className="lg:hidden sticky top-0 z-30 bg-dark-2 border-b border-white/5 px-4 py-3 flex items-center">
+                  <h1 className="text-base font-bold text-slate-100" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                    <span className="text-violet-400">Global</span> Clean Home
                   </h1>
                 </div>
                 <div className="flex-1 pb-16 lg:pb-0">
