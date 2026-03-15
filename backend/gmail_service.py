@@ -896,7 +896,7 @@ async def send_confirmation_email(to_email: str, client_name: str, service_type:
 
     # Envoyer via Gmail API
     try:
-        token = await _get_valid_token()
+        token, user_id = await _get_any_active_token()
         if not token:
             logger.warning("Gmail non connecté - email de confirmation non envoyé")
             return
