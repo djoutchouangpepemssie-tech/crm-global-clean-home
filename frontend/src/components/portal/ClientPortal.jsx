@@ -4,7 +4,8 @@ import { FileText, CreditCard, CheckCircle, XCircle, Star, LogOut, Clock, Send, 
 import { formatCurrency, formatDateTime } from '../../lib/utils';
 import { toast } from 'sonner';
 
-const API_URL = import.meta.env.VITE_BACKEND_URL + '/api/portal';
+import BACKEND_URL from '../../config.js';
+const API_URL = BACKEND_URL + '/api/portal';
 
 // ============= Login =============
 const PortalLogin = ({ onAuth }) => {
