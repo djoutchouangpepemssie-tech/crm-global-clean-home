@@ -362,7 +362,6 @@ async def send_quote_email(user_id: str, lead: dict, quote: dict) -> bool:
         return False
 
     amount_ht = quote.get("amount", 0)
-    amount_ttc = amount_ht * 1.2
     prenom = lead.get("name", "").split()[0] if lead.get("name") else "Client"
 
     # Formater les details du devis en HTML
@@ -387,9 +386,30 @@ async def send_quote_email(user_id: str, lead: dict, quote: dict) -> bool:
         details_html += "</div>"
 
     html = f"""<!DOCTYPE html>
-<html lang="fr"><head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,sans-serif;">
-<div style="max-width:620px;margin:32px auto;background:white;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<style>
+  :root { color-scheme: light dark; }
+  @media (prefers-color-scheme: dark) {
+    body { background-color: #1e1e2e !important; }
+    .email-wrapper { background-color: #1e1e2e !important; }
+    .email-body { background-color: #2d2d3f !important; color: #e2e8f0 !important; }
+    .email-text { color: #cbd5e1 !important; }
+    .email-heading { color: #f1f5f9 !important; }
+    .email-card { background-color: #3d3d50 !important; border-color: #4d4d60 !important; }
+    .email-muted { color: #94a3b8 !important; }
+    .email-footer { background-color: #111827 !important; }
+    .price-box { background: linear-gradient(135deg, #2d1b6b, #1e3a7a) !important; border-color: #4c3f9e !important; }
+    .guarantee-box { background-color: #052e16 !important; border-color: #14532d !important; }
+    .highlight-box { background-color: #1e3a5f !important; border-color: #1e40af !important; }
+    .steps-box { background-color: #2d2d3f !important; }
+    .contact-box { background-color: #2d2d3f !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,sans-serif;" class="email-wrapper">
+<div class="email-body" style="max-width:620px;margin:32px auto;background:white;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
 <div style="background:linear-gradient(135deg,#7C3AED,#2563eb);padding:36px 32px;text-align:center;">
 <div style="font-size:40px;margin-bottom:8px;">📄</div>
 <h1 style="color:white;margin:0;font-size:22px;">Votre Devis Personnalise</h1>
@@ -398,13 +418,13 @@ async def send_quote_email(user_id: str, lead: dict, quote: dict) -> bool:
 <div style="padding:36px 32px;">
 <h2 style="color:#1e293b;margin:0 0 16px;">Bonjour {prenom},</h2>
 <p style="color:#475569;line-height:1.7;">Suite a votre demande, nous avons le plaisir de vous adresser votre devis personnalise. Notre equipe a analyse vos besoins avec soin pour vous proposer une prestation adaptee au meilleur rapport qualite-prix.</p>
-<div style="background:linear-gradient(135deg,#f5f3ff,#eff6ff);border-radius:12px;padding:24px;margin:20px 0;text-align:center;border:1px solid #ddd6fe;">
+<div class="price-box" style="background:linear-gradient(135deg,#f5f3ff,#eff6ff);border-radius:12px;padding:24px;margin:20px 0;text-align:center;border:1px solid #ddd6fe;">
 <p style="color:#6d28d9;font-size:13px;font-weight:600;margin:0 0 8px;text-transform:uppercase;">Montant du devis</p>
 <p style="color:#1e293b;font-size:36px;font-weight:800;margin:0;">{amount_ht:,.0f} EUR</p>
-<p style="color:#64748b;font-size:12px;margin:4px 0 0;">HT - soit {amount_ttc:,.0f} EUR TTC (TVA 20%)</p>
+<p style="color:#64748b;font-size:12px;margin:4px 0 0;">Montant net - Micro-entreprise (TVA non applicable)</p>
 </div>
 {details_html}
-<div style="background:#f0fdf4;border-radius:8px;padding:16px 20px;margin:20px 0;border:1px solid #bbf7d0;">
+<div class="guarantee-box" style="background:#f0fdf4;border-radius:8px;padding:16px 20px;margin:20px 0;border:1px solid #bbf7d0;">
 <p style="color:#166534;font-weight:700;margin:0 0 8px;">Nos engagements</p>
 <p style="color:#15803d;margin:3px 0;font-size:13px;">Produits professionnels et materiel fourni</p>
 <p style="color:#15803d;margin:3px 0;font-size:13px;">Personnel forme et experimente</p>
@@ -823,6 +843,26 @@ async def send_confirmation_email(to_email: str, client_name: str, service_type:
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
+  <meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<style>
+  :root { color-scheme: light dark; }
+  @media (prefers-color-scheme: dark) {
+    body { background-color: #1e1e2e !important; }
+    .email-wrapper { background-color: #1e1e2e !important; }
+    .email-body { background-color: #2d2d3f !important; color: #e2e8f0 !important; }
+    .email-text { color: #cbd5e1 !important; }
+    .email-heading { color: #f1f5f9 !important; }
+    .email-card { background-color: #3d3d50 !important; border-color: #4d4d60 !important; }
+    .email-muted { color: #94a3b8 !important; }
+    .email-footer { background-color: #111827 !important; }
+    .price-box { background: linear-gradient(135deg, #2d1b6b, #1e3a7a) !important; border-color: #4c3f9e !important; }
+    .guarantee-box { background-color: #052e16 !important; border-color: #14532d !important; }
+    .highlight-box { background-color: #1e3a5f !important; border-color: #1e40af !important; }
+    .steps-box { background-color: #2d2d3f !important; }
+    .contact-box { background-color: #2d2d3f !important; }
+  }
+</style>
   <style>
     body {{ font-family: 'Segoe UI', Arial, sans-serif; background: #f4f7fb; margin: 0; padding: 0; }}
     .container {{ max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }}
@@ -864,13 +904,13 @@ async def send_confirmation_email(to_email: str, client_name: str, service_type:
       <div class="checkmark">✅</div>
       <div class="greeting">Bonjour {prenom},</div>
       
-      <p class="message">
+      <p class="message email-text">
         Nous avons bien reçu votre demande de devis pour les services suivants et nous vous en remercions chaleureusement.</p>
       <div style="background:#f0fdf4;border-radius:8px;padding:16px 20px;margin:12px 0;border:1px solid #bbf7d0;">
         {services_html}
       </div>
       
-      <p class="message">
+      <p class="message email-text">
         Notre équipe prend votre demande très au sérieux et s'engage à vous fournir 
         un devis personnalisé dans les <strong>meilleurs délais</strong>.
       </p>
@@ -907,7 +947,7 @@ async def send_confirmation_email(to_email: str, client_name: str, service_type:
         </div>
       </div>
 
-      <p class="message">
+      <p class="message email-text">
         En attendant, n'hésitez pas à nous contacter directement si vous avez 
         des questions ou si vous souhaitez accélérer le traitement de votre dossier.
       </p>
