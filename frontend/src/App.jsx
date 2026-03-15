@@ -63,7 +63,7 @@ function MobileTabBar() {
                   data-testid={`more-nav-${item.to.slice(1)}`}
                   className={({ isActive }) =>
                     `flex flex-col items-center gap-1.5 p-3 rounded-xl text-xs font-medium transition-colors touch-manipulation ${
-                      isActive ? "bg-violet-500/10 text-violet-400" : "text-slate-500 active:bg-white/5"
+                      isActive ? "bg-violet-500/10 text-violet-300" : "text-slate-600 active:bg-white/5"
                     }`
                   }
                 >
@@ -95,7 +95,7 @@ function MobileTabBar() {
       )}
 
       {/* Bottom tab bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-dark-1 border-t border-white/5 safe-bottom" data-testid="mobile-tab-bar">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 lg:hidden border-t border-white/5 safe-bottom" style={{background:"hsl(224,71%,5%)"}} data-testid="mobile-tab-bar">
         <div className="flex items-stretch justify-around h-14">
           <NavLink to="/dashboard" data-testid="tab-dashboard"
             className={({ isActive }) =>
@@ -178,16 +178,37 @@ function AppRouter() {
         path="/*"
         element={
           <ProtectedRoute>
-            <div className="flex min-h-screen w-full max-w-[100vw] overflow-x-hidden">
-              <Sidebar />
-              <div className="flex-1 w-0 lg:ml-0 min-h-screen bg-dark-1 flex flex-col overflow-x-hidden">
+            <div className="flex h-screen w-full overflow-hidden bg-dark-1">
+              {/* Sidebar - hidden on mobile */}
+              <div className="hidden lg:flex flex-shrink-0">
+                <Sidebar />
+              </div>
+              {/* Main content */}
+              <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* Mobile header */}
-                <div className="lg:hidden sticky top-0 z-30 bg-dark-2 border-b border-white/5 px-4 py-3 flex items-center">
-                  <h1 className="text-base font-bold text-slate-100" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                <div className="lg:hidden flex-shrink-0 sticky top-0 z-30 border-b border-white/5 px-4 py-3 flex items-center justify-between"
+                  style={{background:'hsl(224,71%,5%)'}}>
+                  <h1 className="text-base font-bold text-slate-100" style={{fontFamily:'Manrope,sans-serif'}}>
                     <span className="text-violet-400">Global</span> Clean Home
                   </h1>
+                  <button onClick={() => setMobileMenuOpen(true)}
+                    className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 border border-white/10 transition-all">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                  </button>
                 </div>
-                <div className="flex-1 pb-16 lg:pb-0">
+                {/* Mobile drawer */}
+                {mobileMenuOpen && (
+                  <div className="lg:hidden fixed inset-0 z-50 flex">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
+                    <div className="relative flex-shrink-0" onClick={() => setMobileMenuOpen(false)}>
+                      <Sidebar />
+                    </div>
+                  </div>
+                )}
+                {/* Scrollable content */}
+                <div className="flex-1 overflow-y-auto overflow-x-hidden pb-16 lg:pb-0">
                   <Routes>
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/leads/new" element={<LeadForm />} />

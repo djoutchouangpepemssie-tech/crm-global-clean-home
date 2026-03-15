@@ -48,7 +48,7 @@ const Sidebar = () => {
 
   return (
     <aside 
-      className={`flex flex-col h-screen sticky top-0 transition-all duration-300 ease-in-out ${
+      className={`flex flex-col h-screen transition-all duration-300 ease-in-out flex-shrink-0 ${
         collapsed ? 'w-16' : 'w-56'
       }`}
       style={{
