@@ -227,7 +227,7 @@ const Dashboard = () => {
                 key={lead.lead_id}
                 data-testid={`recent-lead-${lead.lead_id}`}
                 onClick={() => navigate(`/leads/${lead.lead_id}`)}
-                className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/4 transition-all cursor-pointer group border border-transparent hover:border-white/6"
+                className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/5 transition-all cursor-pointer group border border-transparent hover:border-white/10"
               >
                 <div className="w-8 h-8 rounded-lg bg-violet-500/15 border border-violet-500/20 flex items-center justify-center text-violet-400 font-bold text-sm flex-shrink-0">
                   {lead.name.charAt(0).toUpperCase()}
