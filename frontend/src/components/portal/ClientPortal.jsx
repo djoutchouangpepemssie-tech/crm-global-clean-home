@@ -539,10 +539,27 @@ const ClientPortal = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios.get(`${API_URL}/me`, { withCredentials: true })
-      .then(res => setUser(res.data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    const checkAuth = async () => {
+      // Vérifier si token dans URL
+      const params = new URLSearchParams(window.location.search);
+      const urlToken = params.get('token');
+      if (urlToken) {
+        try {
+          const res = await axios.post(`${API_URL}/auth/${urlToken}`, {}, { withCredentials: true });
+          setUser(res.data);
+          // Nettoyer le token de l'URL
+          window.history.replaceState({}, '', '/portal');
+          setLoading(false);
+          return;
+        } catch { /* token invalide, continuer */ }
+      }
+      // Vérifier session existante
+      axios.get(`${API_URL}/me`, { withCredentials: true })
+        .then(res => setUser(res.data))
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    };
+    checkAuth();
   }, []);
 
   if (loading) return (

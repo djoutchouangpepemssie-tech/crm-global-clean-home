@@ -33,6 +33,13 @@ const InvoicesList = () => {
     finally { setLoading(false); }
   };
 
+  const handleSendInvoice = async (invoice) => {
+    try {
+      await axios.post(`${API_URL}/invoices/${invoice.invoice_id}/send-portal`, {}, { withCredentials: true });
+      toast.success('✓ Facture envoyée au client avec lien de paiement');
+    } catch { toast.error('Erreur lors de l\'envoi'); }
+  };
+
   const handlePay = async (invoice) => {
     try {
       const res = await axios.post(`${API_URL}/invoices/${invoice.invoice_id}/checkout`,
@@ -172,6 +179,12 @@ const InvoicesList = () => {
                         <td className="px-4 py-3 text-xs text-slate-500">{formatDateTime(inv.created_at)}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
+                            <button onClick={() => handleSendInvoice(inv)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 text-blue-400 rounded-lg text-xs font-medium transition-all"
+                              title="Envoyer au client">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                              Envoyer
+                            </button>
                             {inv.status === 'en_attente' && (
                               <button onClick={() => handlePay(inv)} data-testid={`pay-btn-${inv.invoice_id}`}
                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/20 text-violet-300 rounded-lg text-xs font-medium transition-all">

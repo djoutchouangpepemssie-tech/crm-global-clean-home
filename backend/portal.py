@@ -303,3 +303,88 @@ async def admin_get_reviews(request: Request):
     
     reviews = await _db.reviews.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
     return reviews
+
+async def auto_send_portal_access(lead: dict, context: str = "quote") -> bool:
+    """Genere et envoie automatiquement un lien d'acces portail au client."""
+    try:
+        email = lead.get("email", "").strip().lower()
+        if not email:
+            return False
+        
+        token = _generate_token()
+        expires = datetime.now(timezone.utc) + timedelta(hours=72)
+        
+        magic_link = {
+            "token": token,
+            "email": email,
+            "lead_id": lead["lead_id"],
+            "lead_name": lead.get("name", ""),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": expires.isoformat(),
+            "used": False,
+        }
+        await _db.magic_links.insert_one(magic_link)
+        
+        frontend_url = str(os.environ.get("FRONTEND_URL", "https://crm.globalcleanhome.com"))
+        access_url = f"{frontend_url}/portal?token={token}"
+        prenom = lead.get("name", "Client").split()[0]
+        
+        if context == "quote":
+            subject = "Votre devis est disponible - Global Clean Home"
+            icon = "📄"
+            action_title = "Consulter mon devis"
+            action_desc = "Votre devis personnalise est pret. Connectez-vous a votre espace client pour le consulter et l'accepter en un clic."
+            btn_color = "#7c3aed"
+        else:
+            subject = "Votre facture est disponible - Global Clean Home"
+            icon = "🧾"
+            action_title = "Voir ma facture et payer"
+            action_desc = "Votre facture est disponible. Connectez-vous a votre espace client pour la consulter et la regler en ligne en toute securite."
+            btn_color = "#059669"
+        
+        html = f"""<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<style>@media (prefers-color-scheme: dark){{body{{background:#0f172a!important;}}.card{{background:#1e293b!important;color:#e2e8f0!important;}}.muted{{color:#94a3b8!important;}}}}</style>
+</head>
+<body style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,sans-serif;">
+<div style="max-width:580px;margin:32px auto;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.1);" class="card">
+  <div style="background:linear-gradient(135deg,#7c3aed,#2563eb);padding:40px 32px;text-align:center;">
+    <div style="font-size:48px;margin-bottom:12px;">{icon}</div>
+    <h1 style="color:white;margin:0;font-size:22px;font-weight:700;">{subject.split(" - ")[0]}</h1>
+    <p style="color:rgba(255,255,255,0.8);margin:8px 0 0;font-size:14px;">Global Clean Home</p>
+  </div>
+  <div style="padding:36px 32px;background:white;" class="card">
+    <h2 style="color:#1e293b;margin:0 0 16px;">Bonjour {prenom},</h2>
+    <p style="color:#475569;line-height:1.7;margin:0 0 24px;" class="muted">{action_desc}</p>
+    <div style="text-align:center;margin:28px 0;">
+      <a href="{access_url}" style="display:inline-block;background:{btn_color};color:white;padding:16px 36px;border-radius:12px;text-decoration:none;font-weight:700;font-size:15px;">
+        {action_title} →
+      </a>
+    </div>
+    <div style="background:#f8fafc;border-radius:10px;padding:16px 20px;border:1px solid #e2e8f0;margin:20px 0;">
+      <p style="color:#64748b;margin:0;font-size:13px;">🔐 Ce lien est personnel et valable 72 heures. Il vous connecte automatiquement sans mot de passe.</p>
+    </div>
+    <div style="margin:20px 0;">
+      <p style="color:#94a3b8;font-size:12px;margin:0 0 8px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Votre espace client vous permet de :</p>
+      <p style="color:#475569;font-size:13px;margin:4px 0;">✅ Consulter et accepter vos devis</p>
+      <p style="color:#475569;font-size:13px;margin:4px 0;">💳 Payer vos factures en ligne</p>
+      <p style="color:#475569;font-size:13px;margin:4px 0;">⭐ Laisser un avis sur nos services</p>
+    </div>
+  </div>
+  <div style="background:#1e293b;padding:20px 32px;text-align:center;">
+    <p style="color:white;font-weight:700;margin:0 0 4px;">Global Clean Home</p>
+    <p style="color:rgba(255,255,255,0.5);font-size:12px;margin:0;">www.globalcleanhome.com | 06 22 66 53 08</p>
+  </div>
+</div>
+</body></html>"""
+
+        from gmail_service import _get_any_active_token, _send_gmail_message
+        token_gmail, user_id = await _get_any_active_token()
+        if token_gmail:
+            await _send_gmail_message(token_gmail, email, subject, html)
+            logger.info(f"Portal access email sent to {email} (context: {context})")
+            return True
+        return False
+    except Exception as e:
+        logger.error(f"auto_send_portal_access error: {e}")
+        return False

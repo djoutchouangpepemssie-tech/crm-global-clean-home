@@ -225,3 +225,31 @@ async def get_financial_stats(request: Request, period: str = "30d"):
         "revenue_by_day": revenue_by_day,
         "recent_transactions": transactions,
     }
+
+@invoices_router.post("/invoices/{invoice_id}/send-portal")
+async def send_invoice_to_portal(invoice_id: str, request: Request):
+    """Envoie la facture au client avec lien portail."""
+    user = await _require_auth(request)
+    inv = await _db.invoices.find_one({"invoice_id": invoice_id}, {"_id": 0})
+    if not inv:
+        raise HTTPException(status_code=404, detail="Facture introuvable")
+    lead = await _db.leads.find_one({"lead_id": inv["lead_id"]}, {"_id": 0})
+    if not lead or not lead.get("email"):
+        raise HTTPException(status_code=400, detail="Email client introuvable")
+    try:
+        from portal import auto_send_portal_access
+        sent = await auto_send_portal_access(lead, context="invoice")
+        if sent:
+            await _db.interactions.insert_one({
+                "lead_id": lead["lead_id"],
+                "type": "email_sent",
+                "content": f"Facture {invoice_id} envoyee avec lien portail a {lead.get('email')}",
+                "user_id": user.user_id,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            })
+            return {"success": True, "message": "Facture envoyee avec lien portail"}
+        raise HTTPException(status_code=500, detail="Erreur envoi email")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
