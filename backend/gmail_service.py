@@ -414,10 +414,10 @@ async def send_quote_email(user_id: str, lead: dict, quote: dict) -> bool:
 <div style="padding:36px 32px;">
 <h2 style="color:#1e293b;margin:0 0 16px;">Bonjour {prenom},</h2>
 <p style="color:#475569;line-height:1.7;">Suite a votre demande, nous avons le plaisir de vous adresser votre devis personnalise. Notre equipe a analyse vos besoins avec soin pour vous proposer une prestation adaptee au meilleur rapport qualite-prix.</p>
-<div style="background:linear-gradient(135deg,#f5f3ff,#eff6ff);border-radius:12px;padding:24px;margin:20px 0;text-align:center;border:1px solid #ddd6fe;">
-<p style="color:#6d28d9;font-size:13px;font-weight:600;margin:0 0 8px;text-transform:uppercase;">Montant du devis</p>
-<p style="color:#1e293b;font-size:36px;font-weight:800;margin:0;">{amount_ht:,.0f} EUR</p>
-<p style="color:#64748b;font-size:12px;margin:4px 0 0;">HT - soit {amount_ttc:,.0f} EUR TTC (TVA 20%)</p>
+<div style="background:linear-gradient(135deg,#f5f3ff,#eff6ff);border-radius:12px;padding:24px;margin:20px 0;text-align:center;border:1px solid #ddd6fe;;background:linear-gradient(135deg,#4c1d95,#1e3a8a);">
+<p style="color:rgba(255,255,255,0.85);font-size:13px;font-weight:600;margin:0 0 8px;text-transform:uppercase;letter-spacing:1px;">MONTANT DU DEVIS</p>
+<p style="color:#ffffff;font-size:38px;font-weight:800;margin:0;">{amount_ht:,.0f} EUR</p>
+<p style="color:rgba(255,255,255,0.7);font-size:12px;margin:6px 0 0;">Micro-entreprise - TVA non applicable (art. 293B du CGI)</p>
 </div>
 {details_html}
 <div style="background:#f0fdf4;border-radius:8px;padding:16px 20px;margin:20px 0;border:1px solid #bbf7d0;">
