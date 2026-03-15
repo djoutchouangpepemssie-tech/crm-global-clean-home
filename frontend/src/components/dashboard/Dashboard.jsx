@@ -2,15 +2,26 @@ import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Users, UserPlus, Trophy, FileText, Target, CheckSquare, TrendingUp, Star, ArrowUpRight } from 'lucide-react';
+import { Users, UserPlus, Trophy, FileText, Target, CheckSquare, TrendingUp, Star, ArrowUpRight, RefreshCw, Sparkles } from 'lucide-react';
 import { getStatusColor, getStatusLabel, formatDateTime } from '../../lib/utils';
 import LeadScoreBadge from '../shared/LeadScoreBadge';
 import { toast } from 'sonner';
-
 import BACKEND_URL from '../../config.js';
 const API_URL = BACKEND_URL + '/api';
 
-const CHART_COLORS = ['#7C3AED', '#E11D48', '#2563EB', '#10B981', '#F59E0B', '#6366F1'];
+const CHART_COLORS = ['#8b5cf6', '#60a5fa', '#34d399', '#f59e0b', '#f43f5e', '#06b6d4'];
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div style={{background:'hsl(224,71%,8%)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'8px',padding:'10px 14px'}}>
+        <p style={{color:'#94a3b8',fontSize:'11px',marginBottom:'4px'}}>{label}</p>
+        <p style={{color:'#a78bfa',fontWeight:700,fontSize:'14px'}}>{payload[0].value}</p>
+      </div>
+    );
+  }
+  return null;
+};
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -24,148 +35,156 @@ const Dashboard = () => {
       const response = await axios.get(`${API_URL}/stats/dashboard?period=${period}`, { withCredentials: true });
       setStats(response.data || {});
     } catch {
-      toast.error('Erreur lors du chargement des statistiques');
+      toast.error('Erreur lors du chargement');
     } finally {
       setLoading(false);
     }
   }, [period]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchData(); }, [period]);
+
+  const kpis = [
+    { title: 'Total leads', value: stats.total_leads ?? 0, icon: Users, color: '#a78bfa', bg: 'rgba(139,92,246,0.1)', border: 'rgba(139,92,246,0.2)', trend: null },
+    { title: 'Nouveaux leads', value: stats.new_leads ?? 0, icon: UserPlus, color: '#60a5fa', bg: 'rgba(96,165,250,0.1)', border: 'rgba(96,165,250,0.2)', trend: '+' + (stats.new_leads ?? 0) },
+    { title: 'Leads gagnés', value: stats.won_leads ?? 0, icon: Trophy, color: '#34d399', bg: 'rgba(52,211,153,0.1)', border: 'rgba(52,211,153,0.2)', trend: null },
+    { title: 'Devis envoyés', value: stats.sent_quotes ?? 0, icon: FileText, color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.2)', trend: null },
+    { title: 'Taux conversion', value: `${stats.conversion_lead_to_quote ?? 0}%`, icon: Target, color: '#f43f5e', bg: 'rgba(244,63,94,0.1)', border: 'rgba(244,63,94,0.2)', trend: null },
+    { title: 'Tâches en cours', value: stats.pending_tasks ?? 0, icon: CheckSquare, color: '#06b6d4', bg: 'rgba(6,182,212,0.1)', border: 'rgba(6,182,212,0.2)', trend: null },
+    { title: 'Score moyen', value: stats.avg_lead_score ?? 0, icon: Star, color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.2)', trend: null },
+    { title: 'Meilleure source', value: stats.best_source?.name || '-', icon: TrendingUp, color: '#a78bfa', bg: 'rgba(139,92,246,0.1)', border: 'rgba(139,92,246,0.2)', trend: null },
+  ];
+
+  const sourceData = Object.entries(stats.leads_by_source || {}).map(([name, value]) => ({ name: name || 'Inconnu', value }));
+  const serviceData = Object.entries(stats.leads_by_service || {}).map(([name, value]) => ({ name, value }));
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <p className="text-sm text-slate-400">Chargement...</p>
+      <div className="p-6 space-y-6 animate-fade-in">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <div className="skeleton h-8 w-48 mb-2" />
+            <div className="skeleton h-4 w-32" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(8)].map((_, i) => <div key={i} className="skeleton h-28 rounded-xl" />)}
+        </div>
       </div>
     );
   }
 
-  const kpis = [
-    { title: 'Total leads', value: stats.total_leads, icon: Users, color: 'text-violet-600', bg: 'bg-violet-50', change: null },
-    { title: 'Nouveaux', value: stats.new_leads, icon: UserPlus, color: 'text-blue-600', bg: 'bg-blue-50', change: '+' + stats.new_leads },
-    { title: 'Gagnés', value: stats.won_leads, icon: Trophy, color: 'text-emerald-600', bg: 'bg-emerald-50', change: null },
-    { title: 'Devis envoyés', value: stats.sent_quotes, icon: FileText, color: 'text-amber-600', bg: 'bg-amber-50', change: null },
-    { title: 'Taux conversion', value: `${stats.conversion_lead_to_quote || 0}%`, icon: Target, color: 'text-rose-600', bg: 'bg-rose-50', change: null },
-    { title: 'Tâches en cours', value: stats.pending_tasks, icon: CheckSquare, color: 'text-cyan-600', bg: 'bg-cyan-50', change: null },
-    { title: 'Score moyen', value: stats.avg_lead_score || 0, icon: Star, color: 'text-amber-600', bg: 'bg-amber-50', change: null },
-    { title: 'Meilleure source', value: stats.best_source?.name || '-', icon: TrendingUp, color: 'text-violet-600', bg: 'bg-violet-50', change: null },
-  ];
-
-  const sourceData = Object.entries(stats.leads_by_source || {}).map(([name, value]) => ({
-    name: name || 'Inconnu', value
-  }));
-
-  const serviceData = Object.entries(stats.leads_by_service || {}).map(([name, value]) => ({
-    name, value
-  }));
-
   return (
-    <div className="p-4 md:p-6 lg:p-8 space-y-6 md:space-y-8" data-testid="dashboard-page">
+    <div className="p-4 md:p-6 lg:p-8 space-y-6 animate-fade-in" data-testid="dashboard-page">
+      
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight" style={{ fontFamily: 'Manrope, sans-serif' }}>
-            Tableau de bord
-          </h1>
-          <p className="text-slate-500 mt-1 text-sm">Vue d'ensemble de votre activite</p>
+          <div className="flex items-center gap-2 mb-1">
+            <Sparkles className="w-5 h-5 text-violet-400" />
+            <h1 className="text-2xl font-bold text-slate-100" style={{fontFamily:'Manrope,sans-serif'}}>
+              Tableau de bord
+            </h1>
+          </div>
+          <p className="text-slate-500 text-sm">Vue d'ensemble de votre activité</p>
         </div>
-        <div className="flex gap-1 sm:gap-1.5 bg-white rounded-lg border border-slate-200 p-1" data-testid="period-selector">
-          {[
-            { key: '1d', label: "Aujourd'hui" },
-            { key: '7d', label: '7 jours' },
-            { key: '30d', label: '30 jours' },
-          ].map(p => (
-            <button
-              key={p.key}
-              data-testid={`period-${p.key}`}
-              onClick={() => setPeriod(p.key)}
-              className={`px-3 md:px-4 py-1.5 rounded-md text-xs md:text-sm font-medium transition-all duration-150 ${
-                period === p.key
-                  ? 'bg-violet-600 text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <button onClick={fetchData} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-slate-200 transition-all border border-white/5">
+            <RefreshCw className="w-4 h-4" />
+          </button>
+          <div className="flex gap-1 bg-white/5 rounded-lg border border-white/5 p-1" data-testid="period-selector">
+            {[
+              { key: '1d', label: "Auj." },
+              { key: '7d', label: '7j' },
+              { key: '30d', label: '30j' },
+            ].map(p => (
+              <button
+                key={p.key}
+                data-testid={`period-${p.key}`}
+                onClick={() => setPeriod(p.key)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  period === p.key
+                    ? 'bg-violet-600 text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* KPI Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 stagger-children" data-testid="kpi-grid">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" data-testid="kpi-grid">
         {kpis.map((kpi, idx) => (
-          <div
-            key={idx}
-            className="bg-white rounded-xl border border-slate-200 p-4 md:p-5 hover-lift animate-fade-in overflow-hidden"
-          >
+          <div key={idx} className="metric-card animate-fade-in" style={{animationDelay: `${idx * 50}ms`}}>
             <div className="flex items-center justify-between mb-3">
-              <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg ${kpi.bg} flex items-center justify-center flex-shrink-0`}>
-                <kpi.icon className={`w-4 h-4 md:w-5 md:h-5 ${kpi.color}`} />
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{background: kpi.bg, border: `1px solid ${kpi.border}`}}>
+                <kpi.icon className="w-4 h-4" style={{color: kpi.color}} />
               </div>
-              {kpi.change && (
-                <span className="flex items-center gap-0.5 text-[10px] md:text-xs font-semibold text-emerald-600 bg-emerald-50 px-1.5 md:px-2 py-0.5 rounded-full flex-shrink-0">
+              {kpi.trend && (
+                <span className="flex items-center gap-0.5 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
                   <ArrowUpRight className="w-3 h-3" />
-                  {kpi.change}
+                  {kpi.trend}
                 </span>
               )}
             </div>
-            <p className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight truncate">{kpi.value}</p>
-            <p className="text-[10px] md:text-xs text-slate-500 mt-1 font-medium truncate">{kpi.title}</p>
+            <p className="text-2xl font-bold text-slate-100 tracking-tight" style={{fontFamily:'Manrope,sans-serif'}}>{kpi.value}</p>
+            <p className="text-xs text-slate-500 mt-1">{kpi.title}</p>
           </div>
         ))}
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+      {/* Charts Row 1 */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Leads over time */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-4 md:p-6 hover-lift overflow-hidden">
-          <h3 className="text-sm md:text-base font-semibold text-slate-900 mb-4">Leads par jour</h3>
-          <ResponsiveContainer width="100%" height={220}>
+        <div className="lg:col-span-2 section-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-slate-200">Évolution des leads</h3>
+            <span className="text-xs text-slate-500 bg-white/5 px-2 py-1 rounded-md">{period}</span>
+          </div>
+          <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={stats.leads_by_day || []}>
               <defs>
                 <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#7C3AED" stopOpacity={0.15}/>
-                  <stop offset="95%" stopColor="#7C3AED" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-              <XAxis dataKey="date" stroke="#94A3B8" style={{ fontSize: '10px' }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-              <YAxis stroke="#94A3B8" style={{ fontSize: '10px' }} tickLine={false} axisLine={false} allowDecimals={false} width={30} />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#fff', border: '1px solid #E2E8F0', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: '12px' }}
-                labelStyle={{ fontWeight: 600, color: '#0F172A' }}
-              />
-              <Area type="monotone" dataKey="count" stroke="#7C3AED" strokeWidth={2} fill="url(#colorLeads)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+              <XAxis dataKey="date" stroke="#475569" style={{fontSize:'10px'}} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+              <YAxis stroke="#475569" style={{fontSize:'10px'}} tickLine={false} axisLine={false} allowDecimals={false} width={25} />
+              <Tooltip content={<CustomTooltip />} />
+              <Area type="monotone" dataKey="count" stroke="#8b5cf6" strokeWidth={2} fill="url(#colorLeads)" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Sources pie chart */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 hover-lift overflow-hidden">
-          <h3 className="text-sm md:text-base font-semibold text-slate-900 mb-4">Sources</h3>
+        {/* Sources */}
+        <div className="section-card p-5">
+          <h3 className="text-sm font-semibold text-slate-200 mb-4">Sources</h3>
           {sourceData.length === 0 ? (
-            <div className="flex items-center justify-center h-[200px] text-slate-400 text-sm">Pas de donnees</div>
+            <div className="flex items-center justify-center h-[180px] text-slate-600 text-sm">Aucune donnée</div>
           ) : (
             <>
-              <ResponsiveContainer width="100%" height={180}>
+              <ResponsiveContainer width="100%" height={160}>
                 <PieChart>
-                  <Pie data={sourceData} cx="50%" cy="50%" outerRadius={70} innerRadius={40} paddingAngle={3} dataKey="value">
+                  <Pie data={sourceData} cx="50%" cy="50%" outerRadius={65} innerRadius={38} paddingAngle={3} dataKey="value">
                     {sourceData.map((_, idx) => (
-                      <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
+                      <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} opacity={0.85} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => [value, 'Leads']} contentStyle={{ borderRadius: '8px', border: '1px solid #E2E8F0' }} />
+                  <Tooltip formatter={(v) => [v, 'Leads']} contentStyle={{background:'hsl(224,71%,8%)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'8px',fontSize:'12px'}} />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="space-y-1.5 mt-2">
-                {sourceData.map((s, idx) => (
-                  <div key={s.name} className="flex items-center justify-between text-xs gap-2">
+              <div className="space-y-2 mt-2">
+                {sourceData.slice(0,4).map((s, idx) => (
+                  <div key={s.name} className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}></span>
-                      <span className="text-slate-600 truncate">{s.name}</span>
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{backgroundColor: CHART_COLORS[idx % CHART_COLORS.length]}} />
+                      <span className="text-slate-400 truncate">{s.name}</span>
                     </div>
-                    <span className="font-semibold text-slate-900 flex-shrink-0">{s.value}</span>
+                    <span className="font-semibold text-slate-200">{s.value}</span>
                   </div>
                 ))}
               </div>
@@ -174,49 +193,50 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Service chart + Recent Leads */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+      {/* Charts Row 2 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Services */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 hover-lift overflow-hidden">
-          <h3 className="text-sm md:text-base font-semibold text-slate-900 mb-4">Par service</h3>
-          <ResponsiveContainer width="100%" height={220}>
+        <div className="section-card p-5">
+          <h3 className="text-sm font-semibold text-slate-200 mb-4">Leads par service</h3>
+          <ResponsiveContainer width="100%" height={200}>
             <BarChart data={serviceData} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" horizontal={false} />
-              <XAxis type="number" stroke="#94A3B8" style={{ fontSize: '10px' }} tickLine={false} axisLine={false} allowDecimals={false} />
-              <YAxis dataKey="name" type="category" stroke="#94A3B8" style={{ fontSize: '10px' }} tickLine={false} axisLine={false} width={70} />
-              <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '12px' }} />
-              <Bar dataKey="value" fill="#7C3AED" radius={[0, 6, 6, 0]} barSize={20} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" horizontal={false} />
+              <XAxis type="number" stroke="#475569" style={{fontSize:'10px'}} tickLine={false} axisLine={false} allowDecimals={false} />
+              <YAxis dataKey="name" type="category" stroke="#475569" style={{fontSize:'10px'}} tickLine={false} axisLine={false} width={80} />
+              <Tooltip contentStyle={{background:'hsl(224,71%,8%)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'8px',fontSize:'12px'}} />
+              <Bar dataKey="value" radius={[0,6,6,0]} barSize={16}>
+                {serviceData.map((_, idx) => (
+                  <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} opacity={0.8} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         {/* Recent Leads */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 hover-lift overflow-hidden">
+        <div className="section-card p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm md:text-base font-semibold text-slate-900">Leads recents</h3>
-            <button
-              onClick={() => navigate('/leads')}
-              className="text-xs font-medium text-violet-600 hover:text-violet-700 transition-colors"
-            >
-              Voir tout
+            <h3 className="text-sm font-semibold text-slate-200">Leads récents</h3>
+            <button onClick={() => navigate('/leads')} className="text-xs text-violet-400 hover:text-violet-300 transition-colors flex items-center gap-1">
+              Voir tout <ArrowUpRight className="w-3 h-3" />
             </button>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {(stats.recent_leads || []).slice(0, 6).map((lead) => (
               <div
                 key={lead.lead_id}
                 data-testid={`recent-lead-${lead.lead_id}`}
                 onClick={() => navigate(`/leads/${lead.lead_id}`)}
-                className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer group"
+                className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/4 transition-all cursor-pointer group border border-transparent hover:border-white/6"
               >
-                <div className="w-9 h-9 rounded-lg bg-violet-100 flex items-center justify-center text-violet-700 font-semibold text-sm flex-shrink-0 group-hover:bg-violet-200 transition-colors">
+                <div className="w-8 h-8 rounded-lg bg-violet-500/15 border border-violet-500/20 flex items-center justify-center text-violet-400 font-bold text-sm flex-shrink-0">
                   {lead.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-900 truncate">{lead.name}</p>
-                  <p className="text-xs text-slate-500">{lead.service_type}</p>
+                  <p className="text-sm font-medium text-slate-200 truncate group-hover:text-slate-100">{lead.name}</p>
+                  <p className="text-xs text-slate-500 truncate">{lead.service_type}</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   <LeadScoreBadge score={lead.score || 50} />
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${getStatusColor(lead.status)}`}>
                     {getStatusLabel(lead.status)}
@@ -224,6 +244,9 @@ const Dashboard = () => {
                 </div>
               </div>
             ))}
+            {(!stats.recent_leads || stats.recent_leads.length === 0) && (
+              <div className="text-center py-8 text-slate-600 text-sm">Aucun lead récent</div>
+            )}
           </div>
         </div>
       </div>
