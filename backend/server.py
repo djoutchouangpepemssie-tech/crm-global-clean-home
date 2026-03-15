@@ -1418,17 +1418,69 @@ async def get_integration_status(request: Request):
 async def get_financial_stats(request: Request, period: str = "30d"):
     """Get financial statistics."""
     await require_auth(request)
-    invoices = await db.invoices.find({}, {"_id": 0}).to_list(1000)
-    total_revenue = sum(i.get("amount_ttc", 0) for i in invoices if i.get("status") == "payée")
-    pending = sum(i.get("amount_ttc", 0) for i in invoices if i.get("status") in ["envoyée", "en_attente"])
-    recent_transactions = [i for i in invoices if i.get("status") == "payée"][-10:]
+    from datetime import timedelta
+    now = datetime.now(timezone.utc)
+    if period == "7d":
+        start = now - timedelta(days=7)
+    elif period == "90d":
+        start = now - timedelta(days=90)
+    else:
+        start = now - timedelta(days=30)
+    
+    all_invoices = await db.invoices.find({}, {"_id": 0}).to_list(10000)
+    invoices = [i for i in all_invoices if i.get("created_at", "") >= start.isoformat()]
+    
+    paid = [i for i in all_invoices if i.get("status") in ["payée", "payee"]]
+    pending = [i for i in all_invoices if i.get("status") == "en_attente"]
+    overdue = [i for i in all_invoices if i.get("status") == "en_retard"]
+    
+    total_revenue = sum(i.get("amount_ttc", 0) for i in paid)
+    total_pending = sum(i.get("amount_ttc", 0) for i in pending)
+    total_overdue = sum(i.get("amount_ttc", 0) for i in overdue)
+    
+    # Revenue par service
+    revenue_by_service = {}
+    for inv in paid:
+        svc = inv.get("service_type", "Autre")
+        revenue_by_service[svc] = revenue_by_service.get(svc, 0) + inv.get("amount_ttc", 0)
+    
+    # Revenue par jour
+    revenue_by_day = []
+    for i in range(int((now - start).days) + 1):
+        day = start + timedelta(days=i)
+        day_str = day.strftime("%Y-%m-%d")
+        day_rev = sum(
+            inv.get("amount_ttc", 0) for inv in paid
+            if inv.get("paid_at", inv.get("created_at", ""))[:10] == day_str
+        )
+        revenue_by_day.append({"date": day_str, "revenue": day_rev})
+    
+    # Transactions récentes
+    recent_transactions = sorted(
+        [i for i in all_invoices if i.get("status") in ["payée", "payee", "en_attente"]],
+        key=lambda x: x.get("created_at", ""),
+        reverse=True
+    )[:10]
+    
+    recent_tx = [{
+        "transaction_id": i.get("invoice_id", ""),
+        "invoice_id": i.get("invoice_id", ""),
+        "amount": i.get("amount_ttc", 0),
+        "payment_status": "paid" if i.get("status") in ["payée", "payee"] else "pending",
+        "lead_name": i.get("lead_name", ""),
+        "created_at": i.get("created_at", ""),
+    } for i in recent_transactions]
+    
     return {
         "total_revenue": total_revenue,
-        "pending_amount": pending,
-        "total_invoices": len(invoices),
-        "paid_invoices": len([i for i in invoices if i.get("status") == "payée"]),
-        "recent_transactions": recent_transactions,
-        "monthly_revenue": total_revenue,
+        "total_pending": total_pending,
+        "total_overdue": total_overdue,
+        "total_invoices": len(all_invoices),
+        "paid_count": len(paid),
+        "pending_count": len(pending),
+        "revenue_by_service": revenue_by_service,
+        "revenue_by_day": revenue_by_day,
+        "recent_transactions": recent_tx,
     }
 
 # CORS
