@@ -386,8 +386,24 @@ async def send_quote_email(user_id: str, lead: dict, quote: dict) -> bool:
                 details_html += f'<p style="color:#475569;margin:2px 0;font-size:13px;">{line}</p>'
         details_html += "</div>"
 
+    dark_css = """<meta name="color-scheme" content="light dark">
+<style>
+@media (prefers-color-scheme: dark) {
+  body { background-color: #1e1e2e !important; }
+  .eb { background-color: #2d2d3f !important; color: #e2e8f0 !important; }
+  .et { color: #cbd5e1 !important; }
+  .eh { color: #f1f5f9 !important; }
+  .ec { background-color: #3d3d50 !important; border-color: #4d4d60 !important; }
+  .pbox { background: linear-gradient(135deg, #2d1b6b, #1e3a7a) !important; }
+  .gbox { background-color: #052e16 !important; }
+  .hbox { background-color: #1e3a5f !important; border-left-color: #3b82f6 !important; }
+  .ef { background-color: #111827 !important; }
+  .step-n { background: #4c1d95 !important; }
+  .cbox { background-color: #1e293b !important; }
+}
+</style>"""
     html = f"""<!DOCTYPE html>
-<html lang="fr"><head><meta charset="UTF-8"></head>
+<html lang="fr"><head><meta charset="UTF-8">{dark_css}</head>
 <body style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,sans-serif;">
 <div style="max-width:620px;margin:32px auto;background:white;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
 <div style="background:linear-gradient(135deg,#7C3AED,#2563eb);padding:36px 32px;text-align:center;">
@@ -804,13 +820,15 @@ async def send_confirmation_email(to_email: str, client_name: str, service_type:
     service_label = services_map.get(service_type, service_type)
     prenom = client_name.split()[0] if client_name else 'cher(e) client(e)'
     
-    subject = "✅ Votre demande de devis a bien été reçue – Global Clean Home"
+    subject = "Votre demande de devis a bien ete recue - Global Clean Home"
+    
+    dark_css_conf = """<meta name="color-scheme" content="light dark"><style>@media (prefers-color-scheme: dark){body{background-color:#1e1e2e!important;}.container{background:#2d2d3f!important;}.body{background:#2d2d3f!important;color:#e2e8f0!important;}.greeting{color:#f1f5f9!important;}.message{color:#cbd5e1!important;}.highlight-box{background:#1e3a5f!important;border-left-color:#3b82f6!important;}.highlight-box p{color:#cbd5e1!important;}.step-number{background:#4c1d95!important;}.step-text{color:#cbd5e1!important;}.contact{background:#1e293b!important;}.footer{background:#0f172a!important;}}</style>"""
     
     html_body = f"""
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8">{dark_css_conf}
   <style>
     body {{ font-family: 'Segoe UI', Arial, sans-serif; background: #f4f7fb; margin: 0; padding: 0; }}
     .container {{ max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }}
