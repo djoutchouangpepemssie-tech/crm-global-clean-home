@@ -355,50 +355,86 @@ async def _send_gmail_message(access_token: str, to: str, subject: str, html: st
 # =============================================
 
 async def send_quote_email(user_id: str, lead: dict, quote: dict) -> bool:
-    """Send a quote email to a lead."""
+    """Send a quote email to a lead with full details."""
     access_token = await _get_valid_access_token(user_id)
     if not access_token:
         logger.warning("Gmail not connected, cannot send quote email")
         return False
 
-    amount_ttc = quote.get("amount", 0) * 1.2
-    html = f"""
-    <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: linear-gradient(135deg, #7C3AED, #6D28D9); padding: 32px; text-align: center; border-radius: 12px 12px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">Global Clean Home</h1>
-            <p style="color: #DDD6FE; margin: 8px 0 0; font-size: 14px;">Services de nettoyage professionnel</p>
-        </div>
-        <div style="padding: 32px; background: white; border: 1px solid #e2e8f0; border-top: none;">
-            <h2 style="color: #1e293b;">Bonjour {lead.get('name', '')},</h2>
-            <p style="color: #475569; line-height: 1.6;">Nous avons le plaisir de vous transmettre votre devis pour notre service de <strong>{quote.get('service_type', '')}</strong>.</p>
-            <div style="background: #f8fafc; border-left: 4px solid #7C3AED; padding: 16px; border-radius: 0 8px 8px 0; margin: 16px 0;">
-                <p style="margin: 4px 0;"><strong>Service :</strong> {quote.get('service_type', '')}</p>
-                <p style="margin: 4px 0;"><strong>Montant HT :</strong> {quote.get('amount', 0):,.2f} EUR</p>
-                <p style="margin: 4px 0;"><strong>Montant TTC :</strong> {amount_ttc:,.2f} EUR</p>
-            </div>
-            <p style="color: #475569;">N'hesitez pas a nous contacter pour toute question.</p>
-            <p style="color: #475569;">Cordialement,<br><strong>L'equipe Global Clean Home</strong></p>
-        </div>
-        <div style="padding: 16px; background: #f8fafc; text-align: center; border-radius: 0 0 12px 12px; border: 1px solid #e2e8f0; border-top: none;">
-            <p style="color: #94a3b8; font-size: 12px; margin: 0;">Global Clean Home - www.globalcleanhome.com</p>
-        </div>
-    </div>
-    """
+    amount_ht = quote.get("amount", 0)
+    amount_ttc = amount_ht * 1.2
+    prenom = lead.get("name", "").split()[0] if lead.get("name") else "Client"
+
+    # Formater les details du devis en HTML
+    details_text = quote.get("details", "")
+    details_html = ""
+    if details_text:
+        lines = details_text.split("\n")
+        details_html = '<div style="background:#f8fafc;border-radius:8px;padding:20px;margin:16px 0;border:1px solid #e2e8f0;">'
+        details_html += '<h3 style="color:#1e293b;margin:0 0 12px;font-size:15px;">Detail des prestations</h3>'
+        for line in lines:
+            if not line.strip():
+                details_html += "<br>"
+            elif "===" in line:
+                label = line.replace("=", "").strip()
+                details_html += f'<p style="font-weight:700;color:#7C3AED;margin:12px 0 4px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">{label}</p>'
+            elif line.startswith("  -") or line.startswith("   -"):
+                details_html += f'<p style="color:#475569;margin:2px 0 2px 16px;font-size:13px;">{line.strip()}</p>'
+            elif line.startswith("CLIENT") or line.startswith("Email") or line.startswith("Adresse") or line.startswith("Telephone"):
+                details_html += f'<p style="color:#1e293b;font-weight:600;margin:4px 0;font-size:13px;">{line}</p>'
+            else:
+                details_html += f'<p style="color:#475569;margin:2px 0;font-size:13px;">{line}</p>'
+        details_html += "</div>"
+
+    html = f"""<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,sans-serif;">
+<div style="max-width:620px;margin:32px auto;background:white;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
+<div style="background:linear-gradient(135deg,#7C3AED,#2563eb);padding:36px 32px;text-align:center;">
+<div style="font-size:40px;margin-bottom:8px;">📄</div>
+<h1 style="color:white;margin:0;font-size:22px;">Votre Devis Personnalise</h1>
+<p style="color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:14px;">Global Clean Home - Nettoyage Professionnel</p>
+</div>
+<div style="padding:36px 32px;">
+<h2 style="color:#1e293b;margin:0 0 16px;">Bonjour {prenom},</h2>
+<p style="color:#475569;line-height:1.7;">Suite a votre demande, nous avons le plaisir de vous adresser votre devis personnalise. Notre equipe a analyse vos besoins avec soin pour vous proposer une prestation adaptee au meilleur rapport qualite-prix.</p>
+<div style="background:linear-gradient(135deg,#f5f3ff,#eff6ff);border-radius:12px;padding:24px;margin:20px 0;text-align:center;border:1px solid #ddd6fe;">
+<p style="color:#6d28d9;font-size:13px;font-weight:600;margin:0 0 8px;text-transform:uppercase;">Montant du devis</p>
+<p style="color:#1e293b;font-size:36px;font-weight:800;margin:0;">{amount_ht:,.0f} EUR</p>
+<p style="color:#64748b;font-size:12px;margin:4px 0 0;">HT - soit {amount_ttc:,.0f} EUR TTC (TVA 20%)</p>
+</div>
+{details_html}
+<div style="background:#f0fdf4;border-radius:8px;padding:16px 20px;margin:20px 0;border:1px solid #bbf7d0;">
+<p style="color:#166534;font-weight:700;margin:0 0 8px;">Nos engagements</p>
+<p style="color:#15803d;margin:3px 0;font-size:13px;">Produits professionnels et materiel fourni</p>
+<p style="color:#15803d;margin:3px 0;font-size:13px;">Personnel forme et experimente</p>
+<p style="color:#15803d;margin:3px 0;font-size:13px;">Resultats garantis ou intervention reprise</p>
+<p style="color:#15803d;margin:3px 0;font-size:13px;">Devis valable 30 jours</p>
+</div>
+<div style="text-align:center;margin:28px 0;">
+<a href="tel:+33622665308" style="display:inline-block;background:linear-gradient(135deg,#7C3AED,#2563eb);color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;margin:0 6px;">Nous appeler</a>
+<a href="https://wa.me/33622665308" style="display:inline-block;background:#25D366;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;margin:0 6px;">WhatsApp</a>
+</div>
+</div>
+<div style="background:#1e293b;padding:20px 32px;text-align:center;">
+<p style="color:white;font-weight:700;margin:0 0 4px;">Global Clean Home</p>
+<p style="color:rgba(255,255,255,0.6);font-size:12px;margin:0;">www.globalcleanhome.com | 06 22 66 53 08 | contact@globalcleanhome.com</p>
+</div>
+</div></body></html>"""
 
     try:
         msg_id = await _send_gmail_message(
             access_token,
             lead.get("email", ""),
-            f"Votre devis nettoyage - Global Clean Home",
+            f"Votre devis personnalise - Global Clean Home",
             html,
         )
-
         await _db.emails.insert_one({
             "email_id": f"email_{os.urandom(6).hex()}",
             "gmail_message_id": msg_id,
             "from_email": GMAIL_FROM_ADDRESS,
             "to_email": lead.get("email", ""),
-            "subject": f"Votre devis nettoyage - Global Clean Home",
+            "subject": f"Votre devis personnalise - Global Clean Home",
             "type": "quote",
             "lead_id": lead.get("lead_id"),
             "quote_id": quote.get("quote_id"),
@@ -407,7 +443,6 @@ async def send_quote_email(user_id: str, lead: dict, quote: dict) -> bool:
             "sent_at": datetime.now(timezone.utc).isoformat(),
             "created_at": datetime.now(timezone.utc).isoformat(),
         })
-
         await _db.interactions.insert_one({
             "lead_id": lead.get("lead_id"),
             "type": "email_sent",
@@ -416,7 +451,6 @@ async def send_quote_email(user_id: str, lead: dict, quote: dict) -> bool:
             "metadata": {"gmail_message_id": msg_id, "type": "quote"},
             "created_at": datetime.now(timezone.utc).isoformat(),
         })
-
         return True
     except Exception as e:
         logger.error(f"Failed to send quote email: {e}")
