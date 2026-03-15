@@ -801,7 +801,7 @@ async def get_email_stats(request: Request):
         "total_followups": total_followups,
     }
 
-async def send_confirmation_email(to_email: str, client_name: str, service_type: str):
+async def send_confirmation_email(to_email: str, client_name: str, service_type: str, services: list = None):
     """Envoie un email de confirmation automatique au prospect."""
     
     # Mapping des types de services
