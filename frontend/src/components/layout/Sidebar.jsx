@@ -135,6 +135,16 @@ const Sidebar = () => {
           </div>
         )}
 
+        {/* Portail client */}
+        <a href="/portal" target="_blank" rel="noopener noreferrer"
+          className={`w-full flex items-center gap-3 px-2 py-2 rounded-lg text-slate-500 hover:text-violet-300 hover:bg-violet-500/10 transition-all text-xs border border-transparent hover:border-violet-500/20 ${collapsed ? 'justify-center' : ''}`}
+          title={collapsed ? 'Portail client' : undefined}>
+          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+          {!collapsed && <span>Portail client</span>}
+        </a>
+
         {/* Collapse toggle */}
         <button
           onClick={() => setCollapsed(!collapsed)}
