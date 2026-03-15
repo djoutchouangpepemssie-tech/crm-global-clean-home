@@ -1510,6 +1510,20 @@ async def startup_db_indexes():
     await db.teams.create_index("team_id", unique=True)
     await db.notifications.create_index([("user_id", 1), ("read", 1)])
     await db.notifications.create_index("created_at")
+    
+    # Lancer la tache de relance automatique toutes les heures
+    import asyncio
+    async def auto_followup_task():
+        while True:
+            try:
+                await asyncio.sleep(3600)  # Attendre 1 heure
+                from gmail_service import check_followups_auto
+                await check_followups_auto()
+                logger.info("Relance automatique executee")
+            except Exception as e:
+                logger.warning(f"Erreur relance auto: {e}")
+    
+    asyncio.create_task(auto_followup_task())
     await db.webhooks.create_index("webhook_id", unique=True)
     await db.webhooks.create_index("events")
     await db.webhook_logs.create_index("webhook_id")
