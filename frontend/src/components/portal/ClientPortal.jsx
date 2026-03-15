@@ -369,9 +369,60 @@ const PortalDashboard = ({ user, onLogout }) => {
                         )}
 
                         {q.details && (
-                          <div className="mb-4 p-3 rounded-xl" style={{background:'rgba(0,0,0,0.2)',border:'1px solid rgba(255,255,255,0.05)'}}>
-                            <p className="text-xs font-medium text-slate-400 mb-1">Détails :</p>
-                            <p className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">{q.details}</p>
+                          <div className="mb-4 space-y-2">
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Détails du devis</p>
+                            {q.details.split('\n').map((line, i) => {
+                              if (!line.trim()) return null;
+                              if (line.includes('===')) {
+                                const label = line.replace(/=/g, '').trim();
+                                return (
+                                  <div key={i} className="pt-2 mt-2 border-t border-white/5">
+                                    <p className="text-xs font-bold text-violet-400 uppercase tracking-wider">{label}</p>
+                                  </div>
+                                );
+                              }
+                              if (line.startsWith('CLIENT') || line.startsWith('Email') || line.startsWith('Telephone') || line.startsWith('Adresse')) {
+                                const [key, ...val] = line.split(':');
+                                return (
+                                  <div key={i} className="flex items-start gap-2">
+                                    <span className="text-xs text-slate-500 w-20 flex-shrink-0">{key}</span>
+                                    <span className="text-xs text-slate-300 flex-1">{val.join(':').trim()}</span>
+                                  </div>
+                                );
+                              }
+                              if (line.startsWith('•') || line.startsWith('- ')) {
+                                return (
+                                  <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-violet-500/5 border border-violet-500/10">
+                                    <span className="text-violet-400 flex-shrink-0">✦</span>
+                                    <span className="text-sm font-semibold text-slate-200">{line.replace(/^[•\-]\s*/, '')}</span>
+                                  </div>
+                                );
+                              }
+                              if (line.startsWith('  -') || line.startsWith('   -')) {
+                                const [key, ...val] = line.replace(/^\s*-\s*/, '').split(':');
+                                return (
+                                  <div key={i} className="flex items-start gap-2 pl-4">
+                                    <span className="text-slate-600 text-xs flex-shrink-0">→</span>
+                                    <span className="text-xs text-slate-400">
+                                      <span className="text-slate-300 font-medium">{key}</span>
+                                      {val.length > 0 && <span> : {val.join(':').trim()}</span>}
+                                    </span>
+                                  </div>
+                                );
+                              }
+                              if (line.includes(':') && !line.startsWith(' ')) {
+                                const [key, ...val] = line.split(':');
+                                return (
+                                  <div key={i} className="flex items-start gap-2">
+                                    <span className="text-xs text-slate-500 min-w-[100px] flex-shrink-0">{key}</span>
+                                    <span className="text-xs text-slate-300">{val.join(':').trim()}</span>
+                                  </div>
+                                );
+                              }
+                              return (
+                                <p key={i} className="text-xs text-slate-400 leading-relaxed">{line}</p>
+                              );
+                            })}
                           </div>
                         )}
 
