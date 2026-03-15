@@ -785,24 +785,36 @@ async def get_email_stats(request: Request):
         "total_followups": total_followups,
     }
 
-async def send_confirmation_email(to_email: str, client_name: str, service_type: str):
+async def send_confirmation_email(to_email: str, client_name: str, service_type: str, services: list = None):
     """Envoie un email de confirmation automatique au prospect."""
     
     # Mapping des types de services
     services_map = {
-        'menage': 'ménage à domicile',
-        'menage-domicile': 'ménage à domicile',
-        'nettoyage-canape': 'nettoyage de canapé',
-        'canape': 'nettoyage de canapé',
-        'nettoyage-matelas': 'nettoyage de matelas',
-        'matelas': 'nettoyage de matelas',
-        'nettoyage-tapis': 'nettoyage de tapis',
-        'tapis': 'nettoyage de tapis',
-        'nettoyage-bureaux': 'nettoyage de bureaux',
-        'bureaux': 'nettoyage de bureaux',
+        'menage': 'Ménage à domicile',
+        'menage-domicile': 'Ménage à domicile',
+        'nettoyage-canape': 'Nettoyage de canapé',
+        'canape': 'Nettoyage de canapé',
+        'nettoyage-matelas': 'Nettoyage de matelas',
+        'matelas': 'Nettoyage de matelas',
+        'nettoyage-tapis': 'Nettoyage de tapis',
+        'tapis': 'Nettoyage de tapis',
+        'nettoyage-bureaux': 'Nettoyage de bureaux',
+        'bureaux': 'Nettoyage de bureaux',
     }
-    service_label = services_map.get(service_type, service_type)
+    
+    # Construire la liste de tous les services
+    all_services = services or [service_type]
+    services_labels = [services_map.get(s, s) for s in all_services]
+    service_label = services_labels[0] if services_labels else service_type
+    
+    # HTML pour la liste des services
+    services_html = ""
+    for svc in services_labels:
+        services_html += f'<div style="display:flex;align-items:center;gap:8px;margin:6px 0;"><span style="color:#10b981;font-size:16px;">✓</span><span style="color:#1e293b;font-weight:500;">{svc}</span></div>'
+    
     prenom = client_name.split()[0] if client_name else 'cher(e) client(e)'
+    nb_services = len(all_services)
+    services_titre = f"{nb_services} service{'s' if nb_services > 1 else ''} demandé{'s' if nb_services > 1 else ''}"
     
     subject = "✅ Votre demande de devis a bien été reçue – Global Clean Home"
     
@@ -853,9 +865,10 @@ async def send_confirmation_email(to_email: str, client_name: str, service_type:
       <div class="greeting">Bonjour {prenom},</div>
       
       <p class="message">
-        Nous avons bien reçu votre demande de devis pour un <strong>{service_label}</strong> 
-        et nous vous en remercions chaleureusement.
-      </p>
+        Nous avons bien reçu votre demande de devis pour les services suivants et nous vous en remercions chaleureusement.</p>
+      <div style="background:#f0fdf4;border-radius:8px;padding:16px 20px;margin:12px 0;border:1px solid #bbf7d0;">
+        {services_html}
+      </div>
       
       <p class="message">
         Notre équipe prend votre demande très au sérieux et s'engage à vous fournir 

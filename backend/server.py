@@ -524,10 +524,12 @@ async def create_lead(input: LeadCreate, request: Request):
     try:
         from gmail_service import send_confirmation_email
         if input.email:
+            all_services = input.services or [input.service_type]
             await send_confirmation_email(
                 to_email=input.email,
                 client_name=input.name,
-                service_type=input.service_type
+                service_type=input.service_type,
+                services=all_services
             )
     except Exception as e:
         logger.warning(f"Email confirmation non envoyé: {e}")
