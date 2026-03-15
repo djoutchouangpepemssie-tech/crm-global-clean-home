@@ -912,6 +912,14 @@ async def send_quote(quote_id: str, request: Request):
             email_sent = await send_quote_email(user.user_id, lead, quote)
         except Exception as e:
             logger.warning(f"Gmail send failed for quote {quote_id}: {e}")
+        
+        # Envoyer automatiquement le lien portail client
+        try:
+            from portal import auto_send_portal_access
+            await auto_send_portal_access(lead, context="quote")
+            logger.info(f"Portal access link sent to {lead.get('email')} for quote")
+        except Exception as e:
+            logger.warning(f"Portal access email failed: {e}")
     
     # Create follow-up task (48h)
     task = {
