@@ -70,8 +70,8 @@ async def create_invoice_from_quote(quote_id: str, request: Request):
     now = datetime.now(timezone.utc)
     invoice_id = f"inv_{uuid.uuid4().hex[:12]}"
     amount_ht = float(quote.get("amount", 0))
-    tva = round(amount_ht * 0.20, 2)
-    amount_ttc = round(amount_ht + tva, 2)
+    tva = 0.0  # Micro-entreprise - TVA non applicable
+    amount_ttc = amount_ht  # Montant identique au devis
 
     invoice = {
         "invoice_id": invoice_id,
