@@ -1668,3 +1668,8 @@ async def startup_db_indexes():
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
+# Keepalive endpoint pour éviter le cold start Railway
+@app.get("/ping")
+async def ping():
+    return {"status": "ok", "ts": datetime.now(timezone.utc).isoformat()}

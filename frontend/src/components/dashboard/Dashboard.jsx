@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
+import { apiCache } from '../../lib/apiCache.js';
 import { useNavigate } from 'react-router-dom';
 import { AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Users, UserPlus, Trophy, FileText, Target, CheckSquare, TrendingUp, Star, ArrowUpRight, RefreshCw, Sparkles } from 'lucide-react';
@@ -29,10 +30,16 @@ const Dashboard = () => {
   const [period, setPeriod] = useState('30d');
   const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (force = false) => {
+    const cacheKey = `dashboard_${period}`;
+    if (!force) {
+      const cached = apiCache.get(cacheKey);
+      if (cached) { setStats(cached); setLoading(false); return; }
+    }
     setLoading(true);
     try {
       const response = await axios.get(`${API_URL}/stats/dashboard?period=${period}`, { withCredentials: true });
+      apiCache.set(cacheKey, response.data);
       setStats(response.data || {});
     } catch {
       toast.error('Erreur lors du chargement');

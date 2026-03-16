@@ -3,26 +3,42 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, NavLink } from 're
 import { Toaster } from 'sonner';
 import { LayoutDashboard, Users, FileText, MoreHorizontal, X, LogOut, Trello, CreditCard, BarChart3, CalendarDays, CheckSquare, TrendingUp, Plug, Activity } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { startKeepAlive } from './lib/keepAlive.js';
+
+// Démarrer le keepalive backend
+startKeepAlive();
 import Login from './components/auth/Login';
 import AuthCallback from './components/auth/AuthCallback';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Sidebar from './components/layout/Sidebar';
-import Dashboard from './components/dashboard/Dashboard';
-import LeadsList from './components/leads/LeadsList';
-import LeadDetail from './components/leads/LeadDetail';
-import LeadForm from './components/leads/LeadForm';
-import QuotesList from './components/quotes/QuotesList';
-import QuoteForm from './components/quotes/QuoteForm';
-import TasksList from './components/tasks/TasksList';
-import ActivityLog from './components/activity/ActivityLog';
-import KanbanBoard from './components/kanban/KanbanBoard';
-import Analytics from './components/analytics/Analytics';
-import InvoicesList from './components/invoices/InvoicesList';
-import PaymentSuccess from './components/invoices/PaymentSuccess';
-import FinancialDashboard from './components/invoices/FinancialDashboard';
-import ClientPortal from './components/portal/ClientPortal';
-import PlanningCalendar from './components/planning/PlanningCalendar';
-import Integrations from './components/integrations/Integrations';
+import { lazy, Suspense } from 'react';
+
+// Lazy loading pour accélérer le chargement initial
+// Prefetch les pages les plus visitées après le premier render
+const prefetchPages = () => {
+  import('./components/leads/LeadsList');
+  import('./components/dashboard/Dashboard');
+  import('./components/quotes/QuotesList');
+};
+if (typeof window !== 'undefined') {
+  window.addEventListener('load', () => setTimeout(prefetchPages, 2000));
+}
+const Dashboard = lazy(() => import('./components/dashboard/Dashboard'));
+const LeadsList = lazy(() => import('./components/leads/LeadsList'));
+const LeadDetail = lazy(() => import('./components/leads/LeadDetail'));
+const LeadForm = lazy(() => import('./components/leads/LeadForm'));
+const QuotesList = lazy(() => import('./components/quotes/QuotesList'));
+const QuoteForm = lazy(() => import('./components/quotes/QuoteForm'));
+const TasksList = lazy(() => import('./components/tasks/TasksList'));
+const ActivityLog = lazy(() => import('./components/activity/ActivityLog'));
+const KanbanBoard = lazy(() => import('./components/kanban/KanbanBoard'));
+const Analytics = lazy(() => import('./components/analytics/Analytics'));
+const InvoicesList = lazy(() => import('./components/invoices/InvoicesList'));
+const PaymentSuccess = lazy(() => import('./components/invoices/PaymentSuccess'));
+const FinancialDashboard = lazy(() => import('./components/invoices/FinancialDashboard'));
+const ClientPortal = lazy(() => import('./components/portal/ClientPortal'));
+const PlanningCalendar = lazy(() => import('./components/planning/PlanningCalendar'));
+const Integrations = lazy(() => import('./components/integrations/Integrations'));
 import './App.css';
 import { requestNotificationPermission, onMessageListener } from './firebase';
 
@@ -210,7 +226,15 @@ function AppRouter() {
                 )}
                 {/* Scrollable content */}
                 <div className="flex-1 overflow-y-auto overflow-x-hidden pb-16 lg:pb-0">
-                  <Routes>
+                  <Suspense fallback={
+          <div className="flex items-center justify-center h-screen" style={{background:'hsl(224,71%,4%)'}}>
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-10 h-10 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
+              <p className="text-slate-500 text-sm">Chargement...</p>
+            </div>
+          </div>
+        }>
+        <Routes>
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/leads/new" element={<LeadForm />} />
                     <Route path="/leads/:id" element={<LeadDetail />} />
@@ -228,6 +252,7 @@ function AppRouter() {
                     <Route path="/integrations" element={<Integrations />} />
                     <Route path="/" element={<Navigate to="/login" replace />} />
                   </Routes>
+        </Suspense>
                 </div>
                 <MobileTabBar />
               </div>
