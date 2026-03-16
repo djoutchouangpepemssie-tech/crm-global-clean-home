@@ -31,12 +31,22 @@ const LeadForm = () => {
     }
     setLoading(true);
     try {
-      await axios.post(`${API_URL}/leads`,
+      const response = await axios.post(`${API_URL}/leads`,
         { ...formData, surface: formData.surface ? parseFloat(formData.surface) : null, manual: true },
         { withCredentials: true }
       );
       toast.success('Lead créé avec succès ✓');
-      navigate('/leads');
+      // Rediriger vers création de devis avec les infos du lead
+      const leadData = {
+        lead_id: response.data.lead_id,
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        service_type: formData.service_type,
+        message: formData.message,
+      };
+      navigate('/quotes/new', { state: { lead: leadData } });
     } catch {
       toast.error('Erreur lors de la création du lead');
     } finally {

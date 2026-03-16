@@ -58,6 +58,14 @@ const generateDevisText = (lead, parsed) => {
   if (parsed.date) lines.push('Date souhaitee : ' + parsed.date);
   lines.push('');
   lines.push('=== PRESTATIONS DEMANDEES ===');
+  
+  // Si pas de détails parsés, utiliser le service_type du lead
+  if (Object.keys(parsed.details).length === 0 && lead?.service_type) {
+    lines.push('');
+    lines.push('• ' + (SERVICES_LABELS[lead.service_type] || lead.service_type).toUpperCase());
+    if (lead.surface) lines.push('  - Surface : ' + lead.surface + ' m2');
+  }
+  
   for (const [svcName, details] of Object.entries(parsed.details)) {
     lines.push('');
     lines.push('• ' + svcName.toUpperCase());
