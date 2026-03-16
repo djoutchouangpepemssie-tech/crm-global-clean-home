@@ -89,6 +89,7 @@ class LeadCreate(BaseModel):
     estimated_price: Optional[float] = None
     service_details: Optional[dict] = None
     date_preference: Optional[str] = None
+    manual: Optional[bool] = False
 
 class LeadUpdate(BaseModel):
     status: Optional[str] = None
@@ -520,19 +521,20 @@ async def create_lead(input: LeadCreate, request: Request):
     }
     await db.tasks.insert_one(task)
     
-    # Envoi email de confirmation au prospect
-    try:
-        from gmail_service import send_confirmation_email
-        if input.email:
-            all_services = input.services or [input.service_type]
-            await send_confirmation_email(
-                to_email=input.email,
-                client_name=input.name,
-                service_type=input.service_type,
-                services=all_services
-            )
-    except Exception as e:
-        logger.warning(f"Email confirmation non envoyé: {e}")
+    # Envoi email de confirmation au prospect (seulement si vient du site, pas création manuelle)
+    if not getattr(input, 'manual', False):
+        try:
+            from gmail_service import send_confirmation_email
+            if input.email:
+                all_services = input.services or [input.service_type]
+                await send_confirmation_email(
+                    to_email=input.email,
+                    client_name=input.name,
+                    service_type=input.service_type,
+                    services=all_services
+                )
+        except Exception as e:
+            logger.warning(f"Email confirmation non envoyé: {e}")
 
     # Create notification for new lead
     try:
