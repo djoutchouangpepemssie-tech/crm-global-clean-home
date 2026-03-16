@@ -262,57 +262,118 @@ async def log_activity(user_id: str, action: str, entity_type: str, entity_id: s
     await db.activity_logs.insert_one(log)
 
 def calculate_lead_score(lead_data: Dict[str, Any]) -> int:
-    """Calculate intelligent lead score (0-100) based on multiple factors."""
-    score = 50  # Base score
-    
-    # Source quality (max +20)
+    """Calcul intelligent du score lead (0-100) - Algorithme avancé Global Clean Home."""
+    score = 30  # Base score
+    breakdown = {}
+
+    # ============ 1. QUALITE DE LA SOURCE (max +20) ============
     source_scores = {
-        "Google Ads": 15,
-        "SEO": 12,
-        "Meta Ads": 10,
+        "Google Ads": 20,      # Intention d achat forte
+        "SEO": 18,             # Recherche active
+        "recommandation": 18,  # Confiance élevée
+        "Referral": 16,        # Bouche à oreille
+        "Meta Ads": 12,        # Intention moyenne
+        "site_web": 10,
         "Direct": 8,
-        "Referral": 10
+        "réseaux-sociaux": 6,
     }
-    score += source_scores.get(lead_data.get("source"), 5)
-    
-    # Service type (max +15)
+    src_score = source_scores.get(lead_data.get("source", ""), 5)
+    score += src_score
+    breakdown["source"] = src_score
+
+    # ============ 2. VALEUR DU SERVICE (max +18) ============
     service_scores = {
-        "Bureaux": 15,  # Higher value contracts
-        "Ménage": 12,
+        "nettoyage-bureaux": 18,   # Contrats récurrents haute valeur
+        "Bureaux": 18,
+        "menage-domicile": 14,     # Récurrent
+        "Ménage": 14,
+        "nettoyage-canape": 10,    # Ponctuel moyen
         "Canapé": 10,
+        "nettoyage-matelas": 10,
         "Matelas": 10,
-        "Tapis": 8
+        "nettoyage-tapis": 8,
+        "Tapis": 8,
     }
-    score += service_scores.get(lead_data.get("service_type"), 5)
+    svc_score = service_scores.get(lead_data.get("service_type", ""), 5)
+    score += svc_score
+    breakdown["service"] = svc_score
+
+    # ============ 3. COMPLETUDE DU PROFIL (max +20) ============
+    profile_score = 0
+    if lead_data.get("address"): profile_score += 5
+    if lead_data.get("surface"): profile_score += 5
+    if lead_data.get("message") and len(str(lead_data.get("message", ""))) > 30: profile_score += 5
+    if lead_data.get("phone"): profile_score += 3
+    if lead_data.get("email"): profile_score += 2
+    score += profile_score
+    breakdown["profil"] = profile_score
+
+    # ============ 4. SIGNAUX D INTENTION FORTE (max +15) ============
+    intention_score = 0
+    message = str(lead_data.get("message", "")).lower()
+    services = lead_data.get("services", [])
     
-    # Has surface info (+10)
-    if lead_data.get("surface"):
-        score += 10
+    # Multi-services demandés = budget élevé
+    if isinstance(services, list) and len(services) > 1:
+        intention_score += min(10, len(services) * 4)
     
-    # Has address (+5)
-    if lead_data.get("address"):
-        score += 5
+    # Urgence exprimée
+    urgency_keywords = ["urgent", "rapidement", "vite", "dès que", "asap", "cette semaine"]
+    if any(kw in message for kw in urgency_keywords):
+        intention_score += 8
     
-    # Has detailed message (+10)
-    if lead_data.get("message") and len(lead_data.get("message", "")) > 20:
-        score += 10
+    # Prix estimé élevé
+    estimated_price = lead_data.get("estimated_price", 0) or 0
+    if estimated_price >= 500: intention_score += 7
+    elif estimated_price >= 200: intention_score += 4
+    elif estimated_price > 0: intention_score += 2
     
-    # Time-based penalty (decreases over time)
+    # Grande surface
+    surface = lead_data.get("surface") or 0
+    try:
+        surface = float(surface)
+        if surface >= 100: intention_score += 5
+        elif surface >= 50: intention_score += 3
+    except: pass
+    
+    intention_score = min(15, intention_score)
+    score += intention_score
+    breakdown["intention"] = intention_score
+
+    # ============ 5. UTM / TRACKING (max +5) ============
+    tracking_score = 0
+    if lead_data.get("utm_campaign"): tracking_score += 3
+    if lead_data.get("utm_medium") == "cpc": tracking_score += 2
+    score += tracking_score
+    breakdown["tracking"] = tracking_score
+
+    # ============ 6. PENALITE TEMPORELLE (max -20) ============
+    time_penalty = 0
     created_at = lead_data.get("created_at")
     if created_at:
-        if isinstance(created_at, str):
-            created_at = datetime.fromisoformat(created_at)
-        if created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=timezone.utc)
-        
-        hours_old = (datetime.now(timezone.utc) - created_at).total_seconds() / 3600
-        
-        # Penalty after 2 hours
-        if hours_old > 2:
-            penalty = min(20, int((hours_old - 2) / 2))
-            score -= penalty
-    
+        try:
+            if isinstance(created_at, str):
+                created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone.utc)
+            hours_old = (datetime.now(timezone.utc) - created_at).total_seconds() / 3600
+            # Pénalité progressive après 4h
+            if hours_old > 4:
+                time_penalty = min(20, int((hours_old - 4) / 3))
+                score -= time_penalty
+        except: pass
+    breakdown["time_penalty"] = -time_penalty
+
     return max(0, min(100, score))
+
+
+def get_score_label(score: int) -> str:
+    """Retourne le label du score avec emoji."""
+    if score >= 80: return "🔥 Très chaud"
+    if score >= 65: return "♨️ Chaud"
+    if score >= 50: return "🌡️ Tiède"
+    if score >= 35: return "❄️ Froid"
+    return "🧊 Très froid"
 
 # ============= AUTH ENDPOINTS =============
 
@@ -539,7 +600,7 @@ async def create_lead(input: LeadCreate, request: Request):
     # Create notification for new lead
     try:
         from advanced import create_notification
-        score_label = "chaud" if lead_dict["score"] >= 70 else "tiède" if lead_dict["score"] >= 40 else "froid"
+        score_label = get_score_label(lead_dict["score"])
         await create_notification(
             user_id="all",
             title=f"Nouveau lead {score_label}",
