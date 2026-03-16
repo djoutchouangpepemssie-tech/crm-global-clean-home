@@ -120,7 +120,7 @@ class TemplateCreate(BaseModel):
 class Quote(BaseModel):
     model_config = ConfigDict(extra="ignore")
     quote_id: str
-    lead_id: str
+    lead_id: Optional[str] = None
     service_type: str
     surface: Optional[float] = None
     amount: float
