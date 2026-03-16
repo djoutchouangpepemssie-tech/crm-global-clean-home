@@ -134,7 +134,7 @@ class Quote(BaseModel):
     created_by: str
 
 class QuoteCreate(BaseModel):
-    lead_id: str
+    lead_id: Optional[str] = None
     service_type: str
     surface: Optional[float] = None
     amount: float
