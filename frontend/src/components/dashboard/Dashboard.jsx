@@ -6,6 +6,7 @@ import { AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Cart
 import { Users, UserPlus, Trophy, FileText, Target, CheckSquare, TrendingUp, Star, ArrowUpRight, RefreshCw, Sparkles } from 'lucide-react';
 import { getStatusColor, getStatusLabel, formatDateTime } from '../../lib/utils';
 import LeadScoreBadge from '../shared/LeadScoreBadge';
+import AIInsights from './AIInsights';
 import { toast } from 'sonner';
 import BACKEND_URL from '../../config.js';
 const API_URL = BACKEND_URL + '/api';
@@ -199,6 +200,9 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      {/* IA Insights */}
+      <AIInsights stats={stats} />
 
       {/* Charts Row 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
