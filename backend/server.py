@@ -1571,6 +1571,10 @@ app.include_router(invoices_router)
 from portal import portal_router
 app.include_router(portal_router)
 
+# Ads tracking router
+from ads_tracking import ads_router, init_ads_db
+app.include_router(ads_router)
+
 # Include planning/interventions router
 from planning import planning_router
 app.include_router(planning_router)
@@ -1616,6 +1620,7 @@ async def startup_db_indexes():
     await db.user_sessions.create_index("session_token", unique=True)
     await db.tracking_events.create_index("visitor_id")
     await db.tracking_events.create_index("timestamp")
+    init_ads_db(db)
     await db.invoices.create_index("invoice_id", unique=True)
     await db.invoices.create_index("quote_id")
     await db.invoices.create_index("lead_id")

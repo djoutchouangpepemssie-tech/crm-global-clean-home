@@ -39,6 +39,7 @@ const FinancialDashboard = lazy(() => import('./components/invoices/FinancialDas
 const ClientPortal = lazy(() => import('./components/portal/ClientPortal'));
 const PlanningCalendar = lazy(() => import('./components/planning/PlanningCalendar'));
 const Integrations = lazy(() => import('./components/integrations/Integrations'));
+const AdsDashboard = lazy(() => import('./components/ads/AdsDashboard'));
 import './App.css';
 import { requestNotificationPermission, onMessageListener } from './firebase';
 
@@ -249,7 +250,8 @@ function AppRouter() {
                     <Route path="/invoices/:invoiceId/success" element={<PaymentSuccess />} />
                     <Route path="/finance" element={<FinancialDashboard />} />
                     <Route path="/planning" element={<PlanningCalendar />} />
-                    <Route path="/integrations" element={<Integrations />} />
+                    <Route path="/integrations" element={<Integrations />
+              <Route path="/ads" element={<ProtectedRoute><AdsDashboard /></ProtectedRoute>} />} />
                     <Route path="/" element={<Navigate to="/login" replace />} />
                   </Routes>
         </Suspense>
