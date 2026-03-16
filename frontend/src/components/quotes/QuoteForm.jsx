@@ -202,22 +202,6 @@ const QuoteForm = () => {
             </div>
           )}
 
-          {/* Lead ID si pas de lead */}
-          {!lead && (
-            <div className="section-card p-5">
-              <label className="flex items-center gap-2 text-sm font-semibold text-slate-200 mb-3">
-                <User className="w-4 h-4 text-blue-400" />
-                ID Lead (optionnel)
-              </label>
-              <input type="text" name="lead_id"
-                value={formData.lead_id}
-                onChange={(e) => setFormData(p => ({...p, lead_id: e.target.value}))}
-                placeholder="lead_xxxxx (laisser vide si nouveau client)"
-                className={inputClass} />
-              <p className="text-xs text-slate-600 mt-2">Si vous avez l'ID du lead, collez-le ici pour associer le devis</p>
-            </div>
-          )}
-
           {/* Montant */}
           <div className="section-card p-5">
             <label className="flex items-center gap-2 text-sm font-semibold text-slate-200 mb-3">
