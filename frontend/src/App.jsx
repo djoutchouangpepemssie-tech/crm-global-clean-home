@@ -64,6 +64,7 @@ const Integrations = lazy(() => import('./components/integrations/Integrations')
 const AdsDashboard = lazy(() => import('./components/ads/AdsDashboard'));
 const AICenter = lazy(() => import('./components/ai/AICenter'));
 const WorkflowBuilder = lazy(() => import('./components/workflows/WorkflowBuilder'));
+const TicketsList = lazy(() => import('./components/tickets/TicketsList'));
 import './App.css';
 import { requestNotificationPermission, onMessageListener } from './firebase';
 
@@ -278,6 +279,7 @@ function AppRouter() {
                     <Route path="/ads" element={<AdsDashboard />} />
                     <Route path="/ai" element={<AICenter />} />
                     <Route path="/workflows" element={<WorkflowBuilder />} />
+                    <Route path="/tickets" element={<TicketsList />} />
                     <Route path="/" element={<Navigate to="/login" replace />} />
                   </Routes>
         </Suspense>
