@@ -596,20 +596,22 @@ async def create_lead(input: LeadCreate, request: Request):
     }
     await db.tasks.insert_one(task)
     
-    # Envoi email de confirmation au prospect (seulement si vient du site, pas création manuelle)
+    # Envoi email de confirmation (desactive si workflows actifs pour eviter double envoi)
     if not getattr(input, 'manual', False):
         try:
-            from gmail_service import send_confirmation_email
-            if input.email:
-                all_services = input.services or [input.service_type]
-                await send_confirmation_email(
-                    to_email=input.email,
-                    client_name=input.name,
-                    service_type=input.service_type,
-                    services=all_services
-                )
+            active_wf = await db.workflows.count_documents({"is_active": True, "trigger.type": "new_lead"})
+            if active_wf == 0:
+                from gmail_service import send_confirmation_email
+                if input.email:
+                    all_services = input.services or [input.service_type]
+                    await send_confirmation_email(
+                        to_email=input.email,
+                        client_name=input.name,
+                        service_type=input.service_type,
+                        services=all_services
+                    )
         except Exception as e:
-            logger.warning(f"Email confirmation non envoyé: {e}")
+            logger.warning(f"Email confirmation non envoye: {e}")
 
     # Create notification for new lead
     try:

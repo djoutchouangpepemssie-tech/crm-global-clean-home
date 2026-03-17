@@ -7,6 +7,19 @@ import logging
 import asyncio
 
 logger = logging.getLogger(__name__)
+
+SERVICE_LABELS = {
+    'menage-domicile': 'Ménage à Domicile',
+    'nettoyage-canape': 'Nettoyage de Canapé',
+    'nettoyage-matelas': 'Nettoyage de Matelas',
+    'nettoyage-tapis': 'Nettoyage de Tapis',
+    'nettoyage-bureaux': 'Nettoyage de Bureaux',
+    'Menage': 'Ménage à Domicile',
+    'Canape': 'Nettoyage de Canapé',
+    'Matelas': 'Nettoyage de Matelas',
+    'Tapis': 'Nettoyage de Tapis',
+    'Bureaux': 'Nettoyage de Bureaux',
+}
 workflows_router = APIRouter(prefix="/api/workflows", tags=["workflows"])
 
 _db = None
@@ -306,7 +319,7 @@ async def _execute_step(exec_item: dict):
     prenom = lead_name.split()[0] if lead_name else "cher client"
     
     lead = await _db.leads.find_one({"lead_id": exec_item["lead_id"]}, {"_id": 0}) or {}
-    service = lead.get("service_type", "nettoyage")
+    service = SERVICE_LABELS.get(lead.get("service_type", ""), lead.get("service_type", "nettoyage"))
     
     if step_type == "send_email" and lead_email:
         template_key = exec_item.get("template", "")
@@ -332,7 +345,7 @@ p{{color:#1e293b;line-height:1.9;font-size:15px;margin:0 0 16px;}}
 <body>
 <div class="wrap">
 <div class="body">
-<p>{body.replace(chr(10), '</p><p>').replace('<p></p>', '')}</p>
+<p>{body.replace(chr(10), '</p><p>').replace('<p></p>', '').replace(service, '<strong>' + service + '</strong>')}</p>
 </div>
 </div>
 </body></html>"""
