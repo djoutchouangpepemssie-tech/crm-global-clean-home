@@ -50,7 +50,19 @@ const Dashboard = lazy(() => import('./components/dashboard/Dashboard'));
 const LeadsList = lazy(() => import('./components/leads/LeadsList'));
 const LeadDetail = lazy(() => import('./components/leads/LeadDetail'));
 const LeadForm = lazy(() => import('./components/leads/LeadForm'));
-const QuotesList = lazy(() => import('./components/quotes/QuotesList'));
+const QuotesList = lazy(() => import('./components/quotes/QuotesList'));python3 << 'EOF'
+with open('frontend/src/App.jsx', 'r') as f:
+    content = f.read()
+
+old = '                <div className="hidden lg:flex items-center justify-end px-6 py-3 border-b border-white/5 flex-shrink-0" style={{background:\'hsl(224,71%,5%)\'}}>'
+new = '                <div className="hidden lg:flex items-center justify-end px-6 py-3 border-b border-white/5 flex-shrink-0 relative z-50 overflow-visible" style={{background:\'hsl(224,71%,5%)\'}}>'
+
+content = content.replace(old, new)
+
+with open('frontend/src/App.jsx', 'w') as f:
+    f.write(content)
+print("Done")
+EOF
 const QuoteForm = lazy(() => import('./components/quotes/QuoteForm'));
 const TasksList = lazy(() => import('./components/tasks/TasksList'));
 const ActivityLog = lazy(() => import('./components/activity/ActivityLog'));
@@ -255,7 +267,7 @@ function AppRouter() {
                   </div>
                 )}
                 {/* Desktop header avec cloche */}
-                <div className="hidden lg:flex items-center justify-end px-6 py-3 border-b border-white/5 flex-shrink-0" style={{background:'hsl(224,71%,5%)'}}>
+                <div className="hidden lg:flex items-center justify-end px-6 py-3 border-b border-white/5 flex-shrink-0 relative z-50 overflow-visible" style={{background:'hsl(224,71%,5%)'}}>
                   <NotificationBell />
                 </div>
                 {/* Scrollable content */}
