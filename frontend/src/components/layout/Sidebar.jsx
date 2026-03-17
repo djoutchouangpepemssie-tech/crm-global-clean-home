@@ -30,6 +30,7 @@ const navGroups = [
       { to: '/planning', icon: CalendarDays, label: 'Planning', testId: 'nav-planning' },
       { to: '/tasks', icon: CheckSquare, label: 'Tâches', testId: 'nav-tasks' },
       { to: '/analytics', icon: TrendingUp, label: 'Analytics', testId: 'nav-analytics' },
+      { to: '/ads', icon: BarChart3, label: 'Publicites', testId: 'nav-ads' },
     ]
   },
   {
