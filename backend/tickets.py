@@ -248,6 +248,18 @@ async def get_ticket_stats(request: Request):
         }
     }
 
+@tickets_router.post("/satisfaction")
+async def submit_satisfaction(survey: SatisfactionSurvey, request: Request):
+    await _db.tickets.update_one(
+        {"ticket_id": survey.ticket_id},
+        {"$set": {
+            "satisfaction_score": survey.score,
+            "satisfaction_comment": survey.comment,
+            "satisfaction_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    return {"success": True}
+
 @tickets_router.get("/{ticket_id}")
 async def get_ticket(ticket_id: str, request: Request):
     await _require_auth(request)
@@ -328,14 +340,3 @@ async def reply_ticket(ticket_id: str, reply: TicketReply, request: Request):
 
     return reply_doc
 
-@tickets_router.post("/satisfaction")
-async def submit_satisfaction(survey: SatisfactionSurvey, request: Request):
-    await _db.tickets.update_one(
-        {"ticket_id": survey.ticket_id},
-        {"$set": {
-            "satisfaction_score": survey.score,
-            "satisfaction_comment": survey.comment,
-            "satisfaction_at": datetime.now(timezone.utc).isoformat()
-        }}
-    )
-    return {"success": True}

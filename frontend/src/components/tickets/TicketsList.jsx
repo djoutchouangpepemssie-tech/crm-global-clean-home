@@ -213,7 +213,7 @@ const TicketsList = () => {
   const [selected, setSelected] = useState(null);
   const [filter, setFilter] = useState({ status: '', priority: '', category: '' });
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { fetchAll(); }, [filter.status, filter.priority]);
 
   const fetchAll = async () => {
     setLoading(true);
