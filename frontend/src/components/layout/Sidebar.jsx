@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, FileText, CheckSquare, Activity, LogOut, 
-  TrendingUp, Trello, CreditCard, Zap, BarChart3, CalendarDays, Plug,
+  TrendingUp, Trello, CreditCard, Zap, BarChart3, CalendarDays, Plug, Ticket,
   Sparkles, ChevronLeft, ChevronRight, Bell, Settings
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
