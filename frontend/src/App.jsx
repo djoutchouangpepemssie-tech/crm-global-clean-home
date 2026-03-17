@@ -40,6 +40,7 @@ const ClientPortal = lazy(() => import('./components/portal/ClientPortal'));
 const PlanningCalendar = lazy(() => import('./components/planning/PlanningCalendar'));
 const Integrations = lazy(() => import('./components/integrations/Integrations'));
 const AdsDashboard = lazy(() => import('./components/ads/AdsDashboard'));
+const AICenter = lazy(() => import('./components/ai/AICenter'));
 import './App.css';
 import { requestNotificationPermission, onMessageListener } from './firebase';
 
@@ -252,6 +253,7 @@ function AppRouter() {
                     <Route path="/planning" element={<PlanningCalendar />} />
                     <Route path="/integrations" element={<Integrations />} />
                     <Route path="/ads" element={<AdsDashboard />} />
+              <Route path="/ai" element={<AICenter />} />
                     <Route path="/" element={<Navigate to="/login" replace />} />
                   </Routes>
         </Suspense>
