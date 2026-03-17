@@ -213,8 +213,6 @@ const TicketsList = () => {
   const [selected, setSelected] = useState(null);
   const [filter, setFilter] = useState({ status: '', priority: '', category: '' });
 
-  useEffect(() => { fetchAll(); }, [filter.status, filter.priority]);
-
   const fetchAll = async () => {
     setLoading(true);
     try {
@@ -232,6 +230,8 @@ const TicketsList = () => {
       setLeads(Array.isArray(lRes.data) ? lRes.data : []);
     } catch { toast.error('Erreur'); } finally { setLoading(false); }
   };
+
+  useEffect(() => { fetchAll(); }, [filter.status, filter.priority]);
 
   const fetchTicketDetail = async (t) => {
     try {
