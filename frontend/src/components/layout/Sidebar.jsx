@@ -33,6 +33,7 @@ const navGroups = [
       { to: '/ads', icon: BarChart3, label: 'Publicites', testId: 'nav-ads' },
       { to: '/ai', icon: Sparkles, label: 'Centre IA', testId: 'nav-ai' },
       { to: '/workflows', icon: Zap, label: 'Workflows', testId: 'nav-workflows' },
+      { to: '/tickets', icon: Ticket, label: 'Tickets', testId: 'nav-tickets' },
     ]
   },
   {

@@ -1597,6 +1597,9 @@ app.include_router(ai_router)
 from workflows import workflows_router, init_workflows_db, execute_workflow, process_pending_executions
 app.include_router(workflows_router)
 
+from tickets import tickets_router, init_tickets_db
+app.include_router(tickets_router)
+
 # Include planning/interventions router
 from planning import planning_router
 app.include_router(planning_router)
@@ -1645,6 +1648,7 @@ async def startup_db_indexes():
     init_ads_db(db)
     init_ai_db(db)
     init_workflows_db(db)
+    init_tickets_db(db)
     
     # Scheduler pour traiter les workflows toutes les 30 minutes
     import asyncio
