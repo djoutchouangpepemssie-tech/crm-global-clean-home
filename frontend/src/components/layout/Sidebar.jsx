@@ -159,9 +159,10 @@ const Sidebar = () => {
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <><ChevronLeft className="w-4 h-4" /><span>Réduire</span></>}
         </button>
 
+        {/* Notifications */}
+        {!collapsed && <div className="px-2 py-1"><NotificationBell /></div>}
         {/* Logout */}
         <button
-        <div className="px-3 py-2"><NotificationBell /></div>
           onClick={logout}
           data-testid="logout-button"
           className={`w-full flex items-center gap-3 px-2 py-2 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/5 transition-all text-xs ${collapsed ? 'justify-center' : ''}`}
