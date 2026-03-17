@@ -569,6 +569,20 @@ async def create_lead(input: LeadCreate, request: Request):
     if user:
         await log_activity(user.user_id, "create_lead", "lead", lead_id)
     
+    # Déclencher workflows automatiques
+    try:
+        score = lead_dict.get("score", 0)
+        wf_filter = {"is_active": True, "trigger.type": "new_lead"}
+        workflows = await db.workflows.find(wf_filter, {"_id": 0}).to_list(10)
+        for wf in workflows:
+            conditions = wf.get("trigger", {}).get("conditions", {})
+            min_score = conditions.get("min_score", 0)
+            max_score = conditions.get("max_score", 100)
+            if min_score <= score <= max_score:
+                await execute_workflow(wf, lead_dict, "new_lead")
+    except Exception as e:
+        logger.warning(f"Workflow trigger error: {e}")
+    
     # Create task for follow-up
     task = {
         "task_id": f"task_{uuid.uuid4().hex[:12]}",
@@ -1578,6 +1592,9 @@ app.include_router(ads_router)
 from ai_engine import ai_router, init_ai_db
 app.include_router(ai_router)
 
+from workflows import workflows_router, init_workflows_db, execute_workflow, process_pending_executions
+app.include_router(workflows_router)
+
 # Include planning/interventions router
 from planning import planning_router
 app.include_router(planning_router)
@@ -1625,6 +1642,7 @@ async def startup_db_indexes():
     await db.tracking_events.create_index("timestamp")
     init_ads_db(db)
     init_ai_db(db)
+    init_workflows_db(db)
     await db.invoices.create_index("invoice_id", unique=True)
     await db.invoices.create_index("quote_id")
     await db.invoices.create_index("lead_id")

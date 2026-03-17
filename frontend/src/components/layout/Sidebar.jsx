@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, FileText, CheckSquare, Activity, LogOut, 
-  TrendingUp, Trello, CreditCard, BarChart3, CalendarDays, Plug,
+  TrendingUp, Trello, CreditCard, Zap, BarChart3, CalendarDays, Plug,
   Sparkles, ChevronLeft, ChevronRight, Bell, Settings
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -32,6 +32,7 @@ const navGroups = [
       { to: '/analytics', icon: TrendingUp, label: 'Analytics', testId: 'nav-analytics' },
       { to: '/ads', icon: BarChart3, label: 'Publicites', testId: 'nav-ads' },
       { to: '/ai', icon: Sparkles, label: 'Centre IA', testId: 'nav-ai' },
+      { to: '/workflows', icon: Zap, label: 'Workflows', testId: 'nav-workflows' },
     ]
   },
   {
