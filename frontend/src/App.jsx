@@ -11,7 +11,29 @@ import Login from './components/auth/Login';
 import AuthCallback from './components/auth/AuthCallback';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Sidebar from './components/layout/Sidebar';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, Component } from 'react';
+
+class ErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, info) { console.error('CRM Error:', error, info); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'hsl(224,71%,4%)',flexDirection:'column',gap:'16px',padding:'24px'}}>
+          <div style={{fontSize:'48px'}}>⚠️</div>
+          <h2 style={{color:'#e2e8f0',fontSize:'20px',fontWeight:'bold',margin:0}}>Erreur de chargement</h2>
+          <p style={{color:'#64748b',fontSize:'14px',margin:0,textAlign:'center'}}>{this.state.error?.message || 'Une erreur est survenue'}</p>
+          <button onClick={() => { this.setState({hasError:false,error:null}); window.location.href='/dashboard'; }}
+            style={{background:'#7c3aed',color:'white',border:'none',padding:'10px 20px',borderRadius:'8px',cursor:'pointer',fontWeight:'600'}}>
+            Retour au dashboard
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // Lazy loading pour accélérer le chargement initial
 // Prefetch les pages les plus visitées après le premier render
@@ -228,12 +250,12 @@ function AppRouter() {
                 )}
                 {/* Scrollable content */}
                 <div className="flex-1 overflow-y-auto overflow-x-hidden pb-16 lg:pb-0">
-                  <Suspense fallback={
-          <div className="flex items-center justify-center h-screen" style={{background:'hsl(224,71%,4%)'}}>
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-10 h-10 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
-              <p className="text-slate-500 text-sm">Chargement...</p>
-            </div>
+                  <ErrorBoundary>
+        <Suspense fallback={
+          <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'hsl(224,71%,4%)',flexDirection:'column',gap:'12px'}}>
+            <div style={{width:'40px',height:'40px',border:'2px solid rgba(139,92,246,0.3)',borderTop:'2px solid #8b5cf6',borderRadius:'50%',animation:'spin 1s linear infinite'}} />
+            <p style={{color:'#64748b',fontSize:'14px'}}>Chargement...</p>
+            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
           </div>
         }>
         <Routes>
@@ -257,6 +279,7 @@ function AppRouter() {
                     <Route path="/" element={<Navigate to="/login" replace />} />
                   </Routes>
         </Suspense>
+        </ErrorBoundary>
                 </div>
                 <MobileTabBar />
               </div>
