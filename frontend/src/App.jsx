@@ -250,8 +250,8 @@ function AppRouter() {
                     <Route path="/invoices/:invoiceId/success" element={<PaymentSuccess />} />
                     <Route path="/finance" element={<FinancialDashboard />} />
                     <Route path="/planning" element={<PlanningCalendar />} />
-                    <Route path="/integrations" element={<Integrations />
-              <Route path="/ads" element={<ProtectedRoute><AdsDashboard /></ProtectedRoute>} />} />
+                    <Route path="/integrations" element={<Integrations />} />
+                    <Route path="/ads" element={<AdsDashboard />} />
                     <Route path="/" element={<Navigate to="/login" replace />} />
                   </Routes>
         </Suspense>
