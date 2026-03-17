@@ -1643,6 +1643,18 @@ async def startup_db_indexes():
     init_ads_db(db)
     init_ai_db(db)
     init_workflows_db(db)
+    
+    # Scheduler pour traiter les workflows toutes les 30 minutes
+    import asyncio
+    async def workflow_scheduler():
+        while True:
+            try:
+                await asyncio.sleep(1800)  # 30 minutes
+                await process_pending_executions()
+                logger.info("Workflows traites automatiquement")
+            except Exception as e:
+                logger.error(f"Scheduler error: {e}")
+    asyncio.create_task(workflow_scheduler())
     await db.invoices.create_index("invoice_id", unique=True)
     await db.invoices.create_index("quote_id")
     await db.invoices.create_index("lead_id")

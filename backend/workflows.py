@@ -54,7 +54,7 @@ Votre demande pour {service} est bien notée. Je m'en occupe personnellement et 
 Une question rapide pour mieux vous conseiller : est-ce pour une intervention unique ou vous cherchez quelque chose de régulier ?
 
 À très vite,
-Sarah
+Merylis
 Global Clean Home
 📞 06 22 66 53 08"""
     },
@@ -71,7 +71,7 @@ Je sais que vous êtes certainement très occupé(e), donc je voulais juste conf
 N'hésitez pas à me répondre directement ou à m'appeler — je décroche toujours.
 
 Bonne journée,
-Sarah
+Merylis
 📞 06 22 66 53 08"""
     },
     "relance_48h": {
@@ -85,7 +85,7 @@ J'imagine que vous avez peut-être trouvé quelqu'un d'autre, ou que les circons
 Si jamais vous avez toujours besoin d'aide pour votre {service}, mon offre reste valable. Sinon, je vous souhaite une excellente journée et à peut-être une prochaine fois !
 
 Avec mes meilleures salutations,
-Sarah
+Merylis
 Global Clean Home"""
     },
     "devis_envoye": {
@@ -101,7 +101,7 @@ Une petite précision importante : nous travaillons uniquement avec des produits
 Vous pouvez me répondre directement ici ou m'appeler si c'est plus simple.
 
 Bonne journée,
-Sarah
+Merylis
 📞 06 22 66 53 08"""
     },
     "devis_relance": {
@@ -115,7 +115,7 @@ Pas de pression du tout — je voulais juste m'assurer qu'il ne s'est pas perdu 
 Si vous avez des questions ou si vous souhaitez qu'on ajuste quelque chose, je suis là.
 
 Bonne continuation,
-Sarah"""
+Merylis"""
     },
     "hot_lead_urgent": {
         "subject": "Votre demande — je peux intervenir cette semaine",
@@ -128,7 +128,7 @@ Ce type de demande est très populaire en ce moment, donc je voulais vous en inf
 Si vous souhaitez qu'on en discute rapidement, appelez-moi directement au 06 22 66 53 08 — je réponds immédiatement.
 
 À très vite j'espère,
-Sarah
+Merylis
 Global Clean Home"""
     },
     "post_intervention": {
@@ -144,7 +144,7 @@ Est-ce que le résultat est à la hauteur de vos attentes ? Y a-t-il quelque cho
 Votre retour m'aide énormément à améliorer notre service. Et si vous êtes satisfait(e), un petit avis Google nous ferait vraiment plaisir — c'est ce qui permet à des familles comme la vôtre de nous trouver 🙏
 
 Merci encore pour votre confiance,
-Sarah"""
+Merylis"""
     },
     "nurturing_semaine1": {
         "subject": "Quelques astuces pour entretenir votre intérieur",
@@ -161,7 +161,7 @@ Pour le ménage quotidien : quelques minutes chaque soir valent mieux qu'un gran
 Si jamais vous avez besoin d'un coup de pouce professionnel, vous savez où me trouver !
 
 Belle semaine,
-Sarah"""
+Merylis"""
     },
     "nurturing_semaine2": {
         "subject": "Une offre spéciale pour vous",
@@ -176,7 +176,7 @@ C'est ma façon de vous dire : essayez-nous, et si vous n'êtes pas 100% satisfa
 Cette offre est valable jusqu'à la fin du mois. Si vous souhaitez en profiter, répondez juste à cet email ou appelez le 06 22 66 53 08.
 
 À bientôt peut-être,
-Sarah
+Merylis
 Global Clean Home"""
     }
 }
