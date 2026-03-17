@@ -268,7 +268,9 @@ function TicketsList() {
       setLeads(Array.isArray(results[2].data) ? results[2].data : []);
     } catch(e) {
       console.error('Tickets error:', e);
-      toast.error('Erreur chargement');
+      const msg = e.response ? 'API Error ' + e.response.status + ': ' + JSON.stringify(e.response.data) : e.message;
+      console.error('Details:', msg);
+      toast.error('Erreur: ' + msg);
     } finally { setLoading(false); }
   }
 
