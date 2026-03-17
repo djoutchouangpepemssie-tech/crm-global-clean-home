@@ -253,7 +253,7 @@ function AppRouter() {
                     <Route path="/planning" element={<PlanningCalendar />} />
                     <Route path="/integrations" element={<Integrations />} />
                     <Route path="/ads" element={<AdsDashboard />} />
-              <Route path="/ai" element={<AICenter />} />
+                    <Route path="/ai" element={<AICenter />} />
                     <Route path="/" element={<Navigate to="/login" replace />} />
                   </Routes>
         </Suspense>
