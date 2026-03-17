@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { NotificationBell } from '../notifications/NotificationCenter';
 import { NavLink, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, FileText, CheckSquare, Activity, LogOut, 
@@ -34,6 +35,7 @@ const navGroups = [
       { to: '/ai', icon: Sparkles, label: 'Centre IA', testId: 'nav-ai' },
       { to: '/workflows', icon: Zap, label: 'Workflows', testId: 'nav-workflows' },
       { to: '/tickets', icon: Ticket, label: 'Tickets', testId: 'nav-tickets' },
+      { to: '/notifications', icon: Bell, label: 'Notifications', testId: 'nav-notifs' },
     ]
   },
   {
@@ -159,6 +161,7 @@ const Sidebar = () => {
 
         {/* Logout */}
         <button
+        <div className="px-3 py-2"><NotificationBell /></div>
           onClick={logout}
           data-testid="logout-button"
           className={`w-full flex items-center gap-3 px-2 py-2 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/5 transition-all text-xs ${collapsed ? 'justify-center' : ''}`}

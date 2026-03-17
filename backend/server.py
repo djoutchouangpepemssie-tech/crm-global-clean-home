@@ -569,6 +569,22 @@ async def create_lead(input: LeadCreate, request: Request):
     if user:
         await log_activity(user.user_id, "create_lead", "lead", lead_id)
     
+    # Notification nouveau lead
+    try:
+        score = lead_dict.get("score", 0)
+        notif_type = "hot_lead" if score >= 70 else "new_lead"
+        notif_title = f"🔥 Lead chaud — {lead_dict.get('name', '')}" if score >= 70 else f"🎯 Nouveau lead — {lead_dict.get('name', '')}"
+        await create_notification(
+            type=notif_type,
+            title=notif_title,
+            message=f"{lead_dict.get('service_type', '')} · Score {score}/100",
+            lead_id=lead_id,
+            action_url=f"/leads/{lead_id}",
+            priority="high" if score >= 70 else "normal"
+        )
+    except Exception as e:
+        logger.warning(f"Notification error: {e}")
+    
     # Déclencher workflows automatiques
     try:
         score = lead_dict.get("score", 0)
@@ -1600,6 +1616,9 @@ app.include_router(workflows_router)
 from tickets import tickets_router, init_tickets_db
 app.include_router(tickets_router)
 
+from notifications import notifications_router, init_notifications_db, create_notification
+app.include_router(notifications_router)
+
 # Include planning/interventions router
 from planning import planning_router
 app.include_router(planning_router)
@@ -1649,6 +1668,7 @@ async def startup_db_indexes():
     init_ai_db(db)
     init_workflows_db(db)
     init_tickets_db(db)
+    init_notifications_db(db)
     
     # Scheduler pour traiter les workflows toutes les 30 minutes
     import asyncio
