@@ -159,8 +159,6 @@ const Sidebar = () => {
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <><ChevronLeft className="w-4 h-4" /><span>Réduire</span></>}
         </button>
 
-        {/* Notifications */}
-        {!collapsed && <div className="px-2 py-1"><NotificationBell /></div>}
         {/* Logout */}
         <button
           onClick={logout}
