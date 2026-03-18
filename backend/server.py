@@ -1738,4 +1738,8 @@ async def shutdown_db_client():
 @app.get("/ping")
 async def ping():
     return {"status": "ok", "ts": datetime.now(timezone.utc).isoformat()}
+
+@app.get("/cors-check")
+async def cors_check():
+    return {"cors": "ok", "origins": "configured"}
 # CORS fix Wed Mar 18 13:48:54 UTC 2026
