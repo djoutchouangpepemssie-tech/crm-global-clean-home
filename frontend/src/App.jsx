@@ -268,6 +268,7 @@ function AppRouter() {
         }>
         <Routes>
                     <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/director" element={<DirectorDashboard />} />
                     <Route path="/leads/new" element={<LeadForm />} />
                     <Route path="/leads/:id" element={<LeadDetail />} />
                     <Route path="/leads" element={<LeadsList />} />
