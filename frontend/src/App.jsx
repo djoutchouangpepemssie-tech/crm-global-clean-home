@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, NavLink } from 're
 import { Toaster } from 'sonner';
 import { LayoutDashboard, Users, FileText, MoreHorizontal, X, LogOut, Trello, CreditCard, BarChart3, CalendarDays, CheckSquare, TrendingUp, Plug, Activity } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { NotificationBell } from './components/notifications/NotificationCenter';
+
 import { startKeepAlive } from './lib/keepAlive.js';
 
 // Démarrer le keepalive backend
@@ -37,6 +37,16 @@ class ErrorBoundary extends Component {
 }
 
 // Lazy loading pour accélérer le chargement initial
+// Notification Bell wrapper
+const NotificationBellLazy = React.lazy(() => 
+  import('./components/notifications/NotificationCenter').then(m => ({default: m.NotificationBell}))
+);
+const NotificationBell = () => (
+  <React.Suspense fallback={<div className="w-9 h-9" />}>
+    <NotificationBellLazy />
+  </React.Suspense>
+);
+
 // Prefetch les pages les plus visitées après le premier render
 const prefetchPages = () => {
   import('./components/leads/LeadsList');
@@ -256,6 +266,7 @@ function AppRouter() {
                 )}
                 {/* Desktop header avec cloche */}
                 <div className="hidden lg:flex items-center justify-end px-6 py-3 border-b border-white/5 flex-shrink-0" style={{background:'hsl(224,71%,5%)'}}>
+
                   <NotificationBell />
                 </div>
                 {/* Scrollable content */}
