@@ -92,7 +92,7 @@ function Recommandations({ stats }) {
 function Objectifs({ stats, financial }) {
   const items = [
     {label:"Leads", current:stats?.new_leads||0, target:50, color:"#a78bfa"},
-    {label:"CA (EUR)", current:financial?.monthly_revenue||0, target:5000, color:"#34d399"},
+    {label:"CA (EUR)", current:financial?.total_revenue||0, target:5000, color:"#34d399"},
   ];
   return (
     <div className="section-card p-5">
