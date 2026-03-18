@@ -12,6 +12,7 @@ const navGroups = [
   {
     label: 'Principal',
     items: [
+      { to: '/director', icon: Sparkles, label: 'Vue Directeur', testId: 'nav-director' },
       { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', testId: 'nav-dashboard' },
       { to: '/kanban', icon: Trello, label: 'Pipeline', testId: 'nav-kanban' },
       { to: '/leads', icon: Users, label: 'Leads', testId: 'nav-leads', badge: null },

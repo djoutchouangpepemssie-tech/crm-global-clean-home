@@ -38,6 +38,7 @@ class ErrorBoundary extends Component {
 
 // Lazy loading pour accélérer le chargement initial
 // Notification Bell wrapper
+const DirectorDashboard = lazy(() => import('./components/dashboard/DirectorDashboard'));
 const NotificationBellLazy = React.lazy(() => 
   import('./components/notifications/NotificationCenter').then(m => ({default: m.NotificationBell}))
 );
