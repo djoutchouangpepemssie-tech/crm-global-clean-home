@@ -179,13 +179,13 @@ class EventCreate(BaseModel):
 class Task(BaseModel):
     model_config = ConfigDict(extra="ignore")
     task_id: str
-    lead_id: str
-    type: str  # relance, rappel, intervention
+    lead_id: Optional[str] = None
+    type: Optional[str] = "relance"
     title: str
     description: Optional[str] = None
-    due_date: datetime
-    status: str = "pending"  # pending, completed, cancelled
-    created_at: datetime
+    due_date: Optional[datetime] = None
+    status: str = "pending"
+    created_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
 
 class TaskCreate(BaseModel):
