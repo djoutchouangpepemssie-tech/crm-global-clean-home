@@ -407,6 +407,11 @@ export default function DirectorDashboard() {
             <Objectifs stats={stats} financial={financial} />
           </div>
 
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <ConversionFunnel stats={stats} />
+            <ParisMap leads={leads} />
+          </div>
+
           <div className="section-card p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
