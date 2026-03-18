@@ -1156,7 +1156,7 @@ async def get_tasks(request: Request, status: Optional[str] = None):
     for task in tasks:
         if isinstance(task["created_at"], str):
             task["created_at"] = datetime.fromisoformat(task["created_at"])
-        if isinstance(task["due_date"], str):
+        if task.get("due_date") and isinstance(task["due_date"], str):
             task["due_date"] = datetime.fromisoformat(task["due_date"])
         if task.get("completed_at") and isinstance(task["completed_at"], str):
             task["completed_at"] = datetime.fromisoformat(task["completed_at"])

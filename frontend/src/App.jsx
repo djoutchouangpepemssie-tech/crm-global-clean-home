@@ -255,21 +255,7 @@ function AppRouter() {
                     </button>
                   </div>
                 </div>
-                {/* Mobile drawer */}
-                {mobileMenuOpen && (
-                  <div className="lg:hidden fixed inset-0 z-50 flex">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
-                    <div className="relative flex-shrink-0" onClick={() => setMobileMenuOpen(false)}>
-                      <Sidebar />
-                    </div>
-                  </div>
-                )}
-                {/* Desktop header avec cloche */}
-                <div className="hidden lg:flex items-center justify-end px-6 py-3 border-b border-white/5 flex-shrink-0" style={{background:'hsl(224,71%,5%)'}}>
 
-                  <NotificationBell />
-                </div>
-                {/* Scrollable content */}
                 <div className="flex-1 overflow-y-auto overflow-x-hidden pb-16 lg:pb-0">
                   <ErrorBoundary>
         <Suspense fallback={
