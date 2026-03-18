@@ -1582,7 +1582,7 @@ async def get_financial_stats(request: Request, period: str = "30d"):
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=["*"],
+    allow_origins=["https://crm.globalcleanhome.com", "https://www.globalcleanhome.com", "https://globalcleanhome.com", "http://localhost:5173", "http://localhost:3000"],
     allow_methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
     allow_headers=["*"],
     expose_headers=["*"],
