@@ -1741,6 +1741,14 @@ async def ping():
 
 @api_router.post("/portal/quotes/{quote_id}/sign")
 async def sign_quote_portal(quote_id: str, request: Request):
+    # Accepter token portal OU session normale
+    portal_token = request.headers.get("X-Portal-Token")
+    if not portal_token:
+        try:
+            await require_auth(request)
+        except:
+            raise HTTPException(status_code=401, detail="Non autorise")
+    
     body = await request.json()
     signature = body.get("signature", "")
     signed_at = body.get("signed_at", datetime.now(timezone.utc).isoformat())
@@ -1748,7 +1756,7 @@ async def sign_quote_portal(quote_id: str, request: Request):
     await db.quotes.update_one(
         {"quote_id": quote_id},
         {"$set": {
-            "status": "accepté",
+            "status": "accepte",
             "signed": True,
             "signature_name": signature,
             "signed_at": signed_at,
