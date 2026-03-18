@@ -1581,7 +1581,7 @@ async def get_financial_stats(request: Request, period: str = "30d"):
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://crm.globalcleanhome.com", "https://www.globalcleanhome.com", "https://globalcleanhome.com", "http://localhost:5173", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
     allow_headers=["*"],
@@ -1738,3 +1738,4 @@ async def shutdown_db_client():
 @app.get("/ping")
 async def ping():
     return {"status": "ok", "ts": datetime.now(timezone.utc).isoformat()}
+# CORS fix Wed Mar 18 13:48:54 UTC 2026
