@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, FileText, MessageSquare, Plus, Send, ArrowUpRight, ArrowDownLeft, User, Tag, TrendingUp, Clock, CheckCircle, XCircle, Zap } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, MapPin, Calendar, FileText, MessageSquare, Plus, Send, ArrowUpRight, ArrowDownLeft, User, Tag, TrendingUp, Clock, CheckCircle, XCircle, Zap, Star, Brain, Activity, Target, AlertTriangle, Sparkles } from 'lucide-react';
 import { formatDateTime, formatCurrency } from '../../lib/utils';
 import { toast } from 'sonner';
 import BACKEND_URL from '../../config.js';
@@ -40,20 +40,25 @@ const LeadDetail = () => {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [sendingQuote, setSendingQuote] = useState(null);
   const [activeTab, setActiveTab] = useState('interactions');
+  const [tasks, setTasks] = useState([]);
+  const [aiScore, setAiScore] = useState(null);
+  const [scoringLoading, setScoringLoading] = useState(false);
 
   const fetchLeadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [leadRes, interactionsRes, quotesRes, emailsRes] = await Promise.all([
+      const [leadRes, interactionsRes, quotesRes, emailsRes, tasksRes] = await Promise.all([
         axios.get(`${API_URL}/leads/${id}`, { withCredentials: true }),
         axios.get(`${API_URL}/interactions?lead_id=${id}`, { withCredentials: true }),
         axios.get(`${API_URL}/quotes?lead_id=${id}`, { withCredentials: true }),
         axios.get(`${API_URL}/emails/lead/${id}`, { withCredentials: true }).catch(() => ({ data: { emails: [] } })),
+        axios.get(`${API_URL}/tasks?lead_id=${id}`, { withCredentials: true }).catch(() => ({ data: [] })),
       ]);
       setLead(leadRes.data);
       setInteractions(interactionsRes.data);
       setQuotes(quotesRes.data);
       setEmails(emailsRes.data.emails || []);
+      setTasks(Array.isArray(tasksRes.data) ? tasksRes.data.filter(t => t.lead_id === id) : []);
     } catch {
       toast.error('Erreur lors du chargement du lead');
     } finally {
@@ -254,6 +259,9 @@ const LeadDetail = () => {
                 { key: 'interactions', label: 'Interactions', count: interactions.length },
                 { key: 'quotes', label: 'Devis', count: quotes.length },
                 { key: 'emails', label: 'Emails', count: emails.length },
+                { key: 'tasks', label: 'Taches', count: tasks.length },
+                { key: 'timeline', label: 'Timeline', count: interactions.length + quotes.length },
+                { key: 'ai', label: 'IA', count: null },
               ].map(tab => (
                 <button key={tab.key} onClick={() => setActiveTab(tab.key)}
                   className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all border-b-2 -mb-px ${
@@ -411,6 +419,139 @@ const LeadDetail = () => {
                     </div>
                   ))}
                 </div>
+              {/* Tasks tab */}
+              {activeTab === 'tasks' && (
+                <div className="space-y-3 p-4">
+                  {tasks.length > 0 ? tasks.map((task, i) => (
+                    <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/3 border border-white/5">
+                      <div className={"w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 " + (task.status === "completed" ? "bg-emerald-500/15" : "bg-amber-500/15")}>
+                        <CheckCircle className={"w-4 h-4 " + (task.status === "completed" ? "text-emerald-400" : "text-amber-400")} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-200 truncate">{task.title}</p>
+                        <p className="text-xs text-slate-500">{task.due_date ? new Date(task.due_date).toLocaleDateString("fr-FR") : "Sans date"}</p>
+                      </div>
+                      <span className={"px-2 py-0.5 rounded-full text-[10px] font-bold " + (task.status === "completed" ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400")}>
+                        {task.status === "completed" ? "Termine" : "En attente"}
+                      </span>
+                    </div>
+                  )) : (
+                    <div className="text-center py-8 text-slate-600 text-sm">Aucune tache pour ce lead</div>
+                  )}
+                </div>
+              )}
+              {/* Timeline tab */}
+              {activeTab === 'timeline' && (
+                <div className="p-4">
+                  <div className="relative">
+                    <div className="absolute left-4 top-0 bottom-0 w-px bg-white/5" />
+                    <div className="space-y-4">
+                      {[...interactions.map(i => ({...i, _type: "interaction", _date: i.created_at})),
+                        ...quotes.map(q => ({...q, _type: "quote", _date: q.created_at})),
+                        ...emails.map(e => ({...e, _type: "email", _date: e.date}))
+                      ].sort((a,b) => new Date(b._date) - new Date(a._date)).map((item, i) => (
+                        <div key={i} className="flex gap-4 pl-2">
+                          <div className={"w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 z-10 text-xs " + 
+                            (item._type === "quote" ? "bg-amber-500/20 text-amber-400" : 
+                             item._type === "email" ? "bg-blue-500/20 text-blue-400" : 
+                             "bg-violet-500/20 text-violet-400")}>
+                            {item._type === "quote" ? "📄" : item._type === "email" ? "📧" : 
+                             (INTERACTION_ICONS[item.type] || "📝")}
+                          </div>
+                          <div className="flex-1 pb-4 border-b border-white/3">
+                            <div className="flex items-center justify-between mb-1">
+                              <p className="text-xs font-semibold text-slate-300">
+                                {item._type === "quote" ? "Devis " + (item.quote_number || "") : 
+                                 item._type === "email" ? "Email: " + (item.subject || "") :
+                                 item.type || "Interaction"}
+                              </p>
+                              <span className="text-[10px] text-slate-600">
+                                {item._date ? new Date(item._date).toLocaleDateString("fr-FR", {day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}) : ""}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500 line-clamp-2">
+                              {item.content || item.message || item.subject || ""}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                      {interactions.length + quotes.length + emails.length === 0 && (
+                        <div className="text-center py-8 text-slate-600 text-sm pl-8">Aucun evenement</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {/* AI Scoring tab */}
+              {activeTab === 'ai' && (
+                <div className="p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-violet-400" />
+                      <h4 className="text-sm font-semibold text-slate-200">Analyse IA du lead</h4>
+                    </div>
+                    <button onClick={async () => {
+                      setScoringLoading(true);
+                      try {
+                        const res = await axios.post(`${API_URL}/ai/score/${id}`, {}, {withCredentials: true});
+                        setAiScore(res.data);
+                      } catch(e) {}
+                      finally { setScoringLoading(false); }
+                    }} disabled={scoringLoading}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 border border-violet-500/20 rounded-xl text-xs font-semibold">
+                      {scoringLoading ? <div className="w-3 h-3 border border-violet-400/30 border-t-violet-400 rounded-full animate-spin" /> : <Brain className="w-3.5 h-3.5" />}
+                      Analyser
+                    </button>
+                  </div>
+
+                  {lead && (
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        {label:"Score actuel", value:(lead.score||0)+"/100", color: lead.score>=75?"#f43f5e":lead.score>=55?"#f59e0b":"#60a5fa"},
+                        {label:"Segment", value: lead.score>=75?"🔥 Chaud":lead.score>=55?"♨️ Tiede":"❄️ Froid", color:"#a78bfa"},
+                        {label:"Source", value: lead.utm_source||lead.source||"Direct", color:"#60a5fa"},
+                        {label:"Probabilite", value: Math.round((lead.score||0)*0.8)+"%", color:"#34d399"},
+                      ].map((m,i) => (
+                        <div key={i} className="p-3 rounded-xl bg-white/3 border border-white/5">
+                          <p className="text-xs text-slate-500 mb-1">{m.label}</p>
+                          <p className="text-sm font-black" style={{color:m.color}}>{m.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {aiScore && (
+                    <div className="space-y-3">
+                      <div className="p-4 rounded-xl bg-violet-500/5 border border-violet-500/15">
+                        <p className="text-xs font-semibold text-violet-300 mb-2">Recommandation IA</p>
+                        <p className="text-sm text-slate-300 leading-relaxed">{aiScore.recommendation}</p>
+                      </div>
+                      {(aiScore.top_factors||[]).length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Facteurs de score</p>
+                          <div className="space-y-2">
+                            {aiScore.top_factors.map((f,i) => (
+                              <div key={i} className="flex items-center gap-2">
+                                <span className={"text-xs font-bold " + (f.impact==="+"?"text-emerald-400":"text-rose-400")}>
+                                  {f.impact}{f.points}pts
+                                </span>
+                                <span className="text-xs text-slate-400">{f.label}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {!aiScore && !scoringLoading && (
+                    <div className="text-center py-6 text-slate-600">
+                      <Brain className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">Cliquez sur Analyser pour obtenir une analyse IA complete</p>
+                    </div>
+                  )}
+                </div>
+              )}
               )}
             </div>
           </div>
