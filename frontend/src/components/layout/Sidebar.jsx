@@ -33,6 +33,7 @@ const navGroups = [
       { to: '/tasks', icon: CheckSquare, label: 'Tâches', testId: 'nav-tasks' },
       { to: '/analytics', icon: TrendingUp, label: 'Analytics', testId: 'nav-analytics' },
       { to: '/ads', icon: BarChart3, label: 'Publicites', testId: 'nav-ads' },
+      { to: '/seo', icon: Search, label: 'SEO', testId: 'nav-seo' },
       { to: '/ai', icon: Sparkles, label: 'Centre IA', testId: 'nav-ai' },
       { to: '/workflows', icon: Zap, label: 'Workflows', testId: 'nav-workflows' },
       { to: '/tickets', icon: Ticket, label: 'Tickets', testId: 'nav-tickets' },
