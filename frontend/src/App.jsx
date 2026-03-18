@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, NavLink } from 're
 import { Toaster } from 'sonner';
 import { LayoutDashboard, Users, FileText, MoreHorizontal, X, LogOut, Trello, CreditCard, BarChart3, CalendarDays, CheckSquare, TrendingUp, Plug, Activity } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import PWAInstallBanner, { OfflineIndicator } from './components/pwa/PWAInstallBanner';
 
 import { startKeepAlive } from './lib/keepAlive.js';
 
@@ -258,7 +259,8 @@ function AppRouter() {
                 </div>
 
                 <div className="flex-1 overflow-y-auto overflow-x-hidden pb-16 lg:pb-0">
-                  <ErrorBoundary>
+                  <PWAInstallBanner />
+        <ErrorBoundary>
         <Suspense fallback={
           <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'hsl(224,71%,4%)',flexDirection:'column',gap:'12px'}}>
             <div style={{width:'40px',height:'40px',border:'2px solid rgba(139,92,246,0.3)',borderTop:'2px solid #8b5cf6',borderRadius:'50%',animation:'spin 1s linear infinite'}} />

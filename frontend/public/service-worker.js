@@ -1,35 +1,116 @@
-const CACHE = 'crm-gch-v1';
-const OFFLINE_PAGES = [
+const CACHE_NAME = 'gch-crm-v3';
+const STATIC_ASSETS = [
   '/',
-  '/dashboard',
-  '/leads',
-  '/quotes',
-  '/index.html'
+  '/index.html',
+  '/manifest.json',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
 ];
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(OFFLINE_PAGES))
-  );
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', (e) => {
-  e.waitUntil(
-    caches.keys().then((names) =>
-      Promise.all(
-        names.filter((n) => n !== CACHE).map((n) => caches.delete(n))
-      )
-    )
-  );
-  self.clients.claim();
-});
-
-self.addEventListener('fetch', (e) => {
-  if (e.request.method !== 'GET') return;
-  if (e.request.url.includes('/api/')) return;
-
-  e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request))
+// Installation - cache les assets statiques
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => {
+      return cache.addAll(STATIC_ASSETS);
+    }).then(() => self.skipWaiting())
   );
 });
+
+// Activation - supprime les anciens caches
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(keys => 
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    ).then(() => self.clients.claim())
+  );
+});
+
+// Fetch - stratégie Network First pour API, Cache First pour assets
+self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+  
+  // Ignorer les requêtes non-GET
+  if (event.request.method !== 'GET') return;
+  
+  // Ignorer les requêtes externes (Google, Firebase, Railway API)
+  if (url.hostname !== location.hostname) return;
+
+  // Network First pour les pages HTML
+  if (event.request.headers.get('accept')?.includes('text/html')) {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          return response;
+        })
+        .catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
+
+  // Cache First pour assets statiques (JS, CSS, images)
+  event.respondWith(
+    caches.match(event.request).then(cached => {
+      if (cached) return cached;
+      return fetch(event.request).then(response => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+        }
+        return response;
+      }).catch(() => cached);
+    })
+  );
+});
+
+// Push notifications
+self.addEventListener('push', event => {
+  if (!event.data) return;
+  let data = {};
+  try { data = event.data.json(); } catch(e) { data = { title: 'GCH CRM', body: event.data.text() }; }
+  
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Global Clean Home', {
+      body: data.body || '',
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      vibrate: [200, 100, 200],
+      data: { url: data.url || '/director' },
+      actions: [
+        { action: 'open', title: 'Ouvrir' },
+        { action: 'close', title: 'Fermer' }
+      ]
+    })
+  );
+});
+
+// Clic sur notification
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/director';
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then(windowClients => {
+      for (const client of windowClients) {
+        if (client.url.includes(location.origin) && 'focus' in client) {
+          client.focus();
+          client.navigate(url);
+          return;
+        }
+      }
+      return clients.openWindow(url);
+    })
+  );
+});
+
+// Sync en arrière-plan
+self.addEventListener('sync', event => {
+  if (event.tag === 'sync-data') {
+    event.waitUntil(syncOfflineData());
+  }
+});
+
+async function syncOfflineData() {
+  // Sync les données offline quand la connexion revient
+  console.log('[SW] Syncing offline data...');
+}
