@@ -1619,6 +1619,9 @@ app.include_router(tickets_router)
 from notifications import notifications_router, init_notifications_db, create_notification
 app.include_router(notifications_router)
 
+from chat import chat_router, init_chat_db
+app.include_router(chat_router)
+
 # Include planning/interventions router
 from planning import planning_router
 app.include_router(planning_router)
@@ -1669,6 +1672,7 @@ async def startup_db_indexes():
     init_workflows_db(db)
     init_tickets_db(db)
     init_notifications_db(db)
+    init_chat_db(db)
     
     # Scheduler pour traiter les workflows toutes les 30 minutes
     import asyncio

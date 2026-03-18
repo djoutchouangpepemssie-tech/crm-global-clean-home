@@ -1,0 +1,126 @@
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { MessageSquare, RefreshCw, Send, Users } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import BACKEND_URL from "../../config.js";
+import LeadChat from "./LeadChat";
+
+const API = BACKEND_URL + "/api/chat";
+
+export default function ChatCenter() {
+  const navigate = useNavigate();
+  const [conversations, setConversations] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get(API + "/conversations", { withCredentials: true });
+      setConversations(res.data || []);
+    } catch(e) {} finally { setLoading(false); }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const totalUnread = conversations.reduce((s, c) => s + (c.unread_crm || 0), 0);
+
+  return (
+    <div className="p-4 md:p-6 lg:p-8 animate-fade-in">
+      <div className="flex items-center gap-2 mb-5">
+        <MessageSquare className="w-5 h-5 text-violet-400" />
+        <h1 className="text-2xl font-bold text-slate-100" style={{fontFamily:"Manrope,sans-serif"}}>
+          Messages clients
+        </h1>
+        {totalUnread > 0 && (
+          <span className="px-2 py-0.5 rounded-full text-xs font-black bg-rose-500/20 text-rose-400 border border-rose-500/25">
+            {totalUnread} non lu{totalUnread > 1 ? "s" : ""}
+          </span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4" style={{height: "calc(100vh - 200px)"}}>
+        {/* Liste conversations */}
+        <div className="section-card overflow-hidden flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b border-white/5">
+            <p className="text-sm font-semibold text-slate-200">{conversations.length} conversations</p>
+            <button onClick={load} className="p-1.5 rounded-lg hover:bg-white/10 text-slate-500">
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {loading ? (
+              <div className="space-y-2 p-3">
+                {[1,2,3].map(i => <div key={i} className="skeleton h-16 rounded-xl" />)}
+              </div>
+            ) : conversations.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-48 text-slate-600">
+                <MessageSquare className="w-10 h-10 mb-2 opacity-20" />
+                <p className="text-sm">Aucun message</p>
+              </div>
+            ) : (
+              conversations.map((conv, i) => {
+                const lastMsg = conv.messages?.[conv.messages.length - 1];
+                const isSelected = selected?.lead_id === conv.lead_id;
+                return (
+                  <div key={i} onClick={() => setSelected(conv)}
+                    className={"flex items-center gap-3 p-4 cursor-pointer transition-all border-b border-white/3 " +
+                      (isSelected ? "bg-violet-500/10 border-l-2 border-l-violet-500" : "hover:bg-white/5")}>
+                    <div className="w-10 h-10 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center text-violet-300 font-bold text-sm flex-shrink-0">
+                      {(conv.lead_name || "?").charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-slate-200 truncate">{conv.lead_name}</p>
+                        {conv.unread_crm > 0 && (
+                          <span className="w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center flex-shrink-0 ml-2">
+                            {conv.unread_crm}
+                          </span>
+                        )}
+                      </div>
+                      {lastMsg && (
+                        <p className="text-xs text-slate-500 truncate mt-0.5">
+                          {lastMsg.from_client ? "" : "Vous: "}{lastMsg.content}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Zone de chat */}
+        <div className="lg:col-span-2 section-card p-5">
+          {selected ? (
+            <>
+              <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/5">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center text-violet-300 font-bold text-sm">
+                    {(selected.lead_name || "?").charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-200">{selected.lead_name}</p>
+                    <p className="text-xs text-slate-500">{selected.lead_email}</p>
+                  </div>
+                </div>
+                <button onClick={() => navigate("/leads/" + selected.lead_id)}
+                  className="text-xs text-violet-400 hover:text-violet-300 font-semibold">
+                  Voir la fiche →
+                </button>
+              </div>
+              <LeadChat leadId={selected.lead_id} leadName={selected.lead_name} />
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-slate-600">
+              <MessageSquare className="w-16 h-16 mb-4 opacity-20" />
+              <p className="text-sm">Selectionnez une conversation</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

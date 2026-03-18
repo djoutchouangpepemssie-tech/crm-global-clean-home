@@ -39,6 +39,7 @@ const navGroups = [
       { to: '/workflows', icon: Zap, label: 'Workflows', testId: 'nav-workflows' },
       { to: '/tickets', icon: Ticket, label: 'Tickets', testId: 'nav-tickets' },
       { to: '/notifications', icon: Bell, label: 'Notifications', testId: 'nav-notifs' },
+      { to: '/chat', icon: MessageSquare, label: 'Messages', testId: 'nav-chat' },
     ]
   },
   {

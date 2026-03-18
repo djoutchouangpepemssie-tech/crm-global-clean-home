@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 
 import BACKEND_URL from '../../config.js';
 const API_URL = BACKEND_URL + '/api/portal';
+const CHAT_API = BACKEND_URL + '/api/chat';
 
 const portalAxios = axios.create({ withCredentials: true });
 portalAxios.interceptors.request.use(config => {
@@ -175,17 +176,22 @@ const PortalDashboard = ({ user, onLogout }) => {
   const [signatureData, setSignatureData] = useState('');
   const [signingQuote, setSigningQuote] = useState(null);
 
+  const fetchConversation = async () => {
+    try {
+      const res = await portalAxios.get(CHAT_API + '/portal/conversation');
+      setMessages(res.data.messages || []);
+    } catch(e) {}
+  };
+
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
     setSendingMessage(true);
     try {
-      const newMsg = {
+      const res = await portalAxios.post(CHAT_API + '/portal/message', {
         content: newMessage,
-        from_client: true,
-        created_at: new Date().toISOString(),
-        read_by_client: true
-      };
-      setMessages(prev => [...prev, newMsg]);
+        from_client: true
+      });
+      setMessages(prev => [...prev, res.data.message]);
       setNewMessage('');
       toast.success('Message envoye !');
     } catch { toast.error('Erreur envoi'); }

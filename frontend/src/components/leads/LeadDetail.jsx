@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ArrowLeft, Mail, Phone, MapPin, Calendar, FileText, MessageSquare, Plus, Send, ArrowUpRight, ArrowDownLeft, User, Tag, TrendingUp, Clock, CheckCircle, XCircle, Zap, Star, Brain, Activity, Target, AlertTriangle, Sparkles } from 'lucide-react';
+import LeadChat from '../chat/LeadChat';
 import { formatDateTime, formatCurrency } from '../../lib/utils';
 import { toast } from 'sonner';
 import BACKEND_URL from '../../config.js';
@@ -262,6 +263,7 @@ const LeadDetail = () => {
                 { key: 'tasks', label: 'Taches', count: tasks.length },
                 { key: 'timeline', label: 'Timeline', count: interactions.length + quotes.length },
                 { key: 'ai', label: 'IA', count: null },
+                { key: 'chat', label: 'Chat client', count: null },
               ].map(tab => (
                 <button key={tab.key} onClick={() => setActiveTab(tab.key)}
                   className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all border-b-2 -mb-px ${
@@ -483,6 +485,13 @@ const LeadDetail = () => {
                   </div>
                 </div>
               )}
+              {/* Chat tab */}
+              {activeTab === 'chat' && (
+                <div className="p-4">
+                  <LeadChat leadId={lead?.lead_id} leadName={lead?.name} />
+                </div>
+              )}
+
               {/* AI Scoring tab */}
               {activeTab === 'ai' && (
                 <div className="p-4 space-y-4">
