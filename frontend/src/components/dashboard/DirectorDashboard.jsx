@@ -136,7 +136,10 @@ export default function DirectorDashboard() {
       ]);
       setStats(s.data); setFinancial(f.data);
       setLeads(Array.isArray(l.data) ? l.data : []);
-    } catch(e) { toast.error("Erreur chargement"); }
+    } catch(e) { 
+      console.error("Director error:", e);
+      toast.error("Erreur: " + (e.response?.status || e.message)); 
+    }
     finally { setLoading(false); }
   }, [period]);
 
