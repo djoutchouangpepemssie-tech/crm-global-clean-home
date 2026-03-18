@@ -392,3 +392,31 @@ async def auto_send_portal_access(lead: dict, context: str = "quote") -> bool:
     except Exception as e:
         logger.error(f"auto_send_portal_access error: {e}")
         return False
+
+
+@portal_router.post("/quotes/{quote_id}/sign")
+async def sign_quote_portal(quote_id: str, request: Request):
+    """Signer un devis depuis le portail client."""
+    portal_token = request.headers.get("X-Portal-Token")
+    if not portal_token:
+        raise HTTPException(status_code=401, detail="Token requis")
+    
+    session = await db.portal_sessions.find_one({"token": portal_token})
+    if not session:
+        raise HTTPException(status_code=401, detail="Session invalide")
+    
+    body = await request.json()
+    signature = body.get("signature", "")
+    signed_at = body.get("signed_at", datetime.now(timezone.utc).isoformat())
+    
+    await db.quotes.update_one(
+        {"quote_id": quote_id},
+        {"$set": {
+            "status": "accepte",
+            "signed": True,
+            "signature_name": signature,
+            "signed_at": signed_at,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    return {"success": True, "message": "Devis signe avec succes"}
