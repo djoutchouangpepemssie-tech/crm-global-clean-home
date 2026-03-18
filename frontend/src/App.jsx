@@ -41,6 +41,7 @@ class ErrorBoundary extends Component {
 // Notification Bell wrapper
 const DirectorDashboard = lazy(() => import('./components/dashboard/DirectorDashboard'));
 const SEODashboard = lazy(() => import('./components/seo/SEODashboard'));
+const RentabiliteModule = lazy(() => import('./components/rentabilite/RentabiliteModule'));
 const NotificationBellLazy = React.lazy(() => 
   import('./components/notifications/NotificationCenter').then(m => ({default: m.NotificationBell}))
 );
@@ -273,6 +274,7 @@ function AppRouter() {
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/director" element={<DirectorDashboard />} />
                     <Route path="/seo" element={<SEODashboard />} />
+                    <Route path="/rentabilite" element={<RentabiliteModule />} />
                     <Route path="/leads/new" element={<LeadForm />} />
                     <Route path="/leads/:id" element={<LeadDetail />} />
                     <Route path="/leads" element={<LeadsList />} />
