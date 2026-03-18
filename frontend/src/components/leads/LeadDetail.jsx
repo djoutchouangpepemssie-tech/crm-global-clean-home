@@ -419,6 +419,7 @@ const LeadDetail = () => {
                     </div>
                   ))}
                 </div>
+              )}
               {/* Tasks tab */}
               {activeTab === 'tasks' && (
                 <div className="space-y-3 p-4">
