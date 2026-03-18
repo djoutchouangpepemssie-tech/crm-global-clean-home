@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { FileText, CreditCard, CheckCircle, XCircle, Star, LogOut, Clock, Send, MessageSquare, Sparkles, Mail, ArrowRight, Shield, Zap, Home } from 'lucide-react';
+import { FileText, CreditCard, CheckCircle, XCircle, Star, LogOut, Clock, Send, MessageSquare, Sparkles, Mail, ArrowRight, Shield, Zap, Home, PenTool, Calendar, Phone } from 'lucide-react';
 import { formatCurrency, formatDateTime } from '../../lib/utils';
 import { toast } from 'sonner';
 
@@ -169,6 +169,28 @@ const PortalDashboard = ({ user, onLogout }) => {
   const [invoices, setInvoices] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [activeTab, setActiveTab] = useState('quotes');
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [signatureData, setSignatureData] = useState('');
+  const [signingQuote, setSigningQuote] = useState(null);
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim()) return;
+    setSendingMessage(true);
+    try {
+      const newMsg = {
+        content: newMessage,
+        from_client: true,
+        created_at: new Date().toISOString(),
+        read_by_client: true
+      };
+      setMessages(prev => [...prev, newMsg]);
+      setNewMessage('');
+      toast.success('Message envoye !');
+    } catch { toast.error('Erreur envoi'); }
+    finally { setSendingMessage(false); }
+  };
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
   const [loading, setLoading] = useState(true);
@@ -224,6 +246,9 @@ const PortalDashboard = ({ user, onLogout }) => {
   const tabs = [
     { id: 'quotes', label: 'Devis', icon: FileText, count: quotes.length },
     { id: 'invoices', label: 'Factures', icon: CreditCard, count: invoices.length },
+    { id: 'signature', label: 'Signature', icon: PenTool, count: quotes.filter(q=>q.status==='envoyé').length },
+    { id: 'interventions', label: 'Interventions', icon: Calendar, count: 0 },
+    { id: 'messages', label: 'Messages', icon: MessageSquare, count: messages.filter(m=>!m.read_by_client).length },
     { id: 'reviews', label: 'Avis', icon: Star, count: reviews.length },
   ];
 
@@ -521,6 +546,171 @@ const PortalDashboard = ({ user, onLogout }) => {
             )}
 
             {/* Reviews */}
+            {/* Signature electronique */}
+            {activeTab === 'signature' && (
+              <div className="space-y-4">
+                <div className="rounded-2xl p-5" style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)'}}>
+                  <h3 className="font-bold text-slate-100 mb-4 flex items-center gap-2">
+                    <PenTool className="w-5 h-5 text-violet-400" />
+                    Devis en attente de signature
+                  </h3>
+                  {quotes.filter(q => q.status === 'envoyé' || q.status === 'envoye').length === 0 ? (
+                    <div className="text-center py-8 text-slate-500">
+                      <CheckCircle className="w-12 h-12 mx-auto mb-3 text-emerald-400 opacity-50" />
+                      <p className="text-sm">Aucun devis en attente de signature</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {quotes.filter(q => q.status === 'envoyé' || q.status === 'envoye').map((quote, i) => (
+                        <div key={i} className="rounded-2xl p-5" style={{background:'rgba(139,92,246,0.05)',border:'1px solid rgba(139,92,246,0.2)'}}>
+                          <div className="flex items-start justify-between mb-4">
+                            <div>
+                              <p className="font-bold text-slate-100">{quote.quote_number || "Devis"}</p>
+                              <p className="text-sm text-slate-400 mt-1">{quote.service_type} · {quote.amount}EUR</p>
+                            </div>
+                            <span className="px-2 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-400 border border-amber-500/25">
+                              En attente
+                            </span>
+                          </div>
+                          {signingQuote === quote.quote_id ? (
+                            <div className="space-y-3">
+                              <p className="text-xs text-slate-400">Dessinez votre signature ci-dessous :</p>
+                              <div className="rounded-xl border-2 border-dashed border-violet-500/30 bg-white/5 p-4 text-center" style={{minHeight:"120px"}}>
+                                <p className="text-slate-500 text-sm mt-8">Zone de signature</p>
+                                <input type="text" value={signatureData} onChange={e => setSignatureData(e.target.value)}
+                                  placeholder="Tapez votre nom complet pour signer"
+                                  className="mt-3 w-full px-3 py-2 bg-white/5 border border-white/10 text-slate-200 rounded-xl text-sm text-center font-signature" />
+                              </div>
+                              <div className="flex gap-3">
+                                <button onClick={() => setSigningQuote(null)}
+                                  className="flex-1 py-2.5 bg-white/5 border border-white/10 text-slate-400 rounded-xl text-sm">
+                                  Annuler
+                                </button>
+                                <button onClick={async () => {
+                                  if (!signatureData.trim()) { toast.error('Entrez votre nom pour signer'); return; }
+                                  try {
+                                    await portalAxios.post(`${API_URL}/quotes/${quote.quote_id}/sign`, {
+                                      signature: signatureData,
+                                      signed_at: new Date().toISOString()
+                                    });
+                                    toast.success('Devis signe avec succes !');
+                                    setSigningQuote(null);
+                                    setSignatureData('');
+                                    fetchData();
+                                  } catch { toast.error('Erreur lors de la signature'); }
+                                }} disabled={!signatureData.trim()}
+                                  className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl text-sm disabled:opacity-50 flex items-center justify-center gap-2">
+                                  <PenTool className="w-4 h-4" /> Signer le devis
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button onClick={() => setSigningQuote(quote.quote_id)}
+                              className="w-full py-3 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all">
+                              <PenTool className="w-4 h-4" /> Signer ce devis
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Interventions */}
+            {activeTab === 'interventions' && (
+              <div className="space-y-4">
+                <div className="rounded-2xl p-5" style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)'}}>
+                  <h3 className="font-bold text-slate-100 mb-4 flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-blue-400" />
+                    Historique de vos interventions
+                  </h3>
+                  {quotes.filter(q => q.status === 'accepté' || q.status === 'accepte').length === 0 ? (
+                    <div className="text-center py-8 text-slate-500">
+                      <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                      <p className="text-sm">Aucune intervention pour le moment</p>
+                      <p className="text-xs mt-1 text-slate-600">Vos interventions apparaitront ici</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {quotes.filter(q => q.status === 'accepté' || q.status === 'accepte').map((quote, i) => (
+                        <div key={i} className="flex items-center gap-4 p-4 rounded-2xl" style={{background:'rgba(52,211,153,0.05)',border:'1px solid rgba(52,211,153,0.15)'}}>
+                          <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center flex-shrink-0">
+                            <CheckCircle className="w-6 h-6 text-emerald-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-slate-100">{quote.service_type}</p>
+                            <p className="text-sm text-slate-400">{quote.amount}EUR · {quote.created_at ? new Date(quote.created_at).toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"}) : ""}</p>
+                          </div>
+                          <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex-shrink-0">
+                            Effectuee
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-2xl p-5" style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)'}}>
+                  <h3 className="font-bold text-slate-100 mb-3 flex items-center gap-2">
+                    <Phone className="w-5 h-5 text-violet-400" />
+                    Besoin d une intervention ?
+                  </h3>
+                  <p className="text-sm text-slate-400 mb-4">Contactez-nous pour planifier votre prochaine prestation.</p>
+                  <a href="tel:0622665308"
+                    className="flex items-center justify-center gap-2 w-full py-3 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl transition-all">
+                    <Phone className="w-4 h-4" /> Appeler le 06 22 66 53 08
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* Messagerie */}
+            {activeTab === 'messages' && (
+              <div className="space-y-4">
+                <div className="rounded-2xl overflow-hidden" style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)'}}>
+                  <div className="p-4 border-b border-white/5 flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-violet-400" />
+                    <h3 className="font-bold text-slate-100">Messagerie</h3>
+                  </div>
+                  <div className="p-4 space-y-3" style={{minHeight:"300px",maxHeight:"400px",overflowY:"auto"}}>
+                    {messages.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-48 text-slate-600">
+                        <MessageSquare className="w-10 h-10 mb-3 opacity-30" />
+                        <p className="text-sm">Aucun message pour le moment</p>
+                        <p className="text-xs mt-1">Envoyez votre premier message ci-dessous</p>
+                      </div>
+                    ) : (
+                      messages.map((msg, i) => (
+                        <div key={i} className={"flex " + (msg.from_client ? "justify-end" : "justify-start")}>
+                          <div className={"max-w-xs px-4 py-3 rounded-2xl " + (msg.from_client
+                            ? "bg-violet-600 text-white rounded-tr-sm"
+                            : "bg-white/5 border border-white/10 text-slate-200 rounded-tl-sm")}>
+                            <p className="text-sm">{msg.content}</p>
+                            <p className={"text-[10px] mt-1 " + (msg.from_client ? "text-violet-200" : "text-slate-500")}>
+                              {msg.created_at ? new Date(msg.created_at).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}) : ""}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div className="p-4 border-t border-white/5">
+                    <div className="flex gap-2">
+                      <input value={newMessage} onChange={e => setNewMessage(e.target.value)}
+                        onKeyDown={e => { if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); }}}
+                        placeholder="Ecrivez votre message..."
+                        className="flex-1 px-4 py-2.5 bg-white/5 border border-white/10 text-slate-200 rounded-xl text-sm focus:outline-none focus:border-violet-500" />
+                      <button onClick={handleSendMessage} disabled={sendingMessage || !newMessage.trim()}
+                        className="px-4 py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl disabled:opacity-50 transition-all">
+                        <Send className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {activeTab === 'reviews' && (
               <div className="space-y-4" data-testid="portal-reviews">
                 {/* Submit form */}

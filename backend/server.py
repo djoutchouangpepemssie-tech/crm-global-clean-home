@@ -1739,6 +1739,24 @@ async def shutdown_db_client():
 async def ping():
     return {"status": "ok", "ts": datetime.now(timezone.utc).isoformat()}
 
+@api_router.post("/portal/quotes/{quote_id}/sign")
+async def sign_quote_portal(quote_id: str, request: Request):
+    body = await request.json()
+    signature = body.get("signature", "")
+    signed_at = body.get("signed_at", datetime.now(timezone.utc).isoformat())
+    
+    await db.quotes.update_one(
+        {"quote_id": quote_id},
+        {"$set": {
+            "status": "accepté",
+            "signed": True,
+            "signature_name": signature,
+            "signed_at": signed_at,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    return {"success": True, "message": "Devis signe avec succes"}
+
 @app.get("/cors-check")
 async def cors_check():
     return {"cors": "ok", "origins": "configured"}
