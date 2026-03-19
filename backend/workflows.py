@@ -57,14 +57,63 @@ class WorkflowCreate(BaseModel):
 
 HUMAN_EMAIL_TEMPLATES = {
     "new_lead_welcome": {
-        "subject": "Re: Votre demande de nettoyage",
+        "subject": "Votre demande de devis - Global Clean Home",
+        "body": """Bonjour {prenom},
+
+Nous avons bien reçu votre demande de devis pour {service} et nous vous en remercions chaleureusement.
+
+Notre équipe prend votre demande très au sérieux et s'engage à vous fournir un devis personnalisé dans les meilleurs délais.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 RÉCAPITULATIF DE VOTRE DEMANDE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Service demandé : {service}
+Délai de réponse : Sous 24h ouvrées
+Conseiller dédié : Merylis
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🗓️ LA SUITE DE VOTRE DEMANDE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1️⃣  Analyse de votre demande
+     Notre équipe étudie attentivement vos besoins
+     pour vous préparer une offre sur mesure.
+
+2️⃣  Envoi de votre devis personnalisé
+     Vous recevrez un devis détaillé et transparent,
+     sans frais cachés.
+
+3️⃣  Prise de contact par votre conseiller
+     Merylis vous appellera pour répondre à toutes
+     vos questions et planifier l'intervention.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+En attendant, n'hésitez pas à nous contacter directement :
+
+📞 06 22 66 53 08
+📧 contact@globalcleanhome.com
+🌐 www.globalcleanhome.com
+
+Merci de votre confiance. Nous mettons tout en œuvre
+pour vous offrir un service d'excellence.
+
+Cordialement,
+L'équipe Global Clean Home
+Nettoyage professionnel à Paris & Île-de-France"""
+    },
+    "merylis_followup": {
+        "subject": "Re: Votre demande {service} - je m'en occupe personnellement",
         "body": """Bonjour {prenom},
 
 Je viens de recevoir votre demande et je voulais vous répondre personnellement.
 
-Votre demande pour {service} est bien notée. Je m'en occupe personnellement et je reviens vers vous très rapidement avec une estimation détaillée.
+Votre demande pour **{service}** est bien notée. Je m'en occupe personnellement et je reviens vers vous très rapidement avec une estimation détaillée.
 
 Une question rapide pour mieux vous conseiller : est-ce pour une intervention unique ou vous cherchez quelque chose de régulier ?
+
+N'hésitez pas à m'appeler directement, je décroche toujours 😊
 
 À très vite,
 Merylis
@@ -210,14 +259,15 @@ PREDEFINED_WORKFLOWS = [
     {
         "workflow_id": "wf_new_lead_standard",
         "name": "📧 Nouveau lead — Séquence standard",
-        "description": "Pour tous les nouveaux leads. Séquence de 3 emails sur 48h.",
+        "description": "Pour tous les nouveaux leads. Confirmation pro immediate + Merylis 5 min apres.",
         "trigger": {"type": "new_lead", "conditions": {}},
         "is_active": True,
         "steps": [
-            {"id": "s1", "type": "send_email", "template": "new_lead_welcome", "delay_hours": 0, "label": "Email de bienvenue"},
-            {"id": "s2", "type": "send_email", "template": "relance_24h", "delay_hours": 24, "label": "Relance J+1"},
-            {"id": "s3", "type": "send_email", "template": "relance_48h", "delay_hours": 48, "label": "Relance J+2"},
-            {"id": "s4", "type": "create_task", "delay_hours": 72, "label": "Tâche: Relance manuelle J+3"},
+            {"id": "s1", "type": "send_email", "template": "new_lead_welcome", "delay_hours": 0, "label": "Email confirmation professionnel"},
+            {"id": "s2", "type": "send_email", "template": "merylis_followup", "delay_hours": 0.083, "label": "Email Merylis personnel (5 min)"},
+            {"id": "s3", "type": "send_email", "template": "relance_24h", "delay_hours": 24, "label": "Relance J+1"},
+            {"id": "s4", "type": "send_email", "template": "relance_48h", "delay_hours": 48, "label": "Relance J+2"},
+            {"id": "s5", "type": "create_task", "delay_hours": 72, "label": "Tâche: Relance manuelle J+3"},
         ]
     },
     {
@@ -334,18 +384,122 @@ async def _execute_step(exec_item: dict):
                 if not token:
                     logger.warning(f"No Gmail token available for workflow email to {lead_email}")
                 if token:
-                    html = f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8">
+                    # Choisir template HTML selon le type
+                    is_confirmation = template_key == "new_lead_welcome"
+                    is_merylis = template_key == "merylis_followup"
+                    
+                    if is_confirmation:
+                        html = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-body{{margin:0;padding:0;background:#f8fafc;font-family:Georgia,'Times New Roman',serif;}}
-.wrap{{max-width:560px;margin:32px auto;}}
-.body{{background:white;padding:36px 40px;border-radius:4px;border:1px solid #e2e8f0;}}
-p{{color:#1e293b;line-height:1.9;font-size:15px;margin:0 0 16px;}}
-.sig{{color:#64748b;font-size:14px;border-top:1px solid #f1f5f9;padding-top:16px;margin-top:24px;}}
+*{{margin:0;padding:0;box-sizing:border-box;}}
+body{{background:#f1f5f9;font-family:Arial,sans-serif;}}
+.wrap{{max-width:600px;margin:0 auto;padding:20px;}}
+.header{{background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 50%,#059669 100%);padding:32px 28px;border-radius:12px 12px 0 0;text-align:center;}}
+.header h1{{color:white;font-size:22px;font-weight:bold;margin-bottom:4px;}}
+.header p{{color:rgba(255,255,255,0.85);font-size:13px;}}
+.body{{background:white;padding:32px 28px;}}
+.greeting{{font-size:16px;color:#1e293b;margin-bottom:16px;}}
+.intro{{font-size:14px;color:#475569;line-height:1.7;margin-bottom:24px;}}
+.recap{{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px;margin-bottom:24px;}}
+.recap h3{{font-size:13px;font-weight:bold;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px;}}
+.recap-row{{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;}}
+.recap-row:last-child{{border-bottom:none;}}
+.recap-label{{font-size:13px;color:#64748b;}}
+.recap-value{{font-size:13px;font-weight:bold;color:#1e293b;}}
+.steps{{margin-bottom:24px;}}
+.steps h3{{font-size:13px;font-weight:bold;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:16px;}}
+.step{{display:flex;align-items:flex-start;gap:14px;margin-bottom:16px;}}
+.step-num{{width:32px;height:32px;background:linear-gradient(135deg,#2563eb,#059669);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:bold;flex-shrink:0;}}
+.step-content h4{{font-size:14px;font-weight:bold;color:#1e293b;margin-bottom:3px;}}
+.step-content p{{font-size:13px;color:#64748b;line-height:1.5;}}
+.contact{{background:linear-gradient(135deg,#1e3a5f,#2563eb);border-radius:10px;padding:20px;text-align:center;margin-bottom:24px;}}
+.contact p{{color:rgba(255,255,255,0.85);font-size:13px;margin-bottom:12px;}}
+.contact-items{{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;}}
+.contact-item{{color:white;font-size:13px;font-weight:bold;}}
+.footer{{background:#f8fafc;padding:20px 28px;border-radius:0 0 12px 12px;text-align:center;border-top:1px solid #e2e8f0;}}
+.footer p{{font-size:12px;color:#94a3b8;}}
+.footer strong{{color:#64748b;}}
 </style>
 </head>
 <body>
 <div class="wrap">
+<div class="header">
+  <h1>🏠 Global Clean Home</h1>
+  <p>Nettoyage Professionnel à Paris & Île-de-France</p>
+</div>
+<div class="body">
+  <p class="greeting">Bonjour <strong>{prenom}</strong>,</p>
+  <p class="intro">Nous avons bien reçu votre demande de devis pour <strong>{service}</strong> et nous vous en remercions chaleureusement.<br><br>Notre équipe prend votre demande très au sérieux et s'engage à vous fournir un devis personnalisé dans les meilleurs délais.</p>
+  
+  <div class="recap">
+    <h3>📋 Récapitulatif de votre demande</h3>
+    <div class="recap-row"><span class="recap-label">Service demandé</span><span class="recap-value">{service}</span></div>
+    <div class="recap-row"><span class="recap-label">Délai de réponse</span><span class="recap-value">Sous 24h ouvrées</span></div>
+    <div class="recap-row"><span class="recap-label">Conseiller dédié</span><span class="recap-value">Merylis</span></div>
+    <div class="recap-row"><span class="recap-label">Statut</span><span class="recap-value" style="color:#059669;">✓ Demande reçue</span></div>
+  </div>
+
+  <div class="steps">
+    <h3>🗓️ La suite de votre demande</h3>
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <h4>Analyse de votre demande</h4>
+        <p>Notre équipe étudie attentivement vos besoins pour vous préparer une offre sur mesure.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <h4>Envoi de votre devis personnalisé</h4>
+        <p>Vous recevrez un devis détaillé et transparent, sans frais cachés.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <h4>Prise de contact par votre conseiller</h4>
+        <p>Merylis vous appellera pour répondre à toutes vos questions et planifier l'intervention.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="contact">
+    <p>En attendant, n'hésitez pas à nous contacter directement</p>
+    <div class="contact-items">
+      <span class="contact-item">📞 06 22 66 53 08</span>
+      <span class="contact-item">📧 contact@globalcleanhome.com</span>
+      <span class="contact-item">🌐 globalcleanhome.com</span>
+    </div>
+  </div>
+
+  <p style="font-size:13px;color:#64748b;line-height:1.6;">Merci de votre confiance. Nous mettons tout en œuvre pour vous offrir un service d'excellence.</p>
+</div>
+<div class="footer">
+  <strong>Global Clean Home</strong>
+  <p>Nettoyage professionnel à Paris & Île-de-France</p>
+  <p>www.globalcleanhome.com | 06 22 66 53 08</p>
+</div>
+</div>
+</body></html>"""
+                    else:
+                        html = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+body{{margin:0;padding:0;background:#f8fafc;font-family:Georgia,'Times New Roman',serif;}}
+.wrap{{max-width:560px;margin:32px auto;}}
+.header{{background:linear-gradient(135deg,#7c3aed,#2563eb);padding:20px 28px;border-radius:12px 12px 0 0;}}
+.header p{{color:white;font-size:16px;font-weight:bold;margin:0;}}
+.body{{background:white;padding:36px 40px;border-radius:0 0 12px 12px;border:1px solid #e2e8f0;border-top:none;}}
+p{{color:#1e293b;line-height:1.9;font-size:15px;margin:0 0 16px;}}
+.sig{{color:#64748b;font-size:14px;border-top:1px solid #f1f5f9;padding-top:16px;margin-top:24px;}}
+strong{{color:#1e293b;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="header"><p>🏠 Global Clean Home</p></div>
 <div class="body">
 <p>{body.replace(chr(10), '</p><p>').replace('<p></p>', '').replace(service, '<strong>' + service + '</strong>')}</p>
 </div>
