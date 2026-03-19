@@ -403,7 +403,7 @@ async def _execute_step(exec_item: dict):
 
   <!-- HEADER -->
   <div style="background:linear-gradient(135deg,#1e3a5f 0%,#1d4ed8 50%,#059669 100%);padding:36px 32px;text-align:center;">
-    <div style="font-size:44px;margin-bottom:10px;">🏠</div>
+    <div style="font-size:44px;margin-bottom:10px;">{"🏢" if "bureau" in service.lower() else "🛋️" if "canap" in service.lower() else "🛏️" if "matelas" in service.lower() else "🪣" if "tapis" in service.lower() else "🏠"}</div>
     <h1 style="color:white;margin:0 0 6px;font-size:24px;font-weight:800;letter-spacing:-0.5px;">Global Clean Home</h1>
     <p style="color:rgba(255,255,255,0.85);margin:0;font-size:14px;">Nettoyage Professionnel à Paris & Île-de-France</p>
   </div>
