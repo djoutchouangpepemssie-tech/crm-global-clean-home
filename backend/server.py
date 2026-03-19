@@ -596,8 +596,24 @@ async def create_lead(input: LeadCreate, request: Request):
             max_score = conditions.get("max_score", 100)
             if min_score <= score <= max_score:
                 await execute_workflow(wf, lead_dict, "new_lead")
-        # Traiter immediatement les executions avec delay=0
-        await process_pending_executions()
+        # Traiter UNIQUEMENT les executions immediates (delay=0)
+        from datetime import timezone as tz2
+        now_str = datetime.now(timezone.utc).isoformat()
+        # Donner 10 secondes de marge pour les executions immediates
+        cutoff = (datetime.now(timezone.utc) + timedelta(seconds=10)).isoformat()
+        pending = await db.workflow_executions.find(
+            {"status": "scheduled", "scheduled_at": {"$lte": cutoff}},
+            {"_id": 0}
+        ).to_list(20)
+        for exec_item in pending:
+            try:
+                await _execute_step(exec_item)
+                await db.workflow_executions.update_one(
+                    {"execution_id": exec_item["execution_id"]},
+                    {"$set": {"status": "completed", "executed_at": datetime.now(timezone.utc).isoformat()}}
+                )
+            except Exception as ex:
+                logger.warning(f"Immediate execution error: {ex}")
     except Exception as e:
         logger.warning(f"Workflow trigger error: {e}")
     
@@ -1612,7 +1628,7 @@ app.include_router(ads_router)
 from ai_engine import ai_router, init_ai_db
 app.include_router(ai_router)
 
-from workflows import workflows_router, init_workflows_db, execute_workflow, process_pending_executions
+from workflows import workflows_router, init_workflows_db, execute_workflow, process_pending_executions, _execute_step
 app.include_router(workflows_router)
 
 from tickets import tickets_router, init_tickets_db
@@ -1672,6 +1688,25 @@ async def startup_db_indexes():
     init_ads_db(db)
     init_ai_db(db)
     init_workflows_db(db)
+    # Desactiver workflow hot pour eviter double envoi
+    try:
+        await db.workflows.update_one(
+            {"workflow_id": "wf_new_lead_hot"},
+            {"$set": {"is_active": False}}
+        )
+        # Mettre a jour les steps du workflow standard avec merylis 5min
+        await db.workflows.update_one(
+            {"workflow_id": "wf_new_lead_standard"},
+            {"$set": {"steps": [
+                {"id": "s1", "type": "send_email", "template": "new_lead_welcome", "delay_hours": 0, "label": "Email confirmation professionnel"},
+                {"id": "s2", "type": "send_email", "template": "merylis_followup", "delay_hours": 0.084, "label": "Email Merylis personnel (5 min)"},
+                {"id": "s3", "type": "send_email", "template": "relance_24h", "delay_hours": 24, "label": "Relance J+1"},
+                {"id": "s4", "type": "send_email", "template": "relance_48h", "delay_hours": 48, "label": "Relance J+2"},
+                {"id": "s5", "type": "create_task", "delay_hours": 72, "label": "Tache: Relance manuelle J+3"}
+            ]}}
+        )
+    except Exception as e:
+        logger.warning(f"Workflow init error: {e}")
     init_tickets_db(db)
     init_notifications_db(db)
     init_chat_db(db)
