@@ -143,7 +143,7 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div style={{position:"fixed",right:"8px",top:"64px",width:"min(380px, calc(100vw - 16px))",zIndex:99999,background:"hsl(224,71%,7%)",border:"1px solid rgba(139,92,246,0.4)",borderRadius:"16px",maxHeight:"80vh",overflow:"hidden",boxShadow:"0 25px 50px rgba(0,0,0,0.8)"}}>
+        <div style={{position:"fixed",right:"8px",top:"60px",width:"360px",maxWidth:"calc(100vw - 16px)",zIndex:999999,background:"#0f1629",border:"2px solid rgba(139,92,246,0.5)",borderRadius:"16px",maxHeight:"75vh",overflow:"hidden",boxShadow:"0 30px 60px rgba(0,0,0,0.9)"}}>
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10" style={{background:"hsl(224,71%,8%)"}}>
             <div className="flex items-center gap-2">
               <Bell className="w-4 h-4 text-violet-400" />
@@ -169,7 +169,7 @@ export function NotificationBell() {
             </div>
           </div>
 
-          <div className="overflow-y-auto" style={{maxHeight:"480px"}}>
+          <div style={{overflowY:"auto",maxHeight:"calc(75vh - 60px)"}}>
             {loading ? (
               <div className="space-y-2 p-3">
                 {[1,2,3].map(i => <div key={i} className="skeleton h-16 rounded-xl" />)}

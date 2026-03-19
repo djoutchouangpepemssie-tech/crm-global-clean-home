@@ -245,15 +245,16 @@ function AppRouter() {
               {/* Main content */}
               <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* Mobile header */}
-                <div className="lg:hidden flex-shrink-0 sticky top-0 z-[100] border-b border-white/5 px-4 py-3 flex items-center justify-between"
-                  style={{background:'hsl(224,71%,5%)'}}>
-                  <h1 className="text-base font-bold text-slate-100" style={{fontFamily:'Manrope,sans-serif'}}>
+                <div className="lg:hidden flex-shrink-0 sticky top-0 border-b border-white/5 px-4 py-3 flex items-center justify-between" style={{background:"hsl(224,71%,5%)",zIndex:9000,position:"sticky"}}>
+                  <h1 className="text-base font-bold text-slate-100" style={{fontFamily:"Manrope,sans-serif"}}>
                     <span className="text-violet-400">Global</span> Clean Home
                   </h1>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => setMobileMenuOpen(true)}
-                      className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 border border-white/10 transition-all"
-                      style={{position:"relative",zIndex:200}}>
+                    <NotificationBell />
+                    <button
+                      onClick={() => setMobileMenuOpen(true)}
+                      className="p-2 rounded-lg text-slate-400 border border-white/10"
+                      style={{background:"rgba(255,255,255,0.05)",zIndex:9001,position:"relative",touchAction:"manipulation"}}>
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                       </svg>
@@ -261,6 +262,10 @@ function AppRouter() {
                   </div>
                 </div>
 
+                {/* Desktop header avec notifications */}
+                <div className="hidden lg:flex items-center justify-end px-6 py-3 border-b border-white/5 flex-shrink-0" style={{background:"hsl(224,71%,5%)",zIndex:9000,position:"relative"}}>
+                  <NotificationBell />
+                </div>
                 <div className="flex-1 overflow-y-auto overflow-x-hidden pb-16 lg:pb-0">
                   <PWAInstallBanner />
         <ErrorBoundary>
