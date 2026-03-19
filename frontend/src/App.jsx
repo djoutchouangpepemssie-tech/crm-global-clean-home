@@ -245,7 +245,7 @@ function AppRouter() {
               {/* Main content */}
               <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* Mobile header */}
-                <div className="lg:hidden flex-shrink-0 sticky top-0 z-30 border-b border-white/5 px-4 py-3 flex items-center justify-between"
+                <div className="lg:hidden flex-shrink-0 sticky top-0 z-[100] border-b border-white/5 px-4 py-3 flex items-center justify-between"
                   style={{background:'hsl(224,71%,5%)'}}>
                   <h1 className="text-base font-bold text-slate-100" style={{fontFamily:'Manrope,sans-serif'}}>
                     <span className="text-violet-400">Global</span> Clean Home

@@ -191,7 +191,14 @@ const PortalDashboard = ({ user, onLogout }) => {
     }
   };
 
-  // Auto-refresh messages toutes les 10 secondes
+  // Charger conversation quand onglet messages actif
+  useEffect(() => {
+    if (activeTab === 'messages') {
+      fetchConversation();
+    }
+  }, [activeTab]);
+
+  // Auto-refresh messages toutes les 10 secondes quand onglet actif
   useEffect(() => {
     if (activeTab !== 'messages') return;
     const interval = setInterval(fetchConversation, 10000);

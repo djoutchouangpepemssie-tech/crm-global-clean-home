@@ -143,8 +143,8 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="fixed right-4 top-16 w-96 z-[9999] section-card overflow-hidden shadow-2xl">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+        <div className="fixed right-2 left-2 sm:left-auto sm:right-4 top-16 sm:w-96 z-[9999] overflow-hidden shadow-2xl" style={{background:"hsl(224,71%,6%)",border:"1px solid rgba(139,92,246,0.3)",borderRadius:"16px",maxHeight:"80vh"}}>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10" style={{background:"hsl(224,71%,8%)"}}>
             <div className="flex items-center gap-2">
               <Bell className="w-4 h-4 text-violet-400" />
               <span className="font-bold text-slate-100 text-sm">Notifications</span>
@@ -181,7 +181,7 @@ export function NotificationBell() {
                   return (
                     <div key={n.notification_id}
                       onClick={() => handleClick(n)}
-                      className={"flex items-start gap-3 px-4 py-3 cursor-pointer transition-all border-b border-white/3 hover:bg-white/5 " + (!n.read ? "bg-violet-500/5" : "")}>
+                      className={"flex items-start gap-3 px-4 py-3 cursor-pointer transition-all border-b border-white/5 " + (!n.read ? "bg-violet-500/8 border-l-2 border-l-violet-500" : "hover:bg-white/5")}>
                       <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0 mt-0.5"
                         style={{background:cfg.bg, border:"1px solid "+cfg.color+"30"}}>
                         {cfg.icon}

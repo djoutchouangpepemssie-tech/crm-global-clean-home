@@ -106,6 +106,18 @@ async def delete_notification(notification_id: str, request: Request):
     await _db.notifications.delete_one({"notification_id": notification_id})
     return {"success": True}
 
+@notifications_router.post("/test")
+async def create_test_notification(request: Request):
+    from server import require_auth
+    await require_auth(request)
+    await create_notification(
+        type="new_lead",
+        title="Test notification",
+        message="Ceci est une notification de test",
+        action_url="/dashboard"
+    )
+    return {"success": True}
+
 @notifications_router.get("/stats")
 async def get_notification_stats(request: Request):
     from server import require_auth
