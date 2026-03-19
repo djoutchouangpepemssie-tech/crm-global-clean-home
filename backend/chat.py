@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import uuid
 import logging
 
@@ -50,6 +50,17 @@ async def get_portal_conversation(request: Request):
             "unread_crm": 0,
         }
         await _db.conversations.insert_one(conv)
+    
+    # Purger messages > 30 jours
+    if conv.get("messages"):
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+        fresh_msgs = [m for m in conv["messages"] if m.get("created_at", "") >= cutoff]
+        if len(fresh_msgs) != len(conv["messages"]):
+            await _db.conversations.update_one(
+                {"lead_id": lead_id},
+                {"$set": {"messages": fresh_msgs}}
+            )
+            conv["messages"] = fresh_msgs
     
     return conv
 

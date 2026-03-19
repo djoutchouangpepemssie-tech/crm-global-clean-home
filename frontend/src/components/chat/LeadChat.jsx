@@ -24,6 +24,12 @@ export default function LeadChat({ leadId, leadName }) {
 
   useEffect(() => { load(); }, [leadId]);
 
+  // Auto-refresh toutes les 10 secondes
+  useEffect(() => {
+    const interval = setInterval(load, 10000);
+    return () => clearInterval(interval);
+  }, [leadId]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);

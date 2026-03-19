@@ -179,9 +179,24 @@ const PortalDashboard = ({ user, onLogout }) => {
   const fetchConversation = async () => {
     try {
       const res = await portalAxios.get(CHAT_API + '/portal/conversation');
-      setMessages(res.data.messages || []);
-    } catch(e) {}
+      const msgs = (res.data.messages || []).filter(m => {
+        // Supprimer messages de plus de 30 jours
+        const date = new Date(m.created_at);
+        const diff = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24);
+        return diff <= 30;
+      });
+      setMessages(msgs);
+    } catch(e) {
+      console.error('Chat fetch error:', e);
+    }
   };
+
+  // Auto-refresh messages toutes les 10 secondes
+  useEffect(() => {
+    if (activeTab !== 'messages') return;
+    const interval = setInterval(fetchConversation, 10000);
+    return () => clearInterval(interval);
+  }, [activeTab]);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
