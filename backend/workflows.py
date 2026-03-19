@@ -249,7 +249,7 @@ PREDEFINED_WORKFLOWS = [
         "name": "🔥 Nouveau lead chaud — Réponse immédiate",
         "description": "Pour les leads avec score > 70. Réponse ultra-rapide pour maximiser la conversion.",
         "trigger": {"type": "new_lead", "conditions": {"min_score": 70}},
-        "is_active": True,
+        "is_active": False,
         "steps": [
             {"id": "s1", "type": "send_email", "template": "new_lead_welcome", "delay_hours": 0, "label": "Email de bienvenue immédiat"},
             {"id": "s2", "type": "create_task", "delay_hours": 1, "label": "Tâche: Appeler le prospect", "task_title": "📞 Appeler {name} — lead chaud !"},
@@ -264,7 +264,7 @@ PREDEFINED_WORKFLOWS = [
         "is_active": True,
         "steps": [
             {"id": "s1", "type": "send_email", "template": "new_lead_welcome", "delay_hours": 0, "label": "Email confirmation professionnel"},
-            {"id": "s2", "type": "send_email", "template": "merylis_followup", "delay_hours": 0.083, "label": "Email Merylis personnel (5 min)"},
+            {"id": "s2", "type": "send_email", "template": "merylis_followup", "delay_hours": 0.084, "label": "Email Merylis personnel (5 min)"},
             {"id": "s3", "type": "send_email", "template": "relance_24h", "delay_hours": 24, "label": "Relance J+1"},
             {"id": "s4", "type": "send_email", "template": "relance_48h", "delay_hours": 48, "label": "Relance J+2"},
             {"id": "s5", "type": "create_task", "delay_hours": 72, "label": "Tâche: Relance manuelle J+3"},
@@ -467,22 +467,20 @@ async def _execute_step(exec_item: dict):
     </div>
 
     <!-- CONTACT -->
-    <div style="background:linear-gradient(135deg,#1e3a5f,#1d4ed8);border-radius:12px;padding:24px 28px;text-align:center;margin-bottom:28px;">
-      <p style="color:rgba(255,255,255,0.9);font-size:14px;margin:0 0 16px;">En attendant, contactez-nous directement</p>
-      <table style="width:100%;border-collapse:collapse;">
-        <tr>
-          <td style="text-align:center;padding:4px;">
-            <a href="tel:+33622665308" style="color:white;text-decoration:none;font-weight:700;font-size:14px;">📞 06 22 66 53 08</a>
-          </td>
-          <td style="text-align:center;padding:4px;">
-            <a href="mailto:contact@globalcleanhome.com" style="color:white;text-decoration:none;font-weight:700;font-size:14px;">📧 contact@globalcleanhome.com</a>
-          </td>
-        </tr>
-      </table>
-      <div style="margin-top:16px;display:flex;justify-content:center;gap:12px;flex-wrap:wrap;">
-        <a href="https://wa.me/33622665308" style="display:inline-block;background:#25D366;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px;">💬 WhatsApp</a>
-        <a href="https://www.globalcleanhome.com" style="display:inline-block;background:rgba(255,255,255,0.15);color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px;">🌐 Notre site</a>
-      </div>
+    <div style="background:linear-gradient(135deg,#0f2a5e,#1d4ed8);border-radius:12px;padding:28px;text-align:center;margin-bottom:28px;">
+      <p style="color:rgba(255,255,255,0.95);font-size:15px;font-weight:600;margin:0 0 20px;">En attendant, contactez-nous directement</p>
+      <p style="margin:0 0 10px;">
+        <a href="tel:+33622665308" style="color:white;text-decoration:none;font-weight:800;font-size:18px;display:block;padding:10px 0;">📞 06 22 66 53 08</a>
+      </p>
+      <p style="margin:0 0 20px;">
+        <a href="mailto:contact@globalcleanhome.com" style="color:rgba(255,255,255,0.85);text-decoration:none;font-size:14px;display:block;padding:6px 0;">📧 contact@globalcleanhome.com</a>
+      </p>
+      <p style="margin:0 0 10px;">
+        <a href="https://wa.me/33622665308" style="display:inline-block;background:#25D366;color:white;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;margin:4px;">💬 WhatsApp</a>
+      </p>
+      <p style="margin:0;">
+        <a href="https://www.globalcleanhome.com" style="display:inline-block;background:rgba(255,255,255,0.2);color:white;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;margin:4px;">🌐 Visiter notre site</a>
+      </p>
     </div>
 
     <p style="color:#94a3b8;font-size:13px;text-align:center;line-height:1.6;margin:0;">
@@ -571,12 +569,18 @@ async def get_workflows(request: Request):
     
     db_workflows = await _db.workflows.find({}, {"_id": 0}).to_list(100)
     
-    if not db_workflows:
-        for wf in PREDEFINED_WORKFLOWS:
-            existing = await _db.workflows.find_one({"workflow_id": wf["workflow_id"]})
-            if not existing:
-                await _db.workflows.insert_one(wf)
-        db_workflows = await _db.workflows.find({}, {"_id": 0}).to_list(100)
+    # Sync workflows prédéfinis
+    for wf in PREDEFINED_WORKFLOWS:
+        existing = await _db.workflows.find_one({"workflow_id": wf["workflow_id"]})
+        if not existing:
+            await _db.workflows.insert_one(wf)
+        else:
+            # Mettre à jour les steps mais garder is_active de l'utilisateur
+            await _db.workflows.update_one(
+                {"workflow_id": wf["workflow_id"]},
+                {"$set": {"steps": wf["steps"], "name": wf["name"], "description": wf["description"]}}
+            )
+    db_workflows = await _db.workflows.find({}, {"_id": 0}).to_list(100)
     
     return db_workflows
 
