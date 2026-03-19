@@ -389,98 +389,114 @@ async def _execute_step(exec_item: dict):
                     is_merylis = template_key == "merylis_followup"
                     
                     if is_confirmation:
-                        html = f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+                        dark_css = """<meta name="color-scheme" content="light dark">
 <style>
-*{{margin:0;padding:0;box-sizing:border-box;}}
-body{{background:#f1f5f9;font-family:Arial,sans-serif;}}
-.wrap{{max-width:600px;margin:0 auto;padding:20px;}}
-.header{{background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 50%,#059669 100%);padding:32px 28px;border-radius:12px 12px 0 0;text-align:center;}}
-.header h1{{color:white;font-size:22px;font-weight:bold;margin-bottom:4px;}}
-.header p{{color:rgba(255,255,255,0.85);font-size:13px;}}
-.body{{background:white;padding:32px 28px;}}
-.greeting{{font-size:16px;color:#1e293b;margin-bottom:16px;}}
-.intro{{font-size:14px;color:#475569;line-height:1.7;margin-bottom:24px;}}
-.recap{{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px;margin-bottom:24px;}}
-.recap h3{{font-size:13px;font-weight:bold;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px;}}
-.recap-row{{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;}}
-.recap-row:last-child{{border-bottom:none;}}
-.recap-label{{font-size:13px;color:#64748b;}}
-.recap-value{{font-size:13px;font-weight:bold;color:#1e293b;}}
-.steps{{margin-bottom:24px;}}
-.steps h3{{font-size:13px;font-weight:bold;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:16px;}}
-.step{{display:flex;align-items:flex-start;gap:14px;margin-bottom:16px;}}
-.step-num{{width:32px;height:32px;background:linear-gradient(135deg,#2563eb,#059669);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:bold;flex-shrink:0;}}
-.step-content h4{{font-size:14px;font-weight:bold;color:#1e293b;margin-bottom:3px;}}
-.step-content p{{font-size:13px;color:#64748b;line-height:1.5;}}
-.contact{{background:linear-gradient(135deg,#1e3a5f,#2563eb);border-radius:10px;padding:20px;text-align:center;margin-bottom:24px;}}
-.contact p{{color:rgba(255,255,255,0.85);font-size:13px;margin-bottom:12px;}}
-.contact-items{{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;}}
-.contact-item{{color:white;font-size:13px;font-weight:bold;}}
-.footer{{background:#f8fafc;padding:20px 28px;border-radius:0 0 12px 12px;text-align:center;border-top:1px solid #e2e8f0;}}
-.footer p{{font-size:12px;color:#94a3b8;}}
-.footer strong{{color:#64748b;}}
-</style>
-</head>
-<body>
-<div class="wrap">
-<div class="header">
-  <h1>🏠 Global Clean Home</h1>
-  <p>Nettoyage Professionnel à Paris & Île-de-France</p>
-</div>
-<div class="body">
-  <p class="greeting">Bonjour <strong>{prenom}</strong>,</p>
-  <p class="intro">Nous avons bien reçu votre demande de devis pour <strong>{service}</strong> et nous vous en remercions chaleureusement.<br><br>Notre équipe prend votre demande très au sérieux et s'engage à vous fournir un devis personnalisé dans les meilleurs délais.</p>
-  
-  <div class="recap">
-    <h3>📋 Récapitulatif de votre demande</h3>
-    <div class="recap-row"><span class="recap-label">Service demandé</span><span class="recap-value">{service}</span></div>
-    <div class="recap-row"><span class="recap-label">Délai de réponse</span><span class="recap-value">Sous 24h ouvrées</span></div>
-    <div class="recap-row"><span class="recap-label">Conseiller dédié</span><span class="recap-value">Merylis</span></div>
-    <div class="recap-row"><span class="recap-label">Statut</span><span class="recap-value" style="color:#059669;">✓ Demande reçue</span></div>
+@media (prefers-color-scheme: dark) {
+  body { background-color: #1e1e2e !important; }
+  .eb { background-color: #2d2d3f !important; color: #e2e8f0 !important; }
+}
+</style>"""
+                        html = f"""<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">{dark_css}</head>
+<body style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,sans-serif;">
+<div style="max-width:620px;margin:24px auto;background:white;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
+
+  <!-- HEADER -->
+  <div style="background:linear-gradient(135deg,#1e3a5f 0%,#1d4ed8 50%,#059669 100%);padding:36px 32px;text-align:center;">
+    <div style="font-size:44px;margin-bottom:10px;">🏠</div>
+    <h1 style="color:white;margin:0 0 6px;font-size:24px;font-weight:800;letter-spacing:-0.5px;">Global Clean Home</h1>
+    <p style="color:rgba(255,255,255,0.85);margin:0;font-size:14px;">Nettoyage Professionnel à Paris & Île-de-France</p>
   </div>
 
-  <div class="steps">
-    <h3>🗓️ La suite de votre demande</h3>
-    <div class="step">
-      <div class="step-num">1</div>
-      <div class="step-content">
-        <h4>Analyse de votre demande</h4>
-        <p>Notre équipe étudie attentivement vos besoins pour vous préparer une offre sur mesure.</p>
+  <!-- BODY -->
+  <div style="padding:36px 32px;">
+    <h2 style="color:#1e293b;margin:0 0 12px;font-size:20px;">Bonjour <span style="color:#1d4ed8;">{prenom}</span>,</h2>
+    <p style="color:#475569;line-height:1.8;margin:0 0 28px;font-size:15px;">
+      Nous avons bien reçu votre demande de devis pour <strong style="color:#1e293b;">{service}</strong> et nous vous en remercions chaleureusement.<br><br>
+      Notre équipe prend votre demande très au sérieux et s'engage à vous fournir un devis personnalisé dans les meilleurs délais.
+    </p>
+
+    <!-- RECAP -->
+    <div style="background:#f8fafc;border-radius:12px;padding:24px;margin:0 0 28px;border:1px solid #e2e8f0;">
+      <h3 style="color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin:0 0 16px;">📋 Récapitulatif de votre demande</h3>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr style="border-bottom:1px solid #f1f5f9;">
+          <td style="padding:10px 0;color:#64748b;font-size:14px;">Service demandé</td>
+          <td style="padding:10px 0;color:#1e293b;font-weight:700;font-size:14px;text-align:right;">{service}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #f1f5f9;">
+          <td style="padding:10px 0;color:#64748b;font-size:14px;">Délai de réponse</td>
+          <td style="padding:10px 0;color:#1e293b;font-weight:700;font-size:14px;text-align:right;">Sous 24h ouvrées</td>
+        </tr>
+        <tr style="border-bottom:1px solid #f1f5f9;">
+          <td style="padding:10px 0;color:#64748b;font-size:14px;">Conseiller dédié</td>
+          <td style="padding:10px 0;color:#1e293b;font-weight:700;font-size:14px;text-align:right;">Merylis</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 0;color:#64748b;font-size:14px;">Statut</td>
+          <td style="padding:10px 0;font-size:14px;text-align:right;"><span style="background:#dcfce7;color:#166534;padding:4px 12px;border-radius:20px;font-weight:700;font-size:12px;">✓ Demande reçue</span></td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- ETAPES -->
+    <h3 style="color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin:0 0 20px;">🗓️ La suite de votre demande</h3>
+
+    <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:20px;">
+      <div style="width:36px;height:36px;min-width:36px;background:linear-gradient(135deg,#1d4ed8,#059669);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:15px;font-weight:800;text-align:center;line-height:36px;">1</div>
+      <div style="padding-top:4px;">
+        <p style="color:#1e293b;font-weight:700;font-size:15px;margin:0 0 4px;">Analyse de votre demande</p>
+        <p style="color:#64748b;font-size:13px;margin:0;line-height:1.6;">Notre équipe étudie attentivement vos besoins pour vous préparer une offre sur mesure.</p>
       </div>
     </div>
-    <div class="step">
-      <div class="step-num">2</div>
-      <div class="step-content">
-        <h4>Envoi de votre devis personnalisé</h4>
-        <p>Vous recevrez un devis détaillé et transparent, sans frais cachés.</p>
+
+    <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:20px;">
+      <div style="width:36px;height:36px;min-width:36px;background:linear-gradient(135deg,#1d4ed8,#059669);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:15px;font-weight:800;text-align:center;line-height:36px;">2</div>
+      <div style="padding-top:4px;">
+        <p style="color:#1e293b;font-weight:700;font-size:15px;margin:0 0 4px;">Envoi de votre devis personnalisé</p>
+        <p style="color:#64748b;font-size:13px;margin:0;line-height:1.6;">Vous recevrez un devis détaillé et transparent, sans frais cachés.</p>
       </div>
     </div>
-    <div class="step">
-      <div class="step-num">3</div>
-      <div class="step-content">
-        <h4>Prise de contact par votre conseiller</h4>
-        <p>Merylis vous appellera pour répondre à toutes vos questions et planifier l'intervention.</p>
+
+    <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:28px;">
+      <div style="width:36px;height:36px;min-width:36px;background:linear-gradient(135deg,#1d4ed8,#059669);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:15px;font-weight:800;text-align:center;line-height:36px;">3</div>
+      <div style="padding-top:4px;">
+        <p style="color:#1e293b;font-weight:700;font-size:15px;margin:0 0 4px;">Prise de contact par votre conseiller</p>
+        <p style="color:#64748b;font-size:13px;margin:0;line-height:1.6;">Merylis vous appellera pour répondre à toutes vos questions et planifier l'intervention.</p>
       </div>
     </div>
+
+    <!-- CONTACT -->
+    <div style="background:linear-gradient(135deg,#1e3a5f,#1d4ed8);border-radius:12px;padding:24px 28px;text-align:center;margin-bottom:28px;">
+      <p style="color:rgba(255,255,255,0.9);font-size:14px;margin:0 0 16px;">En attendant, contactez-nous directement</p>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="text-align:center;padding:4px;">
+            <a href="tel:+33622665308" style="color:white;text-decoration:none;font-weight:700;font-size:14px;">📞 06 22 66 53 08</a>
+          </td>
+          <td style="text-align:center;padding:4px;">
+            <a href="mailto:contact@globalcleanhome.com" style="color:white;text-decoration:none;font-weight:700;font-size:14px;">📧 contact@globalcleanhome.com</a>
+          </td>
+        </tr>
+      </table>
+      <div style="margin-top:16px;display:flex;justify-content:center;gap:12px;flex-wrap:wrap;">
+        <a href="https://wa.me/33622665308" style="display:inline-block;background:#25D366;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px;">💬 WhatsApp</a>
+        <a href="https://www.globalcleanhome.com" style="display:inline-block;background:rgba(255,255,255,0.15);color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px;">🌐 Notre site</a>
+      </div>
+    </div>
+
+    <p style="color:#94a3b8;font-size:13px;text-align:center;line-height:1.6;margin:0;">
+      Merci de votre confiance. Nous mettons tout en œuvre pour vous offrir un service d'excellence.
+    </p>
   </div>
 
-  <div class="contact">
-    <p>En attendant, n'hésitez pas à nous contacter directement</p>
-    <div class="contact-items">
-      <span class="contact-item">📞 06 22 66 53 08</span>
-      <span class="contact-item">📧 contact@globalcleanhome.com</span>
-      <span class="contact-item">🌐 globalcleanhome.com</span>
-    </div>
+  <!-- FOOTER -->
+  <div style="background:#1e293b;padding:20px 32px;text-align:center;">
+    <p style="color:white;font-weight:700;margin:0 0 4px;font-size:15px;">Global Clean Home</p>
+    <p style="color:rgba(255,255,255,0.6);font-size:12px;margin:0;">Nettoyage professionnel à Paris & Île-de-France</p>
+    <p style="color:rgba(255,255,255,0.5);font-size:11px;margin:6px 0 0;">www.globalcleanhome.com | 06 22 66 53 08</p>
   </div>
 
-  <p style="font-size:13px;color:#64748b;line-height:1.6;">Merci de votre confiance. Nous mettons tout en œuvre pour vous offrir un service d'excellence.</p>
-</div>
-<div class="footer">
-  <strong>Global Clean Home</strong>
-  <p>Nettoyage professionnel à Paris & Île-de-France</p>
-  <p>www.globalcleanhome.com | 06 22 66 53 08</p>
-</div>
 </div>
 </body></html>"""
                     else:
