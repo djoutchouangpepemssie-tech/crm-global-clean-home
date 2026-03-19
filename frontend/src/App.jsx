@@ -251,9 +251,9 @@ function AppRouter() {
                     <span className="text-violet-400">Global</span> Clean Home
                   </h1>
                   <div className="flex items-center gap-2">
-                    <NotificationBell />
                     <button onClick={() => setMobileMenuOpen(true)}
-                      className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 border border-white/10 transition-all">
+                      className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 border border-white/10 transition-all"
+                      style={{position:"relative",zIndex:200}}>
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                       </svg>

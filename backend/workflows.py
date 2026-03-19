@@ -331,6 +331,8 @@ async def _execute_step(exec_item: dict):
             try:
                 from gmail_service import _get_any_active_token, _send_gmail_message
                 token, uid = await _get_any_active_token()
+                if not token:
+                    logger.warning(f"No Gmail token available for workflow email to {lead_email}")
                 if token:
                     html = f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8">

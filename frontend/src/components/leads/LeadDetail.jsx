@@ -255,7 +255,7 @@ const LeadDetail = () => {
 
           {/* Tabs */}
           <div className="section-card">
-            <div className="flex border-b border-white/5">
+            <div className="flex border-b border-white/5 overflow-x-auto scrollbar-none" style={{WebkitOverflowScrolling:"touch"}}>
               {[
                 { key: 'interactions', label: 'Interactions', count: interactions.length },
                 { key: 'quotes', label: 'Devis', count: quotes.length },
@@ -266,11 +266,7 @@ const LeadDetail = () => {
                 { key: 'chat', label: 'Chat client', count: null },
               ].map(tab => (
                 <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all border-b-2 -mb-px ${
-                    activeTab === tab.key
-                      ? 'text-violet-300 border-violet-500'
-                      : 'text-slate-500 border-transparent hover:text-slate-300'
-                  }`}>
+                  className={"flex items-center gap-1 px-3 py-3 text-xs font-medium transition-all border-b-2 -mb-px whitespace-nowrap flex-shrink-0 " + (activeTab === tab.key ? "text-violet-300 border-violet-500" : "text-slate-500 border-transparent hover:text-slate-300")}>
                   {tab.label}
                   <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                     activeTab === tab.key ? 'bg-violet-500/20 text-violet-400' : 'bg-white/5 text-slate-500'

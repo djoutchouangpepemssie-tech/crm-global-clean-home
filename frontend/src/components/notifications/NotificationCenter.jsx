@@ -143,7 +143,7 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="fixed right-2 left-2 sm:left-auto sm:right-4 top-16 sm:w-96 z-[9999] overflow-hidden shadow-2xl" style={{background:"hsl(224,71%,6%)",border:"1px solid rgba(139,92,246,0.3)",borderRadius:"16px",maxHeight:"80vh"}}>
+        <div style={{position:"fixed",right:"8px",top:"64px",width:"min(380px, calc(100vw - 16px))",zIndex:99999,background:"hsl(224,71%,7%)",border:"1px solid rgba(139,92,246,0.4)",borderRadius:"16px",maxHeight:"80vh",overflow:"hidden",boxShadow:"0 25px 50px rgba(0,0,0,0.8)"}}>
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10" style={{background:"hsl(224,71%,8%)"}}>
             <div className="flex items-center gap-2">
               <Bell className="w-4 h-4 text-violet-400" />

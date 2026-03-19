@@ -1748,4 +1748,15 @@ async def ping():
 @app.get("/cors-check")
 async def cors_check():
     return {"cors": "ok", "origins": "configured"}
+
+@app.get("/api/gmail-status")
+async def gmail_status():
+    """Check Gmail connection status."""
+    try:
+        account = await db.email_accounts.find_one({"is_active": True}, {"_id": 0, "email": 1, "is_active": 1, "updated_at": 1})
+        if account:
+            return {"connected": True, "email": account.get("email"), "updated_at": account.get("updated_at")}
+        return {"connected": False, "message": "Aucun compte Gmail connecte"}
+    except Exception as e:
+        return {"connected": False, "error": str(e)}
 # CORS fix Wed Mar 18 13:48:54 UTC 2026
