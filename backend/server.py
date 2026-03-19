@@ -596,6 +596,8 @@ async def create_lead(input: LeadCreate, request: Request):
             max_score = conditions.get("max_score", 100)
             if min_score <= score <= max_score:
                 await execute_workflow(wf, lead_dict, "new_lead")
+        # Traiter immediatement les executions avec delay=0
+        await process_pending_executions()
     except Exception as e:
         logger.warning(f"Workflow trigger error: {e}")
     
