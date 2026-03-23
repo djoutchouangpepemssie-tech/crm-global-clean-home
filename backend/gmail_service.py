@@ -355,88 +355,211 @@ async def _send_gmail_message(access_token: str, to: str, subject: str, html: st
 # =============================================
 
 async def send_quote_email(user_id: str, lead: dict, quote: dict) -> bool:
-    """Send a quote email to a lead with full details."""
+    """Send a premium quote email to a lead."""
     access_token = await _get_valid_access_token(user_id)
     if not access_token:
         logger.warning("Gmail not connected, cannot send quote email")
         return False
 
     amount_ht = quote.get("amount", 0)
-    amount_ttc = amount_ht * 1.2
     prenom = lead.get("name", "").split()[0] if lead.get("name") else "Client"
+    nom_complet = lead.get("name", "Client")
+    service_type = quote.get("service_type", lead.get("service_type", "Nettoyage"))
+    quote_id = quote.get("quote_id", "—")
+    adresse = lead.get("address", lead.get("adresse", "—"))
+    telephone = lead.get("phone", lead.get("telephone", "—"))
+    date_devis = datetime.now().strftime("%d/%m/%Y")
+    validite = "30 jours"
 
-    # Formater les details du devis en HTML
+    # Emoji service
+    service_icons = {"Ménage":"🏠","menage":"🏠","Canapé":"🛋️","canape":"🛋️","Matelas":"🛏️","matelas":"🛏️","Tapis":"🪣","tapis":"🪣","Bureaux":"🏢","bureaux":"🏢"}
+    svc_icon = next((v for k,v in service_icons.items() if k.lower() in service_type.lower()), "🧹")
+
+    # Détails prestations
     details_text = quote.get("details", "")
-    details_html = ""
+    details_rows = ""
     if details_text:
-        lines = details_text.split("\n")
-        details_html = '<div style="background:#f8fafc;border-radius:8px;padding:20px;margin:16px 0;border:1px solid #e2e8f0;">'
-        details_html += '<h3 style="color:#1e293b;margin:0 0 12px;font-size:15px;">Detail des prestations</h3>'
-        for line in lines:
-            if not line.strip():
-                details_html += "<br>"
-            elif "===" in line:
-                label = line.replace("=", "").strip()
-                details_html += f'<p style="font-weight:700;color:#7C3AED;margin:12px 0 4px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">{label}</p>'
-            elif line.startswith("  -") or line.startswith("   -"):
-                details_html += f'<p style="color:#475569;margin:2px 0 2px 16px;font-size:13px;">{line.strip()}</p>'
-            elif line.startswith("CLIENT") or line.startswith("Email") or line.startswith("Adresse") or line.startswith("Telephone"):
-                details_html += f'<p style="color:#1e293b;font-weight:600;margin:4px 0;font-size:13px;">{line}</p>'
+        for line in details_text.split("\n"):
+            line = line.strip()
+            if not line: continue
+            if "===" in line:
+                label = line.replace("=","").strip()
+                details_rows += f'<tr><td colspan="2" style="padding:12px 16px 6px;font-weight:700;color:#7c3aed;font-size:13px;border-bottom:2px solid #ede9fe;">{label}</td></tr>'
+            elif ":" in line:
+                parts = line.split(":",1)
+                details_rows += f'<tr><td style="padding:8px 16px;color:#64748b;font-size:13px;width:50%;">{parts[0].strip()}</td><td style="padding:8px 16px;color:#1e293b;font-weight:600;font-size:13px;">{parts[1].strip()}</td></tr>'
             else:
-                details_html += f'<p style="color:#475569;margin:2px 0;font-size:13px;">{line}</p>'
-        details_html += "</div>"
+                details_rows += f'<tr><td colspan="2" style="padding:6px 16px;color:#64748b;font-size:13px;">• {line}</td></tr>'
 
-    dark_css = """<meta name="color-scheme" content="light dark">
-<style>
-@media (prefers-color-scheme: dark) {
-  body { background-color: #1e1e2e !important; }
-  .eb { background-color: #2d2d3f !important; color: #e2e8f0 !important; }
-  .et { color: #cbd5e1 !important; }
-  .eh { color: #f1f5f9 !important; }
-  .ec { background-color: #3d3d50 !important; border-color: #4d4d60 !important; }
-  .pbox { background: linear-gradient(135deg, #2d1b6b, #1e3a7a) !important; }
-  .gbox { background-color: #052e16 !important; }
-  .hbox { background-color: #1e3a5f !important; border-left-color: #3b82f6 !important; }
-  .ef { background-color: #111827 !important; }
-  .step-n { background: #4c1d95 !important; }
-  .cbox { background-color: #1e293b !important; }
-}
-</style>"""
+    steps_html = ''.join([
+        f'<div style="flex:1;text-align:center;"><div style="width:36px;height:36px;background:linear-gradient(135deg,#f97316,#ea580c);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin:0 auto 8px;color:white;font-weight:900;font-size:14px;">' + str(n) + '</div><p style="color:#64748b;font-size:11px;margin:0;font-weight:600;">' + s + '</p></div>'
+        for n, s in [("1","Vous acceptez"),("2","On planifie"),("3","On intervient"),("4","Satisfait")]
+    ])
     html = f"""<!DOCTYPE html>
-<html lang="fr"><head><meta charset="UTF-8">{dark_css}</head>
-<body style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,sans-serif;">
-<div style="max-width:620px;margin:32px auto;background:white;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
-<div style="background:linear-gradient(135deg,#7C3AED,#2563eb);padding:36px 32px;text-align:center;">
-<div style="font-size:40px;margin-bottom:8px;">📄</div>
-<h1 style="color:white;margin:0;font-size:22px;">Votre Devis Personnalise</h1>
-<p style="color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:14px;">Global Clean Home - Nettoyage Professionnel</p>
-</div>
-<div style="padding:36px 32px;">
-<h2 style="color:#1e293b;margin:0 0 16px;">Bonjour {prenom},</h2>
-<p style="color:#475569;line-height:1.7;">Suite a votre demande, nous avons le plaisir de vous adresser votre devis personnalise. Notre equipe a analyse vos besoins avec soin pour vous proposer une prestation adaptee au meilleur rapport qualite-prix.</p>
-<div style="background:linear-gradient(135deg,#f5f3ff,#eff6ff);border-radius:12px;padding:24px;margin:20px 0;text-align:center;border:1px solid #ddd6fe;;background:linear-gradient(135deg,#4c1d95,#1e3a8a);">
-<p style="color:rgba(255,255,255,0.85);font-size:13px;font-weight:600;margin:0 0 8px;text-transform:uppercase;letter-spacing:1px;">MONTANT DU DEVIS</p>
-<p style="color:#ffffff;font-size:38px;font-weight:800;margin:0;">{amount_ht:,.0f} EUR</p>
-<p style="color:rgba(255,255,255,0.7);font-size:12px;margin:6px 0 0;">Micro-entreprise - TVA non applicable (art. 293B du CGI)</p>
-</div>
-{details_html}
-<div style="background:#f0fdf4;border-radius:8px;padding:16px 20px;margin:20px 0;border:1px solid #bbf7d0;">
-<p style="color:#166534;font-weight:700;margin:0 0 8px;">Nos engagements</p>
-<p style="color:#15803d;margin:3px 0;font-size:13px;">Produits professionnels et materiel fourni</p>
-<p style="color:#15803d;margin:3px 0;font-size:13px;">Personnel forme et experimente</p>
-<p style="color:#15803d;margin:3px 0;font-size:13px;">Resultats garantis ou intervention reprise</p>
-<p style="color:#15803d;margin:3px 0;font-size:13px;">Devis valable 30 jours</p>
-</div>
-<div style="text-align:center;margin:28px 0;">
-<a href="tel:+33622665308" style="display:inline-block;background:linear-gradient(135deg,#7C3AED,#2563eb);color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;margin:0 6px;">Nous appeler</a>
-<a href="https://wa.me/33622665308" style="display:inline-block;background:#25D366;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;margin:0 6px;">WhatsApp</a>
-</div>
-</div>
-<div style="background:#1e293b;padding:20px 32px;text-align:center;">
-<p style="color:white;font-weight:700;margin:0 0 4px;">Global Clean Home</p>
-<p style="color:rgba(255,255,255,0.6);font-size:12px;margin:0;">www.globalcleanhome.com | 06 22 66 53 08 | contact@globalcleanhome.com</p>
-</div>
-</div></body></html>"""
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Votre Devis — Global Clean Home</title>
+</head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+
+<!-- Wrapper -->
+<div style="max-width:640px;margin:40px auto;padding:0 16px 40px;">
+
+  <!-- HEADER LOGO -->
+  <div style="text-align:center;padding:32px 0 24px;">
+    <div style="display:inline-flex;align-items:center;gap:12px;">
+      <div style="width:48px;height:48px;background:linear-gradient(135deg,#f97316,#ea580c);border-radius:14px;display:inline-flex;align-items:center;justify-content:center;font-size:24px;">🏠</div>
+      <div style="text-align:left;">
+        <p style="margin:0;font-size:20px;font-weight:900;color:#0f172a;letter-spacing:-0.5px;">Global Clean Home</p>
+        <p style="margin:0;font-size:12px;color:#64748b;font-weight:500;">Nettoyage Professionnel Paris & IDF</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- CARD PRINCIPALE -->
+  <div style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
+
+    <!-- BANNIÈRE HERO -->
+    <div style="background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 50%,#1e3a5f 100%);padding:40px 36px;text-align:center;position:relative;">
+      <div style="font-size:52px;margin-bottom:12px;">{svc_icon}</div>
+      <div style="display:inline-block;background:rgba(249,115,22,0.2);border:1px solid rgba(249,115,22,0.4);color:#fb923c;font-size:11px;font-weight:700;padding:4px 14px;border-radius:100px;letter-spacing:1px;text-transform:uppercase;margin-bottom:16px;">DEVIS PERSONNALISÉ N° {quote_id}</div>
+      <h1 style="color:white;margin:0 0 8px;font-size:26px;font-weight:900;letter-spacing:-0.5px;">Votre devis gratuit</h1>
+      <p style="color:rgba(255,255,255,0.6);margin:0;font-size:14px;">Établi le {date_devis} · Valable {validite}</p>
+    </div>
+
+    <!-- CORPS -->
+    <div style="padding:36px;">
+
+      <!-- SALUTATION -->
+      <p style="color:#1e293b;font-size:17px;font-weight:700;margin:0 0 8px;">Bonjour {prenom} 👋</p>
+      <p style="color:#64748b;font-size:14px;line-height:1.8;margin:0 0 28px;">
+        Suite à votre demande de devis pour un service de <strong style="color:#f97316;">{service_type}</strong>, 
+        nous avons le plaisir de vous adresser notre proposition personnalisée. 
+        Notre équipe a étudié vos besoins avec attention pour vous offrir la meilleure prestation au juste prix.
+      </p>
+
+      <!-- MONTANT PRINCIPAL -->
+      <div style="background:linear-gradient(135deg,#0f172a,#1e1b4b);border-radius:16px;padding:28px;text-align:center;margin:0 0 24px;">
+        <p style="color:rgba(255,255,255,0.5);font-size:11px;font-weight:700;margin:0 0 8px;text-transform:uppercase;letter-spacing:2px;">Montant de la prestation</p>
+        <p style="color:white;font-size:48px;font-weight:900;margin:0;letter-spacing:-2px;line-height:1.1;">
+          {amount_ht:,.0f}<span style="font-size:24px;font-weight:500;"> €</span>
+        </p>
+        <p style="color:rgba(255,255,255,0.4);font-size:12px;margin:10px 0 0;">
+          Micro-entreprise — TVA non applicable (art. 293B CGI)
+        </p>
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.1);">
+          <span style="background:rgba(249,115,22,0.2);color:#fb923c;font-size:12px;font-weight:700;padding:6px 16px;border-radius:100px;border:1px solid rgba(249,115,22,0.3);">
+            ✅ Devis valable 30 jours · Sans engagement
+          </span>
+        </div>
+      </div>
+
+      <!-- INFOS CLIENT -->
+      <div style="background:#f8fafc;border-radius:14px;padding:20px;margin:0 0 24px;border:1px solid #e2e8f0;">
+        <p style="color:#0f172a;font-size:13px;font-weight:700;margin:0 0 14px;text-transform:uppercase;letter-spacing:1px;">📋 Informations du devis</p>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr>
+            <td style="padding:6px 0;color:#64748b;font-size:13px;width:40%;">Client</td>
+            <td style="padding:6px 0;color:#1e293b;font-weight:600;font-size:13px;">{nom_complet}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#64748b;font-size:13px;">Service</td>
+            <td style="padding:6px 0;color:#1e293b;font-weight:600;font-size:13px;">{svc_icon} {service_type}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#64748b;font-size:13px;">Adresse</td>
+            <td style="padding:6px 0;color:#1e293b;font-weight:600;font-size:13px;">{adresse}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#64748b;font-size:13px;">Référence</td>
+            <td style="padding:6px 0;color:#f97316;font-weight:700;font-size:13px;">{quote_id}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#64748b;font-size:13px;">Date</td>
+            <td style="padding:6px 0;color:#1e293b;font-weight:600;font-size:13px;">{date_devis}</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- DÉTAIL PRESTATIONS -->
+      {'<div style="margin:0 0 24px;"><p style="color:#0f172a;font-size:13px;font-weight:700;margin:0 0 12px;text-transform:uppercase;letter-spacing:1px;">🔍 Détail des prestations</p><table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">' + details_rows + '</table></div>' if details_rows else ''}
+
+      <!-- GARANTIES -->
+      <div style="background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border-radius:14px;padding:20px;margin:0 0 24px;border:1px solid #bbf7d0;">
+        <p style="color:#15803d;font-size:13px;font-weight:700;margin:0 0 12px;">🛡️ Nos engagements qualité</p>
+        <div style="display:grid;gap:8px;">
+          {''.join(f'<div style="display:flex;align-items:center;gap:10px;"><div style="width:20px;height:20px;background:#22c55e;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;color:white;font-weight:900;">✓</div><p style="margin:0;color:#166534;font-size:13px;">{g}</p></div>' for g in [
+            "Matériel et produits professionnels fournis",
+            "Personnel formé, expérimenté et assuré (RC Pro)",
+            "Résultat garanti ou intervention reprise gratuitement",
+            "Devis valable 30 jours, sans engagement",
+            "Attestation fiscale fournie (crédit d'impôt 50% éligible)"
+          ])}
+        </div>
+      </div>
+
+      <!-- ÉTAPES SUIVANTES -->
+      <div style="margin:0 0 28px;">
+        <p style="color:#0f172a;font-size:13px;font-weight:700;margin:0 0 16px;text-transform:uppercase;letter-spacing:1px;">📌 Prochaines étapes</p>
+        <div style="display:flex;gap:0;position:relative;">
+          {steps_html}
+        </div>
+      </div>
+
+      <!-- CTA BOUTONS -->
+      <div style="text-align:center;margin:28px 0 8px;">
+        <p style="color:#64748b;font-size:13px;margin:0 0 16px;">Des questions ? Contactez-nous directement :</p>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+          <a href="tel:+33622665308"
+            style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#f97316,#ea580c);color:white;padding:14px 24px;border-radius:12px;text-decoration:none;font-weight:700;font-size:14px;box-shadow:0 4px 16px rgba(249,115,22,0.35);">
+            📞 06 22 66 53 08
+          </a>
+          <a href="https://wa.me/33622665308?text=Bonjour%2C%20j%27ai%20re%C3%A7u%20mon%20devis%20{quote_id}"
+            style="display:inline-flex;align-items:center;gap:8px;background:#25D366;color:white;padding:14px 24px;border-radius:12px;text-decoration:none;font-weight:700;font-size:14px;box-shadow:0 4px 16px rgba(37,211,102,0.35);">
+            💬 WhatsApp
+          </a>
+          <a href="mailto:info@globalcleanhome.com"
+            style="display:inline-flex;align-items:center;gap:8px;background:#0f172a;color:white;padding:14px 24px;border-radius:12px;text-decoration:none;font-weight:700;font-size:14px;">
+            ✉️ Email
+          </a>
+        </div>
+      </div>
+
+    </div><!-- /corps -->
+
+    <!-- FOOTER CARD -->
+    <div style="background:#0f172a;padding:24px 36px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div>
+          <p style="color:white;font-weight:800;margin:0 0 3px;font-size:14px;">Global Clean Home</p>
+          <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0;">Paris & Île-de-France</p>
+        </div>
+        <div style="text-align:right;">
+          <p style="color:rgba(255,255,255,0.5);font-size:11px;margin:0 0 2px;">www.globalcleanhome.com</p>
+          <p style="color:rgba(255,255,255,0.5);font-size:11px;margin:0;">info@globalcleanhome.com</p>
+        </div>
+      </div>
+      <div style="border-top:1px solid rgba(255,255,255,0.08);margin-top:16px;padding-top:16px;text-align:center;">
+        <p style="color:rgba(255,255,255,0.25);font-size:10px;margin:0;">
+          Ce devis a été établi suite à votre demande. Il est confidentiel et valable 30 jours.
+          Global Clean Home — SIRET disponible sur demande.
+        </p>
+      </div>
+    </div>
+
+  </div><!-- /card -->
+
+  <!-- BADGE CONFIANCE -->
+  <div style="text-align:center;margin-top:24px;">
+    <p style="color:#94a3b8;font-size:11px;margin:0;">
+      🔒 Vos données sont protégées · 🌿 Produits écologiques · ⭐ 4.9/5 sur Google
+    </p>
+  </div>
+
+</div><!-- /wrapper -->
+</body></html>"""
 
     try:
         msg_id = await _send_gmail_message(
@@ -479,22 +602,150 @@ async def send_invoice_email(user_id: str, lead: dict, invoice: dict) -> bool:
     if not access_token:
         return False
 
-    html = f"""
-    <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: linear-gradient(135deg, #7C3AED, #6D28D9); padding: 32px; text-align: center; border-radius: 12px 12px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">Global Clean Home</h1>
-        </div>
-        <div style="padding: 32px; background: white; border: 1px solid #e2e8f0; border-top: none;">
-            <h2 style="color: #1e293b;">Bonjour {lead.get('name', '')},</h2>
-            <p style="color: #475569;">Veuillez trouver ci-joint votre facture.</p>
-            <div style="background: #f8fafc; border-left: 4px solid #7C3AED; padding: 16px; border-radius: 0 8px 8px 0; margin: 16px 0;">
-                <p style="margin: 4px 0;"><strong>Facture :</strong> {invoice.get('invoice_id', '')}</p>
-                <p style="margin: 4px 0;"><strong>Montant TTC :</strong> {invoice.get('amount_ttc', 0):,.2f} EUR</p>
-            </div>
-            <p style="color: #475569;">Merci pour votre confiance.</p>
-        </div>
+    prenom_inv = lead.get("name", "Client").split()[0]
+    nom_complet_inv = lead.get("name", "Client")
+    invoice_id = invoice.get("invoice_id", "—")
+    amount_ttc = invoice.get("amount_ttc", 0)
+    amount_ht = invoice.get("amount_ht", amount_ttc)
+    service_inv = invoice.get("service_type", lead.get("service_type", "Nettoyage"))
+    date_facture = datetime.now().strftime("%d/%m/%Y")
+    date_echeance = invoice.get("due_date", "")
+    statut_paiement = invoice.get("status", "en_attente")
+    adresse_inv = lead.get("address", lead.get("adresse", "—"))
+
+    statut_badge = {
+        "payée": ("✅ PAYÉE", "#15803d", "#f0fdf4", "#bbf7d0"),
+        "en_attente": ("⏳ EN ATTENTE", "#92400e", "#fffbeb", "#fde68a"),
+        "en_retard": ("⚠️ EN RETARD", "#991b1b", "#fef2f2", "#fecaca"),
+    }.get(statut_paiement, ("⏳ EN ATTENTE", "#92400e", "#fffbeb", "#fde68a"))
+
+    html = f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Facture {invoice_id} — Global Clean Home</title>
+</head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+
+<div style="max-width:640px;margin:40px auto;padding:0 16px 40px;">
+
+  <!-- HEADER -->
+  <div style="text-align:center;padding:32px 0 24px;">
+    <div style="display:inline-flex;align-items:center;gap:12px;">
+      <div style="width:48px;height:48px;background:linear-gradient(135deg,#f97316,#ea580c);border-radius:14px;display:inline-flex;align-items:center;justify-content:center;font-size:24px;">🏠</div>
+      <div style="text-align:left;">
+        <p style="margin:0;font-size:20px;font-weight:900;color:#0f172a;">Global Clean Home</p>
+        <p style="margin:0;font-size:12px;color:#64748b;">Nettoyage Professionnel Paris & IDF</p>
+      </div>
     </div>
-    """
+  </div>
+
+  <div style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
+
+    <!-- BANNIÈRE -->
+    <div style="background:linear-gradient(135deg,#0f172a,#1e1b4b);padding:36px;text-align:center;">
+      <div style="font-size:48px;margin-bottom:12px;">🧾</div>
+      <div style="display:inline-block;background:{statut_badge[2]};border:1px solid {statut_badge[3]};color:{statut_badge[1]};font-size:11px;font-weight:700;padding:5px 16px;border-radius:100px;letter-spacing:1px;margin-bottom:14px;">{statut_badge[0]}</div>
+      <h1 style="color:white;margin:0 0 6px;font-size:26px;font-weight:900;">FACTURE</h1>
+      <p style="color:rgba(255,255,255,0.5);margin:0;font-size:13px;">N° {invoice_id} · Émise le {date_facture}</p>
+    </div>
+
+    <div style="padding:36px;">
+
+      <!-- MONTANT -->
+      <div style="background:linear-gradient(135deg,#0f172a,#1e1b4b);border-radius:16px;padding:28px;text-align:center;margin:0 0 24px;">
+        <p style="color:rgba(255,255,255,0.5);font-size:11px;font-weight:700;margin:0 0 8px;text-transform:uppercase;letter-spacing:2px;">Montant Total</p>
+        <p style="color:white;font-size:52px;font-weight:900;margin:0;letter-spacing:-2px;line-height:1;">
+          {amount_ttc:,.2f}<span style="font-size:24px;font-weight:500;"> €</span>
+        </p>
+        <p style="color:rgba(255,255,255,0.35);font-size:11px;margin:10px 0 0;">Micro-entreprise — TVA non applicable (art. 293B CGI)</p>
+        {f'<p style="color:rgba(255,255,255,0.5);font-size:12px;margin:8px 0 0;">⏰ Échéance : {date_echeance}</p>' if date_echeance else ''}
+      </div>
+
+      <!-- RÉCAPITULATIF -->
+      <div style="background:#f8fafc;border-radius:14px;padding:20px;margin:0 0 24px;border:1px solid #e2e8f0;">
+        <p style="color:#0f172a;font-size:13px;font-weight:700;margin:0 0 14px;text-transform:uppercase;letter-spacing:1px;">📋 Récapitulatif</p>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:10px 0;color:#64748b;font-size:13px;">Client</td>
+            <td style="padding:10px 0;color:#1e293b;font-weight:600;font-size:13px;text-align:right;">{nom_complet_inv}</td>
+          </tr>
+          <tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:10px 0;color:#64748b;font-size:13px;">Service</td>
+            <td style="padding:10px 0;color:#1e293b;font-weight:600;font-size:13px;text-align:right;">{service_inv}</td>
+          </tr>
+          <tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:10px 0;color:#64748b;font-size:13px;">Adresse</td>
+            <td style="padding:10px 0;color:#1e293b;font-weight:600;font-size:13px;text-align:right;">{adresse_inv}</td>
+          </tr>
+          <tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:10px 0;color:#64748b;font-size:13px;">Référence</td>
+            <td style="padding:10px 0;color:#f97316;font-weight:700;font-size:13px;text-align:right;">{invoice_id}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 0;color:#64748b;font-size:13px;">Montant HT</td>
+            <td style="padding:10px 0;color:#1e293b;font-weight:700;font-size:14px;text-align:right;">{amount_ht:,.2f} €</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- PAIEMENT SI EN ATTENTE -->
+      {'<div style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border-radius:14px;padding:20px;margin:0 0 24px;border:1px solid #fde68a;"><p style="color:#92400e;font-size:14px;font-weight:700;margin:0 0 8px;">💳 Paiement sécurisé</p><p style="color:#78350f;font-size:13px;margin:0 0 16px;line-height:1.6;">Votre facture est en attente de règlement. Vous pouvez payer par virement, carte bancaire ou chèque.</p><div style="text-align:center;"><a href="mailto:info@globalcleanhome.com?subject=Paiement facture ' + invoice_id + '" style="display:inline-block;background:linear-gradient(135deg,#f97316,#ea580c);color:white;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:700;font-size:13px;">Régler ma facture</a></div></div>' if statut_paiement == "en_attente" else ""}
+
+      <!-- MERCI -->
+      <div style="background:#f0fdf4;border-radius:14px;padding:20px;margin:0 0 24px;border:1px solid #bbf7d0;text-align:center;">
+        <p style="font-size:28px;margin:0 0 8px;">🙏</p>
+        <p style="color:#15803d;font-weight:700;font-size:15px;margin:0 0 6px;">Merci pour votre confiance, {prenom_inv} !</p>
+        <p style="color:#166534;font-size:13px;margin:0;line-height:1.6;">Nous espérons que notre intervention a répondu à vos attentes. N'hésitez pas à nous laisser un avis ou à nous recontacter pour tout futur besoin.</p>
+      </div>
+
+      <!-- CTA -->
+      <div style="text-align:center;">
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+          <a href="tel:+33622665308"
+            style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#f97316,#ea580c);color:white;padding:12px 22px;border-radius:12px;text-decoration:none;font-weight:700;font-size:13px;">
+            📞 Nous appeler
+          </a>
+          <a href="https://wa.me/33622665308"
+            style="display:inline-flex;align-items:center;gap:8px;background:#25D366;color:white;padding:12px 22px;border-radius:12px;text-decoration:none;font-weight:700;font-size:13px;">
+            💬 WhatsApp
+          </a>
+          <a href="https://g.page/r/globalcleanhome/review"
+            style="display:inline-flex;align-items:center;gap:8px;background:#4285F4;color:white;padding:12px 22px;border-radius:12px;text-decoration:none;font-weight:700;font-size:13px;">
+            ⭐ Laisser un avis
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- FOOTER -->
+    <div style="background:#0f172a;padding:24px 36px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div>
+          <p style="color:white;font-weight:800;margin:0 0 3px;font-size:14px;">Global Clean Home</p>
+          <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0;">Paris & Île-de-France</p>
+        </div>
+        <div style="text-align:right;">
+          <p style="color:rgba(255,255,255,0.5);font-size:11px;margin:0 0 2px;">www.globalcleanhome.com</p>
+          <p style="color:rgba(255,255,255,0.5);font-size:11px;margin:0;">info@globalcleanhome.com</p>
+        </div>
+      </div>
+      <div style="border-top:1px solid rgba(255,255,255,0.08);margin-top:16px;padding-top:16px;text-align:center;">
+        <p style="color:rgba(255,255,255,0.25);font-size:10px;margin:0;">
+          Document officiel — Global Clean Home · SIRET disponible sur demande · Paris & IDF
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-top:24px;">
+    <p style="color:#94a3b8;font-size:11px;margin:0;">🔒 Document confidentiel · ⭐ 4.9/5 sur Google · 🌿 Entreprise éco-responsable</p>
+  </div>
+
+</div>
+</body></html>"""
 
     try:
         msg_id = await _send_gmail_message(access_token, lead.get("email", ""), f"Facture Global Clean Home - {invoice.get('invoice_id', '')}", html)
@@ -524,23 +775,64 @@ async def send_followup_email(user_id: str, lead: dict, quote: dict) -> bool:
     if not access_token:
         return False
 
-    html = f"""
-    <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: linear-gradient(135deg, #7C3AED, #6D28D9); padding: 32px; text-align: center; border-radius: 12px 12px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">Global Clean Home</h1>
-        </div>
-        <div style="padding: 32px; background: white; border: 1px solid #e2e8f0; border-top: none;">
-            <h2 style="color: #1e293b;">Bonjour {lead.get('name', '')},</h2>
-            <p style="color: #475569; line-height: 1.6;">Nous souhaitons donner suite a notre devis pour le service <strong>{quote.get('service_type', '')}</strong>.</p>
-            <p style="color: #475569; line-height: 1.6;">Avez-vous eu l'occasion de l'examiner ? Nous restons a votre disposition pour toute question ou modification.</p>
-            <div style="background: #f8fafc; border-left: 4px solid #7C3AED; padding: 16px; border-radius: 0 8px 8px 0; margin: 16px 0;">
-                <p style="margin: 4px 0;"><strong>Service :</strong> {quote.get('service_type', '')}</p>
-                <p style="margin: 4px 0;"><strong>Montant TTC :</strong> {quote.get('amount', 0) * 1.2:,.2f} EUR</p>
-            </div>
-            <p style="color: #475569;">Cordialement,<br><strong>L'equipe Global Clean Home</strong></p>
-        </div>
+    prenom_fu = lead.get("name", "Client").split()[0]
+    svc_fu = quote.get("service_type", lead.get("service_type", "nettoyage"))
+    montant_fu = quote.get("amount", 0)
+    quote_id_fu = quote.get("quote_id", "—")
+
+    html = f"""<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+<div style="max-width:640px;margin:40px auto;padding:0 16px 40px;">
+  <div style="text-align:center;padding:24px 0;">
+    <p style="margin:0;font-size:18px;font-weight:900;color:#0f172a;">🏠 Global Clean Home</p>
+  </div>
+  <div style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
+    <div style="background:linear-gradient(135deg,#f97316,#ea580c);padding:32px;text-align:center;">
+      <div style="font-size:48px;margin-bottom:10px;">🔔</div>
+      <h1 style="color:white;margin:0;font-size:22px;font-weight:900;">Votre devis vous attend !</h1>
+      <p style="color:rgba(255,255,255,0.8);margin:6px 0 0;font-size:13px;">Un petit rappel de notre part</p>
     </div>
-    """
+    <div style="padding:32px;">
+      <p style="color:#1e293b;font-size:16px;font-weight:700;margin:0 0 8px;">Bonjour {prenom_fu} 👋</p>
+      <p style="color:#64748b;font-size:14px;line-height:1.8;margin:0 0 20px;">
+        Nous espérons que vous avez eu l'occasion de consulter notre devis pour votre <strong style="color:#f97316;">{svc_fu}</strong>. 
+        Nous sommes prêts à intervenir selon vos disponibilités !
+      </p>
+      <div style="background:linear-gradient(135deg,#fff7ed,#ffedd5);border-radius:14px;padding:20px;margin:0 0 20px;border:1px solid #fed7aa;text-align:center;">
+        <p style="color:#c2410c;font-size:11px;font-weight:700;margin:0 0 8px;text-transform:uppercase;letter-spacing:1px;">Votre devis N° {quote_id_fu}</p>
+        <p style="color:#9a3412;font-size:36px;font-weight:900;margin:0;">{montant_fu:,.0f} €</p>
+        <p style="color:#c2410c;font-size:12px;margin:6px 0 0;">TVA non applicable · Valable encore quelques jours</p>
+      </div>
+      <div style="background:#fef9c3;border-radius:12px;padding:16px;margin:0 0 24px;border:1px solid #fde047;">
+        <p style="color:#713f12;font-size:13px;font-weight:600;margin:0;">⏰ N'attendez pas trop longtemps !</p>
+        <p style="color:#854d0e;font-size:12px;margin:4px 0 0;line-height:1.6;">Notre agenda se remplit vite. Confirmez dès maintenant pour obtenir le créneau de votre choix.</p>
+      </div>
+      <div style="text-align:center;margin:24px 0;">
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+          <a href="tel:+33622665308"
+            style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#f97316,#ea580c);color:white;padding:14px 24px;border-radius:12px;text-decoration:none;font-weight:700;font-size:14px;">
+            📞 Confirmer par téléphone
+          </a>
+          <a href="https://wa.me/33622665308?text=Bonjour%2C%20je%20confirme%20mon%20devis%20{quote_id_fu}"
+            style="display:inline-flex;align-items:center;gap:8px;background:#25D366;color:white;padding:14px 24px;border-radius:12px;text-decoration:none;font-weight:700;font-size:14px;">
+            💬 Confirmer WhatsApp
+          </a>
+        </div>
+      </div>
+      <p style="color:#94a3b8;font-size:12px;text-align:center;margin:0;line-height:1.6;">
+        Vous souhaitez modifier quelque chose ? Aucun problème !<br>
+        Contactez-nous et nous adapterons le devis à vos besoins.
+      </p>
+    </div>
+    <div style="background:#0f172a;padding:20px 32px;text-align:center;">
+      <p style="color:white;font-weight:700;margin:0 0 3px;font-size:13px;">Global Clean Home</p>
+      <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0;">www.globalcleanhome.com · 06 22 66 53 08</p>
+    </div>
+  </div>
+</div>
+</body></html>"""
 
     try:
         msg_id = await _send_gmail_message(access_token, lead.get("email", ""), f"Relance devis - Global Clean Home", html)
