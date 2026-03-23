@@ -1596,10 +1596,42 @@ async def get_financial_stats(request: Request, period: str = "30d"):
         "recent_transactions": recent_tx,
     }
 
-# CORS
+# CORS - Force headers on all responses including errors
+from starlette.requests import Request as StarletteRequest
+from starlette.responses import Response as StarletteResponse
+
+ALLOWED_ORIGINS = [
+    "https://crm.globalcleanhome.com",
+    "https://www.globalcleanhome.com", 
+    "https://globalcleanhome.com",
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://localhost:4173",
+]
+
+@app.middleware("http")
+async def force_cors_middleware(request: StarletteRequest, call_next):
+    origin = request.headers.get("origin", "")
+    if request.method == "OPTIONS":
+        response = StarletteResponse(status_code=200)
+        if origin in ALLOWED_ORIGINS:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+            response.headers["Access-Control-Max-Age"] = "600"
+        return response
+    response = await call_next(request)
+    if origin in ALLOWED_ORIGINS:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+    return response
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://crm.globalcleanhome.com", "https://www.globalcleanhome.com", "https://globalcleanhome.com", "http://localhost:5173", "http://localhost:3000"],
+    allow_origins=["https://crm.globalcleanhome.com", "https://www.globalcleanhome.com", "https://globalcleanhome.com", "http://localhost:5173", "http://localhost:3000", "http://localhost:4173"],
     allow_credentials=True,
     allow_methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
     allow_headers=["*"],
