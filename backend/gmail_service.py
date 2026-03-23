@@ -354,7 +354,7 @@ async def _send_gmail_message(access_token: str, to: str, subject: str, html: st
 # SEND SPECIFIC EMAIL TYPES (used by CRM)
 # =============================================
 
-async def send_quote_email(user_id: str, lead: dict, quote: dict) -> bool:
+async def send_quote_email(user_id: str, lead: dict, quote: dict, pdf_data: bytes = None) -> bool:
     """Send a premium quote email to a lead."""
     access_token = await _get_valid_access_token(user_id)
     if not access_token:
@@ -562,11 +562,17 @@ async def send_quote_email(user_id: str, lead: dict, quote: dict) -> bool:
 </body></html>"""
 
     try:
+        # Nom du client pour le fichier PDF
+        client_name_clean = lead.get("name", "Client").replace(" ", "_").replace("/", "_")
+        pdf_filename = f"Devis_{client_name_clean}.pdf"
+
         msg_id = await _send_gmail_message(
             access_token,
             lead.get("email", ""),
-            f"Votre devis personnalise - Global Clean Home",
+            f"Votre devis - {lead.get('name', 'Client')} | Global Clean Home",
             html,
+            pdf_data=pdf_data,
+            pdf_filename=pdf_filename,
         )
         await _db.emails.insert_one({
             "email_id": f"email_{os.urandom(6).hex()}",

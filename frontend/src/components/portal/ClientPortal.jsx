@@ -246,12 +246,22 @@ const PortalDashboard = ({ user, onLogout }) => {
   };
 
   const signQuote = async (quoteId) => {
+    const sig = signatureData.trim() || 'Signé électroniquement';
     try {
-      await portalAxios.post(`${API_URL}/quotes/${quoteId}/sign`, { signature: signatureData || 'Signé électroniquement' });
+      await portalAxios.post(
+        `${API_URL}/quotes/${quoteId}/sign`,
+        { signature: sig, signed_at: new Date().toISOString() },
+        { headers: { 'X-Portal-Token': localStorage.getItem('portal_token') || '' } }
+      );
       toast.success('✍️ Devis signé avec succès !');
       setSigningQuote(null);
+      setSignatureData('');
       fetchData();
-    } catch { toast.error('Erreur lors de la signature'); }
+      setActiveTab('quotes');
+    } catch(e) {
+      console.error('Sign error:', e);
+      toast.error('Erreur lors de la signature. Réessayez.');
+    }
   };
 
   const submitReview = async () => {
@@ -813,6 +823,7 @@ const PortalDashboard = ({ user, onLogout }) => {
                     <div className="mb-4">
                       <label className="block text-xs font-semibold text-slate-400 mb-2">Votre signature (tapez votre nom complet)</label>
                       <input value={signingQuote === quote.quote_id ? signatureData : ''}
+                        onFocus={() => setSigningQuote(quote.quote_id)}
                         onChange={e => { setSigningQuote(quote.quote_id); setSignatureData(e.target.value); }}
                         placeholder={`${user?.name || 'Votre nom'} — ${new Date().toLocaleDateString('fr-FR')}`}
                         className="w-full px-4 py-3 rounded-xl border text-sm text-slate-200 outline-none transition-all"
@@ -824,8 +835,8 @@ const PortalDashboard = ({ user, onLogout }) => {
                       style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.05)'}}>
                       En signant ce devis, vous acceptez les conditions générales de vente de Global Clean Home et vous engagez à la réalisation de la prestation décrite ci-dessus.
                     </div>
-                    <button onClick={() => signQuote(quote.quote_id)}
-                      disabled={signingQuote !== quote.quote_id || !signatureData.trim()}
+                    <button onClick={() => { setSigningQuote(quote.quote_id); signQuote(quote.quote_id); }}
+                      disabled={!signatureData.trim()}
                       className="w-full py-3 rounded-xl font-bold text-white text-sm transition-all disabled:opacity-40"
                       style={{background:'linear-gradient(135deg,#8b5cf6,#6d28d9)',boxShadow:'0 4px 16px rgba(139,92,246,0.3)'}}>
                       ✍️ Signer et valider ce devis

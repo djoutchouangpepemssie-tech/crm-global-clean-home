@@ -348,51 +348,83 @@ def generate_quote_pdf(quote_data: dict, lead_data: dict) -> BytesIO:
 
 @integrations_router.post("/pdf/generate-quote")
 async def generate_quote_pdf_endpoint(request: Request, input: PDFQuoteRequest):
-    """Generate PDF quote"""
-    from server import require_auth, db
+    """Generate and stream PDF quote with client name as filename"""
+    from server import require_auth, db, log_activity
+    from fastapi.responses import StreamingResponse as SR
     user = await require_auth(request)
-    
-    # Get quote and lead data
+
     quote = await db.quotes.find_one({"quote_id": input.quote_id}, {"_id": 0})
     if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
-    
+
     lead = await db.leads.find_one({"lead_id": quote["lead_id"]}, {"_id": 0})
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
-    
-    # Generate PDF
+
+    # Générer le PDF premium
     pdf_buffer = generate_quote_pdf(quote, lead)
-    
-    # Save PDF URL (in real app, upload to S3/storage)
-    pdf_filename = f"devis_{quote['quote_id']}.pdf"
-    pdf_path = f"/app/backend/pdfs/{pdf_filename}"
-    os.makedirs("/app/backend/pdfs", exist_ok=True)
-    
-    with open(pdf_path, 'wb') as f:
-        f.write(pdf_buffer.getvalue())
-    
-    pdf_url = f"https://quote-email-flow.preview.emergentagent.com/pdfs/{pdf_filename}"
-    
-    # Update quote with PDF URL
+    pdf_bytes = pdf_buffer.read()
+
+    # Nom du fichier = Devis_NomClient.pdf
+    client_name = lead.get("name", "Client").replace(" ", "_").replace("/","_").replace("\\","_")
+    pdf_filename = f"Devis_{client_name}.pdf"
+
+    # Mettre à jour le devis
     await db.quotes.update_one(
         {"quote_id": input.quote_id},
-        {"$set": {"pdf_url": pdf_url}}
+        {"$set": {"pdf_generated": True, "pdf_filename": pdf_filename}}
     )
-    
-    from server import log_activity
     await log_activity(user.user_id, "generate_pdf", "quote", input.quote_id)
-    
-    # Send email if requested
+
+    # Envoyer par email si demandé
     if input.send_email and input.email:
-        # TODO: Send email with PDF attachment
-        pass
-    
-    return {
-        "status": "generated",
-        "pdf_url": pdf_url,
-        "quote_id": input.quote_id
-    }
+        try:
+            from gmail_service import send_quote_email
+            await send_quote_email(user.user_id, lead, quote, pdf_data=pdf_bytes)
+        except Exception as e:
+            logger.warning(f"Email send failed: {e}")
+
+    # Retourner le PDF en téléchargement direct
+    from io import BytesIO as BIO
+    return SR(
+        BIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{pdf_filename}"',
+            "Content-Length": str(len(pdf_bytes)),
+        }
+    )
+
+@integrations_router.get("/pdf/download-quote/{quote_id}")
+async def download_quote_pdf(quote_id: str, request: Request):
+    """Download quote PDF directly"""
+    from server import require_auth, db
+    from fastapi.responses import StreamingResponse as SR
+    user = await require_auth(request)
+
+    quote = await db.quotes.find_one({"quote_id": quote_id}, {"_id": 0})
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+
+    lead = await db.leads.find_one({"lead_id": quote["lead_id"]}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    pdf_buffer = generate_quote_pdf(quote, lead)
+    pdf_bytes = pdf_buffer.read()
+
+    client_name = lead.get("name", "Client").replace(" ", "_").replace("/","_")
+    pdf_filename = f"Devis_{client_name}.pdf"
+
+    from io import BytesIO as BIO
+    return SR(
+        BIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{pdf_filename}"',
+            "Content-Length": str(len(pdf_bytes)),
+        }
+    )
 
 # ============= STRIPE PAYMENTS =============
 
