@@ -1612,21 +1612,30 @@ ALLOWED_ORIGINS = [
 @app.middleware("http")
 async def force_cors_middleware(request: StarletteRequest, call_next):
     origin = request.headers.get("origin", "")
+    is_allowed = origin in ALLOWED_ORIGINS or not origin
+    
     if request.method == "OPTIONS":
-        response = StarletteResponse(status_code=200)
-        if origin in ALLOWED_ORIGINS:
+        response = StarletteResponse(status_code=200, content="OK")
+        if is_allowed and origin:
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Access-Control-Allow-Credentials"] = "true"
             response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-            response.headers["Access-Control-Allow-Headers"] = "*"
-            response.headers["Access-Control-Max-Age"] = "600"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization,X-Portal-Token,X-Requested-With,Accept,Origin"
+            response.headers["Access-Control-Max-Age"] = "86400"
         return response
-    response = await call_next(request)
-    if origin in ALLOWED_ORIGINS:
+    
+    try:
+        response = await call_next(request)
+    except Exception as e:
+        from starlette.responses import JSONResponse
+        response = JSONResponse({"detail": str(e)}, status_code=500)
+    
+    if is_allowed and origin:
         response.headers["Access-Control-Allow-Origin"] = origin
         response.headers["Access-Control-Allow-Credentials"] = "true"
         response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization,X-Portal-Token,X-Requested-With,Accept,Origin"
+        response.headers["Vary"] = "Origin"
     return response
 
 app.add_middleware(
@@ -1634,8 +1643,9 @@ app.add_middleware(
     allow_origins=["https://crm.globalcleanhome.com", "https://www.globalcleanhome.com", "https://globalcleanhome.com", "http://localhost:5173", "http://localhost:3000", "http://localhost:4173"],
     allow_credentials=True,
     allow_methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
-    allow_headers=["*"],
+    allow_headers=["*", "X-Portal-Token", "Content-Type", "Authorization", "Accept", "Origin"],
     expose_headers=["*"],
+    max_age=86400,
 )
 
 # Include router
