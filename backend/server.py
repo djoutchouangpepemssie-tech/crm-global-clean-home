@@ -1031,11 +1031,18 @@ async def send_quote(quote_id: str, request: Request):
             except Exception as pdf_err:
                 logger.warning(f"PDF generation failed: {pdf_err}")
 
-            from gmail_service import send_quote_email
-            email_sent = await send_quote_email(user.user_id, lead, quote, pdf_data=pdf_data)
-            logger.info(f"Quote email sent: {email_sent}, PDF attached: {pdf_data is not None}")
+            from gmail_service import send_quote_email, _get_valid_access_token, _get_any_active_token
+            token_ok = await _get_valid_access_token(user.user_id)
+            if not token_ok:
+                token_ok, _ = await _get_any_active_token()
+                logger.info("Fallback Gmail token used")
+            if token_ok:
+                email_sent = await send_quote_email(user.user_id, lead, quote, pdf_data=pdf_data)
+                logger.info(f"Email sent: {email_sent}, PDF: {len(pdf_data) if pdf_data else 0}b")
+            else:
+                logger.error("No Gmail token - email NOT sent")
         except Exception as e:
-            logger.warning(f"Gmail send failed for quote {quote_id}: {e}")
+            logger.error(f"Gmail error quote {quote_id}: {e}", exc_info=True)
     
     # Create follow-up task (48h)
     task = {
