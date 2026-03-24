@@ -322,17 +322,28 @@ async def send_email(request: Request):
 
 
 async def _send_gmail_message(access_token: str, to: str, subject: str, html: str, in_reply_to: str = None, pdf_data: bytes = None, pdf_filename: str = None) -> str:
-    """Send a message via Gmail API and return the message ID."""
-    msg = MIMEMultipart("alternative")
+    """Send a message via Gmail API with optional PDF attachment."""
+    from email.mime.base import MIMEBase
+    from email import encoders as email_encoders
+    if pdf_data:
+        msg = MIMEMultipart("mixed")
+        alt = MIMEMultipart("alternative")
+        alt.attach(MIMEText(html, "html"))
+        msg.attach(alt)
+        pdf_part = MIMEBase("application", "pdf")
+        pdf_part.set_payload(pdf_data)
+        email_encoders.encode_base64(pdf_part)
+        pdf_part.add_header("Content-Disposition", "attachment", filename=pdf_filename or "devis.pdf")
+        msg.attach(pdf_part)
+    else:
+        msg = MIMEMultipart("alternative")
+        msg.attach(MIMEText(html, "html"))
     msg["From"] = f"{GMAIL_FROM_NAME} <{GMAIL_FROM_ADDRESS}>"
     msg["To"] = to
     msg["Subject"] = subject
     if in_reply_to:
         msg["In-Reply-To"] = in_reply_to
         msg["References"] = in_reply_to
-
-    msg.attach(MIMEText(html, "html"))
-
     raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
 
     async with httpx.AsyncClient() as client:
