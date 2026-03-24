@@ -355,11 +355,21 @@ async def _send_gmail_message(access_token: str, to: str, subject: str, html: st
 # =============================================
 
 async def send_quote_email(user_id: str, lead: dict, quote: dict, pdf_data: bytes = None) -> bool:
-    """Send a premium quote email to a lead."""
+    """Send a premium quote email with PDF attachment."""
     access_token = await _get_valid_access_token(user_id)
     if not access_token:
-        logger.warning("Gmail not connected, cannot send quote email")
+        logger.warning("Gmail not connected for quote email")
         return False
+
+    # Auto-générer PDF si non fourni
+    if pdf_data is None:
+        try:
+            from integrations import generate_quote_pdf
+            pdf_buffer = generate_quote_pdf(quote, lead)
+            pdf_data = pdf_buffer.read()
+            logger.info(f"PDF auto-generated: {len(pdf_data)} bytes")
+        except Exception as e:
+            logger.warning(f"PDF auto-generation failed: {e}")
 
     amount_ht = quote.get("amount", 0)
     prenom = lead.get("name", "").split()[0] if lead.get("name") else "Client"
