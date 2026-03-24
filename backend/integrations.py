@@ -246,12 +246,7 @@ def generate_quote_pdf(quote_data: dict, lead_data: dict) -> BytesIO:
     elements.append(Spacer(1, 12))
     
     # Informations entreprise
-    company_info = [
-        ["Global Clean Home", ""],
-        ["15 Avenue des Champs-Élysées", f"Date: {datetime.now().strftime('%d/%m/%Y')}"],
-        ["75008 Paris", f"Devis N°: {quote_data.get('quote_id', 'N/A')}"],
-        ["Tél: +33 1 23 45 67 89", ""],
-    ]
+# removed old company info
     
     company_table = Table(company_info, colWidths=[3*inch, 3*inch])
     company_table.setStyle(TableStyle([

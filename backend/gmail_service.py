@@ -395,6 +395,9 @@ async def send_quote_email(user_id: str, lead: dict, quote: dict, pdf_data: byte
         f'<div style="flex:1;text-align:center;"><div style="width:36px;height:36px;background:linear-gradient(135deg,#f97316,#ea580c);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin:0 auto 8px;color:white;font-weight:900;font-size:14px;">' + str(n) + '</div><p style="color:#64748b;font-size:11px;margin:0;font-weight:600;">' + s + '</p></div>'
         for n, s in [("1","Vous acceptez"),("2","On planifie"),("3","On intervient"),("4","Satisfait")]
     ])
+    now_dt_email = datetime.now()
+    short_ref = quote_id.replace('quote_','').upper()[:6]
+    gch_ref = f"GCH-{now_dt_email.strftime('%m%Y')}-{short_ref}"
     html = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -424,7 +427,7 @@ async def send_quote_email(user_id: str, lead: dict, quote: dict, pdf_data: byte
     <!-- BANNIÈRE HERO -->
     <div style="background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 50%,#1e3a5f 100%);padding:40px 36px;text-align:center;position:relative;">
       <div style="font-size:52px;margin-bottom:12px;">{svc_icon}</div>
-      <div style="display:inline-block;background:rgba(249,115,22,0.2);border:1px solid rgba(249,115,22,0.4);color:#fb923c;font-size:11px;font-weight:700;padding:4px 14px;border-radius:100px;letter-spacing:1px;text-transform:uppercase;margin-bottom:16px;">DEVIS PERSONNALISÉ N° {quote_id}</div>
+      <div style="display:inline-block;background:rgba(249,115,22,0.2);border:1px solid rgba(249,115,22,0.4);color:#fb923c;font-size:11px;font-weight:700;padding:4px 14px;border-radius:100px;letter-spacing:1px;text-transform:uppercase;margin-bottom:16px;">DEVIS PERSONNALISÉ N° {gch_ref}</div>
       <h1 style="color:white;margin:0 0 8px;font-size:26px;font-weight:900;letter-spacing:-0.5px;">Votre devis gratuit</h1>
       <p style="color:rgba(255,255,255,0.6);margin:0;font-size:14px;">Établi le {date_devis} · Valable {validite}</p>
     </div>
@@ -516,7 +519,7 @@ async def send_quote_email(user_id: str, lead: dict, quote: dict, pdf_data: byte
             style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#f97316,#ea580c);color:white;padding:14px 24px;border-radius:12px;text-decoration:none;font-weight:700;font-size:14px;box-shadow:0 4px 16px rgba(249,115,22,0.35);">
             📞 06 22 66 53 08
           </a>
-          <a href="https://wa.me/33622665308?text=Bonjour%2C%20j%27ai%20re%C3%A7u%20mon%20devis%20{quote_id}"
+          <a href="https://wa.me/33622665308?text=Bonjour%2C%20j%27ai%20re%C3%A7u%20mon%20devis%20{gch_ref}"
             style="display:inline-flex;align-items:center;gap:8px;background:#25D366;color:white;padding:14px 24px;border-radius:12px;text-decoration:none;font-weight:700;font-size:14px;box-shadow:0 4px 16px rgba(37,211,102,0.35);">
             💬 WhatsApp
           </a>
@@ -534,7 +537,7 @@ async def send_quote_email(user_id: str, lead: dict, quote: dict, pdf_data: byte
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
         <div>
           <p style="color:white;font-weight:800;margin:0 0 3px;font-size:14px;">Global Clean Home</p>
-          <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0;">Paris & Île-de-France</p>
+          <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0;">231 rue Saint-Honoré, 75001 Paris</p>
         </div>
         <div style="text-align:right;">
           <p style="color:rgba(255,255,255,0.5);font-size:11px;margin:0 0 2px;">www.globalcleanhome.com</p>
@@ -562,14 +565,15 @@ async def send_quote_email(user_id: str, lead: dict, quote: dict, pdf_data: byte
 </body></html>"""
 
     try:
-        # Nom du client pour le fichier PDF
-        client_name_clean = lead.get("name", "Client").replace(" ", "_").replace("/", "_")
-        pdf_filename = f"Devis_{client_name_clean}.pdf"
+        # Nom fichier PDF professionnel
+        client_name_clean = "".join(c if c.isalnum() or c in "_ -" else "_" for c in lead.get("name","Client")).strip()
+        now_dt = datetime.now()
+        pdf_filename = f"Devis_GCH_{now_dt.strftime('%m%Y')}_{client_name_clean}.pdf"
 
         msg_id = await _send_gmail_message(
             access_token,
             lead.get("email", ""),
-            f"Votre devis - {lead.get('name', 'Client')} | Global Clean Home",
+            f"✅ Votre devis Global Clean Home — {lead.get('name', 'Client')}",
             html,
             pdf_data=pdf_data,
             pdf_filename=pdf_filename,
@@ -731,7 +735,7 @@ async def send_invoice_email(user_id: str, lead: dict, invoice: dict) -> bool:
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
         <div>
           <p style="color:white;font-weight:800;margin:0 0 3px;font-size:14px;">Global Clean Home</p>
-          <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0;">Paris & Île-de-France</p>
+          <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0;">231 rue Saint-Honoré, 75001 Paris</p>
         </div>
         <div style="text-align:right;">
           <p style="color:rgba(255,255,255,0.5);font-size:11px;margin:0 0 2px;">www.globalcleanhome.com</p>
