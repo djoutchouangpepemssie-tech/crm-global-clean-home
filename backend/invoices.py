@@ -228,7 +228,7 @@ async def get_financial_stats(request: Request, period: str = "30d"):
 
 @invoices_router.post("/invoices/{invoice_id}/send-portal")
 async def send_invoice_to_portal(invoice_id: str, request: Request):
-    """Envoie la facture au client avec lien portail."""
+    """Envoie la facture premium par email avec PDF joint."""
     user = await _require_auth(request)
     inv = await _db.invoices.find_one({"invoice_id": invoice_id}, {"_id": 0})
     if not inv:
@@ -237,17 +237,32 @@ async def send_invoice_to_portal(invoice_id: str, request: Request):
     if not lead or not lead.get("email"):
         raise HTTPException(status_code=400, detail="Email client introuvable")
     try:
-        from portal import auto_send_portal_access
-        sent = await auto_send_portal_access(lead, context="invoice")
+        # Générer PDF facture premium
+        pdf_data = None
+        try:
+            from exports import generate_invoice_pdf_bytes
+            pdf_data = generate_invoice_pdf_bytes(inv, lead)
+        except Exception as pdf_err:
+            import logging
+            logging.getLogger(__name__).warning(f"Invoice PDF generation failed: {pdf_err}")
+
+        # Envoyer email premium avec PDF
+        from gmail_service import send_invoice_email
+        sent = await send_invoice_email(user.user_id, lead, inv, pdf_data=pdf_data)
+
         if sent:
+            await _db.invoices.update_one(
+                {"invoice_id": invoice_id},
+                {"$set": {"email_sent": True, "email_sent_at": datetime.now(timezone.utc).isoformat()}}
+            )
             await _db.interactions.insert_one({
                 "lead_id": lead["lead_id"],
                 "type": "email_sent",
-                "content": f"Facture {invoice_id} envoyee avec lien portail a {lead.get('email')}",
+                "content": f"Facture {invoice_id} envoyee par email a {lead.get('email')} avec PDF",
                 "user_id": user.user_id,
                 "created_at": datetime.now(timezone.utc).isoformat(),
             })
-            return {"success": True, "message": "Facture envoyee avec lien portail"}
+            return {"success": True, "message": "Facture envoyee par email avec PDF"}
         raise HTTPException(status_code=500, detail="Erreur envoi email")
     except HTTPException:
         raise

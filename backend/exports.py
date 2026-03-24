@@ -136,6 +136,146 @@ async def export_invoice_pdf(invoice_id: str, request: Request):
 
 # ============= QUOTE PDF =============
 
+
+def generate_invoice_pdf_bytes(invoice: dict, lead: dict) -> bytes:
+    """Generate premium invoice PDF and return bytes."""
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4,
+        rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
+
+    ORANGE=colors.HexColor('#f97316'); DARK=colors.HexColor('#0f172a')
+    SLATE=colors.HexColor('#1e293b'); GRAY=colors.HexColor('#64748b')
+    GRAY_LIGHT=colors.HexColor('#f1f5f9'); GRAY_BORDER=colors.HexColor('#e2e8f0')
+    WHITE=colors.white; GREEN=colors.HexColor('#10b981')
+    styles=getSampleStyleSheet(); W=A4[0]-80
+
+    def S(n,**k): return ParagraphStyle(n,parent=styles['Normal'],**k)
+
+    elements = []
+    invoice_id = invoice.get('invoice_id','—')
+    amount = float(invoice.get('amount_ttc', invoice.get('amount_ht', 0)))
+    service = invoice.get('service_type', lead.get('service_type','Nettoyage'))
+    date_str = datetime.now().strftime('%d/%m/%Y')
+    now_dt = datetime.now()
+    ref = f"FCT-{now_dt.strftime('%m%Y')}-{invoice_id.replace('inv_','').upper()[:6]}"
+    statut = invoice.get('status','en_attente')
+    statut_colors = {'payée':GREEN,'en_attente':colors.HexColor('#f59e0b'),'en_retard':colors.HexColor('#f43f5e')}
+    statut_labels = {'payée':'PAYÉE','en_attente':'EN ATTENTE','en_retard':'EN RETARD'}
+    sc = statut_colors.get(statut, colors.HexColor('#f59e0b'))
+
+    # HEADER
+    ht = Table([[
+        Paragraph("<b>Global Clean Home</b>", S('T',fontSize=20,textColor=WHITE,fontName='Helvetica-Bold')),
+        Table([
+            [Paragraph("FACTURE OFFICIELLE",S('a',fontSize=8,textColor=colors.HexColor('#fb923c'),fontName='Helvetica-Bold',alignment=TA_RIGHT))],
+            [Paragraph(ref,S('b',fontSize=13,textColor=WHITE,fontName='Helvetica-Bold',alignment=TA_RIGHT))],
+            [Paragraph(date_str,S('c',fontSize=8,textColor=colors.HexColor('#94a3b8'),fontName='Helvetica',alignment=TA_RIGHT))],
+        ], colWidths=[2.5*inch], style=[('VALIGN',(0,0),(-1,-1),'MIDDLE')])
+    ]], colWidths=[W*0.6, W*0.4])
+    ht.setStyle(TableStyle([
+        ('BACKGROUND',(0,0),(-1,-1),DARK),
+        ('TOPPADDING',(0,0),(-1,-1),22),('BOTTOMPADDING',(0,0),(-1,-1),22),
+        ('LEFTPADDING',(0,0),(0,-1),18),('RIGHTPADDING',(-1,0),(-1,-1),18),
+        ('VALIGN',(0,0),(-1,-1),'MIDDLE'),
+    ]))
+    elements.append(ht)
+
+    ob = Table([[Paragraph(
+        f"  Nettoyage Professionnel - 231 rue Saint-Honore, 75001 Paris - 06 22 66 53 08  ",
+        S('ob',fontSize=8,textColor=WHITE,fontName='Helvetica-Bold',alignment=TA_CENTER)
+    )]], colWidths=[W])
+    ob.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),ORANGE),('TOPPADDING',(0,0),(-1,-1),6),('BOTTOMPADDING',(0,0),(-1,-1),6)]))
+    elements.append(ob)
+    elements.append(Spacer(1,14))
+
+    # STATUT badge
+    sb = Table([[Paragraph(
+        f"STATUT : {statut_labels.get(statut,'EN ATTENTE')}",
+        S('sb',fontSize=11,textColor=WHITE,fontName='Helvetica-Bold',alignment=TA_CENTER)
+    )]], colWidths=[W])
+    sb.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),sc),('TOPPADDING',(0,0),(-1,-1),8),('BOTTOMPADDING',(0,0),(-1,-1),8)]))
+    elements.append(sb)
+    elements.append(Spacer(1,14))
+
+    # 2 colonnes emetteur/client
+    def block(title,rows,color):
+        bl=[]
+        h=Table([[Paragraph(title,S('bh',fontSize=8,textColor=WHITE,fontName='Helvetica-Bold'))]],colWidths=[W*0.46])
+        h.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),color),('TOPPADDING',(0,0),(-1,-1),6),('BOTTOMPADDING',(0,0),(-1,-1),6),('LEFTPADDING',(0,0),(-1,-1),10)]))
+        bl.append(h)
+        for l,v in rows:
+            r=Table([[Paragraph(l,S('bl',fontSize=9,textColor=GRAY,fontName='Helvetica')),Paragraph(str(v) if v else '-',S('bv',fontSize=9,textColor=DARK,fontName='Helvetica-Bold'))]],colWidths=[W*0.16,W*0.30])
+            r.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),GRAY_LIGHT),('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),5),('LEFTPADDING',(0,0),(0,-1),10),('LEFTPADDING',(1,0),(1,-1),4),('LINEBELOW',(0,0),(-1,-1),0.4,GRAY_BORDER)]))
+            bl.append(r)
+        return bl
+
+    em=block("EMETTEUR",[("Societe:","Global Clean Home"),("Adresse:","231 rue Saint-Honore"),("Ville:","75001 Paris"),("Tel:","06 22 66 53 08"),("Email:","info@globalcleanhome.com")],SLATE)
+    cl=block("CLIENT",[("Nom:",lead.get('name','-')),("Email:",lead.get('email','-')),("Tel:",lead.get('phone','-')),("Adresse:",lead.get('address','-'))],ORANGE)
+    tc=Table([[Table([[e] for e in em],colWidths=[W*0.46]),Spacer(W*0.04,1),Table([[c] for c in cl],colWidths=[W*0.46])]],colWidths=[W*0.46,W*0.04,W*0.46])
+    tc.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP')]))
+    elements.append(tc)
+    elements.append(Spacer(1,14))
+
+    # PRESTATION
+    sh=Table([[Paragraph("DETAIL DE LA PRESTATION",S('sh',fontSize=9,textColor=WHITE,fontName='Helvetica-Bold'))]],colWidths=[W])
+    sh.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),SLATE),('TOPPADDING',(0,0),(-1,-1),8),('BOTTOMPADDING',(0,0),(-1,-1),8),('LEFTPADDING',(0,0),(-1,-1),14)]))
+    elements.append(sh)
+
+    pt=Table([
+        [Paragraph("Prestation",S('ph',fontSize=9,textColor=WHITE,fontName='Helvetica-Bold')),Paragraph("Montant",S('pm',fontSize=9,textColor=WHITE,fontName='Helvetica-Bold',alignment=TA_RIGHT))],
+        [Paragraph(service,S('pl',fontSize=10,textColor=DARK,fontName='Helvetica-Bold')),Paragraph(f"{amount:,.2f} EUR",S('pa',fontSize=13,textColor=colors.HexColor('#ea580c'),fontName='Helvetica-Bold',alignment=TA_RIGHT))],
+    ],colWidths=[W*0.72,W*0.28])
+    pt.setStyle(TableStyle([
+        ('BACKGROUND',(0,0),(-1,0),SLATE),('TOPPADDING',(0,0),(-1,0),9),('BOTTOMPADDING',(0,0),(-1,0),9),('LEFTPADDING',(0,0),(-1,0),14),('RIGHTPADDING',(-1,0),(-1,0),14),
+        ('BACKGROUND',(0,1),(-1,-1),WHITE),('TOPPADDING',(0,1),(-1,-1),14),('BOTTOMPADDING',(0,1),(-1,-1),14),('LEFTPADDING',(0,1),(-1,-1),14),('RIGHTPADDING',(-1,1),(-1,-1),14),
+        ('LINEBELOW',(0,0),(-1,-1),0.5,GRAY_BORDER),('BOX',(0,0),(-1,-1),1,GRAY_BORDER),('VALIGN',(0,0),(-1,-1),'MIDDLE'),
+    ]))
+    elements.append(pt)
+    elements.append(Spacer(1,10))
+
+    # TOTAL
+    tot=Table([
+        [Paragraph("MONTANT TOTAL",S('tl',fontSize=9,textColor=GRAY,fontName='Helvetica-Bold')),Paragraph(f"{amount:,.2f} EUR",S('ta',fontSize=22,textColor=ORANGE,fontName='Helvetica-Bold',alignment=TA_RIGHT))],
+        [Paragraph("Micro-entreprise - TVA non applicable (art. 293B CGI)",S('tn',fontSize=8,textColor=GRAY,fontName='Helvetica')),
+         Paragraph(f"Reference: {ref}",S('tr2',fontSize=8,textColor=GRAY,fontName='Helvetica',alignment=TA_RIGHT))],
+    ],colWidths=[W*0.60,W*0.40])
+    tot.setStyle(TableStyle([
+        ('BACKGROUND',(0,0),(-1,-1),GRAY_LIGHT),('TOPPADDING',(0,0),(-1,-1),12),('BOTTOMPADDING',(0,0),(-1,-1),12),
+        ('LEFTPADDING',(0,0),(-1,-1),14),('RIGHTPADDING',(0,0),(-1,-1),14),
+        ('VALIGN',(0,0),(-1,-1),'MIDDLE'),('LINEABOVE',(0,0),(-1,0),3,ORANGE),('BOX',(0,0),(-1,-1),0.5,GRAY_BORDER),
+    ]))
+    elements.append(tot)
+    elements.append(Spacer(1,14))
+
+    # PAIEMENT si en attente
+    if statut == 'en_attente':
+        pay=Table([[Paragraph(
+            "COMMENT REGLER VOTRE FACTURE ?
+Virement bancaire, cheque ou carte bancaire.
+Contactez-nous : info@globalcleanhome.com | 06 22 66 53 08",
+            S('pay',fontSize=9,textColor=colors.HexColor('#92400e'),fontName='Helvetica',leading=14)
+        )]],colWidths=[W])
+        pay.setStyle(TableStyle([
+            ('BACKGROUND',(0,0),(-1,-1),colors.HexColor('#fffbeb')),
+            ('TOPPADDING',(0,0),(-1,-1),12),('BOTTOMPADDING',(0,0),(-1,-1),12),
+            ('LEFTPADDING',(0,0),(-1,-1),14),
+            ('BOX',(0,0),(-1,-1),1,colors.HexColor('#fde68a')),
+        ]))
+        elements.append(pay)
+        elements.append(Spacer(1,14))
+
+    # FOOTER
+    ft=Table([[Paragraph(
+        "Global Clean Home  |  231 rue Saint-Honore, 75001 Paris  |  06 22 66 53 08  |  info@globalcleanhome.com  |  www.globalcleanhome.com",
+        S('ft',fontSize=7,textColor=colors.HexColor('#94a3b8'),fontName='Helvetica',alignment=TA_CENTER)
+    )]],colWidths=[W])
+    ft.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),DARK),('TOPPADDING',(0,0),(-1,-1),12),('BOTTOMPADDING',(0,0),(-1,-1),12)]))
+    elements.append(ft)
+
+    doc.build(elements)
+    return buffer.getvalue()
+
 @exports_router.get("/quote/{quote_id}/pdf")
 async def export_quote_pdf(quote_id: str, request: Request):
     """Generate premium PDF for a quote — filename = Devis_NomClient.pdf"""

@@ -645,11 +645,23 @@ async def send_quote_email(user_id: str, lead: dict, quote: dict, pdf_data: byte
         return False
 
 
-async def send_invoice_email(user_id: str, lead: dict, invoice: dict) -> bool:
-    """Send an invoice email to a lead."""
+async def send_invoice_email(user_id: str, lead: dict, invoice: dict, pdf_data: bytes = None) -> bool:
+    """Send a premium invoice email with PDF attachment."""
     access_token = await _get_valid_access_token(user_id)
     if not access_token:
+        access_token, _ = await _get_any_active_token()
+    if not access_token:
+        logger.error("No Gmail token for invoice email")
         return False
+
+    # Auto-générer PDF facture si non fourni
+    if pdf_data is None:
+        try:
+            from exports import generate_invoice_pdf_bytes
+            pdf_data = generate_invoice_pdf_bytes(invoice, lead)
+            logger.info(f"Invoice PDF generated: {len(pdf_data)} bytes")
+        except Exception as e:
+            logger.warning(f"Invoice PDF generation failed: {e}")
 
     prenom_inv = lead.get("name", "Client").split()[0]
     nom_complet_inv = lead.get("name", "Client")
@@ -797,7 +809,16 @@ async def send_invoice_email(user_id: str, lead: dict, invoice: dict) -> bool:
 </body></html>"""
 
     try:
-        msg_id = await _send_gmail_message(access_token, lead.get("email", ""), f"Facture Global Clean Home - {invoice.get('invoice_id', '')}", html)
+        client_name = "".join(c if c.isalnum() or c in "_ -" else "_" for c in lead.get("name","Client")).strip()
+        invoice_filename = f"Facture_GCH_{datetime.now().strftime('%m%Y')}_{client_name}.pdf"
+        msg_id = await _send_gmail_message(
+            access_token,
+            lead.get("email", ""),
+            f"🧾 Votre facture Global Clean Home — {lead.get('name', 'Client')}",
+            html,
+            pdf_data=pdf_data,
+            pdf_filename=invoice_filename,
+        )
         await _db.emails.insert_one({
             "email_id": f"email_{os.urandom(6).hex()}",
             "gmail_message_id": msg_id,
