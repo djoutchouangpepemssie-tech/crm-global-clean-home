@@ -217,119 +217,241 @@ async def get_whatsapp_templates(request: Request):
 # ============= PDF GENERATION =============
 
 def generate_quote_pdf(quote_data: dict, lead_data: dict) -> BytesIO:
-    """Generate professional PDF quote"""
+    """Generate premium PDF quote — Global Clean Home"""
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
+    from reportlab.platypus import HRFlowable
+
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=50)
-    
-    # Container for elements
-    elements = []
+    doc = SimpleDocTemplate(buffer, pagesize=A4,
+        rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
+
+    ORANGE      = colors.HexColor('#f97316')
+    ORANGE_DARK = colors.HexColor('#ea580c')
+    DARK        = colors.HexColor('#0f172a')
+    SLATE       = colors.HexColor('#1e293b')
+    GRAY        = colors.HexColor('#64748b')
+    GRAY_LIGHT  = colors.HexColor('#f1f5f9')
+    GRAY_BORDER = colors.HexColor('#e2e8f0')
+    WHITE       = colors.white
+    GREEN       = colors.HexColor('#10b981')
+
     styles = getSampleStyleSheet()
-    
-    # Custom styles
-    title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
-        fontSize=24,
-        textColor=colors.HexColor('#7C3AED'),
-        spaceAfter=30
-    )
-    
-    # Logo (si disponible)
-    # logo_path = '/app/frontend/public/logo.png'
-    # if os.path.exists(logo_path):
-    #     logo = Image(logo_path, width=2*inch, height=1*inch)
-    #     elements.append(logo)
-    #     elements.append(Spacer(1, 20))
-    
-    # En-tête
-    elements.append(Paragraph("DEVIS - Global Clean Home", title_style))
-    elements.append(Spacer(1, 12))
-    
-    # Informations entreprise - intégrées dans le header
-    
-    # Informations client
-    elements.append(Paragraph("CLIENT", styles['Heading2']))
-    client_info = [
-        ["Nom:", lead_data.get('name', '')],
-        ["Email:", lead_data.get('email', '')],
-        ["Téléphone:", lead_data.get('phone', '')],
-        ["Adresse:", lead_data.get('address', '')],
-    ]
-    
-    client_table = Table(client_info, colWidths=[1.5*inch, 4.5*inch])
-    client_table.setStyle(TableStyle([
-        ('FONT', (0, 0), (0, -1), 'Helvetica-Bold', 10),
-        ('FONT', (1, 0), (1, -1), 'Helvetica', 10),
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#334155')),
+    W = A4[0] - 80
+
+    def S(name, **kw):
+        return ParagraphStyle(name, parent=styles['Normal'], **kw)
+
+    elements = []
+
+    client_name = lead_data.get('name', 'Client')
+    quote_id    = quote_data.get('quote_id', 'N/A')
+    amount      = float(quote_data.get('amount', 0))
+    service     = quote_data.get('service_type', 'Prestation de nettoyage')
+    date_str    = datetime.now().strftime('%d/%m/%Y')
+    now_dt      = datetime.now()
+    month_year  = now_dt.strftime('%m%Y')
+    short_id    = quote_id.replace('quote_','').upper()[:6]
+    ref_court   = f"GCH-{month_year}-{short_id}"
+    date_valid  = f"Valable jusqu'au {(datetime.now() + timedelta(days=30)).strftime('%d/%m/%Y')}"
+
+    # HEADER
+    header_data = [[
+        Paragraph("<b>Global Clean Home</b>", S('T', fontSize=20, textColor=WHITE, fontName='Helvetica-Bold')),
+        Table([
+            [Paragraph("DEVIS OFFICIEL", S('DT', fontSize=8, textColor=colors.HexColor('#fb923c'), fontName='Helvetica-Bold', alignment=TA_RIGHT))],
+            [Paragraph(ref_court, S('DR', fontSize=13, textColor=WHITE, fontName='Helvetica-Bold', alignment=TA_RIGHT))],
+            [Paragraph(date_str, S('DD', fontSize=8, textColor=colors.HexColor('#94a3b8'), fontName='Helvetica', alignment=TA_RIGHT))],
+        ], colWidths=[2.5*inch], style=[('VALIGN',(0,0),(-1,-1),'MIDDLE')])
+    ]]
+    ht = Table(header_data, colWidths=[W*0.6, W*0.4])
+    ht.setStyle(TableStyle([
+        ('BACKGROUND',(0,0),(-1,-1),DARK),
+        ('TOPPADDING',(0,0),(-1,-1),22),('BOTTOMPADDING',(0,0),(-1,-1),22),
+        ('LEFTPADDING',(0,0),(0,-1),18),('RIGHTPADDING',(-1,0),(-1,-1),18),
+        ('VALIGN',(0,0),(-1,-1),'MIDDLE'),
     ]))
-    elements.append(client_table)
-    elements.append(Spacer(1, 30))
-    
-    # Détails du devis
-    elements.append(Paragraph("DÉTAILS DE LA PRESTATION", styles['Heading2']))
-    
-    quote_details = [
-        ['Description', 'Quantité', 'Prix unitaire', 'Total'],
-        [
-            quote_data.get('service_type', ''),
-            f"{quote_data.get('surface', 0)} m²" if quote_data.get('surface') else '1',
-            f"{quote_data.get('amount', 0) / (quote_data.get('surface', 1) or 1):.2f} €",
-            f"{quote_data.get('amount', 0):.2f} €"
-        ]
-    ]
-    
-    quote_table = Table(quote_details, colWidths=[2.5*inch, 1.5*inch, 1.5*inch, 1.5*inch])
-    quote_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#7C3AED')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 12),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+    elements.append(ht)
+
+    ob = Table([[Paragraph("  Nettoyage Professionnel - 231 rue Saint-Honore, 75001 Paris - 06 22 66 53 08 - www.globalcleanhome.com  ",
+        S('OB', fontSize=8, textColor=WHITE, fontName='Helvetica-Bold', alignment=TA_CENTER))]], colWidths=[W])
+    ob.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),ORANGE),('TOPPADDING',(0,0),(-1,-1),6),('BOTTOMPADDING',(0,0),(-1,-1),6)]))
+    elements.append(ob)
+    elements.append(Spacer(1, 14))
+
+    # 2 COLONNES
+    def make_block(title, rows, color):
+        bl = []
+        h = Table([[Paragraph(title, S('BH', fontSize=8, textColor=WHITE, fontName='Helvetica-Bold'))]], colWidths=[W*0.46])
+        h.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),color),('TOPPADDING',(0,0),(-1,-1),6),('BOTTOMPADDING',(0,0),(-1,-1),6),('LEFTPADDING',(0,0),(-1,-1),10)]))
+        bl.append(h)
+        for label, value in rows:
+            r = Table([[Paragraph(label, S('BL', fontSize=9, textColor=GRAY, fontName='Helvetica')),
+                        Paragraph(str(value) if value else '-', S('BV', fontSize=9, textColor=DARK, fontName='Helvetica-Bold'))]],
+                      colWidths=[W*0.16, W*0.30])
+            r.setStyle(TableStyle([
+                ('BACKGROUND',(0,0),(-1,-1),GRAY_LIGHT),
+                ('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),5),
+                ('LEFTPADDING',(0,0),(0,-1),10),('LEFTPADDING',(1,0),(1,-1),4),
+                ('LINEBELOW',(0,0),(-1,-1),0.4,GRAY_BORDER),
+            ]))
+            bl.append(r)
+        return bl
+
+    em_rows = [("Societe :", "Global Clean Home"),("Adresse :", "231 rue Saint-Honore"),("Ville :", "75001 Paris"),("Tel :", "06 22 66 53 08"),("Email :", "info@globalcleanhome.com")]
+    cl_rows = [("Nom :", lead_data.get('name','-')),("Email :", lead_data.get('email','-')),("Tel :", lead_data.get('phone','-')),("Adresse :", lead_data.get('address','-'))]
+
+    em_block = make_block("EMETTEUR", em_rows, SLATE)
+    cl_block  = make_block("CLIENT",   cl_rows, ORANGE)
+
+    two_col = Table([[
+        Table([[e] for e in em_block], colWidths=[W*0.46]),
+        Spacer(W*0.04, 1),
+        Table([[c] for c in cl_block], colWidths=[W*0.46])
+    ]], colWidths=[W*0.46, W*0.04, W*0.46])
+    two_col.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP')]))
+    elements.append(two_col)
+    elements.append(Spacer(1, 14))
+
+    # PRESTATION
+    sec_h = Table([[Paragraph("DETAIL DE LA PRESTATION", S('SH', fontSize=9, textColor=WHITE, fontName='Helvetica-Bold'))]], colWidths=[W])
+    sec_h.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),SLATE),('TOPPADDING',(0,0),(-1,-1),8),('BOTTOMPADDING',(0,0),(-1,-1),8),('LEFTPADDING',(0,0),(-1,-1),14)]))
+    elements.append(sec_h)
+
+    prest = Table([
+        [Paragraph("Prestation", S('TH', fontSize=9, textColor=WHITE, fontName='Helvetica-Bold')),
+         Paragraph("Montant", S('TH2', fontSize=9, textColor=WHITE, fontName='Helvetica-Bold', alignment=TA_RIGHT))],
+        [Paragraph(service, S('PL', fontSize=10, textColor=DARK, fontName='Helvetica-Bold')),
+         Paragraph(f"{amount:,.2f} EUR", S('PM', fontSize=13, textColor=ORANGE_DARK, fontName='Helvetica-Bold', alignment=TA_RIGHT))],
+    ], colWidths=[W*0.72, W*0.28])
+    prest.setStyle(TableStyle([
+        ('BACKGROUND',(0,0),(-1,0),SLATE),('TOPPADDING',(0,0),(-1,0),9),('BOTTOMPADDING',(0,0),(-1,0),9),
+        ('LEFTPADDING',(0,0),(-1,0),14),('RIGHTPADDING',(-1,0),(-1,0),14),
+        ('BACKGROUND',(0,1),(-1,-1),WHITE),('TOPPADDING',(0,1),(-1,-1),14),('BOTTOMPADDING',(0,1),(-1,-1),14),
+        ('LEFTPADDING',(0,1),(-1,-1),14),('RIGHTPADDING',(-1,1),(-1,-1),14),
+        ('LINEBELOW',(0,0),(-1,-1),0.5,GRAY_BORDER),('BOX',(0,0),(-1,-1),1,GRAY_BORDER),('VALIGN',(0,0),(-1,-1),'MIDDLE'),
     ]))
-    elements.append(quote_table)
-    elements.append(Spacer(1, 20))
-    
-    # Total
-    total_data = [
-        ['', '', 'TOTAL HT:', f"{quote_data.get('amount', 0):.2f} €"],
-        ['', '', 'TVA (20%):', f"{quote_data.get('amount', 0) * 0.2:.2f} €"],
-        ['', '', 'TOTAL TTC:', f"{quote_data.get('amount', 0) * 1.2:.2f} €"],
-    ]
-    
-    total_table = Table(total_data, colWidths=[2.5*inch, 1.5*inch, 1.5*inch, 1.5*inch])
-    total_table.setStyle(TableStyle([
-        ('ALIGN', (2, 0), (-1, -1), 'RIGHT'),
-        ('FONTNAME', (2, -1), (-1, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (2, -1), (-1, -1), 14),
-        ('TEXTCOLOR', (2, -1), (-1, -1), colors.HexColor('#7C3AED')),
+    elements.append(prest)
+    elements.append(Spacer(1, 8))
+
+    # DETAILS PARSES
+    details_text = quote_data.get('details', '')
+    detail_rows = []
+    skip_prefixes = ('CLIENT','Email :','Telephone :','Adresse :','Date souhaitee','CONDITIONS','- Devis valable','- Paiement','- Intervention sous','- Produits')
+    in_prestations = False
+    for line in details_text.split('\n'):
+        line = line.strip()
+        if not line: continue
+        if '===' in line:
+            in_prestations = 'PRESTATION' in line.upper() or 'MENAGE' in line.upper() or 'NETTOYAGE' in line.upper()
+            continue
+        if any(line.startswith(p) for p in skip_prefixes): continue
+        if in_prestations:
+            line_clean = line.lstrip('bullet- ').replace('\u2022','').strip()
+            if ':' in line_clean:
+                parts = line_clean.split(':', 1)
+                lbl = parts[0].strip().replace('-','').strip().title()
+                val = parts[1].strip()
+                if lbl and val:
+                    detail_rows.append([
+                        Paragraph(lbl, S('DL', fontSize=9, textColor=GRAY, fontName='Helvetica-Bold')),
+                        Paragraph(val, S('DV', fontSize=9, textColor=DARK, fontName='Helvetica'))
+                    ])
+            elif line_clean:
+                detail_rows.append([
+                    Paragraph('', S('DE', fontSize=9)),
+                    Paragraph(f"  {line_clean}", S('DI', fontSize=9, textColor=DARK, fontName='Helvetica'))
+                ])
+
+    if detail_rows:
+        dh = Table([[Paragraph("INFORMATIONS DE LA PRESTATION", S('DPH', fontSize=9, textColor=WHITE, fontName='Helvetica-Bold'))]], colWidths=[W])
+        dh.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),colors.HexColor('#334155')),('TOPPADDING',(0,0),(-1,-1),7),('BOTTOMPADDING',(0,0),(-1,-1),7),('LEFTPADDING',(0,0),(-1,-1),14)]))
+        elements.append(dh)
+        dt = Table(detail_rows, colWidths=[W*0.30, W*0.70])
+        dt.setStyle(TableStyle([
+            ('BACKGROUND',(0,0),(-1,-1),GRAY_LIGHT),
+            ('TOPPADDING',(0,0),(-1,-1),7),('BOTTOMPADDING',(0,0),(-1,-1),7),
+            ('LEFTPADDING',(0,0),(0,-1),14),('LEFTPADDING',(1,0),(1,-1),8),
+            ('LINEBELOW',(0,0),(-1,-2),0.3,GRAY_BORDER),
+            ('BOX',(0,0),(-1,-1),0.5,GRAY_BORDER),('VALIGN',(0,0),(-1,-1),'MIDDLE'),
+        ]))
+        elements.append(dt)
+    elements.append(Spacer(1, 10))
+
+    # TOTAL SANS TVA
+    total = Table([
+        [Paragraph("MONTANT TOTAL", S('TL', fontSize=9, textColor=GRAY, fontName='Helvetica-Bold')),
+         Paragraph(f"{amount:,.2f} EUR", S('TA', fontSize=22, textColor=ORANGE, fontName='Helvetica-Bold', alignment=TA_RIGHT))],
+        [Paragraph("Micro-entreprise - TVA non applicable (art. 293B CGI)", S('TN', fontSize=8, textColor=GRAY, fontName='Helvetica')),
+         Paragraph(date_valid, S('TV', fontSize=8, textColor=GRAY, fontName='Helvetica', alignment=TA_RIGHT))],
+    ], colWidths=[W*0.60, W*0.40])
+    total.setStyle(TableStyle([
+        ('BACKGROUND',(0,0),(-1,-1),GRAY_LIGHT),
+        ('TOPPADDING',(0,0),(-1,-1),12),('BOTTOMPADDING',(0,0),(-1,-1),12),
+        ('LEFTPADDING',(0,0),(-1,-1),14),('RIGHTPADDING',(0,0),(-1,-1),14),
+        ('VALIGN',(0,0),(-1,-1),'MIDDLE'),
+        ('LINEABOVE',(0,0),(-1,0),3,ORANGE),
+        ('BOX',(0,0),(-1,-1),0.5,GRAY_BORDER),
     ]))
-    elements.append(total_table)
-    elements.append(Spacer(1, 30))
-    
-    # Notes
-    if quote_data.get('details'):
-        elements.append(Paragraph("NOTES", styles['Heading2']))
-        elements.append(Paragraph(quote_data.get('details', ''), styles['Normal']))
-    
-    elements.append(Spacer(1, 30))
-    
-    # Conditions
-    conditions = """
-    <b>CONDITIONS GÉNÉRALES:</b><br/>
-    - Devis valable 30 jours<br/>
-    - Paiement à la fin de la prestation<br/>
-    - Annulation gratuite jusqu'à 24h avant<br/>
-    - Satisfaction garantie ou prestation refaite gratuitement
-    """
-    elements.append(Paragraph(conditions, styles['Normal']))
-    
-    # Build PDF
+    elements.append(total)
+    elements.append(Spacer(1, 14))
+
+    # GARANTIES
+    gh = Table([[Paragraph("NOS GARANTIES", S('GH', fontSize=9, textColor=WHITE, fontName='Helvetica-Bold'))]], colWidths=[W])
+    gh.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),GREEN),('TOPPADDING',(0,0),(-1,-1),7),('BOTTOMPADDING',(0,0),(-1,-1),7),('LEFTPADDING',(0,0),(-1,-1),14)]))
+    elements.append(gh)
+
+    garanties = [
+        "  Materiel et produits professionnels fournis",
+        "  Personnel forme, experimente et couvert RC Pro",
+        "  Resultat garanti ou intervention reprise gratuitement",
+        "  Annulation sans frais jusqu'a 24h avant l'intervention",
+        "  Attestation fiscale fournie (credit d'impot 50% menage)",
+    ]
+    gar_rows = [[Paragraph(g, S('GR', fontSize=8, textColor=colors.HexColor('#166534'), fontName='Helvetica', leading=11))] for g in garanties]
+    gt = Table(gar_rows, colWidths=[W])
+    gt.setStyle(TableStyle([
+        ('BACKGROUND',(0,0),(-1,-1),colors.HexColor('#f0fdf4')),
+        ('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),5),
+        ('LEFTPADDING',(0,0),(-1,-1),14),
+        ('LINEBELOW',(0,0),(-1,-2),0.3,colors.HexColor('#bbf7d0')),
+        ('BOX',(0,0),(-1,-1),0.5,colors.HexColor('#bbf7d0')),
+    ]))
+    elements.append(gt)
+    elements.append(Spacer(1, 14))
+
+    # SIGNATURE
+    sig = Table([
+        [Paragraph("BON POUR ACCORD - Signature du client :", S('SH', fontSize=8, textColor=GRAY, fontName='Helvetica-Bold')),
+         Paragraph("Date :", S('SH2', fontSize=8, textColor=GRAY, fontName='Helvetica-Bold'))],
+        [Paragraph(f"<br/>Nom : {lead_data.get('name','')}<br/><br/>", S('SV', fontSize=9, textColor=DARK, fontName='Helvetica')),
+         Paragraph("<br/>_______________________<br/>", S('SV2', fontSize=9, textColor=DARK, fontName='Helvetica'))],
+    ], colWidths=[W*0.60, W*0.40])
+    sig.setStyle(TableStyle([
+        ('BACKGROUND',(0,0),(-1,-1),GRAY_LIGHT),
+        ('LINEBELOW',(0,0),(-1,0),0.5,GRAY_BORDER),
+        ('TOPPADDING',(0,0),(-1,-1),8),('BOTTOMPADDING',(0,0),(-1,-1),8),
+        ('LEFTPADDING',(0,0),(-1,-1),12),
+        ('BOX',(0,0),(-1,-1),0.5,GRAY_BORDER),
+    ]))
+    elements.append(sig)
+    elements.append(Spacer(1, 14))
+
+    # FOOTER
+    ft = Table([[Paragraph(
+        "Global Clean Home  |  231 rue Saint-Honore, 75001 Paris  |  06 22 66 53 08  |  info@globalcleanhome.com  |  www.globalcleanhome.com",
+        S('FT', fontSize=7, textColor=colors.HexColor('#94a3b8'), fontName='Helvetica', alignment=TA_CENTER)
+    )]], colWidths=[W])
+    ft.setStyle(TableStyle([
+        ('BACKGROUND',(0,0),(-1,-1),DARK),
+        ('TOPPADDING',(0,0),(-1,-1),12),('BOTTOMPADDING',(0,0),(-1,-1),12),
+    ]))
+    elements.append(ft)
+
     doc.build(elements)
     buffer.seek(0)
     return buffer
+
+
 
 @integrations_router.post("/pdf/generate-quote")
 async def generate_quote_pdf_endpoint(request: Request, input: PDFQuoteRequest):
