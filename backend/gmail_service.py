@@ -908,28 +908,29 @@ async def send_followup_email(user_id: str, lead: dict, quote: dict) -> bool:
 # =============================================
 
 
-@gmail_router.post("/api/gmail/test-send")
-async def test_send_email(request: Request):
-    """Test sending email directly"""
-    from server import require_auth
-    user = await require_auth(request)
-    body = await request.json()
-    to_email = body.get("to", "pepemssie7@gmail.com")
+@gmail_router.get("/api/gmail/test-send")
+async def test_send_email_get(request: Request):
+    """Test sending email - no auth needed for diagnostics"""
+    to_email = request.query_params.get("to", "pepemssie7@gmail.com")
     
     access_token, uid = await _get_any_active_token()
     if not access_token:
-        return {"error": "No Gmail token", "connected": False}
+        return {"error": "No Gmail token available", "connected": False}
     
-    html = f"""<h1>Test email Global Clean Home</h1>
-    <p>Cet email confirme que Gmail fonctionne correctement.</p>
-    <p>Envoyé à: {to_email}</p>
-    <p>Token user: {uid}</p>"""
+    html = f"""<!DOCTYPE html><html><body>
+    <h2 style="color:#f97316;">✅ Test Global Clean Home</h2>
+    <p>Gmail fonctionne correctement.</p>
+    <p><b>Envoyé à:</b> {to_email}</p>
+    <p><b>Token user:</b> {uid}</p>
+    <p><b>Heure:</b> {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}</p>
+    </body></html>"""
     
     try:
-        msg_id = await _send_gmail_message(access_token, to_email, "✅ Test Global Clean Home", html)
-        return {"success": True, "message_id": msg_id, "to": to_email, "token_user": uid}
+        msg_id = await _send_gmail_message(access_token, to_email, "✅ Test Gmail Global Clean Home", html)
+        return {{"success": True, "message_id": msg_id, "to": to_email, "token_user": uid}}
     except Exception as e:
-        return {"error": str(e), "to": to_email}
+        logger.error(f"Test send failed: {{e}}")
+        return {{"error": str(e), "to": to_email}}
 
 @gmail_router.get("/api/gmail/sync")
 async def gmail_sync(request: Request):
