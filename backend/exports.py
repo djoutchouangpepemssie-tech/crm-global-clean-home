@@ -138,66 +138,38 @@ async def export_invoice_pdf(invoice_id: str, request: Request):
 
 @exports_router.get("/quote/{quote_id}/pdf")
 async def export_quote_pdf(quote_id: str, request: Request):
-    """Generate a PDF for a single quote."""
+    """Generate premium PDF for a quote — filename = Devis_NomClient.pdf"""
     await _require_auth(request)
-    
+
     quote = await _db.quotes.find_one({"quote_id": quote_id}, {"_id": 0})
     if not quote:
         raise HTTPException(status_code=404, detail="Devis introuvable")
-    
+
     lead = await _db.leads.find_one({"lead_id": quote.get("lead_id")}, {"_id": 0})
-    
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=20*mm, bottomMargin=20*mm, leftMargin=20*mm, rightMargin=20*mm)
-    elements = []
-    styles = getSampleStyleSheet()
-    
-    _create_pdf_header(elements, styles, f"Devis {quote_id}", f"Date: {_format_date(quote.get('created_at'))}")
-    
-    info_style = ParagraphStyle('Info', parent=styles['Normal'], fontSize=10, textColor=SLATE_900, spaceAfter=2)
-    
-    if lead:
-        elements.append(Paragraph(f"<b>Client:</b> {lead.get('name', '')}", info_style))
-        elements.append(Paragraph(f"<b>Email:</b> {lead.get('email', '')}", info_style))
-        elements.append(Paragraph(f"<b>Tél:</b> {lead.get('phone', '')}", info_style))
-        if lead.get('address'):
-            elements.append(Paragraph(f"<b>Adresse:</b> {lead.get('address', '')}", info_style))
-    elements.append(Spacer(1, 12))
-    
-    table_data = [
-        ['Service', 'Surface', 'Montant'],
-        [quote.get('service_type', ''), f"{quote.get('surface', '-')} m²", _format_amount(quote.get('amount'))],
-    ]
-    
-    table = Table(table_data, colWidths=[80*mm, 50*mm, 40*mm])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), VIOLET),
-        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
-        ('GRID', (0, 0), (-1, -1), 0.5, SLATE_200),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-    ]))
-    elements.append(table)
-    elements.append(Spacer(1, 12))
-    
-    if quote.get('details'):
-        elements.append(Paragraph(f"<b>Détails:</b> {quote.get('details')}", info_style))
-    
-    elements.append(Spacer(1, 20))
-    elements.append(Paragraph(f"<b>Statut:</b> {quote.get('status', '')}", info_style))
-    elements.append(Spacer(1, 30))
-    elements.append(Paragraph("Ce devis est valable 30 jours à compter de sa date d'émission.", ParagraphStyle('Footer', parent=styles['Normal'], fontSize=8, textColor=SLATE_600)))
-    
-    doc.build(elements)
-    buffer.seek(0)
-    
+    if not lead:
+        lead = {}
+
+    # Utiliser le générateur premium
+    try:
+        from integrations import generate_quote_pdf
+        pdf_buffer = generate_quote_pdf(quote, lead)
+        pdf_bytes = pdf_buffer.read()
+    except Exception as e:
+        logger.error(f"PDF generation error: {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur génération PDF: {str(e)}")
+
+    # Nom fichier = Devis_PrenomNom.pdf
+    client_name = lead.get("name", "Client")
+    safe_name = "".join(c if c.isalnum() or c in "_ -" else "_" for c in client_name).strip()
+    pdf_filename = f"Devis_{safe_name}.pdf"
+
     return StreamingResponse(
-        buffer,
+        BytesIO(pdf_bytes),
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=devis_{quote_id}.pdf"}
+        headers={
+            "Content-Disposition": f'attachment; filename="{pdf_filename}"',
+            "Content-Length": str(len(pdf_bytes)),
+        }
     )
 
 # ============= CSV EXPORTS =============
