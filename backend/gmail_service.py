@@ -377,19 +377,32 @@ async def send_quote_email(user_id: str, lead: dict, quote: dict, pdf_data: byte
 
     # Détails prestations
     details_text = quote.get("details", "")
+    # Parser détails — ignorer infos client et conditions (déjà affichées ailleurs)
+    SKIP = ('CLIENT','Email :','Telephone :','Adresse :','Date souhaitee',
+            'CONDITIONS','- Devis valable','- Paiement','- Intervention sous','- Produits')
     details_rows = ""
+    in_prestations = False
     if details_text:
         for line in details_text.split("\n"):
             line = line.strip()
             if not line: continue
+            if any(line.startswith(s) for s in SKIP): continue
             if "===" in line:
-                label = line.replace("=","").strip()
-                details_rows += f'<tr><td colspan="2" style="padding:12px 16px 6px;font-weight:700;color:#7c3aed;font-size:13px;border-bottom:2px solid #ede9fe;">{label}</td></tr>'
-            elif ":" in line:
-                parts = line.split(":",1)
-                details_rows += f'<tr><td style="padding:8px 16px;color:#64748b;font-size:13px;width:50%;">{parts[0].strip()}</td><td style="padding:8px 16px;color:#1e293b;font-weight:600;font-size:13px;">{parts[1].strip()}</td></tr>'
-            else:
-                details_rows += f'<tr><td colspan="2" style="padding:6px 16px;color:#64748b;font-size:13px;">• {line}</td></tr>'
+                section = line.replace("=","").strip()
+                in_prestations = any(k in section.upper() for k in ["PRESTATION","MENAGE","NETTOYAGE","SERVICE"])
+                if in_prestations:
+                    details_rows += f'<tr><td colspan="2" style="padding:10px 16px 4px;font-weight:800;color:#f97316;font-size:12px;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid #fed7aa;background:#fff7ed;">{section}</td></tr>'
+                continue
+            if not in_prestations: continue
+            line_c = line.lstrip("•- ").strip()
+            if ":" in line_c:
+                parts = line_c.split(":",1)
+                lbl = parts[0].strip().replace("-","").strip().title()
+                val = parts[1].strip()
+                if lbl and val:
+                    details_rows += f'<tr><td style="padding:8px 16px;color:#64748b;font-size:13px;width:35%;font-weight:600;">{lbl}</td><td style="padding:8px 16px;color:#1e293b;font-size:13px;font-weight:700;">{val}</td></tr>'
+            elif line_c:
+                details_rows += f'<tr><td colspan="2" style="padding:6px 16px;color:#475569;font-size:13px;">• {line_c}</td></tr>'
 
     steps_html = ''.join([
         f'<div style="flex:1;text-align:center;"><div style="width:36px;height:36px;background:linear-gradient(135deg,#f97316,#ea580c);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin:0 auto 8px;color:white;font-weight:900;font-size:14px;">' + str(n) + '</div><p style="color:#64748b;font-size:11px;margin:0;font-weight:600;">' + s + '</p></div>'

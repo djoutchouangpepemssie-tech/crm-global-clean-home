@@ -1050,9 +1050,18 @@ async def send_quote(quote_id: str, request: Request):
     }
     await db.tasks.insert_one(task)
     
+    # Désactiver l'exécution des workflows "devis_envoye" car on envoie déjà l'email premium
+    try:
+        await db.workflow_executions.update_many(
+            {"lead_id": quote["lead_id"], "template": "devis_envoye", "status": "pending"},
+            {"$set": {"status": "skipped", "skip_reason": "Email premium envoyé directement"}}
+        )
+    except Exception as wf_err:
+        logger.warning(f"Workflow skip error: {wf_err}")
+
     await log_activity(user.user_id, "send_quote", "quote", quote_id)
-    
-    return {"message": "Devis envoye" + (" par email" if email_sent else ""), "email_sent": email_sent}
+
+    return {"message": "Devis envoye" + (" par email avec PDF" if email_sent else ""), "email_sent": email_sent}
 
 # ============= INTERACTIONS ENDPOINTS =============
 
