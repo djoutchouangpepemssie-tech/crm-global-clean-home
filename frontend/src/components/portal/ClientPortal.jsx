@@ -18,9 +18,15 @@ const CHAT_API = BACKEND_URL + '/api/chat';
 const portalAxios = axios.create({ withCredentials: true });
 portalAxios.interceptors.request.use(config => {
   const token = localStorage.getItem('portal_token');
-  if (token) config.headers['X-Portal-Token'] = token;
+  if (token) {
+    config.headers['X-Portal-Token'] = token;
+    config.headers['x-portal-token'] = token;
+  }
   return config;
 });
+// Init token au chargement
+const _initToken = localStorage.getItem('portal_token');
+if (_initToken) portalAxios.defaults.headers.common['X-Portal-Token'] = _initToken;
 
 /* ── HELPERS ── */
 const STATUS_QUOTE = {
@@ -71,6 +77,8 @@ const PortalLogin = ({ onAuth }) => {
     try {
       const res = await axios.post(`${API_URL}/auth/${token}`, {}, { withCredentials: true });
       localStorage.setItem('portal_token', token);
+      // Forcer la mise à jour de l'intercepteur
+      portalAxios.defaults.headers.common['X-Portal-Token'] = token;
       onAuth(res.data);
     } catch { toast.error('Lien invalide ou expiré'); }
     finally { setLoading(false); }

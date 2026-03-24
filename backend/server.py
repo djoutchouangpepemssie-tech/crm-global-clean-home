@@ -1016,23 +1016,26 @@ async def send_quote(quote_id: str, request: Request):
         {"$set": {"status": "devis_envoyé", "updated_at": now.isoformat()}}
     )
     
-    # Send email via Gmail if connected
+    # Send email via Gmail WITH PDF attached
     email_sent = False
     lead = await db.leads.find_one({"lead_id": quote["lead_id"]}, {"_id": 0})
     if lead and lead.get("email"):
         try:
+            # Générer PDF premium
+            pdf_data = None
+            try:
+                from integrations import generate_quote_pdf
+                pdf_buffer = generate_quote_pdf(quote, lead)
+                pdf_data = pdf_buffer.read()
+                logger.info(f"PDF generated: {len(pdf_data)} bytes")
+            except Exception as pdf_err:
+                logger.warning(f"PDF generation failed: {pdf_err}")
+
             from gmail_service import send_quote_email
-            email_sent = await send_quote_email(user.user_id, lead, quote)
+            email_sent = await send_quote_email(user.user_id, lead, quote, pdf_data=pdf_data)
+            logger.info(f"Quote email sent: {email_sent}, PDF attached: {pdf_data is not None}")
         except Exception as e:
             logger.warning(f"Gmail send failed for quote {quote_id}: {e}")
-        
-        # Envoyer automatiquement le lien portail client
-        try:
-            from portal import auto_send_portal_access
-            await auto_send_portal_access(lead, context="quote")
-            logger.info(f"Portal access link sent to {lead.get('email')} for quote")
-        except Exception as e:
-            logger.warning(f"Portal access email failed: {e}")
     
     # Create follow-up task (48h)
     task = {
