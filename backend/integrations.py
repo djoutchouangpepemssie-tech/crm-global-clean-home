@@ -245,17 +245,7 @@ def generate_quote_pdf(quote_data: dict, lead_data: dict) -> BytesIO:
     elements.append(Paragraph("DEVIS - Global Clean Home", title_style))
     elements.append(Spacer(1, 12))
     
-    # Informations entreprise
-# removed old company info
-    
-    company_table = Table(company_info, colWidths=[3*inch, 3*inch])
-    company_table.setStyle(TableStyle([
-        ('FONT', (0, 0), (-1, -1), 'Helvetica', 10),
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#334155')),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-    ]))
-    elements.append(company_table)
-    elements.append(Spacer(1, 30))
+    # Informations entreprise - intégrées dans le header
     
     # Informations client
     elements.append(Paragraph("CLIENT", styles['Heading2']))
