@@ -356,10 +356,15 @@ async def _send_gmail_message(access_token: str, to: str, subject: str, html: st
 
 async def send_quote_email(user_id: str, lead: dict, quote: dict, pdf_data: bytes = None) -> bool:
     """Send a premium quote email with PDF attachment."""
+    # Essayer avec user_id d'abord, puis fallback sur n'importe quel compte actif
     access_token = await _get_valid_access_token(user_id)
     if not access_token:
-        logger.warning("Gmail not connected for quote email")
+        logger.warning(f"No token for user {user_id}, trying any active account")
+        access_token, _ = await _get_any_active_token()
+    if not access_token:
+        logger.error("No Gmail token available at all")
         return False
+    logger.info(f"Gmail token obtained for quote email to {lead.get('email')}")
 
     # Auto-générer PDF si non fourni
     if pdf_data is None:
