@@ -321,7 +321,7 @@ async def send_email(request: Request):
     }
 
 
-async def _send_gmail_message(access_token: str, to: str, subject: str, html: str, in_reply_to: str = None) -> str:
+async def _send_gmail_message(access_token: str, to: str, subject: str, html: str, in_reply_to: str = None, pdf_data: bytes = None, pdf_filename: str = None) -> str:
     """Send a message via Gmail API and return the message ID."""
     msg = MIMEMultipart("alternative")
     msg["From"] = f"{GMAIL_FROM_NAME} <{GMAIL_FROM_ADDRESS}>"
