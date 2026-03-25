@@ -92,20 +92,33 @@ const PlanningCalendar = () => {
   const [form, setForm] = useState({
     lead_id:'', title:'', description:'', address:'',
     scheduled_date:'', scheduled_time:'09:00', duration_hours:2,
-    team_id:'', service_type:'', client_phone:''
+    team_id:'', service_type:'', client_phone:'',
+    assigned_agent_id:'', assigned_agent_name:''
   });
+
+  const [members, setMembers] = useState([]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [calRes, teamsRes] = await Promise.allSettled([
+      const [calRes, teamsRes, membersRes] = await Promise.allSettled([
         axios.get(`${API_URL}/calendar?month=${currentMonth}`, {withCredentials:true}),
         axios.get(`${API_URL}/teams`, {withCredentials:true}),
+        axios.get(`${API_URL}/team-members`, {withCredentials:true}),
       ]);
       const cal = calRes.status==='fulfilled' ? calRes.value.data : {};
       const t = teamsRes.status==='fulfilled' ? teamsRes.value.data : [];
+      const m = membersRes.status==='fulfilled' ? (membersRes.value.data || []) : [];
       setInterventions(cal.interventions || []);
       setTeams(Array.isArray(t) ? t : (t.teams || cal.teams || []));
+      // Extraire membres des équipes si pas de collection dédiée
+      if (m.length > 0) {
+        setMembers(m);
+      } else {
+        const allTeams = Array.isArray(t) ? t : (t.teams || []);
+        const allMembers = allTeams.flatMap(team => (team.members||[]).map(m=>({...m,team_name:team.name})));
+        setMembers(allMembers);
+      }
     } catch { toast.error('Erreur de chargement'); }
     finally { setLoading(false); }
   }, [currentMonth]);
@@ -600,6 +613,28 @@ const PlanningCalendar = () => {
                   <input type="tel" value={form.client_phone} onChange={e=>setForm(p=>({...p,client_phone:e.target.value}))}
                     placeholder="06 12 34 56 78" className={inputCls} />
                 </Field>
+              </div>
+
+              <Field label="👷 Assigner à un intervenant">
+                <select value={form.assigned_agent_id}
+                  onChange={e=>{
+                    const m = members.find(x=>x.member_id===e.target.value);
+                    setForm(p=>({...p, assigned_agent_id:e.target.value, assigned_agent_name:m?.name||''}));
+                  }}
+                  className={inputCls}>
+                  <option value="" className="bg-slate-800">— Non assigné —</option>
+                  {members.map(m=>(
+                    <option key={m.member_id} value={m.member_id} className="bg-slate-800">
+                      {m.name} {m.role?`(${m.role})`:''}
+                    </option>
+                  ))}
+                </select>
+                {form.assigned_agent_id && (
+                  <p className="text-xs text-emerald-400 mt-1">✅ Assigné à {form.assigned_agent_name}</p>
+                )}
+              </Field>
+
+              <div className="grid grid-cols-2 gap-3" style={{display:'none'}}>
               </div>
 
               <Field label="Description / Notes">
