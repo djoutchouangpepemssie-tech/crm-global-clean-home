@@ -251,9 +251,7 @@ def generate_invoice_pdf_bytes(invoice: dict, lead: dict) -> bytes:
     # PAIEMENT si en attente
     if statut == 'en_attente':
         pay=Table([[Paragraph(
-            "COMMENT REGLER VOTRE FACTURE ?
-Virement bancaire, cheque ou carte bancaire.
-Contactez-nous : info@globalcleanhome.com | 06 22 66 53 08",
+            "COMMENT REGLER VOTRE FACTURE ?\nVirement bancaire, cheque ou carte bancaire.\nContactez-nous : info@globalcleanhome.com | 06 22 66 53 08",
             S('pay',fontSize=9,textColor=colors.HexColor('#92400e'),fontName='Helvetica',leading=14)
         )]],colWidths=[W])
         pay.setStyle(TableStyle([
