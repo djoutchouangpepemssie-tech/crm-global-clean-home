@@ -1774,6 +1774,7 @@ async def startup_db_indexes():
     init_tickets_db(db)
     init_notifications_db(db)
     init_chat_db(db)
+    init_intervenant_db(db)
     
     # Scheduler pour traiter les workflows toutes les 30 minutes
     import asyncio
