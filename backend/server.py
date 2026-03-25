@@ -1725,6 +1725,9 @@ app.include_router(gcal_router)
 from gmail_service import gmail_router
 app.include_router(gmail_router)
 
+from intervenant import intervenant_router, init_intervenant_db
+app.include_router(intervenant_router)
+
 @app.on_event("startup")
 async def startup_db_indexes():
     """Create MongoDB indexes for performance."""

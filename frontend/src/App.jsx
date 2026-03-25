@@ -75,6 +75,7 @@ const InvoicesList = lazy(() => import('./components/invoices/InvoicesList'));
 const PaymentSuccess = lazy(() => import('./components/invoices/PaymentSuccess'));
 const FinancialDashboard = lazy(() => import('./components/invoices/FinancialDashboard'));
 const ClientPortal = lazy(() => import('./components/portal/ClientPortal'));
+const IntervenantPortal = lazy(() => import('./components/portal/IntervenantPortal'));
 const PlanningCalendar = lazy(() => import('./components/planning/PlanningCalendar'));
 const Integrations = lazy(() => import('./components/integrations/Integrations'));
 const AdsDashboard = lazy(() => import('./components/ads/AdsDashboard'));
@@ -232,6 +233,7 @@ function AppRouter() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/portal" element={<ClientPortal />} />
+      <Route path="/intervenant" element={<IntervenantPortal />} />
 
       <Route
         path="/*"
