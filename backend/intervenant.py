@@ -47,10 +47,14 @@ async def request_auth_code(request: Request):
     if not email:
         raise HTTPException(status_code=400, detail="Email requis")
 
-    # Chercher l'agent dans team_members ou users
+    # SECURITE: Vérifier que l'agent est enregistré
     agent = await _db.team_members.find_one({"email": email}, {"_id": 0})
     if not agent:
-        agent = await _db.users.find_one({"email": email}, {"_id": 0})
+        agent = await _db.users.find_one({"email": email, "role": {"$in": ["technicien","agent","senior","chef_equipe"]}}, {"_id": 0})
+    
+    if not agent:
+        # Accès refusé - email non enregistré
+        raise HTTPException(status_code=403, detail="Accès refusé. Contactez votre administrateur pour obtenir un accès.")
 
     # Générer code 6 chiffres
     code = str(secrets.randbelow(1000000)).zfill(6)
@@ -131,14 +135,7 @@ async def verify_auth_code(request: Request):
         agent = await _db.users.find_one({"email": email}, {"_id": 0})
 
     if not agent:
-        # Créer un agent temporaire
-        agent = {
-            "member_id": f"agent_{uuid.uuid4().hex[:8]}",
-            "name": email.split("@")[0].title(),
-            "email": email,
-            "role": "technicien",
-        }
-        await _db.team_members.insert_one({**agent, "created_at": datetime.now(timezone.utc).isoformat()})
+        raise HTTPException(status_code=403, detail="Accès refusé. Contactez votre administrateur.")
 
     agent_id = agent.get("member_id") or agent.get("user_id")
 

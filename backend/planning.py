@@ -34,6 +34,9 @@ class TeamMemberCreate(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     role: Optional[str] = "technicien"
+    skills: Optional[List[str]] = []
+    zones: Optional[List[str]] = []
+    notes: Optional[str] = ""
 
 class InterventionCreate(BaseModel):
     lead_id: str
@@ -107,15 +110,72 @@ async def add_team_member(team_id: str, body: TeamMemberCreate, request: Request
         "member_id": f"mbr_{uuid.uuid4().hex[:12]}",
         "name": body.name,
         "email": body.email,
-        "phone": body.phone,
-        "role": body.role,
+        "phone": body.phone or "",
+        "role": body.role or "technicien",
+        "skills": getattr(body, 'skills', []) or [],
+        "zones": getattr(body, 'zones', []) or [],
+        "notes": getattr(body, 'notes', '') or "",
         "added_at": datetime.now(timezone.utc).isoformat(),
+        "team_id": team_id,
+        "team_name": team.get("name",""),
     }
     
+    # Sauvegarder dans teams ET team_members pour accès facile
     await _db.teams.update_one(
         {"team_id": team_id},
         {"$push": {"members": member}}
     )
+    await _db.team_members.update_one(
+        {"member_id": member["member_id"]},
+        {"$set": member},
+        upsert=True
+    )
+
+    # Envoyer email de bienvenue avec lien portail
+    if body.email:
+        try:
+            from gmail_service import _get_any_active_token, _send_gmail_message
+            token, _ = await _get_any_active_token()
+            if token:
+                portal_url = "https://crm.globalcleanhome.com/intervenant"
+                html = f"""<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,sans-serif;">
+<div style="max-width:560px;margin:40px auto;background:white;border-radius:20px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.1);">
+  <div style="background:linear-gradient(135deg,#10b981,#059669);padding:36px;text-align:center;">
+    <div style="font-size:48px;margin-bottom:12px;">🧹</div>
+    <h1 style="color:white;margin:0;font-size:22px;font-weight:900;">Bienvenue dans l'équipe !</h1>
+    <p style="color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:14px;">Global Clean Home — Portail Intervenant</p>
+  </div>
+  <div style="padding:32px;">
+    <p style="color:#1e293b;font-size:16px;font-weight:700;margin:0 0 8px;">Bonjour {body.name} 👋</p>
+    <p style="color:#64748b;font-size:14px;line-height:1.8;margin:0 0 24px;">
+      Vous avez été ajouté(e) à l'équipe <strong>Global Clean Home</strong> en tant que <strong>{body.role or 'Technicien'}</strong>.
+      Votre espace personnel vous permet de consulter vos missions, faire vos check-in/check-out et communiquer avec le bureau.
+    </p>
+    <div style="background:#f0fdf4;border-radius:14px;padding:20px;margin:0 0 24px;border:1px solid #bbf7d0;text-align:center;">
+      <p style="color:#15803d;font-size:13px;font-weight:700;margin:0 0 12px;">🔐 Comment vous connecter :</p>
+      <p style="color:#166534;font-size:13px;margin:0 0 8px;">1. Allez sur votre portail intervenant</p>
+      <p style="color:#166534;font-size:13px;margin:0 0 16px;">2. Entrez votre email : <strong>{body.email}</strong></p>
+      <p style="color:#166534;font-size:13px;margin:0 0 16px;">3. Entrez le code reçu par email</p>
+      <a href="{portal_url}" style="display:inline-block;background:linear-gradient(135deg,#10b981,#059669);color:white;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:700;font-size:14px;">
+        🚀 Accéder à mon portail
+      </a>
+    </div>
+    <div style="background:#f8fafc;border-radius:12px;padding:16px;border:1px solid #e2e8f0;">
+      <p style="color:#64748b;font-size:12px;margin:0;">Lien direct : <span style="color:#10b981;font-family:monospace;">{portal_url}</span></p>
+    </div>
+  </div>
+  <div style="background:#0f172a;padding:20px 32px;text-align:center;">
+    <p style="color:white;font-weight:700;margin:0 0 3px;font-size:13px;">Global Clean Home</p>
+    <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0;">06 22 66 53 08 · info@globalcleanhome.com</p>
+  </div>
+</div></body></html>"""
+                await _send_gmail_message(token, body.email,
+                    f"🧹 Bienvenue chez Global Clean Home — Accès portail intervenant",
+                    html)
+                logger.info(f"Welcome email sent to {body.email}")
+        except Exception as e:
+            logger.warning(f"Welcome email failed: {e}")
+
     return member
 
 @planning_router.delete("/teams/{team_id}/members/{member_id}")
@@ -211,23 +271,28 @@ async def get_intervention(intervention_id: str, request: Request):
     return doc
 
 @planning_router.patch("/interventions/{intervention_id}")
-async def update_intervention(intervention_id: str, body: InterventionUpdate, request: Request):
+async def update_intervention(intervention_id: str, request: Request, body: InterventionUpdate = None):
     user = await _require_auth(request)
-    update = {k: v for k, v in body.model_dump().items() if v is not None}
+    # Accepter JSON libre pour assignation agent
+    try:
+        raw = await request.json()
+    except:
+        raw = {}
+    if body:
+        update = {k: v for k, v in body.model_dump().items() if v is not None}
+    else:
+        update = {k: v for k, v in raw.items() if v is not None and k != '_id'}
     if not update:
-        raise HTTPException(status_code=400, detail="Rien à mettre à jour")
-    
+        raise HTTPException(status_code=400, detail="Rien a mettre a jour")
     update["updated_at"] = datetime.now(timezone.utc).isoformat()
-    
     result = await _db.interventions.update_one(
         {"intervention_id": intervention_id},
         {"$set": update}
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Intervention introuvable")
-    
     await _log_activity(user.user_id, "update_intervention", "intervention", intervention_id, update)
-    return {"message": "Intervention mise à jour"}
+    return {"success": True, "message": "Intervention mise a jour"}
 
 @planning_router.delete("/interventions/{intervention_id}")
 async def delete_intervention(intervention_id: str, request: Request):
@@ -323,18 +388,3 @@ async def list_all_members(request: Request):
         return all_members
     except Exception as e:
         return []
-
-@planning_router.patch("/interventions/{intervention_id}")
-async def update_intervention(intervention_id: str, request: Request):
-    """Update an intervention (assign agent, update status, etc)."""
-    body = await request.json()
-    from datetime import datetime, timezone
-    body["updated_at"] = datetime.now(timezone.utc).isoformat()
-    result = await _db.interventions.update_one(
-        {"intervention_id": intervention_id},
-        {"$set": body}
-    )
-    if result.matched_count == 0:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="Intervention introuvable")
-    return {"success": True}
