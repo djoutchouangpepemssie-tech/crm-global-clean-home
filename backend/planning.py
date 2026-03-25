@@ -305,3 +305,36 @@ async def get_calendar(request: Request, month: Optional[str] = None):
         "interventions": interventions,
         "teams": teams,
     }
+
+@planning_router.get("/team-members")
+async def list_all_members(request: Request):
+    """List all team members across all teams."""
+    try:
+        teams = await _db.teams.find({}, {"_id": 0}).to_list(100)
+        all_members = []
+        for team in teams:
+            for m in (team.get("members") or []):
+                all_members.append({**m, "team_id": team.get("team_id"), "team_name": team.get("name")})
+        # Also check team_members collection
+        direct = await _db.team_members.find({}, {"_id": 0}).to_list(100)
+        for m in direct:
+            if not any(x.get("member_id")==m.get("member_id") for x in all_members):
+                all_members.append(m)
+        return all_members
+    except Exception as e:
+        return []
+
+@planning_router.patch("/interventions/{intervention_id}")
+async def update_intervention(intervention_id: str, request: Request):
+    """Update an intervention (assign agent, update status, etc)."""
+    body = await request.json()
+    from datetime import datetime, timezone
+    body["updated_at"] = datetime.now(timezone.utc).isoformat()
+    result = await _db.interventions.update_one(
+        {"intervention_id": intervention_id},
+        {"$set": body}
+    )
+    if result.matched_count == 0:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Intervention introuvable")
+    return {"success": True}

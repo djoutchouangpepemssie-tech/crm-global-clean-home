@@ -76,6 +76,7 @@ const PaymentSuccess = lazy(() => import('./components/invoices/PaymentSuccess')
 const FinancialDashboard = lazy(() => import('./components/invoices/FinancialDashboard'));
 const ClientPortal = lazy(() => import('./components/portal/ClientPortal'));
 const IntervenantPortal = lazy(() => import('./components/portal/IntervenantPortal'));
+const IntervenantsManager = lazy(() => import('./components/planning/IntervenantsManager'));
 const PlanningCalendar = lazy(() => import('./components/planning/PlanningCalendar'));
 const Integrations = lazy(() => import('./components/integrations/Integrations'));
 const AdsDashboard = lazy(() => import('./components/ads/AdsDashboard'));
@@ -90,6 +91,7 @@ const moreNavItems = [
   { to: '/invoices', icon: CreditCard, label: 'Factures' },
   { to: '/finance', icon: BarChart3, label: 'Finance' },
   { to: '/planning', icon: CalendarDays, label: 'Planning' },
+  { to: '/intervenants', icon: Users, label: 'Intervenants' },
   { to: '/tasks', icon: CheckSquare, label: 'Taches' },
   { to: '/analytics', icon: TrendingUp, label: 'Analytics' },
   { to: '/integrations', icon: Plug, label: 'Integrations' },
@@ -297,6 +299,7 @@ function AppRouter() {
                     <Route path="/invoices/:invoiceId/success" element={<PaymentSuccess />} />
                     <Route path="/finance" element={<FinancialDashboard />} />
                     <Route path="/planning" element={<PlanningCalendar />} />
+                    <Route path="/intervenants" element={<IntervenantsManager />} />
                     <Route path="/integrations" element={<Integrations />} />
                     <Route path="/ads" element={<AdsDashboard />} />
                     <Route path="/ai" element={<AICenter />} />
