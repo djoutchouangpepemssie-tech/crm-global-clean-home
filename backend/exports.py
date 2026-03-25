@@ -71,67 +71,33 @@ def _format_date(dt_str):
 
 @exports_router.get("/invoice/{invoice_id}/pdf")
 async def export_invoice_pdf(invoice_id: str, request: Request):
-    """Generate a PDF for a single invoice."""
+    """Generate premium invoice PDF — same template as quote."""
     await _require_auth(request)
-    
+
     invoice = await _db.invoices.find_one({"invoice_id": invoice_id}, {"_id": 0})
     if not invoice:
         raise HTTPException(status_code=404, detail="Facture introuvable")
-    
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=20*mm, bottomMargin=20*mm, leftMargin=20*mm, rightMargin=20*mm)
-    elements = []
-    styles = getSampleStyleSheet()
-    
-    _create_pdf_header(elements, styles, f"Facture {invoice_id}", f"Date: {_format_date(invoice.get('created_at'))}")
-    
-    # Client info
-    info_style = ParagraphStyle('Info', parent=styles['Normal'], fontSize=10, textColor=SLATE_900, spaceAfter=2)
-    elements.append(Paragraph(f"<b>Client:</b> {invoice.get('lead_name', '')}", info_style))
-    elements.append(Paragraph(f"<b>Email:</b> {invoice.get('lead_email', '')}", info_style))
-    elements.append(Paragraph(f"<b>Tél:</b> {invoice.get('lead_phone', '')}", info_style))
-    elements.append(Spacer(1, 12))
-    
-    # Invoice table
-    table_data = [
-        ['Description', 'Quantité', 'Montant'],
-        [invoice.get('service_type', 'Service'), f"{invoice.get('surface', '-')} m²", _format_amount(invoice.get('amount_ht'))],
-        ['', 'Sous-total HT', _format_amount(invoice.get('amount_ht'))],
-        ['', 'TVA (20%)', _format_amount(invoice.get('tva'))],
-        ['', 'Total TTC', _format_amount(invoice.get('amount_ttc'))],
-    ]
-    
-    table = Table(table_data, colWidths=[80*mm, 50*mm, 40*mm])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), VIOLET),
-        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
-        ('GRID', (0, 0), (-1, -1), 0.5, SLATE_200),
-        ('BACKGROUND', (0, -2), (-1, -1), SLATE_50),
-        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-    ]))
-    elements.append(table)
-    elements.append(Spacer(1, 20))
-    
-    # Status
-    status_label = {"en_attente": "En attente de paiement", "payée": "Payée", "en_retard": "En retard"}.get(invoice.get('status'), invoice.get('status', ''))
-    elements.append(Paragraph(f"<b>Statut:</b> {status_label}", info_style))
-    if invoice.get('due_date'):
-        elements.append(Paragraph(f"<b>Échéance:</b> {_format_date(invoice.get('due_date'))}", info_style))
-    if invoice.get('paid_at'):
-        elements.append(Paragraph(f"<b>Payée le:</b> {_format_date(invoice.get('paid_at'))}", info_style))
-    
-    doc.build(elements)
-    buffer.seek(0)
-    
+
+    lead = await _db.leads.find_one({"lead_id": invoice.get("lead_id")}, {"_id": 0})
+    if not lead:
+        lead = {
+            "name": invoice.get("lead_name", "Client"),
+            "email": invoice.get("lead_email", ""),
+            "phone": invoice.get("lead_phone", ""),
+            "address": invoice.get("address", ""),
+        }
+
+    pdf_bytes = generate_invoice_pdf_bytes(invoice, lead)
+    client_name = "".join(c if c.isalnum() or c in "_ -" else "_" for c in lead.get("name","Client")).strip()
+    filename = f"Facture_{client_name}.pdf"
+
     return StreamingResponse(
-        buffer,
+        BytesIO(pdf_bytes),
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=facture_{invoice_id}.pdf"}
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(pdf_bytes)),
+        }
     )
 
 # ============= QUOTE PDF =============
