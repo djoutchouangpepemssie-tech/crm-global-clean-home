@@ -271,17 +271,14 @@ async def get_intervention(intervention_id: str, request: Request):
     return doc
 
 @planning_router.patch("/interventions/{intervention_id}")
-async def update_intervention(intervention_id: str, request: Request, body: InterventionUpdate = None):
+async def update_intervention(intervention_id: str, request: Request):
     user = await _require_auth(request)
-    # Accepter JSON libre pour assignation agent
+    # Accepter JSON libre pour tout type de mise à jour
     try:
         raw = await request.json()
-    except:
+    except Exception:
         raw = {}
-    if body:
-        update = {k: v for k, v in body.model_dump().items() if v is not None}
-    else:
-        update = {k: v for k, v in raw.items() if v is not None and k != '_id'}
+    update = {k: v for k, v in raw.items() if k != '_id'}
     if not update:
         raise HTTPException(status_code=400, detail="Rien a mettre a jour")
     update["updated_at"] = datetime.now(timezone.utc).isoformat()
