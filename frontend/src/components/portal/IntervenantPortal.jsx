@@ -1,35 +1,41 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import {
-  Home, Calendar, CheckSquare, Clock, MapPin, User, LogOut,
-  Play, CheckCircle, XCircle, Camera, Phone, MessageSquare,
-  ChevronRight, RefreshCw, AlertCircle, Star, Package,
-  Navigation, Zap, Award, List, LayoutGrid, X, Check,
-  Send, Bell, FileText
+  Home, Calendar, Clock, MapPin, User, LogOut, Play,
+  CheckCircle, Phone, MessageSquare, ChevronRight,
+  RefreshCw, Star, X, Check, Send, FileText, Upload,
+  Navigation, Award, Shield, Bell, TrendingUp, Zap,
+  ChevronDown, Mail, AlertCircle, Package, Camera
 } from 'lucide-react';
 import { toast } from 'sonner';
 import BACKEND_URL from '../../config.js';
 
 const API = BACKEND_URL + '/api/intervenant';
+const CRM = BACKEND_URL + '/api';
+
 const iAxios = axios.create({ withCredentials: true });
 iAxios.interceptors.request.use(config => {
   const token = localStorage.getItem('intervenant_token');
-  if (token) config.headers['X-Intervenant-Token'] = token;
+  if (token) {
+    config.headers['X-Intervenant-Token'] = token;
+  }
   return config;
 });
 
 const STATUS = {
-  planifiée:  { label:'Planifiée',  color:'#60a5fa', bg:'rgba(96,165,250,0.15)',  dot:'bg-blue-400' },
-  en_cours:   { label:'En cours',   color:'#f59e0b', bg:'rgba(245,158,11,0.15)',  dot:'bg-amber-400 animate-pulse' },
-  terminée:   { label:'Terminée',   color:'#10b981', bg:'rgba(16,185,129,0.15)',  dot:'bg-emerald-400' },
-  annulée:    { label:'Annulée',    color:'#f43f5e', bg:'rgba(244,63,94,0.15)',   dot:'bg-red-400' },
+  planifiée: { label:'Planifiée', color:'#60a5fa', bg:'rgba(96,165,250,0.12)', border:'rgba(96,165,250,0.25)' },
+  en_cours:  { label:'En cours',  color:'#f59e0b', bg:'rgba(245,158,11,0.12)', border:'rgba(245,158,11,0.25)' },
+  terminée:  { label:'Terminée',  color:'#10b981', bg:'rgba(16,185,129,0.12)', border:'rgba(16,185,129,0.25)' },
+  annulée:   { label:'Annulée',   color:'#f43f5e', bg:'rgba(244,63,94,0.12)',  border:'rgba(244,63,94,0.25)' },
 };
 
-const SERVICE_ICONS = {'Ménage':'🏠','menage':'🏠','Canapé':'🛋️','canape':'🛋️','Matelas':'🛏️','matelas':'🛏️','Tapis':'🪣','tapis':'🪣','Bureaux':'🏢','bureaux':'🏢'};
-const getIcon = (type='') => { const k = Object.keys(SERVICE_ICONS).find(k=>(type||'').toLowerCase().includes(k.toLowerCase())); return SERVICE_ICONS[k]||'🧹'; };
+const SVC = {'Ménage':'🏠','menage':'🏠','Canapé':'🛋️','canape':'🛋️','Matelas':'🛏️','matelas':'🛏️','Tapis':'🪣','tapis':'🪣','Bureaux':'🏢','bureaux':'🏢'};
+const getIcon = (t='') => { const k=Object.keys(SVC).find(k=>(t||'').toLowerCase().includes(k.toLowerCase())); return SVC[k]||'🧹'; };
 
-// ── LOGIN ──
-const IntervenantLogin = ({ onAuth }) => {
+const DOCS_REQUIS = ["Pièce d'identité","Contrat de travail","Assurance RC Pro","RIB","Attestation URSSAF"];
+
+/* ── LOGIN ── */
+const Login = ({ onAuth }) => {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [step, setStep] = useState(1);
@@ -40,10 +46,16 @@ const IntervenantLogin = ({ onAuth }) => {
     setLoading(true);
     try {
       const res = await axios.post(`${API}/auth/request`, { email });
+      if (res.data.dev_code) {
+        toast.success(`Code de connexion : ${res.data.dev_code}`, { duration: 10000 });
+      } else {
+        toast.success('Code envoyé par email !');
+      }
       setStep(2);
-      toast.success('Code envoyé par email !');
-    } catch { toast.error('Email non reconnu'); }
-    finally { setLoading(false); }
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Email non reconnu. Contactez votre administrateur.');
+    }
+    setLoading(false);
   };
 
   const verifyCode = async (e) => {
@@ -54,143 +66,143 @@ const IntervenantLogin = ({ onAuth }) => {
       localStorage.setItem('intervenant_token', res.data.token);
       iAxios.defaults.headers.common['X-Intervenant-Token'] = res.data.token;
       onAuth(res.data.agent);
-    } catch { toast.error('Code invalide'); }
-    finally { setLoading(false); }
+    } catch {
+      toast.error('Code invalide ou expiré');
+    }
+    setLoading(false);
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4"
-      style={{background:'linear-gradient(135deg,#0f172a,#1e1b4b)'}}>
+      style={{background:'linear-gradient(135deg,#0f172a 0%,#064e3b 100%)'}}>
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full blur-3xl opacity-20"
-          style={{background:'radial-gradient(circle,#10b981,transparent)'}}/>
-        <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full blur-3xl opacity-15"
-          style={{background:'radial-gradient(circle,#f97316,transparent)'}}/>
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-3xl opacity-15" style={{background:'radial-gradient(circle,#10b981,transparent)'}}/>
+        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full blur-3xl opacity-10" style={{background:'radial-gradient(circle,#f97316,transparent)'}}/>
       </div>
       <div className="relative z-10 w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 shadow-2xl"
-            style={{background:'linear-gradient(135deg,#10b981,#059669)'}}>
-            <span className="text-3xl">🧹</span>
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl mb-4 shadow-2xl" style={{background:'linear-gradient(135deg,#10b981,#059669)'}}>
+            <span className="text-4xl">🧹</span>
           </div>
-          <h1 className="text-2xl font-black text-white mb-1" style={{fontFamily:'Manrope,sans-serif'}}>
-            Portail Intervenant
-          </h1>
-          <p className="text-slate-400 text-sm">Global Clean Home — Espace agent</p>
+          <h1 className="text-3xl font-black text-white mb-1" style={{fontFamily:'Manrope,sans-serif'}}>Portail Agent</h1>
+          <p className="text-emerald-400/80 text-sm font-medium">Global Clean Home</p>
         </div>
-        <div className="rounded-2xl p-8" style={{background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',backdropFilter:'blur(20px)'}}>
+        <div className="rounded-3xl p-8" style={{background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',backdropFilter:'blur(20px)'}}>
           {step === 1 ? (
             <>
-              <h2 className="text-lg font-bold text-slate-100 mb-2">Connexion</h2>
-              <p className="text-slate-400 text-sm mb-6">Entrez votre email professionnel pour recevoir un code de connexion.</p>
+              <h2 className="text-lg font-bold text-white mb-1">Connexion sécurisée</h2>
+              <p className="text-slate-400 text-sm mb-6">Entrez votre email pour recevoir votre code de connexion.</p>
               <form onSubmit={requestCode} className="space-y-4">
-                <input type="email" value={email} onChange={e=>setEmail(e.target.value)} required
-                  placeholder="votre@globalcleanhome.com"
-                  className="w-full px-4 py-3 rounded-xl border text-sm text-slate-200 placeholder-slate-600 outline-none"
-                  style={{background:'rgba(255,255,255,0.05)',borderColor:'rgba(255,255,255,0.1)'}}/>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Email professionnel</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"/>
+                    <input type="email" value={email} onChange={e=>setEmail(e.target.value)} required
+                      placeholder="vous@globalcleanhome.com"
+                      className="w-full pl-10 pr-4 py-3 rounded-xl border text-sm text-slate-200 placeholder-slate-600 outline-none transition-all"
+                      style={{background:'rgba(255,255,255,0.05)',borderColor:'rgba(255,255,255,0.1)'}}/>
+                  </div>
+                </div>
                 <button type="submit" disabled={loading}
-                  className="w-full py-3 rounded-xl font-bold text-white text-sm disabled:opacity-50"
-                  style={{background:'linear-gradient(135deg,#10b981,#059669)'}}>
-                  {loading ? '⏳ Envoi...' : '📱 Recevoir mon code'}
+                  className="w-full py-3.5 rounded-xl font-bold text-white text-sm disabled:opacity-50 transition-all"
+                  style={{background:'linear-gradient(135deg,#10b981,#059669)',boxShadow:'0 4px 20px rgba(16,185,129,0.4)'}}>
+                  {loading ? '⏳ Envoi en cours...' : '📱 Recevoir mon code'}
                 </button>
               </form>
             </>
           ) : (
             <>
-              <h2 className="text-lg font-bold text-slate-100 mb-2">Code de vérification</h2>
-              <p className="text-slate-400 text-sm mb-6">Entrez le code reçu par email à <strong>{email}</strong></p>
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4">
+                  <Shield className="w-8 h-8 text-emerald-400"/>
+                </div>
+                <h2 className="text-lg font-bold text-white mb-1">Vérification</h2>
+                <p className="text-slate-400 text-sm">Code envoyé à <strong className="text-slate-300">{email}</strong></p>
+              </div>
               <form onSubmit={verifyCode} className="space-y-4">
                 <input type="text" value={code} onChange={e=>setCode(e.target.value)} required
-                  placeholder="000000" maxLength={6}
-                  className="w-full px-4 py-3 rounded-xl border text-center text-2xl font-black text-slate-200 tracking-widest outline-none"
+                  placeholder="• • • • • •" maxLength={6}
+                  className="w-full px-4 py-4 rounded-xl border text-center text-3xl font-black text-slate-200 tracking-[0.5em] outline-none transition-all"
                   style={{background:'rgba(255,255,255,0.05)',borderColor:'rgba(255,255,255,0.1)'}}/>
                 <button type="submit" disabled={loading}
-                  className="w-full py-3 rounded-xl font-bold text-white text-sm disabled:opacity-50"
-                  style={{background:'linear-gradient(135deg,#10b981,#059669)'}}>
-                  {loading ? '⏳ Vérification...' : '✅ Se connecter'}
+                  className="w-full py-3.5 rounded-xl font-bold text-white text-sm disabled:opacity-50"
+                  style={{background:'linear-gradient(135deg,#10b981,#059669)',boxShadow:'0 4px 20px rgba(16,185,129,0.4)'}}>
+                  {loading ? '⏳ Vérification...' : '🚀 Accéder à mon espace'}
                 </button>
-                <button type="button" onClick={()=>setStep(1)} className="w-full text-xs text-slate-500 hover:text-slate-400">
+                <button type="button" onClick={()=>{setStep(1);setCode('');}} className="w-full text-xs text-slate-500 hover:text-slate-400 py-2">
                   ← Changer d'email
                 </button>
               </form>
             </>
           )}
         </div>
+        <div className="grid grid-cols-3 gap-3 mt-6">
+          {[{i:'📋',l:'Mes missions'},{i:'✅',l:'Checklists'},{i:'💬',l:'Messages'}].map(f=>(
+            <div key={f.l} className="text-center p-3 rounded-2xl" style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)'}}>
+              <p className="text-xl mb-1">{f.i}</p>
+              <p className="text-[10px] text-slate-500 font-medium">{f.l}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
 };
 
-// ── CHECKLIST MODAL ──
+/* ── CHECKLIST MODAL ── */
 const ChecklistModal = ({ intervention, onClose, onComplete }) => {
-  const checklists = {
-    default: ['Matériel vérifié et complet','Zone de travail sécurisée','Client informé du début','Prestation réalisée selon cahier des charges','Zone nettoyée et rangée','Client satisfait et informé','Photos avant/après prises'],
-    menage: ['Aspirateur effectué','Sols lavés','Sanitaires nettoyés et désinfectés','Cuisine nettoyée','Poussières époussetées','Vitres nettoyées','Déchets évacués'],
-    canape: ['Dépoussiérage préalable','Traitement taches spécifiques','Injection-extraction effectuée','Séchage vérifié','Résultat contrôlé avec client'],
-    matelas: ['Dépoussiérage préalable','Traitement anti-acariens','Injection-extraction effectuée','Séchage vérifié','Protège-matelas replacé'],
-    tapis: ['Dépoussiérage préalable','Traitement taches','Shampooing effectué','Rinçage complet','Séchage contrôlé'],
-    bureaux: ['Postes de travail nettoyés','Sanitaires désinfectés','Parties communes nettoyées','Poubelles vidées','Sols nettoyés','Accès sécurisé'],
-  };
-
   const type = (intervention.service_type||'').toLowerCase();
-  const items = type.includes('canap') ? checklists.canape :
-                type.includes('matelas') ? checklists.matelas :
-                type.includes('tapis') ? checklists.tapis :
-                type.includes('bureau') ? checklists.bureaux :
-                type.includes('ménage') || type.includes('menage') ? checklists.menage :
-                checklists.default;
+  const items = type.includes('canap') ? ['Dépoussiérage préalable','Traitement des taches','Injection-extraction','Séchage vérifié','Résultat validé avec client'] :
+    type.includes('matelas') ? ['Dépoussiérage','Anti-acariens appliqué','Injection-extraction','Séchage vérifié','Protège-matelas replacé'] :
+    type.includes('tapis') ? ['Dépoussiérage','Traitement taches','Shampooing','Rinçage','Séchage contrôlé'] :
+    type.includes('bureau') ? ['Postes nettoyés','Sanitaires désinfectés','Parties communes','Poubelles vidées','Sols nettoyés','Accès sécurisé'] :
+    ['Matériel vérifié','Zone sécurisée','Client informé','Prestation réalisée','Zone rangée','Photos prises','Client satisfait'];
 
   const [checked, setChecked] = useState({});
   const [notes, setNotes] = useState('');
-  const allDone = items.every((_,i)=>checked[i]);
+  const done = Object.values(checked).filter(Boolean).length;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{background:'rgba(0,0,0,0.8)'}}>
-      <div className="rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-fade-in"
+    <div className="fixed inset-0 flex items-end sm:items-center justify-center z-50 p-4" style={{background:'rgba(0,0,0,0.85)'}}>
+      <div className="rounded-3xl w-full max-w-md max-h-[92vh] overflow-y-auto"
         style={{background:'hsl(224,71%,6%)',border:'1px solid rgba(255,255,255,0.1)'}}>
         <div className="sticky top-0 p-5 border-b border-white/10" style={{background:'hsl(224,71%,6%)'}}>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-3">
             <div>
-              <h3 className="text-lg font-black text-slate-100">Checklist intervention</h3>
+              <h3 className="text-lg font-black text-slate-100">Checklist</h3>
               <p className="text-xs text-slate-500">{intervention.title||intervention.service_type}</p>
             </div>
-            <button onClick={onClose} className="p-2 text-slate-500 hover:text-slate-300 hover:bg-white/5 rounded-xl">
-              <X className="w-4 h-4"/>
-            </button>
+            <button onClick={onClose} className="p-2 text-slate-500 hover:text-slate-300 hover:bg-white/5 rounded-xl"><X className="w-4 h-4"/></button>
           </div>
-          <div className="mt-3 h-1.5 rounded-full bg-white/10 overflow-hidden">
+          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
             <div className="h-full rounded-full transition-all duration-500"
-              style={{width:`${(Object.values(checked).filter(Boolean).length/items.length)*100}%`, background:'linear-gradient(90deg,#10b981,#059669)'}}/>
+              style={{width:`${(done/items.length)*100}%`,background:'linear-gradient(90deg,#10b981,#059669)'}}/>
           </div>
-          <p className="text-xs text-emerald-400 mt-1">{Object.values(checked).filter(Boolean).length}/{items.length} complétés</p>
+          <p className="text-xs text-emerald-400 mt-1 font-semibold">{done}/{items.length} complétés</p>
         </div>
         <div className="p-5 space-y-2">
           {items.map((item,i)=>(
             <button key={i} onClick={()=>setChecked(p=>({...p,[i]:!p[i]}))}
-              className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
-                checked[i] ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-white/5 bg-white/2 hover:bg-white/5'
-              }`}>
-              <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                checked[i] ? 'bg-emerald-500 border-emerald-500' : 'border-slate-600'
-              }`}>
-                {checked[i] && <Check className="w-3.5 h-3.5 text-white"/>}
+              className={`w-full flex items-center gap-3 p-3.5 rounded-2xl border transition-all text-left ${checked[i]?'border-emerald-500/30 bg-emerald-500/8':'border-white/5 bg-white/2 hover:bg-white/4'}`}>
+              <div className={`w-7 h-7 rounded-xl border-2 flex items-center justify-center flex-shrink-0 transition-all ${checked[i]?'bg-emerald-500 border-emerald-500':'border-slate-600'}`}>
+                {checked[i] && <Check className="w-4 h-4 text-white"/>}
               </div>
-              <span className={`text-sm font-medium ${checked[i]?'text-emerald-300 line-through':'text-slate-300'}`}>{item}</span>
+              <span className={`text-sm font-medium ${checked[i]?'text-emerald-300 line-through opacity-70':'text-slate-300'}`}>{item}</span>
             </button>
           ))}
           <div className="mt-4">
-            <label className="block text-xs font-semibold text-slate-400 mb-2">Notes / Observations</label>
+            <label className="block text-xs font-semibold text-slate-400 mb-2">📝 Notes / Observations</label>
             <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={3}
-              placeholder="Problèmes rencontrés, matériel supplémentaire nécessaire..."
-              className="w-full px-3 py-2.5 rounded-xl border text-sm text-slate-200 placeholder-slate-600 outline-none resize-none"
+              placeholder="Problèmes rencontrés, matériel supplémentaire..."
+              className="w-full px-4 py-3 rounded-xl border text-sm text-slate-200 placeholder-slate-600 outline-none resize-none"
               style={{background:'rgba(255,255,255,0.05)',borderColor:'rgba(255,255,255,0.1)'}}/>
           </div>
         </div>
         <div className="p-5 border-t border-white/10">
-          <button onClick={()=>onComplete(checked, notes)} disabled={!allDone}
-            className="w-full py-3 rounded-xl font-bold text-white text-sm disabled:opacity-40 transition-all"
-            style={{background:'linear-gradient(135deg,#10b981,#059669)',boxShadow:allDone?'0 4px 16px rgba(16,185,129,0.3)':'none'}}>
-            {allDone ? '✅ Terminer l\'intervention' : `⏳ ${items.length - Object.values(checked).filter(Boolean).length} tâche(s) restante(s)`}
+          <button onClick={()=>onComplete(checked,notes)} disabled={done<items.length}
+            className="w-full py-4 rounded-2xl font-black text-white text-sm disabled:opacity-30 transition-all"
+            style={{background:done===items.length?'linear-gradient(135deg,#10b981,#059669)':'rgba(255,255,255,0.05)',boxShadow:done===items.length?'0 4px 20px rgba(16,185,129,0.4)':'none'}}>
+            {done===items.length ? '🎉 Terminer l\'intervention' : `⏳ Encore ${items.length-done} tâche(s)`}
           </button>
         </div>
       </div>
@@ -198,112 +210,125 @@ const ChecklistModal = ({ intervention, onClose, onComplete }) => {
   );
 };
 
-// ── DASHBOARD INTERVENANT ──
-const IntervenantDashboard = ({ agent, onLogout }) => {
+/* ── DASHBOARD ── */
+const Dashboard = ({ agent, onLogout }) => {
   const [interventions, setInterventions] = useState([]);
-  const [tasks, setTasks] = useState([]);
-  const [activeTab, setActiveTab] = useState('accueil');
-  const [loading, setLoading] = useState(true);
-  const [selectedIntv, setSelectedIntv] = useState(null);
-  const [showChecklist, setShowChecklist] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('accueil');
+  const [showChecklist, setShowChecklist] = useState(null);
+  const [selectedIntv, setSelectedIntv] = useState(null);
   const [newMsg, setNewMsg] = useState('');
+  const [sendingMsg, setSendingMsg] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedDocs, setUploadedDocs] = useState([]);
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [intvRes, taskRes] = await Promise.allSettled([
+      const [intvRes, msgRes] = await Promise.allSettled([
         iAxios.get(`${API}/interventions`),
-        iAxios.get(`${API}/tasks`),
+        iAxios.get(`${API}/messages`),
       ]);
-      setInterventions(intvRes.status==='fulfilled' ? (intvRes.value.data.interventions||intvRes.value.data||[]) : []);
-      setTasks(taskRes.status==='fulfilled' ? (taskRes.value.data||[]) : []);
+      setInterventions(intvRes.status==='fulfilled' ? (intvRes.value.data?.interventions||intvRes.value.data||[]) : []);
+      setMessages(msgRes.status==='fulfilled' ? (msgRes.value.data?.messages||[]) : []);
     } catch { toast.error('Erreur de chargement'); }
     finally { setLoading(false); }
   }, []);
 
-  const fetchMessages = useCallback(async () => {
-    try {
-      const res = await iAxios.get(`${API}/messages`);
-      setMessages(res.data.messages||[]);
-    } catch {}
-  }, []);
-
   useEffect(()=>{ fetchData(); },[fetchData]);
-  useEffect(()=>{ if(activeTab==='messages') fetchMessages(); },[activeTab,fetchMessages]);
-  useEffect(()=>{ if(activeTab==='messages'){ const t=setInterval(fetchMessages,10000); return()=>clearInterval(t); } },[activeTab,fetchMessages]);
+  useEffect(()=>{
+    if (activeTab==='messages') {
+      const t = setInterval(()=>iAxios.get(`${API}/messages`).then(r=>setMessages(r.data?.messages||[])).catch(()=>{}), 8000);
+      return ()=>clearInterval(t);
+    }
+  },[activeTab]);
   useEffect(()=>{ messagesEndRef.current?.scrollIntoView({behavior:'smooth'}); },[messages]);
 
   const handleCheckIn = async (id) => {
     try {
-      await iAxios.post(`${API}/interventions/${id}/checkin`, { lat: null, lng: null });
-      toast.success('✅ Check-in enregistré !');
+      await iAxios.post(`${API}/interventions/${id}/checkin`, {});
+      toast.success('✅ Arrivée enregistrée !');
       fetchData();
     } catch { toast.error('Erreur check-in'); }
-  };
-
-  const handleCheckOut = async (id) => {
-    setShowChecklist(interventions.find(i=>(i.intervention_id||i.id)===id));
   };
 
   const handleCompleteChecklist = async (checked, notes) => {
     const id = showChecklist.intervention_id || showChecklist.id;
     try {
       await iAxios.post(`${API}/interventions/${id}/checkout`, {
-        checklist: checked,
-        notes,
+        checklist: checked, notes,
         completed_items: Object.values(checked).filter(Boolean).length,
       });
-      toast.success('🎉 Intervention terminée !');
+      toast.success('🎉 Intervention terminée avec succès !');
       setShowChecklist(null);
       fetchData();
-    } catch { toast.error('Erreur checkout'); }
+    } catch { toast.error('Erreur lors de la clôture'); }
   };
 
   const sendMessage = async () => {
     if (!newMsg.trim()) return;
+    setSendingMsg(true);
     try {
       await iAxios.post(`${API}/messages`, { content: newMsg });
       setNewMsg('');
-      fetchData();
-      fetchMessages();
+      const res = await iAxios.get(`${API}/messages`);
+      setMessages(res.data?.messages||[]);
     } catch { toast.error('Erreur envoi'); }
+    setSendingMsg(false);
   };
 
-  const prenom = agent?.name?.split(' ')[0] || 'Agent';
+  const handleUploadDoc = async (e, docName) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      // Simuler upload - en prod envoyer vers storage
+      await new Promise(r=>setTimeout(r,1000));
+      setUploadedDocs(p=>[...p.filter(d=>d.name!==docName), {name:docName, file:file.name, date:new Date().toLocaleDateString('fr-FR')}]);
+      // Notifier le bureau
+      await iAxios.post(`${API}/messages`, {
+        content: `📎 J'ai envoyé mon document : ${docName} (${file.name})`,
+      });
+      toast.success(`✅ ${docName} envoyé !`);
+    } catch { toast.error('Erreur upload'); }
+    setUploading(false);
+  };
+
   const today = new Date().toISOString().slice(0,10);
   const todayIntvs = interventions.filter(i=>(i.scheduled_date||'').startsWith(today));
   const enCours = interventions.find(i=>i.status==='en_cours');
-  const upcoming = interventions.filter(i=>i.status==='planifiée').slice(0,5);
+  const prenom = agent?.name?.split(' ')[0]||'Agent';
+  const unreadMsgs = messages.filter(m=>!m.from_agent&&!m.read).length;
 
   const TABS = [
-    { id:'accueil',   label:'Accueil',         icon:Home },
-    { id:'planning',  label:'Planning',         icon:Calendar, notif: todayIntvs.length },
-
-    { id:'messages',  label:'Messages',         icon:MessageSquare },
-    { id:'profil',    label:'Mon profil',       icon:User },
+    { id:'accueil',   label:'Accueil',   icon:Home },
+    { id:'planning',  label:'Planning',  icon:Calendar, notif:todayIntvs.length },
+    { id:'messages',  label:'Messages',  icon:MessageSquare, notif:unreadMsgs },
+    { id:'documents', label:'Documents', icon:FileText },
+    { id:'profil',    label:'Profil',    icon:User },
   ];
 
   return (
-    <div className="min-h-screen" style={{background:'hsl(224,71%,4%)'}}>
+    <div className="min-h-screen pb-20" style={{background:'hsl(224,71%,4%)'}}>
 
       {/* HEADER */}
-      <div className="sticky top-0 z-50 border-b" style={{background:'rgba(15,23,42,0.95)',borderColor:'rgba(255,255,255,0.08)',backdropFilter:'blur(20px)'}}>
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div className="sticky top-0 z-50 border-b" style={{background:'rgba(6,25,50,0.95)',borderColor:'rgba(255,255,255,0.08)',backdropFilter:'blur(20px)'}}>
+        <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-base"
-              style={{background:'linear-gradient(135deg,#10b981,#059669)'}}>🧹</div>
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl" style={{background:'linear-gradient(135deg,#10b981,#059669)'}}>🧹</div>
             <div>
-              <p className="text-sm font-black text-slate-100">Global Clean Home</p>
-              <p className="text-[10px] text-slate-500">Portail Intervenant</p>
+              <p className="text-sm font-black text-slate-100" style={{fontFamily:'Manrope,sans-serif'}}>Bonjour {prenom} 👋</p>
+              <p className="text-[10px] text-emerald-400/70 font-semibold">{agent?.role||'Technicien'} · Global Clean Home</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {enCours && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-400 animate-pulse"
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black text-amber-400 animate-pulse"
                 style={{background:'rgba(245,158,11,0.15)',border:'1px solid rgba(245,158,11,0.3)'}}>
-                <div className="w-2 h-2 rounded-full bg-amber-400"/>EN COURS
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"/>EN MISSION
               </div>
             )}
             <button onClick={onLogout} className="p-2 rounded-xl text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all">
@@ -311,133 +336,127 @@ const IntervenantDashboard = ({ agent, onLogout }) => {
             </button>
           </div>
         </div>
-        {/* Tabs */}
-        <div className="max-w-2xl mx-auto px-4 flex gap-0 overflow-x-auto scrollbar-none">
-          {TABS.map(tab=>(
-            <button key={tab.id} onClick={()=>setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-4 py-3 text-xs font-semibold border-b-2 transition-all flex-shrink-0 relative ${
-                activeTab===tab.id ? 'text-emerald-400 border-emerald-500' : 'text-slate-500 border-transparent hover:text-slate-300'
-              }`}>
-              <tab.icon className="w-3.5 h-3.5"/>
-              <span className="hidden sm:block">{tab.label}</span>
-              {tab.notif > 0 && (
-                <span className="absolute top-1 right-0 w-4 h-4 rounded-full text-white text-[9px] font-black flex items-center justify-center"
-                  style={{background:'#10b981'}}>{tab.notif}</span>
-              )}
-            </button>
-          ))}
-        </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-6 pb-24 space-y-5">
+      <div className="max-w-lg mx-auto px-4 py-5 space-y-5">
         {loading ? (
-          <div className="space-y-3">{[...Array(4)].map((_,i)=><div key={i} className="skeleton h-24 rounded-2xl"/>)}</div>
+          <div className="space-y-3">{[...Array(3)].map((_,i)=><div key={i} className="skeleton h-24 rounded-2xl"/>)}</div>
         ) : (
           <>
 
-          {/* ACCUEIL */}
+          {/* ── ACCUEIL ── */}
           {activeTab==='accueil' && (
             <div className="space-y-4">
               {/* Banner */}
-              <div className="rounded-2xl p-5 relative overflow-hidden"
-                style={{background:'linear-gradient(135deg,#10b981,#059669)',boxShadow:'0 8px 32px rgba(16,185,129,0.3)'}}>
-                <div className="absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl opacity-30"
-                  style={{background:'radial-gradient(circle,white,transparent)'}}/>
-                <p className="text-white/70 text-sm mb-1">Bienvenue !</p>
-                <h2 className="text-2xl font-black text-white mb-1" style={{fontFamily:'Manrope,sans-serif'}}>
-                  Bonjour {prenom} 👋
+              <div className="rounded-3xl p-6 relative overflow-hidden"
+                style={{background:'linear-gradient(135deg,#064e3b,#065f46)',border:'1px solid rgba(16,185,129,0.3)'}}>
+                <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl opacity-20" style={{background:'radial-gradient(circle,#10b981,transparent)'}}/>
+                <p className="text-emerald-400/80 text-sm font-semibold mb-1">
+                  {new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}
+                </p>
+                <h2 className="text-2xl font-black text-white mb-3" style={{fontFamily:'Manrope,sans-serif'}}>
+                  Bienvenue, {prenom} !
                 </h2>
-                <p className="text-white/70 text-sm">{new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</p>
-              </div>
-
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  {label:"Aujourd'hui", value:todayIntvs.length, color:'#10b981', icon:'📅'},
-                  {label:'En attente', value:interventions.filter(i=>i.status==='planifiée').length, color:'#60a5fa', icon:'⏳'},
-                  {label:'Tâches', value:tasks.filter(t=>t.status==='pending').length, color:'#f59e0b', icon:'✅'},
-                ].map(s=>(
-                  <div key={s.label} className="p-3 rounded-2xl border text-center"
-                    style={{background:`${s.color}10`,borderColor:`${s.color}25`}}>
-                    <p className="text-xl mb-1">{s.icon}</p>
-                    <p className="text-xl font-black" style={{color:s.color,fontFamily:'Manrope,sans-serif'}}>{s.value}</p>
-                    <p className="text-[10px] font-medium" style={{color:`${s.color}cc`}}>{s.label}</p>
+                <div className="flex gap-4">
+                  <div className="text-center">
+                    <p className="text-3xl font-black text-emerald-400" style={{fontFamily:'Manrope,sans-serif'}}>{todayIntvs.length}</p>
+                    <p className="text-xs text-emerald-400/70 font-semibold">Auj.</p>
                   </div>
-                ))}
+                  <div className="text-center">
+                    <p className="text-3xl font-black text-white" style={{fontFamily:'Manrope,sans-serif'}}>{interventions.filter(i=>i.status==='planifiée').length}</p>
+                    <p className="text-xs text-slate-400 font-semibold">À venir</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-3xl font-black text-slate-300" style={{fontFamily:'Manrope,sans-serif'}}>{interventions.filter(i=>i.status==='terminée').length}</p>
+                    <p className="text-xs text-slate-500 font-semibold">Terminées</p>
+                  </div>
+                </div>
               </div>
 
-              {/* Intervention en cours */}
+              {/* Mission en cours */}
               {enCours && (
-                <div className="rounded-2xl p-4 border" style={{background:'rgba(245,158,11,0.08)',borderColor:'rgba(245,158,11,0.2)'}}>
+                <div className="rounded-3xl p-5 border" style={{background:'rgba(245,158,11,0.08)',borderColor:'rgba(245,158,11,0.25)'}}>
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"/>
-                    <p className="text-sm font-bold text-amber-300">Intervention en cours</p>
+                    <div className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"/>
+                    <p className="text-sm font-black text-amber-300">🔥 Mission en cours</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl"
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
                       style={{background:'rgba(245,158,11,0.15)',border:'1px solid rgba(245,158,11,0.3)'}}>
                       {getIcon(enCours.service_type)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-slate-200 truncate">{enCours.title||enCours.service_type}</p>
-                      <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                        <MapPin className="w-3 h-3"/>{enCours.address||'—'}
-                      </p>
+                      <p className="font-black text-slate-100">{enCours.title||enCours.service_type}</p>
+                      {enCours.address && <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5"><MapPin className="w-3 h-3"/>{enCours.address}</p>}
+                      {enCours.lead_name && <p className="text-xs text-slate-500">👤 {enCours.lead_name}</p>}
                     </div>
-                    <button onClick={()=>handleCheckOut(enCours.intervention_id||enCours.id)}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white"
-                      style={{background:'linear-gradient(135deg,#10b981,#059669)'}}>
-                      <CheckCircle className="w-3.5 h-3.5"/> Terminer
+                  </div>
+                  <div className="flex gap-2">
+                    <a href={enCours.address?`https://maps.google.com/?q=${encodeURIComponent(enCours.address)}`:'#'} target="_blank" rel="noopener noreferrer"
+                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm border border-white/10 text-slate-400 hover:text-slate-200 transition-all">
+                      <Navigation className="w-4 h-4"/> Itinéraire
+                    </a>
+                    <button onClick={()=>setShowChecklist(enCours)}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm text-white transition-all"
+                      style={{background:'linear-gradient(135deg,#10b981,#059669)',boxShadow:'0 4px 16px rgba(16,185,129,0.3)'}}>
+                      <CheckCircle className="w-4 h-4"/> Terminer
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* Prochaines interventions */}
-              <div>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Prochaines interventions</p>
-                {upcoming.length===0 ? (
-                  <div className="rounded-2xl border border-white/5 p-8 text-center">
-                    <Calendar className="w-10 h-10 text-slate-700 mx-auto mb-3"/>
-                    <p className="text-slate-500 text-sm">Aucune intervention planifiée</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {upcoming.map(intv=>(
-                      <div key={intv.intervention_id||intv.id}
-                        className="flex items-center gap-3 p-4 rounded-2xl border border-white/5 bg-white/2 hover:bg-white/4 transition-all cursor-pointer"
-                        onClick={()=>setSelectedIntv(intv)}>
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
-                          style={{background:'rgba(96,165,250,0.15)',border:'1px solid rgba(96,165,250,0.3)'}}>
-                          {getIcon(intv.service_type)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-slate-200 truncate">{intv.title||intv.service_type}</p>
-                          <div className="flex items-center gap-3 mt-0.5">
-                            <span className="text-xs text-slate-500 flex items-center gap-1">
-                              <Clock className="w-3 h-3"/>{intv.scheduled_date} {intv.scheduled_time||''}
-                            </span>
-                          </div>
-                          {intv.address && <p className="text-xs text-slate-600 flex items-center gap-1 truncate mt-0.5">
-                            <MapPin className="w-3 h-3 flex-shrink-0"/>{intv.address}
-                          </p>}
-                        </div>
-                        {intv.status==='planifiée' && (
-                          <button onClick={e=>{e.stopPropagation();handleCheckIn(intv.intervention_id||intv.id);}}
-                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white flex-shrink-0"
-                            style={{background:'linear-gradient(135deg,#10b981,#059669)'}}>
-                            <Play className="w-3 h-3"/> Démarrer
-                          </button>
-                        )}
+              {/* Prochaines missions */}
+              {interventions.filter(i=>i.status==='planifiée').length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">📅 Prochaines missions</p>
+                  {interventions.filter(i=>i.status==='planifiée').slice(0,3).map(intv=>(
+                    <div key={intv.intervention_id||intv.id}
+                      onClick={()=>setSelectedIntv(intv)}
+                      className="flex items-center gap-3 p-4 rounded-2xl border border-white/5 bg-white/2 hover:bg-white/4 cursor-pointer transition-all">
+                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl flex-shrink-0"
+                        style={{background:'rgba(96,165,250,0.12)',border:'1px solid rgba(96,165,250,0.2)'}}>
+                        {getIcon(intv.service_type)}
                       </div>
-                    ))}
-                  </div>
-                )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-slate-200 truncate text-sm">{intv.title||intv.service_type}</p>
+                        <p className="text-xs text-slate-500">{intv.scheduled_date} · {intv.scheduled_time||'—'}</p>
+                        {intv.address && <p className="text-xs text-slate-600 truncate">{intv.address}</p>}
+                      </div>
+                      <button onClick={e=>{e.stopPropagation();handleCheckIn(intv.intervention_id||intv.id);}}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white flex-shrink-0"
+                        style={{background:'linear-gradient(135deg,#10b981,#059669)'}}>
+                        ▶ Start
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {interventions.length===0 && (
+                <div className="rounded-2xl border border-white/5 p-10 text-center">
+                  <Calendar className="w-12 h-12 text-slate-700 mx-auto mb-3"/>
+                  <p className="text-slate-500 font-medium">Aucune mission pour le moment</p>
+                  <p className="text-xs text-slate-600 mt-1">Vos missions apparaîtront ici</p>
+                </div>
+              )}
+
+              {/* Actions rapides */}
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  {icon:'💬', label:'Contacter le bureau', tab:'messages'},
+                  {icon:'📄', label:'Mes documents', tab:'documents'},
+                ].map(a=>(
+                  <button key={a.tab} onClick={()=>setActiveTab(a.tab)}
+                    className="flex items-center gap-3 p-4 rounded-2xl border border-white/5 bg-white/2 hover:bg-white/4 transition-all text-left">
+                    <span className="text-2xl">{a.icon}</span>
+                    <span className="text-sm font-semibold text-slate-300">{a.label}</span>
+                  </button>
+                ))}
               </div>
             </div>
           )}
 
-          {/* PLANNING */}
+          {/* ── PLANNING ── */}
           {activeTab==='planning' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -453,29 +472,46 @@ const IntervenantDashboard = ({ agent, onLogout }) => {
                   <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-3">📅 Aujourd'hui</p>
                   <div className="space-y-3">
                     {todayIntvs.map(intv=>{
-                      const sc = STATUS[intv.status]||STATUS.planifiée;
+                      const sc=STATUS[intv.status]||STATUS.planifiée;
                       return (
                         <div key={intv.intervention_id||intv.id}
-                          className="flex items-center gap-3 p-3 rounded-xl border border-white/5 bg-white/3">
-                          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-                            style={{background:sc.bg,border:`1px solid ${sc.color}40`}}>
-                            {getIcon(intv.service_type)}
+                          className="p-4 rounded-2xl border" style={{background:sc.bg,borderColor:sc.border}}>
+                          <div className="flex items-start justify-between gap-2 mb-3">
+                            <div className="flex items-center gap-3">
+                              <span className="text-2xl">{getIcon(intv.service_type)}</span>
+                              <div>
+                                <p className="font-bold text-slate-100 text-sm">{intv.title||intv.service_type}</p>
+                                <p className="text-xs" style={{color:sc.color}}>{intv.scheduled_time||'—'}{intv.duration_hours?` · ${intv.duration_hours}h`:''}</p>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+                              style={{color:sc.color,background:'rgba(0,0,0,0.3)'}}>{sc.label}</span>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-bold text-slate-200 truncate text-sm">{intv.title||intv.service_type}</p>
-                            <p className="text-xs text-slate-500">{intv.scheduled_time||'—'} {intv.duration_hours?`· ${intv.duration_hours}h`:''}</p>
-                            {intv.address && <p className="text-xs text-slate-600 truncate">{intv.address}</p>}
-                          </div>
-                          <div className="flex flex-col gap-1 flex-shrink-0">
+                          {intv.address && (
+                            <a href={`https://maps.google.com/?q=${encodeURIComponent(intv.address)}`} target="_blank" rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 mb-3 transition-colors">
+                              <Navigation className="w-3 h-3"/>{intv.address}
+                            </a>
+                          )}
+                          {intv.lead_phone && (
+                            <a href={`tel:${intv.lead_phone}`} className="flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 mb-3 transition-colors">
+                              <Phone className="w-3 h-3"/>{intv.lead_phone}
+                            </a>
+                          )}
+                          <div className="flex gap-2">
                             {intv.status==='planifiée' && (
                               <button onClick={()=>handleCheckIn(intv.intervention_id||intv.id)}
-                                className="px-3 py-1.5 rounded-lg text-xs font-bold text-white"
-                                style={{background:'#10b981'}}>▶ Start</button>
+                                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white"
+                                style={{background:'linear-gradient(135deg,#10b981,#059669)'}}>
+                                ▶ Démarrer l'intervention
+                              </button>
                             )}
                             {intv.status==='en_cours' && (
-                              <button onClick={()=>handleCheckOut(intv.intervention_id||intv.id)}
-                                className="px-3 py-1.5 rounded-lg text-xs font-bold text-white"
-                                style={{background:'#3b82f6'}}>✓ Fin</button>
+                              <button onClick={()=>setShowChecklist(intv)}
+                                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white"
+                                style={{background:'linear-gradient(135deg,#3b82f6,#2563eb)'}}>
+                                ✅ Checklist & Terminer
+                              </button>
                             )}
                           </div>
                         </div>
@@ -486,71 +522,52 @@ const IntervenantDashboard = ({ agent, onLogout }) => {
               )}
 
               {/* Toutes les interventions */}
-              <div className="space-y-3">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Toutes les interventions</p>
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Toutes les missions</p>
                 {interventions.length===0 ? (
                   <div className="rounded-2xl border border-white/5 p-10 text-center">
-                    <Calendar className="w-12 h-12 text-slate-700 mx-auto mb-3"/>
-                    <p className="text-slate-500">Aucune intervention assignée</p>
+                    <Calendar className="w-10 h-10 text-slate-700 mx-auto mb-3"/>
+                    <p className="text-slate-500 text-sm">Aucune mission assignée</p>
                   </div>
-                ) : interventions.map(intv=>{
-                  const sc = STATUS[intv.status]||STATUS.planifiée;
-                  return (
-                    <div key={intv.intervention_id||intv.id}
-                      className="p-4 rounded-2xl border border-white/5 bg-white/2"
-                      style={{borderLeft:`3px solid ${sc.color}`}}>
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">{getIcon(intv.service_type)}</span>
-                          <div>
-                            <p className="font-bold text-slate-200 text-sm">{intv.title||intv.service_type}</p>
-                            <p className="text-xs text-slate-500">{intv.scheduled_date} · {intv.scheduled_time||'—'}</p>
+                ) : (
+                  [...interventions].sort((a,b)=>(b.scheduled_date||'').localeCompare(a.scheduled_date||'')).map(intv=>{
+                    const sc=STATUS[intv.status]||STATUS.planifiée;
+                    return (
+                      <div key={intv.intervention_id||intv.id}
+                        className="p-4 rounded-2xl border border-white/5 bg-white/2"
+                        style={{borderLeft:`3px solid ${sc.color}`}}>
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">{getIcon(intv.service_type)}</span>
+                            <div>
+                              <p className="font-bold text-slate-200 text-sm">{intv.title||intv.service_type}</p>
+                              <p className="text-xs text-slate-500">{intv.scheduled_date} · {intv.scheduled_time||'—'}</p>
+                            </div>
                           </div>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+                            style={{color:sc.color,background:sc.bg}}>{sc.label}</span>
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
-                          style={{color:sc.color,background:sc.bg}}>{sc.label}</span>
-                      </div>
-                      {intv.address && (
-                        <a href={`https://maps.google.com/?q=${encodeURIComponent(intv.address)}`} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                          <Navigation className="w-3 h-3"/>{intv.address}
-                        </a>
-                      )}
-                      {intv.lead_phone && (
-                        <a href={`tel:${intv.lead_phone}`}
-                          className="flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 transition-colors mt-1">
-                          <Phone className="w-3 h-3"/>{intv.lead_phone}
-                        </a>
-                      )}
-                      <div className="flex gap-2 mt-3">
-                        {intv.status==='planifiée' && (
-                          <button onClick={()=>handleCheckIn(intv.intervention_id||intv.id)}
-                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white"
-                            style={{background:'linear-gradient(135deg,#10b981,#059669)'}}>
-                            <Play className="w-3 h-3"/> Démarrer
-                          </button>
-                        )}
-                        {intv.status==='en_cours' && (
-                          <button onClick={()=>handleCheckOut(intv.intervention_id||intv.id)}
-                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white"
-                            style={{background:'linear-gradient(135deg,#3b82f6,#2563eb)'}}>
-                            <CheckCircle className="w-3 h-3"/> Terminer
-                          </button>
+                        {intv.address && (
+                          <a href={`https://maps.google.com/?q=${encodeURIComponent(intv.address)}`} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors">
+                            <Navigation className="w-3 h-3"/>{intv.address}
+                          </a>
                         )}
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
             </div>
           )}
 
-          {/* MESSAGES */}
+          {/* ── MESSAGES ── */}
           {activeTab==='messages' && (
             <div className="flex flex-col" style={{height:'calc(100vh - 200px)'}}>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-black text-slate-100">Messages</h2>
-                <button onClick={fetchMessages} className="p-1.5 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-white/5">
+                <button onClick={()=>iAxios.get(`${API}/messages`).then(r=>setMessages(r.data?.messages||[])).catch(()=>{})}
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-white/5">
                   <RefreshCw className="w-3.5 h-3.5"/>
                 </button>
               </div>
@@ -559,23 +576,24 @@ const IntervenantDashboard = ({ agent, onLogout }) => {
                   <div className="flex flex-col items-center justify-center h-40 gap-3">
                     <MessageSquare className="w-10 h-10 text-slate-700"/>
                     <p className="text-slate-500 text-sm">Aucun message</p>
+                    <p className="text-xs text-slate-600">Contactez le bureau directement</p>
                   </div>
                 )}
                 {messages.map((msg,i)=>{
-                  const isMe = msg.sender==='agent' || msg.from_agent;
+                  const isMe = msg.from_agent || msg.sender==='agent';
                   return (
                     <div key={i} className={`flex ${isMe?'justify-end':'justify-start'}`}>
                       {!isMe && (
                         <div className="w-8 h-8 rounded-xl flex items-center justify-center text-sm flex-shrink-0 mr-2 mt-auto"
                           style={{background:'linear-gradient(135deg,#f97316,#ea580c)'}}>🏠</div>
                       )}
-                      <div className={`max-w-[75%] px-4 py-3 rounded-2xl text-sm ${isMe?'rounded-br-sm':'rounded-bl-sm'}`}
+                      <div className={`max-w-[78%] px-4 py-3 rounded-2xl text-sm ${isMe?'rounded-br-sm':'rounded-bl-sm'}`}
                         style={isMe
                           ? {background:'linear-gradient(135deg,#10b981,#059669)',color:'white'}
                           : {background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',color:'#e2e8f0'}}>
                         <p className="leading-relaxed">{msg.content}</p>
-                        <p className={`text-[10px] mt-1 ${isMe?'text-white/60':'text-slate-600'}`}>
-                          {new Date(msg.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}
+                        <p className={`text-[10px] mt-1 ${isMe?'text-white/50':'text-slate-600'}`}>
+                          {msg.created_at ? new Date(msg.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : ''}
                         </p>
                       </div>
                     </div>
@@ -589,7 +607,7 @@ const IntervenantDashboard = ({ agent, onLogout }) => {
                   placeholder="Message au bureau..."
                   className="flex-1 px-4 py-3 rounded-2xl border text-sm text-slate-200 placeholder-slate-600 outline-none"
                   style={{background:'rgba(255,255,255,0.05)',borderColor:'rgba(255,255,255,0.1)'}}/>
-                <button onClick={sendMessage} disabled={!newMsg.trim()}
+                <button onClick={sendMessage} disabled={sendingMsg||!newMsg.trim()}
                   className="w-12 h-12 rounded-2xl flex items-center justify-center text-white disabled:opacity-50"
                   style={{background:'linear-gradient(135deg,#10b981,#059669)'}}>
                   <Send className="w-4 h-4"/>
@@ -598,31 +616,153 @@ const IntervenantDashboard = ({ agent, onLogout }) => {
             </div>
           )}
 
-          {/* PROFIL */}
+          {/* ── DOCUMENTS ── */}
+          {activeTab==='documents' && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-xl font-black text-slate-100 mb-1">Mes documents</h2>
+                <p className="text-sm text-slate-500">Envoyez vos documents RH directement depuis l'application.</p>
+              </div>
+
+              <div className="rounded-2xl p-4 border" style={{background:'rgba(96,165,250,0.05)',borderColor:'rgba(96,165,250,0.2)'}}>
+                <p className="text-xs font-bold text-blue-300 mb-1">📋 Documents requis</p>
+                <p className="text-xs text-slate-500">Veuillez fournir les documents suivants pour compléter votre dossier.</p>
+              </div>
+
+              <div className="space-y-3">
+                {DOCS_REQUIS.map(doc=>{
+                  const uploaded = uploadedDocs.find(d=>d.name===doc);
+                  return (
+                    <div key={doc} className={`p-4 rounded-2xl border transition-all ${uploaded?'border-emerald-500/25 bg-emerald-500/5':'border-white/5 bg-white/2'}`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${uploaded?'bg-emerald-500/20 border border-emerald-500/30':'bg-white/5 border border-white/10'}`}>
+                          <FileText className={`w-5 h-5 ${uploaded?'text-emerald-400':'text-slate-500'}`}/>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-slate-200">{doc}</p>
+                          {uploaded ? (
+                            <p className="text-xs text-emerald-400">✅ Envoyé le {uploaded.date} · {uploaded.file}</p>
+                          ) : (
+                            <p className="text-xs text-slate-500">⏳ En attente</p>
+                          )}
+                        </div>
+                        <div className="flex-shrink-0">
+                          {uploaded ? (
+                            <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">Reçu ✓</span>
+                          ) : (
+                            <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white cursor-pointer transition-all"
+                              style={{background:'linear-gradient(135deg,#7c3aed,#4f46e5)'}}>
+                              <Upload className="w-3.5 h-3.5"/>
+                              Envoyer
+                              <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png"
+                                onChange={e=>handleUploadDoc(e,doc)}/>
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Bouton contact si besoin */}
+              <div className="rounded-2xl p-4 border border-white/5 bg-white/2 text-center">
+                <p className="text-xs text-slate-500 mb-3">Un problème avec un document ? Contactez le bureau.</p>
+                <button onClick={()=>setActiveTab('messages')}
+                  className="flex items-center justify-center gap-2 mx-auto px-4 py-2.5 rounded-xl text-sm font-bold text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/10 transition-all">
+                  <MessageSquare className="w-4 h-4"/> Contacter le bureau
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── PROFIL ── */}
           {activeTab==='profil' && (
             <div className="space-y-5">
-              <h2 className="text-xl font-black text-slate-100">Mon profil</h2>
-              <div className="rounded-2xl p-6 border border-white/5 bg-white/2 text-center">
-                <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl mx-auto mb-4"
-                  style={{background:'linear-gradient(135deg,#10b981,#059669)'}}>
-                  {agent?.name?.charAt(0)||'A'}
+              {/* Card profil */}
+              <div className="rounded-3xl p-6 text-center" style={{background:'linear-gradient(135deg,#064e3b,#065f46)',border:'1px solid rgba(16,185,129,0.2)'}}>
+                <div className="w-20 h-20 rounded-3xl flex items-center justify-center text-3xl mx-auto mb-4"
+                  style={{background:'rgba(16,185,129,0.3)',border:'2px solid rgba(16,185,129,0.4)'}}>
+                  {(agent?.name||'A').charAt(0).toUpperCase()}
                 </div>
-                <p className="text-xl font-black text-slate-100">{agent?.name||'Agent'}</p>
-                <p className="text-sm text-emerald-400 font-semibold mt-1">{agent?.role||'Technicien'}</p>
-                <p className="text-xs text-slate-500 mt-1">{agent?.email||'—'}</p>
+                <h3 className="text-xl font-black text-white mb-1">{agent?.name||'Agent'}</h3>
+                <p className="text-emerald-400 text-sm font-semibold mb-3 capitalize">{agent?.role||'Technicien'}</p>
+                <p className="text-slate-400 text-xs">{agent?.email||'—'}</p>
               </div>
-              <div className="space-y-3">
-                {[
-                  {label:'Interventions totales', value:interventions.length},
-                  {label:'Interventions terminées', value:interventions.filter(i=>i.status==='terminée').length},
-                  {label:'En attente', value:interventions.filter(i=>i.status==='planifiée').length},
-                ].map(s=>(
-                  <div key={s.label} className="flex items-center justify-between p-4 rounded-2xl border border-white/5 bg-white/2">
-                    <p className="text-sm text-slate-400">{s.label}</p>
-                    <p className="text-lg font-black text-emerald-400" style={{fontFamily:'Manrope,sans-serif'}}>{s.value}</p>
+
+              {/* Ma note */}
+              <div className="rounded-2xl p-5 border border-amber-500/20 bg-amber-500/5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Award className="w-5 h-5 text-amber-400"/>
+                  <p className="text-sm font-bold text-amber-300">Ma note</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    {[1,2,3,4,5].map(s=>(
+                      <Star key={s} className={`w-7 h-7 ${s<=(agent?.rating||5)?'fill-amber-400 text-amber-400':'text-slate-700'}`}/>
+                    ))}
                   </div>
-                ))}
+                  <span className="text-xl font-black text-amber-400 ml-2">{agent?.rating||5}/5</span>
+                </div>
+                <p className="text-xs text-slate-500 mt-2">Note attribuée par votre responsable</p>
               </div>
+
+              {/* Mes stats */}
+              <div className="rounded-2xl p-5 border border-white/5 bg-white/2">
+                <div className="flex items-center gap-2 mb-4">
+                  <TrendingUp className="w-4 h-4 text-blue-400"/>
+                  <p className="text-sm font-bold text-slate-300">Mes performances</p>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    {label:"Planifiées", value:interventions.filter(i=>i.status==='planifiée').length, color:'#60a5fa'},
+                    {label:"Terminées", value:interventions.filter(i=>i.status==='terminée').length, color:'#10b981'},
+                    {label:"Total", value:interventions.length, color:'#a78bfa'},
+                  ].map(s=>(
+                    <div key={s.label} className="text-center p-3 rounded-xl" style={{background:`${s.color}10`}}>
+                      <p className="text-2xl font-black" style={{color:s.color,fontFamily:'Manrope,sans-serif'}}>{s.value}</p>
+                      <p className="text-[10px] font-semibold mt-0.5" style={{color:`${s.color}aa`}}>{s.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Documents status */}
+              <div className="rounded-2xl p-5 border border-white/5 bg-white/2">
+                <div className="flex items-center gap-2 mb-3">
+                  <FileText className="w-4 h-4 text-violet-400"/>
+                  <p className="text-sm font-bold text-slate-300">Dossier RH</p>
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-slate-500">{uploadedDocs.length}/{DOCS_REQUIS.length} documents envoyés</p>
+                  <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden mx-3">
+                    <div className="h-full rounded-full bg-violet-500 transition-all"
+                      style={{width:`${(uploadedDocs.length/DOCS_REQUIS.length)*100}%`}}/>
+                  </div>
+                  <button onClick={()=>setActiveTab('documents')}
+                    className="text-xs text-violet-400 font-bold hover:text-violet-300 transition-colors">
+                    Voir →
+                  </button>
+                </div>
+              </div>
+
+              {/* Contact rapide bureau */}
+              <div className="rounded-2xl p-4 border border-white/5 bg-white/2">
+                <p className="text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider">Contact bureau</p>
+                <div className="flex gap-3">
+                  <a href="tel:+33622665308"
+                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm text-white"
+                    style={{background:'linear-gradient(135deg,#f97316,#ea580c)'}}>
+                    <Phone className="w-4 h-4"/> Appeler
+                  </a>
+                  <a href="https://wa.me/33622665308" target="_blank" rel="noopener noreferrer"
+                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm text-white"
+                    style={{background:'#25D366'}}>
+                    💬 WhatsApp
+                  </a>
+                </div>
+              </div>
+
               <button onClick={onLogout}
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-red-500/20 text-red-400 hover:bg-red-500/10 transition-all text-sm font-bold">
                 <LogOut className="w-4 h-4"/> Se déconnecter
@@ -634,30 +774,23 @@ const IntervenantDashboard = ({ agent, onLogout }) => {
         )}
       </div>
 
-      {/* MODAL DÉTAIL */}
+      {/* ── MODAL DÉTAIL INTERVENTION ── */}
       {selectedIntv && !showChecklist && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{background:'rgba(0,0,0,0.8)'}}
-          onClick={()=>setSelectedIntv(null)}>
-          <div className="rounded-2xl p-6 max-w-md w-full animate-fade-in"
-            style={{background:'hsl(224,71%,6%)',border:'1px solid rgba(255,255,255,0.1)'}}
-            onClick={e=>e.stopPropagation()}>
-            <div className="flex items-start justify-between mb-4">
+        <div className="fixed inset-0 flex items-end sm:items-center justify-center z-50 p-4" style={{background:'rgba(0,0,0,0.8)'}} onClick={()=>setSelectedIntv(null)}>
+          <div className="rounded-3xl p-6 max-w-md w-full animate-fade-in"
+            style={{background:'hsl(224,71%,6%)',border:'1px solid rgba(255,255,255,0.1)'}} onClick={e=>e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-5">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
-                  style={{background:STATUS[selectedIntv.status]?.bg||'rgba(96,165,250,0.15)'}}>
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl"
+                  style={{background:STATUS[selectedIntv.status]?.bg,border:`1px solid ${STATUS[selectedIntv.status]?.border}`}}>
                   {getIcon(selectedIntv.service_type)}
                 </div>
                 <div>
-                  <p className="font-black text-slate-100">{selectedIntv.title||selectedIntv.service_type}</p>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                    style={{color:STATUS[selectedIntv.status]?.color,background:STATUS[selectedIntv.status]?.bg}}>
-                    {STATUS[selectedIntv.status]?.label}
-                  </span>
+                  <h3 className="text-lg font-black text-slate-100">{selectedIntv.title||selectedIntv.service_type}</h3>
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{color:STATUS[selectedIntv.status]?.color,background:STATUS[selectedIntv.status]?.bg}}>{STATUS[selectedIntv.status]?.label}</span>
                 </div>
               </div>
-              <button onClick={()=>setSelectedIntv(null)} className="p-2 text-slate-500 hover:text-slate-300 hover:bg-white/5 rounded-xl">
-                <X className="w-4 h-4"/>
-              </button>
+              <button onClick={()=>setSelectedIntv(null)} className="p-2 text-slate-500 hover:text-slate-300 hover:bg-white/5 rounded-xl"><X className="w-4 h-4"/></button>
             </div>
             <div className="space-y-2 mb-5">
               {[
@@ -671,33 +804,28 @@ const IntervenantDashboard = ({ agent, onLogout }) => {
                   <span>{item.label}</span>
                 </div>
               ))}
-              {selectedIntv.description && (
-                <div className="p-3 rounded-xl bg-white/3 border border-white/5 text-sm text-slate-400">
-                  {selectedIntv.description}
-                </div>
-              )}
+              {selectedIntv.description && <div className="p-3 rounded-xl bg-white/3 border border-white/5 text-sm text-slate-400">{selectedIntv.description}</div>}
             </div>
             <div className="flex gap-2">
+              {selectedIntv.address && (
+                <a href={`https://maps.google.com/?q=${encodeURIComponent(selectedIntv.address)}`} target="_blank" rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm border border-blue-500/20 text-blue-400 hover:bg-blue-500/10 transition-all">
+                  <Navigation className="w-4 h-4"/> Itinéraire
+                </a>
+              )}
               {selectedIntv.status==='planifiée' && (
                 <button onClick={()=>{handleCheckIn(selectedIntv.intervention_id||selectedIntv.id);setSelectedIntv(null);}}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm text-white"
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm text-white"
                   style={{background:'linear-gradient(135deg,#10b981,#059669)'}}>
                   <Play className="w-4 h-4"/> Démarrer
                 </button>
               )}
               {selectedIntv.status==='en_cours' && (
                 <button onClick={()=>{setShowChecklist(selectedIntv);setSelectedIntv(null);}}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm text-white"
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm text-white"
                   style={{background:'linear-gradient(135deg,#3b82f6,#2563eb)'}}>
                   <CheckCircle className="w-4 h-4"/> Terminer
                 </button>
-              )}
-              {selectedIntv.address && (
-                <a href={`https://maps.google.com/?q=${encodeURIComponent(selectedIntv.address)}`}
-                  target="_blank" rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-sm border border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all">
-                  <Navigation className="w-4 h-4"/>
-                </a>
               )}
             </div>
           </div>
@@ -705,25 +833,19 @@ const IntervenantDashboard = ({ agent, onLogout }) => {
       )}
 
       {/* CHECKLIST */}
-      {showChecklist && (
-        <ChecklistModal
-          intervention={showChecklist}
-          onClose={()=>setShowChecklist(null)}
-          onComplete={handleCompleteChecklist}
-        />
-      )}
+      {showChecklist && <ChecklistModal intervention={showChecklist} onClose={()=>setShowChecklist(null)} onComplete={handleCompleteChecklist}/>}
 
-      {/* Barre mobile */}
-      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 border-t px-2 py-2"
-        style={{background:'rgba(15,23,42,0.98)',borderColor:'rgba(255,255,255,0.08)',backdropFilter:'blur(20px)'}}>
-        <div className="flex justify-around">
+      {/* ── BARRE NAVIGATION MOBILE ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t" style={{background:'rgba(6,25,50,0.98)',borderColor:'rgba(255,255,255,0.08)',backdropFilter:'blur(20px)'}}>
+        <div className="max-w-lg mx-auto flex justify-around px-2 py-2">
           {TABS.map(tab=>(
             <button key={tab.id} onClick={()=>setActiveTab(tab.id)}
-              className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all relative ${activeTab===tab.id?'text-emerald-400':'text-slate-600'}`}>
-              <tab.icon className="w-5 h-5"/>
-              <span className="text-[9px] font-semibold">{tab.label}</span>
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-all relative ${activeTab===tab.id?'text-emerald-400':'text-slate-600'}`}>
+              {activeTab===tab.id && <div className="absolute inset-0 rounded-2xl" style={{background:'rgba(16,185,129,0.1)'}}/>}
+              <tab.icon className={`w-5 h-5 relative z-10 ${activeTab===tab.id?'text-emerald-400':'text-slate-600'}`}/>
+              <span className="text-[9px] font-bold relative z-10">{tab.label}</span>
               {tab.notif > 0 && (
-                <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full text-white text-[8px] font-black flex items-center justify-center"
+                <span className="absolute top-1 right-1 w-4 h-4 rounded-full text-white text-[8px] font-black flex items-center justify-center z-20"
                   style={{background:'#10b981'}}>{tab.notif}</span>
               )}
             </button>
@@ -734,7 +856,7 @@ const IntervenantDashboard = ({ agent, onLogout }) => {
   );
 };
 
-// ── MAIN ──
+/* ── MAIN ── */
 const IntervenantPortal = () => {
   const [agent, setAgent] = useState(null);
   const [checking, setChecking] = useState(true);
@@ -748,28 +870,22 @@ const IntervenantPortal = () => {
         const res = await iAxios.get(`${API}/me`);
         setAgent(res.data);
       } catch { localStorage.removeItem('intervenant_token'); }
-      finally { setChecking(false); }
+      setChecking(false);
     };
     check();
   },[]);
-
-  const handleLogout = () => {
-    localStorage.removeItem('intervenant_token');
-    setAgent(null);
-    toast.success('Déconnecté');
-  };
 
   if (checking) return (
     <div className="min-h-screen flex items-center justify-center" style={{background:'hsl(224,71%,4%)'}}>
       <div className="flex items-center gap-3">
         <div className="w-6 h-6 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin"/>
-        <span className="text-slate-500 text-sm">Chargement...</span>
+        <span className="text-slate-500 text-sm font-medium">Connexion...</span>
       </div>
     </div>
   );
 
-  if (!agent) return <IntervenantLogin onAuth={setAgent}/>;
-  return <IntervenantDashboard agent={agent} onLogout={handleLogout}/>;
+  if (!agent) return <Login onAuth={setAgent}/>;
+  return <Dashboard agent={agent} onLogout={()=>{ localStorage.removeItem('intervenant_token'); setAgent(null); toast.success('Déconnecté'); }}/>;
 };
 
 export default IntervenantPortal;

@@ -504,3 +504,70 @@ async def send_message(request: Request):
         logger.warning(f"Message notification failed: {e}")
 
     return {"success": True, "message_id": msg["message_id"]}
+
+@intervenant_router.get("/messages/{agent_id}")
+async def get_agent_messages_admin(agent_id: str, request: Request):
+    """Récupérer les messages d'un agent (vue admin)."""
+    from server import require_auth
+    try:
+        await require_auth(request)
+    except:
+        pass
+    messages = await _db.intervenant_messages.find(
+        {"$or": [{"agent_id": agent_id}, {"to_agent_id": agent_id}]},
+        {"_id": 0}
+    ).sort("created_at", 1).to_list(200)
+    return {"messages": messages}
+
+@intervenant_router.post("/messages/{agent_id}")
+async def send_admin_message(agent_id: str, request: Request):
+    """Envoyer un message à un agent (depuis l'admin)."""
+    from server import require_auth
+    try:
+        user = await require_auth(request)
+        sender_name = user.email
+    except:
+        sender_name = "Bureau"
+    
+    body = await request.json()
+    content = body.get("content", "").strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="Message vide")
+
+    msg = {
+        "message_id": f"msg_{uuid.uuid4().hex[:8]}",
+        "agent_id": agent_id,
+        "to_agent_id": agent_id,
+        "content": content,
+        "sender": "admin",
+        "from_admin": True,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await _db.intervenant_messages.insert_one(msg)
+
+    # Notifier l'agent par email
+    try:
+        member = await _db.team_members.find_one({"member_id": agent_id}, {"_id": 0})
+        if member and member.get("email"):
+            from gmail_service import _get_any_active_token, _send_gmail_message
+            token, _ = await _get_any_active_token()
+            if token:
+                html = f"""<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f1f5f9;padding:20px;">
+<div style="max-width:500px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;">
+  <div style="background:linear-gradient(135deg,#10b981,#059669);padding:20px;text-align:center;">
+    <h2 style="color:white;margin:0;font-size:16px;">💬 Message du bureau</h2>
+  </div>
+  <div style="padding:24px;">
+    <div style="background:#f0fdf4;border-left:4px solid #10b981;padding:16px;border-radius:0 8px 8px 0;margin:12px 0;">
+      <p style="color:#1e293b;font-size:14px;margin:0;line-height:1.8;">{content}</p>
+    </div>
+    <a href="https://crm.globalcleanhome.com/intervenant" style="display:inline-block;background:linear-gradient(135deg,#10b981,#059669);color:white;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:700;font-size:13px;margin-top:16px;">
+      📱 Voir sur mon portail
+    </a>
+  </div>
+</div></body></html>"""
+                await _send_gmail_message(token, member["email"], "💬 Nouveau message — Global Clean Home", html)
+    except Exception as e:
+        logger.warning(f"Admin message email failed: {e}")
+
+    return {"success": True, "message_id": msg["message_id"]}
