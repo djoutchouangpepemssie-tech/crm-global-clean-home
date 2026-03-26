@@ -133,6 +133,70 @@ const menuCategories = [
 // Garder pour compatibilité
 const moreNavItems = menuCategories.flatMap(c => c.items);
 
+
+function AccordionMenu({ setMoreOpen }) {
+  const [openCat, setOpenCat] = useState(null);
+
+  return (
+    <nav className="p-3 space-y-2 overflow-y-auto max-h-[65vh]">
+      {menuCategories.map(cat => (
+        <div key={cat.label} className="rounded-2xl overflow-hidden border" style={{borderColor:`${cat.color}20`}}>
+          {/* Bouton catégorie */}
+          <button
+            onClick={() => setOpenCat(openCat === cat.label ? null : cat.label)}
+            className="w-full flex items-center justify-between px-4 py-3.5 transition-all"
+            style={{background: openCat === cat.label ? `${cat.color}15` : 'rgba(255,255,255,0.02)'}}>
+            <span className="text-sm font-black text-slate-100">{cat.label}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{background:`${cat.color}20`,color:cat.color}}>
+                {cat.items.length}
+              </span>
+              <ChevronRight
+                className="w-4 h-4 text-slate-500 transition-transform duration-200"
+                style={{transform: openCat === cat.label ? 'rotate(90deg)' : 'rotate(0deg)'}}
+              />
+            </div>
+          </button>
+
+          {/* Sous-pages */}
+          {openCat === cat.label && (
+            <div className="border-t" style={{borderColor:`${cat.color}15`}}>
+              {cat.items.map((item, idx) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setMoreOpen(false)}
+                  className={({ isActive }) =>
+                    `flex items-center gap-4 px-5 py-3.5 transition-all ${
+                      idx < cat.items.length - 1 ? 'border-b' : ''
+                    } ${isActive ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`
+                  }
+                  style={({ isActive }) => ({
+                    background: isActive ? `${cat.color}12` : 'rgba(255,255,255,0.01)',
+                    borderColor: 'rgba(255,255,255,0.05)'
+                  })}>
+                  {({ isActive }) => (
+                    <>
+                      <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{background: isActive ? `${cat.color}25` : 'rgba(255,255,255,0.05)'}}>
+                        <item.icon className="w-4 h-4" style={{color: isActive ? cat.color : '#64748b'}}/>
+                      </div>
+                      <span className="text-sm font-semibold" style={{color: isActive ? cat.color : ''}}>{item.label}</span>
+                      {isActive && (
+                        <div className="ml-auto w-1.5 h-1.5 rounded-full" style={{background:cat.color}}/>
+                      )}
+                    </>
+                  )}
+                </NavLink>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </nav>
+  );
+}
+
 function MobileTabBar() {
   const [moreOpen, setMoreOpen] = useState(false);
   const { logout } = useAuth();
@@ -150,38 +214,7 @@ function MobileTabBar() {
                 <X className="w-5 h-5 text-slate-400" />
               </button>
             </div>
-            <nav className="p-3 space-y-4 overflow-y-auto max-h-[60vh]">
-              {menuCategories.map(cat => (
-                <div key={cat.label}>
-                  <div className="flex items-center gap-2 px-2 mb-2">
-                    <div className="h-px flex-1 rounded-full" style={{background:`${cat.color}30`}}/>
-                    <span className="text-[10px] font-black uppercase tracking-widest" style={{color:cat.color}}>{cat.label}</span>
-                    <div className="h-px flex-1 rounded-full" style={{background:`${cat.color}30`}}/>
-                  </div>
-                  <div className="grid grid-cols-4 gap-1">
-                    {cat.items.map(item => (
-                      <NavLink
-                        key={item.to}
-                        to={item.to}
-                        onClick={() => setMoreOpen(false)}
-                        data-testid={`more-nav-${item.to.slice(1)}`}
-                        className={({ isActive }) =>
-                          `flex flex-col items-center gap-1.5 p-3 rounded-2xl text-[10px] font-semibold transition-all touch-manipulation ${
-                            isActive
-                              ? "text-white"
-                              : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
-                          }`
-                        }
-                        style={({isActive}) => isActive ? {background:`${cat.color}20`,color:cat.color} : {}}
-                      >
-                        <item.icon className="w-5 h-5" />
-                        <span className="text-center leading-tight">{item.label}</span>
-                      </NavLink>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </nav>
+            <AccordionMenu setMoreOpen={setMoreOpen} />
             <div className="px-3 pb-4 pt-1 border-t border-white/5 mt-1">
               <a
                 href="/portal"
