@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, NavLink } from 'react-router-dom';
 import { Toaster } from 'sonner';
-import { LayoutDashboard, Users, FileText, MoreHorizontal, X, LogOut, Trello, CreditCard, BarChart3, CalendarDays, CheckSquare, TrendingUp, Plug, Activity } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, MoreHorizontal, X, LogOut, Trello, CreditCard, BarChart3, CalendarDays, CheckSquare, TrendingUp, Plug, Activity, ChevronRight, Briefcase, Star, Settings, Globe, MessageSquare, Ticket, Workflow, BarChart2, UserCheck } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import PWAInstallBanner, { OfflineIndicator } from './components/pwa/PWAInstallBanner';
 
@@ -86,17 +86,52 @@ const TicketsList = lazy(() => import('./components/tickets/TicketsList'));
 import './App.css';
 import { requestNotificationPermission, onMessageListener } from './firebase';
 
-const moreNavItems = [
-  { to: '/kanban', icon: Trello, label: 'Kanban' },
-  { to: '/invoices', icon: CreditCard, label: 'Factures' },
-  { to: '/finance', icon: BarChart3, label: 'Finance' },
-  { to: '/planning', icon: CalendarDays, label: 'Planning' },
-  { to: '/intervenants', icon: Users, label: 'Intervenants' },
-  { to: '/tasks', icon: CheckSquare, label: 'Taches' },
-  { to: '/analytics', icon: TrendingUp, label: 'Analytics' },
-  { to: '/integrations', icon: Plug, label: 'Integrations' },
-  { to: '/activity', icon: Activity, label: 'Journal' },
+const menuCategories = [
+  {
+    label: '🎯 Commercial',
+    color: '#8b5cf6',
+    items: [
+      { to: '/leads',    icon: Users,        label: 'Leads' },
+      { to: '/quotes',   icon: FileText,     label: 'Devis' },
+      { to: '/invoices', icon: CreditCard,   label: 'Factures' },
+      { to: '/finance',  icon: BarChart3,    label: 'Finance' },
+      { to: '/kanban',   icon: Trello,       label: 'Kanban' },
+    ]
+  },
+  {
+    label: '📅 Opérations',
+    color: '#10b981',
+    items: [
+      { to: '/planning',     icon: CalendarDays, label: 'Planning' },
+      { to: '/intervenants', icon: UserCheck,    label: 'Intervenants' },
+      { to: '/tasks',        icon: CheckSquare,  label: 'Tâches' },
+      { to: '/tickets',      icon: Ticket,       label: 'Tickets' },
+    ]
+  },
+  {
+    label: '📊 Analytics',
+    color: '#f59e0b',
+    items: [
+      { to: '/analytics',  icon: TrendingUp, label: 'Analytics' },
+      { to: '/rentabilite',icon: BarChart2,  label: 'Rentabilité' },
+      { to: '/ads',        icon: Globe,      label: 'Publicité' },
+      { to: '/activity',   icon: Activity,   label: 'Journal' },
+    ]
+  },
+  {
+    label: '⚙️ Outils',
+    color: '#60a5fa',
+    items: [
+      { to: '/workflows',    icon: Workflow,      label: 'Workflows' },
+      { to: '/integrations', icon: Plug,          label: 'Intégrations' },
+      { to: '/ai',           icon: Star,          label: 'IA' },
+      { to: '/chat',         icon: MessageSquare, label: 'Messages' },
+    ]
+  },
 ];
+
+// Garder pour compatibilité
+const moreNavItems = menuCategories.flatMap(c => c.items);
 
 function MobileTabBar() {
   const [moreOpen, setMoreOpen] = useState(false);
@@ -115,22 +150,36 @@ function MobileTabBar() {
                 <X className="w-5 h-5 text-slate-400" />
               </button>
             </div>
-            <nav className="grid grid-cols-3 gap-1 p-3">
-              {moreNavItems.map(item => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  onClick={() => setMoreOpen(false)}
-                  data-testid={`more-nav-${item.to.slice(1)}`}
-                  className={({ isActive }) =>
-                    `flex flex-col items-center gap-1.5 p-3 rounded-xl text-xs font-medium transition-colors touch-manipulation ${
-                      isActive ? "bg-violet-500/10 text-violet-300" : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
-                    }`
-                  }
-                >
-                  <item.icon className="w-5 h-5" />
-                  <span>{item.label}</span>
-                </NavLink>
+            <nav className="p-3 space-y-4 overflow-y-auto max-h-[60vh]">
+              {menuCategories.map(cat => (
+                <div key={cat.label}>
+                  <div className="flex items-center gap-2 px-2 mb-2">
+                    <div className="h-px flex-1 rounded-full" style={{background:`${cat.color}30`}}/>
+                    <span className="text-[10px] font-black uppercase tracking-widest" style={{color:cat.color}}>{cat.label}</span>
+                    <div className="h-px flex-1 rounded-full" style={{background:`${cat.color}30`}}/>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1">
+                    {cat.items.map(item => (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setMoreOpen(false)}
+                        data-testid={`more-nav-${item.to.slice(1)}`}
+                        className={({ isActive }) =>
+                          `flex flex-col items-center gap-1.5 p-3 rounded-2xl text-[10px] font-semibold transition-all touch-manipulation ${
+                            isActive
+                              ? "text-white"
+                              : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                          }`
+                        }
+                        style={({isActive}) => isActive ? {background:`${cat.color}20`,color:cat.color} : {}}
+                      >
+                        <item.icon className="w-5 h-5" />
+                        <span className="text-center leading-tight">{item.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                </div>
               ))}
             </nav>
             <div className="px-3 pb-4 pt-1 border-t border-white/5 mt-1">
@@ -156,39 +205,30 @@ function MobileTabBar() {
       )}
 
       {/* Bottom tab bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 lg:hidden border-t border-white/5 safe-bottom" style={{background:"hsl(224,71%,5%)"}} data-testid="mobile-tab-bar">
-        <div className="flex items-stretch justify-around h-14">
-          <NavLink to="/dashboard" data-testid="tab-dashboard"
-            className={({ isActive }) =>
-              `flex flex-col items-center justify-center flex-1 gap-0.5 text-[10px] font-medium transition-colors touch-manipulation ${
-                isActive ? 'text-violet-600' : 'text-slate-400'
-              }`
-            }>
-            <LayoutDashboard className="w-5 h-5" />
-            <span>Dashboard</span>
-          </NavLink>
-          <NavLink to="/leads" data-testid="tab-leads"
-            className={({ isActive }) =>
-              `flex flex-col items-center justify-center flex-1 gap-0.5 text-[10px] font-medium transition-colors touch-manipulation ${
-                isActive ? 'text-violet-600' : 'text-slate-400'
-              }`
-            }>
-            <Users className="w-5 h-5" />
-            <span>Leads</span>
-          </NavLink>
-          <NavLink to="/quotes" data-testid="tab-quotes"
-            className={({ isActive }) =>
-              `flex flex-col items-center justify-center flex-1 gap-0.5 text-[10px] font-medium transition-colors touch-manipulation ${
-                isActive ? 'text-violet-600' : 'text-slate-400'
-              }`
-            }>
-            <FileText className="w-5 h-5" />
-            <span>Devis</span>
-          </NavLink>
+      <nav className="fixed bottom-0 left-0 right-0 z-40 lg:hidden border-t safe-bottom"
+        style={{background:"rgba(9,15,35,0.97)",borderColor:"rgba(255,255,255,0.08)",backdropFilter:"blur(20px)"}}>
+        <div className="flex items-stretch justify-around h-16">
+          {[
+            {to:"/dashboard", icon:LayoutDashboard, label:"Dashboard", testId:"tab-dashboard"},
+            {to:"/leads",     icon:Users,            label:"Leads",     testId:"tab-leads"},
+            {to:"/planning",  icon:CalendarDays,     label:"Planning",  testId:"tab-planning"},
+            {to:"/tasks",     icon:CheckSquare,      label:"Tâches",    testId:"tab-tasks"},
+          ].map(tab => (
+            <NavLink key={tab.to} to={tab.to} data-testid={tab.testId}
+              className={({ isActive }) =>
+                `flex flex-col items-center justify-center flex-1 gap-1 text-[10px] font-semibold transition-all touch-manipulation rounded-xl mx-0.5 my-1 ${
+                  isActive ? 'text-violet-400' : 'text-slate-600'
+                }`
+              }
+              style={({isActive}) => isActive ? {background:"rgba(139,92,246,0.12)"} : {}}>
+              <tab.icon className="w-5 h-5" />
+              <span>{tab.label}</span>
+            </NavLink>
+          ))}
           <button onClick={() => setMoreOpen(true)} data-testid="tab-more"
-            className="flex flex-col items-center justify-center flex-1 gap-0.5 text-[10px] font-medium text-slate-400 touch-manipulation">
+            className="flex flex-col items-center justify-center flex-1 gap-1 text-[10px] font-semibold text-slate-600 touch-manipulation rounded-xl mx-0.5 my-1 hover:text-slate-400 hover:bg-white/5 transition-all">
             <MoreHorizontal className="w-5 h-5" />
-            <span>Menu</span>
+            <span>Plus</span>
           </button>
         </div>
       </nav>
