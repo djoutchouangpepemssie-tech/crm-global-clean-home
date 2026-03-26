@@ -348,6 +348,21 @@ async def get_seo_data(request: Request, days: int = 28):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ── DEBUG ──
+@analytics_router.get("/debug")
+async def debug_token(request: Request):
+    """Debug - vérifier le token et ses scopes."""
+    token = await _get_token()
+    try:
+        async with httpx.AsyncClient() as client:
+            res = await client.get(
+                f"https://www.googleapis.com/oauth2/v1/tokeninfo?access_token={token}",
+                timeout=10
+            )
+            return res.json()
+    except Exception as e:
+        return {"error": str(e)}
+
 # ── REALTIME ──
 @analytics_router.get("/realtime")
 async def get_realtime(request: Request):
