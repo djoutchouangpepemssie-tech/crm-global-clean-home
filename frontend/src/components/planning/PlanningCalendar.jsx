@@ -118,6 +118,63 @@ const PlanningCalendar = () => {
     recurrence:'none', recurrence_end:'',
   });
   const [agentAvail, setAgentAvail] = useState(null);
+  const [leadSearch, setLeadSearch] = useState('');
+  const [leadSuggestions, setLeadSuggestions] = useState([]);
+  const [loadingLead, setLoadingLead] = useState(false);
+
+  // Auto-fetch lead quand ID renseigné
+  const fetchLead = useCallback(async (leadId) => {
+    if (!leadId || leadId.length < 5) return;
+    setLoadingLead(true);
+    try {
+      const res = await axios.get(`${API_URL}/leads/${leadId}`, {withCredentials:true});
+      const lead = res.data;
+      if (lead) {
+        setForm(p=>({
+          ...p,
+          lead_id: lead.lead_id,
+          title: p.title || `${lead.service_type||'Nettoyage'} — ${lead.name||''}`,
+          service_type: p.service_type || lead.service_type || '',
+          address: p.address || lead.address || '',
+          client_phone: p.client_phone || lead.phone || '',
+          client_email: p.client_email || lead.email || '',
+          description: p.description || (lead.message ? lead.message.slice(0,200) : ''),
+        }));
+        toast.success(`✅ Lead trouvé : ${lead.name}`);
+        setLeadSuggestions([]);
+        setLeadSearch('');
+      }
+    } catch {
+      // Chercher par nom
+    }
+    setLoadingLead(false);
+  }, []);
+
+  // Recherche lead par nom/email
+  const searchLeads = useCallback(async (query) => {
+    if (!query || query.length < 2) { setLeadSuggestions([]); return; }
+    try {
+      const res = await axios.get(`${API_URL}/leads?search=${encodeURIComponent(query)}&limit=5`, {withCredentials:true});
+      const leads = res.data.leads || res.data || [];
+      setLeadSuggestions(Array.isArray(leads) ? leads.slice(0,5) : []);
+    } catch { setLeadSuggestions([]); }
+  }, []);
+
+  const applyLead = (lead) => {
+    setForm(p=>({
+      ...p,
+      lead_id: lead.lead_id,
+      title: p.title || `${lead.service_type||'Nettoyage'} — ${lead.name||''}`,
+      service_type: p.service_type || lead.service_type || '',
+      address: p.address || lead.address || '',
+      client_phone: p.client_phone || lead.phone || '',
+      client_email: p.client_email || lead.email || '',
+      description: p.description || (lead.message ? lead.message.slice(0,200) : ''),
+    }));
+    setLeadSuggestions([]);
+    setLeadSearch('');
+    toast.success(`✅ ${lead.name} — champs remplis automatiquement`);
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -757,8 +814,52 @@ const PlanningCalendar = () => {
               <button onClick={()=>setShowForm(false)} className="p-2 text-slate-500 hover:text-slate-300 hover:bg-white/5 rounded-xl"><X className="w-4 h-4"/></button>
             </div>
             <form onSubmit={handleCreate} className="space-y-4">
+              {/* Recherche Lead */}
+              <div className="p-4 rounded-xl border border-violet-500/20 bg-violet-500/5">
+                <p className="text-xs font-bold text-violet-300 mb-3">🔍 Rechercher le client / lead</p>
+                <div className="relative">
+                  <input
+                    value={leadSearch}
+                    onChange={e=>{ setLeadSearch(e.target.value); searchLeads(e.target.value); }}
+                    onKeyDown={e=>{ if(e.key==='Enter'&&form.lead_id){ e.preventDefault(); fetchLead(form.lead_id); }}}
+                    placeholder="Nom du client, email ou ID lead..."
+                    className={inputCls}/>
+                  {loadingLead && <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin"/>}
+                  {/* Suggestions */}
+                  {leadSuggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 rounded-xl border border-white/10 overflow-hidden z-20"
+                      style={{background:'hsl(224,71%,8%)'}}>
+                      {leadSuggestions.map(lead=>(
+                        <button key={lead.lead_id} type="button" onClick={()=>applyLead(lead)}
+                          className="w-full flex items-center gap-3 p-3 hover:bg-white/5 transition-all text-left border-b border-white/5 last:border-0">
+                          <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center text-violet-400 font-bold text-sm flex-shrink-0">
+                            {lead.name?.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-slate-200 truncate">{lead.name}</p>
+                            <p className="text-xs text-slate-500 truncate">{lead.service_type} · {lead.address||lead.email||''}</p>
+                          </div>
+                          <span className="text-xs text-violet-400">Utiliser →</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {form.lead_id && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-xs text-emerald-400 font-mono">{form.lead_id}</span>
+                    <button type="button" onClick={()=>fetchLead(form.lead_id)}
+                      className="text-xs text-violet-400 hover:text-violet-300 underline">
+                      Recharger les données
+                    </button>
+                    <button type="button" onClick={()=>setForm(p=>({...p,lead_id:''}))}
+                      className="text-xs text-red-400 hover:text-red-300">✕</button>
+                  </div>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
-                <Field label="ID Lead"><input value={form.lead_id} onChange={e=>setForm(p=>({...p,lead_id:e.target.value}))} placeholder="lead_xxxxx" className={inputCls}/></Field>
+                <Field label="ID Lead (optionnel)"><input value={form.lead_id} onChange={e=>{setForm(p=>({...p,lead_id:e.target.value}));if(e.target.value.startsWith('lead_')&&e.target.value.length>10)fetchLead(e.target.value);}} placeholder="lead_xxxxx" className={inputCls}/></Field>
                 <Field label="Type de service">
                   <select value={form.service_type} onChange={e=>setForm(p=>({...p,service_type:e.target.value}))} className={inputCls}>
                     <option value="" className="bg-slate-800">Sélectionner...</option>
