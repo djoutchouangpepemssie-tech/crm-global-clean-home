@@ -350,9 +350,12 @@ async def get_seo_data(request: Request, days: int = 28):
 
 # ── DEBUG ──
 @analytics_router.get("/debug")
-async def debug_token(request: Request):
-    """Debug - vérifier le token et ses scopes."""
-    token = await _get_token()
+async def debug_token():
+    """Debug - vérifier le token et ses scopes (public temporaire)."""
+    from gmail_service import _get_any_active_token
+    token, user_id = await _get_any_active_token()
+    if not token:
+        return {"error": "No token found"}
     try:
         async with httpx.AsyncClient() as client:
             res = await client.get(
