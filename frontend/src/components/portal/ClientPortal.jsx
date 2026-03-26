@@ -630,7 +630,12 @@ const PortalDashboard = ({ user, onLogout }) => {
           {/* ── INTERVENTIONS ── */}
           {activeTab === 'interventions' && (
             <div className="space-y-4">
-              <h2 className="text-xl font-black text-slate-100">Mes interventions</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-black text-slate-100">Mes interventions</h2>
+                <button onClick={fetchData} className="p-1.5 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-white/5 transition-all">
+                  <RefreshCw className="w-3.5 h-3.5"/>
+                </button>
+              </div>
               {interventions.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-4 rounded-2xl border border-white/5">
                   <Calendar className="w-12 h-12 text-slate-700" />
@@ -639,18 +644,25 @@ const PortalDashboard = ({ user, onLogout }) => {
               ) : (
                 interventions.map(intv => {
                   const icon = getServiceIcon(intv.service_type || intv.title);
-                  const statusColors = {
-                    planifiée: { color:'#60a5fa', bg:'rgba(96,165,250,0.12)', label:'Planifiée' },
-                    en_cours:  { color:'#f59e0b', bg:'rgba(245,158,11,0.12)', label:'En cours' },
-                    terminée:  { color:'#10b981', bg:'rgba(16,185,129,0.12)', label:'Terminée' },
-                    annulée:   { color:'#f43f5e', bg:'rgba(244,63,94,0.12)',  label:'Annulée' },
+                  const statusConfig = {
+                    planifiée: { color:'#60a5fa', bg:'rgba(96,165,250,0.12)', label:'Planifiée', icon:'📅' },
+                    en_cours:  { color:'#f59e0b', bg:'rgba(245,158,11,0.12)', label:'En cours 🔴', icon:'⚡', pulse:true },
+                    terminée:  { color:'#10b981', bg:'rgba(16,185,129,0.12)', label:'Terminée', icon:'✅' },
+                    annulée:   { color:'#f43f5e', bg:'rgba(244,63,94,0.12)',  label:'Annulée', icon:'❌' },
                   };
-                  const sc = statusColors[intv.status] || statusColors.planifiée;
+                  const sc = statusConfig[intv.status] || statusConfig.planifiée;
+                  const isEnCours = intv.status === 'en_cours';
+                  const agentName = intv.check_in?.agent_name || intv.assigned_agent_name || null;
+                  const checkInTime = intv.check_in?.time ? new Date(intv.check_in.time).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : null;
+                  const checkOutTime = intv.check_out?.time ? new Date(intv.check_out.time).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : null;
+
                   return (
                     <div key={intv.intervention_id || intv.id}
-                      className="rounded-2xl border p-5 transition-all hover:border-white/15"
-                      style={{background:'rgba(255,255,255,0.03)',borderColor:'rgba(255,255,255,0.08)'}}>
-                      <div className="flex items-start gap-3">
+                      className={`rounded-2xl border p-5 transition-all ${isEnCours?'ring-1 ring-amber-500/30':''}`}
+                      style={{background:isEnCours?'rgba(245,158,11,0.05)':'rgba(255,255,255,0.03)',borderColor:isEnCours?'rgba(245,158,11,0.3)':'rgba(255,255,255,0.08)'}}>
+                      
+                      {/* Header */}
+                      <div className="flex items-start gap-3 mb-3">
                         <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
                           style={{background:sc.bg,border:`1px solid ${sc.color}40`}}>
                           {icon}
@@ -658,8 +670,11 @@ const PortalDashboard = ({ user, onLogout }) => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-2 mb-1">
                             <p className="font-black text-slate-100">{intv.title || intv.service_type}</p>
-                            <span className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
-                              style={{color:sc.color,background:sc.bg}}>{sc.label}</span>
+                            <span className={`text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0 flex items-center gap-1 ${isEnCours?'animate-pulse':''}`}
+                              style={{color:sc.color,background:sc.bg}}>
+                              {isEnCours && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping inline-block"/>}
+                              {sc.label}
+                            </span>
                           </div>
                           <div className="space-y-1 text-xs text-slate-500">
                             {intv.scheduled_date && (
@@ -671,18 +686,65 @@ const PortalDashboard = ({ user, onLogout }) => {
                             )}
                             {intv.address && (
                               <p className="flex items-center gap-1.5">
-                                <MapPin className="w-3 h-3" />{intv.address}
+                                <MapPin className="w-3 h-3"/>{intv.address}
                               </p>
                             )}
                           </div>
-                          {intv.status === 'terminée' && !reviews.find(r => r.intervention_id === intv.id) && (
-                            <button onClick={() => setActiveTab('reviews')}
-                              className="mt-3 flex items-center gap-1.5 text-xs font-bold text-amber-400 hover:text-amber-300 transition-colors">
-                              <Star className="w-3.5 h-3.5" /> Laisser un avis
-                            </button>
-                          )}
                         </div>
                       </div>
+
+                      {/* Intervenant assigné */}
+                      {agentName && (
+                        <div className="flex items-center gap-3 p-3 rounded-xl mb-3"
+                          style={{background:isEnCours?'rgba(245,158,11,0.1)':'rgba(16,185,129,0.08)',border:`1px solid ${isEnCours?'rgba(245,158,11,0.2)':'rgba(16,185,129,0.2)'}`}}>
+                          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-black text-sm flex-shrink-0"
+                            style={{background:'linear-gradient(135deg,#10b981,#059669)'}}>
+                            {agentName.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-slate-200">{agentName}</p>
+                            <p className="text-[10px] text-slate-500">Votre intervenant</p>
+                          </div>
+                          {isEnCours && checkInTime && (
+                            <span className="ml-auto text-xs text-amber-400 font-semibold">Arrivé à {checkInTime}</span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Timeline check-in/check-out */}
+                      {(intv.check_in || intv.check_out) && (
+                        <div className="flex items-center gap-2 mb-3">
+                          {intv.check_in && (
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold"
+                              style={{background:'rgba(16,185,129,0.1)',color:'#10b981',border:'1px solid rgba(16,185,129,0.2)'}}>
+                              ▶️ Démarré {checkInTime}
+                            </div>
+                          )}
+                          {intv.check_out && (
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold"
+                              style={{background:'rgba(96,165,250,0.1)',color:'#60a5fa',border:'1px solid rgba(96,165,250,0.2)'}}>
+                              ✅ Terminé {checkOutTime}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Notes checkout */}
+                      {intv.check_out?.notes && (
+                        <div className="p-3 rounded-xl text-xs text-slate-400 mb-3"
+                          style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.05)'}}>
+                          📝 {intv.check_out.notes}
+                        </div>
+                      )}
+
+                      {/* Laisser avis si terminée */}
+                      {intv.status === 'terminée' && (
+                        <button onClick={() => setActiveTab('reviews')}
+                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all"
+                          style={{background:'rgba(245,158,11,0.1)',color:'#f59e0b',border:'1px solid rgba(245,158,11,0.2)'}}>
+                          <Star className="w-3.5 h-3.5"/> Laisser un avis sur cette intervention
+                        </button>
+                      )}
                     </div>
                   );
                 })
