@@ -358,11 +358,27 @@ async def debug_token():
         return {"error": "No token found"}
     try:
         async with httpx.AsyncClient() as client:
-            res = await client.get(
+            # Test tokeninfo
+            info = await client.get(
                 f"https://www.googleapis.com/oauth2/v1/tokeninfo?access_token={token}",
                 timeout=10
             )
-            return res.json()
+            # Test GA4 direct
+            ga4_test = await client.post(
+                f"https://analyticsdata.googleapis.com/v1beta/properties/{GA4_PROPERTY_ID}:runReport",
+                json={
+                    "dateRanges": [{"startDate": "7daysAgo", "endDate": "today"}],
+                    "metrics": [{"name": "sessions"}]
+                },
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=10
+            )
+            return {
+                "token_info": info.json(),
+                "ga4_status": ga4_test.status_code,
+                "ga4_response": ga4_test.text[:300],
+                "property_id": GA4_PROPERTY_ID,
+            }
     except Exception as e:
         return {"error": str(e)}
 
