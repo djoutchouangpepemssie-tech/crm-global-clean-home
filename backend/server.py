@@ -1728,6 +1728,9 @@ app.include_router(gmail_router)
 from intervenant import intervenant_router, init_intervenant_db
 app.include_router(intervenant_router)
 
+from analytics_ga4 import analytics_router as ga4_router, init_analytics_db
+app.include_router(ga4_router)
+
 @app.on_event("startup")
 async def startup_db_indexes():
     """Create MongoDB indexes for performance."""
@@ -1775,6 +1778,7 @@ async def startup_db_indexes():
     init_notifications_db(db)
     init_chat_db(db)
     init_intervenant_db(db)
+    init_analytics_db(db)
     
     # Scheduler pour traiter les workflows toutes les 30 minutes
     import asyncio

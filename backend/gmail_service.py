@@ -33,7 +33,11 @@ _db = _client[os.environ['DB_NAME']]
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
 GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "")
-GOOGLE_SCOPES = os.environ.get("GOOGLE_SCOPES", "https://mail.google.com/")
+GOOGLE_SCOPES = os.environ.get("GOOGLE_SCOPES", " ".join([
+    "https://mail.google.com/",
+    "https://www.googleapis.com/auth/analytics.readonly",
+    "https://www.googleapis.com/auth/webmasters.readonly",
+]))
 GMAIL_FROM_ADDRESS = os.environ.get("GMAIL_FROM_ADDRESS", "contact@globalcleanhome.com")
 GMAIL_FROM_NAME = os.environ.get("GMAIL_FROM_NAME", "Global Clean Home")
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "")
