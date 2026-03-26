@@ -229,16 +229,83 @@ async def check_in(intervention_id: str, request: Request):
         }}
     )
 
-    # Notifier le bureau
+    # Notifier bureau + client + admin
     try:
-        from notifications import create_notification
         intv = await _db.interventions.find_one({"intervention_id": intervention_id}, {"_id": 0})
-        await create_notification(
-            type="checkin",
-            title=f"✅ Check-in — {agent.get('name','')}",
-            message=f"Intervention démarrée : {intv.get('title','') if intv else intervention_id}",
-        )
-    except: pass
+        intv_title = intv.get("title", intv.get("service_type","")) if intv else intervention_id
+        agent_name = agent.get("name","")
+        
+        # Notification CRM
+        try:
+            from notifications import create_notification
+            await create_notification(
+                type="checkin",
+                title=f"✅ Check-in — {agent_name}",
+                message=f"Intervention démarrée : {intv_title}",
+            )
+        except: pass
+
+        # Email admin + client
+        if intv:
+            lead_id = intv.get("lead_id")
+            lead = await _db.leads.find_one({"lead_id": lead_id}, {"_id": 0}) if lead_id else None
+            
+            try:
+                from gmail_service import _get_any_active_token, _send_gmail_message
+                token, _ = await _get_any_active_token()
+                if token:
+                    # Email admin
+                    admin_accounts = await _db.email_accounts.find({"is_active": True}, {"_id": 0}).to_list(1)
+                    admin_email = admin_accounts[0].get("email") if admin_accounts else "info@globalcleanhome.com"
+                    html_admin = f"""<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f1f5f9;padding:20px;">
+<div style="max-width:500px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;">
+  <div style="background:linear-gradient(135deg,#10b981,#059669);padding:24px;text-align:center;">
+    <h2 style="color:white;margin:0;">▶️ Intervention démarrée</h2>
+  </div>
+  <div style="padding:24px;">
+    <p style="color:#1e293b;font-size:14px;"><strong>Intervenant :</strong> {agent_name}</p>
+    <p style="color:#1e293b;font-size:14px;"><strong>Mission :</strong> {intv_title}</p>
+    <p style="color:#1e293b;font-size:14px;"><strong>Adresse :</strong> {intv.get("address","—")}</p>
+    <p style="color:#1e293b;font-size:14px;"><strong>Heure :</strong> {now.strftime("%H:%M le %d/%m/%Y")}</p>
+    {f'<p style="color:#1e293b;font-size:14px;"><strong>Client :</strong> {lead.get("name","")}</p>' if lead else ""}
+  </div>
+</div></body></html>"""
+                    await _send_gmail_message(token, admin_email, f"▶️ Check-in — {agent_name} · {intv_title}", html_admin)
+                    
+                    # Email client
+                    if lead and lead.get("email"):
+                        html_client = f"""<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f1f5f9;padding:20px;">
+<div style="max-width:500px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;">
+  <div style="background:linear-gradient(135deg,#10b981,#059669);padding:24px;text-align:center;">
+    <div style="font-size:48px;">🏠</div>
+    <h2 style="color:white;margin:8px 0 0;">Votre intervenant est arrivé !</h2>
+  </div>
+  <div style="padding:24px;">
+    <p style="color:#1e293b;font-size:15px;">Bonjour <strong>{lead.get("name","").split()[0]}</strong>,</p>
+    <p style="color:#64748b;font-size:14px;line-height:1.8;">
+      Votre intervenant <strong style="color:#10b981;">{agent_name}</strong> vient de commencer 
+      votre prestation de <strong>{intv.get("service_type","nettoyage")}</strong>.
+    </p>
+    <div style="background:#f0fdf4;border-radius:12px;padding:16px;margin:16px 0;border:1px solid #bbf7d0;">
+      <p style="color:#15803d;font-weight:700;margin:0 0 8px;">📋 Détails de l'intervention</p>
+      <p style="color:#166534;font-size:13px;margin:4px 0;">🧹 {intv.get("service_type","Nettoyage")}</p>
+      <p style="color:#166534;font-size:13px;margin:4px 0;">⏰ Débuté à {now.strftime("%H:%M")}</p>
+      <p style="color:#166534;font-size:13px;margin:4px 0;">📍 {intv.get("address","—")}</p>
+    </div>
+    <p style="color:#64748b;font-size:13px;">Nous vous enverrons une notification dès la fin de l'intervention.</p>
+    <p style="color:#64748b;font-size:13px;margin-top:16px;">
+      Pour toute question : <strong>06 22 66 53 08</strong>
+    </p>
+  </div>
+  <div style="background:#0f172a;padding:16px;text-align:center;">
+    <p style="color:rgba(255,255,255,0.5);font-size:11px;margin:0;">Global Clean Home · 231 rue Saint-Honoré, 75001 Paris</p>
+  </div>
+</div></body></html>"""
+                        await _send_gmail_message(token, lead["email"], f"🏠 Votre intervenant est arrivé — Global Clean Home", html_client)
+            except Exception as e:
+                logger.warning(f"Check-in notifications failed: {e}")
+    except Exception as e:
+        logger.warning(f"Check-in post-processing error: {e}")
 
     return {"success": True, "message": "Check-in enregistré", "time": now.isoformat()}
 
@@ -265,15 +332,82 @@ async def check_out(intervention_id: str, request: Request):
         }}
     )
 
-    # Notifier le bureau
+    # Notifier bureau + client + admin
     try:
-        from notifications import create_notification
-        await create_notification(
-            type="checkout",
-            title=f"🏁 Intervention terminée — {agent.get('name','')}",
-            message=f"Checklist : {body.get('completed_items',0)} items complétés. Notes : {body.get('notes','')[:50]}",
-        )
-    except: pass
+        intv = await _db.interventions.find_one({"intervention_id": intervention_id}, {"_id": 0})
+        intv_title = intv.get("title", intv.get("service_type","")) if intv else intervention_id
+        agent_name = agent.get("name","")
+        notes = body.get("notes","")
+        completed = body.get("completed_items",0)
+
+        try:
+            from notifications import create_notification
+            await create_notification(
+                type="checkout",
+                title=f"🏁 Terminée — {agent_name}",
+                message=f"{intv_title} · {completed} tâches · {notes[:50] if notes else 'RAS'}",
+            )
+        except: pass
+
+        if intv:
+            lead_id = intv.get("lead_id")
+            lead = await _db.leads.find_one({"lead_id": lead_id}, {"_id": 0}) if lead_id else None
+            
+            try:
+                from gmail_service import _get_any_active_token, _send_gmail_message
+                token, _ = await _get_any_active_token()
+                if token:
+                    admin_accounts = await _db.email_accounts.find({"is_active": True}, {"_id": 0}).to_list(1)
+                    admin_email = admin_accounts[0].get("email") if admin_accounts else "info@globalcleanhome.com"
+                    
+                    html_admin = f"""<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f1f5f9;padding:20px;">
+<div style="max-width:500px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;">
+  <div style="background:linear-gradient(135deg,#0f172a,#1e1b4b);padding:24px;text-align:center;">
+    <h2 style="color:white;margin:0;">🏁 Intervention terminée</h2>
+  </div>
+  <div style="padding:24px;">
+    <p style="color:#1e293b;font-size:14px;"><strong>Intervenant :</strong> {agent_name}</p>
+    <p style="color:#1e293b;font-size:14px;"><strong>Mission :</strong> {intv_title}</p>
+    <p style="color:#1e293b;font-size:14px;"><strong>Terminée à :</strong> {now.strftime("%H:%M le %d/%m/%Y")}</p>
+    <p style="color:#1e293b;font-size:14px;"><strong>Tâches complétées :</strong> {completed}</p>
+    {f'<p style="color:#1e293b;font-size:14px;"><strong>Notes :</strong> {notes}</p>' if notes else ""}
+  </div>
+</div></body></html>"""
+                    await _send_gmail_message(token, admin_email, f"🏁 Terminée — {agent_name} · {intv_title}", html_admin)
+                    
+                    if lead and lead.get("email"):
+                        html_client = f"""<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f1f5f9;padding:20px;">
+<div style="max-width:500px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;">
+  <div style="background:linear-gradient(135deg,#f97316,#ea580c);padding:24px;text-align:center;">
+    <div style="font-size:48px;">✅</div>
+    <h2 style="color:white;margin:8px 0 0;">Votre prestation est terminée !</h2>
+  </div>
+  <div style="padding:24px;">
+    <p style="color:#1e293b;font-size:15px;">Bonjour <strong>{lead.get("name","").split()[0]}</strong>,</p>
+    <p style="color:#64748b;font-size:14px;line-height:1.8;">
+      Votre prestation de <strong>{intv.get("service_type","nettoyage")}</strong> a été réalisée avec succès par <strong style="color:#f97316;">{agent_name}</strong>.
+    </p>
+    <div style="background:#fff7ed;border-radius:12px;padding:16px;margin:16px 0;border:1px solid #fed7aa;">
+      <p style="color:#c2410c;font-weight:700;margin:0 0 8px;">📋 Résumé</p>
+      <p style="color:#9a3412;font-size:13px;margin:4px 0;">🧹 {intv.get("service_type","Nettoyage")}</p>
+      <p style="color:#9a3412;font-size:13px;margin:4px 0;">⏰ Terminée à {now.strftime("%H:%M")}</p>
+      <p style="color:#9a3412;font-size:13px;margin:4px 0;">✅ {completed} points de contrôle validés</p>
+      {f'<p style="color:#9a3412;font-size:13px;margin:4px 0;">📝 {notes}</p>' if notes else ""}
+    </div>
+    <p style="color:#64748b;font-size:14px;">Êtes-vous satisfait(e) de notre prestation ? Nous serions ravis d'avoir votre avis !</p>
+    <div style="text-align:center;margin:20px 0;">
+      <a href="https://g.page/r/globalcleanhome/review" style="display:inline-block;background:linear-gradient(135deg,#f97316,#ea580c);color:white;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:700;font-size:13px;">
+        ⭐ Laisser un avis Google
+      </a>
+    </div>
+    <p style="color:#94a3b8;font-size:12px;text-align:center;">Global Clean Home · 06 22 66 53 08</p>
+  </div>
+</div></body></html>"""
+                        await _send_gmail_message(token, lead["email"], f"✅ Votre prestation est terminée — Global Clean Home", html_client)
+            except Exception as e:
+                logger.warning(f"Check-out notifications failed: {e}")
+    except Exception as e:
+        logger.warning(f"Check-out post-processing error: {e}")
 
     return {"success": True, "message": "Intervention terminée", "time": now.isoformat()}
 
@@ -335,5 +469,38 @@ async def send_message(request: Request):
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await _db.intervenant_messages.insert_one(msg)
+
+    # Notifier admin par email + notification CRM
+    try:
+        from notifications import create_notification
+        await create_notification(
+            type="message",
+            title=f"💬 Message de {agent.get('name','')}",
+            message=content[:100],
+        )
+    except: pass
+
+    try:
+        from gmail_service import _get_any_active_token, _send_gmail_message
+        token, _ = await _get_any_active_token()
+        if token:
+            admin_accounts = await _db.email_accounts.find({"is_active": True}, {"_id": 0}).to_list(1)
+            admin_email = admin_accounts[0].get("email") if admin_accounts else "info@globalcleanhome.com"
+            html = f"""<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f1f5f9;padding:20px;">
+<div style="max-width:500px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;">
+  <div style="background:linear-gradient(135deg,#0f172a,#1e1b4b);padding:20px;text-align:center;">
+    <h2 style="color:white;margin:0;font-size:16px;">💬 Message intervenant</h2>
+  </div>
+  <div style="padding:24px;">
+    <p style="color:#64748b;font-size:13px;"><strong style="color:#1e293b;">{agent.get("name","Agent")}</strong> vous a envoyé un message :</p>
+    <div style="background:#f8fafc;border-left:4px solid #10b981;padding:16px;border-radius:0 8px 8px 0;margin:12px 0;">
+      <p style="color:#1e293b;font-size:14px;margin:0;line-height:1.8;">{content}</p>
+    </div>
+    <p style="color:#94a3b8;font-size:11px;">{datetime.now(timezone.utc).strftime("%d/%m/%Y à %H:%M")}</p>
+  </div>
+</div></body></html>"""
+            await _send_gmail_message(token, admin_email, f"💬 Message de {agent.get('name','')} — Global Clean Home", html)
+    except Exception as e:
+        logger.warning(f"Message notification failed: {e}")
 
     return {"success": True, "message_id": msg["message_id"]}

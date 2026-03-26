@@ -292,6 +292,50 @@ async def update_intervention(intervention_id: str, request: Request, body: Inte
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Intervention introuvable")
     await _log_activity(user.user_id, "update_intervention", "intervention", intervention_id, update)
+    
+    # Notifier l'intervenant si assignation
+    if update.get("assigned_agent_id") or update.get("assigned_agent_name"):
+        try:
+            intv = await _db.interventions.find_one({"intervention_id": intervention_id}, {"_id": 0})
+            agent_id = update.get("assigned_agent_id")
+            member = await _db.team_members.find_one({"member_id": agent_id}, {"_id": 0}) if agent_id else None
+            if member and member.get("email") and intv:
+                from gmail_service import _get_any_active_token, _send_gmail_message
+                token, _ = await _get_any_active_token()
+                if token:
+                    portal_url = "https://crm.globalcleanhome.com/intervenant"
+                    html = f"""<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f1f5f9;padding:20px;">
+<div style="max-width:500px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;">
+  <div style="background:linear-gradient(135deg,#10b981,#059669);padding:24px;text-align:center;">
+    <div style="font-size:48px;">📋</div>
+    <h2 style="color:white;margin:8px 0 0;">Nouvelle mission assignée !</h2>
+  </div>
+  <div style="padding:24px;">
+    <p style="color:#1e293b;font-size:15px;">Bonjour <strong>{member.get("name","").split()[0]}</strong>,</p>
+    <p style="color:#64748b;font-size:14px;line-height:1.8;">Une nouvelle mission vous a été assignée :</p>
+    <div style="background:#f0fdf4;border-radius:12px;padding:16px;margin:16px 0;border:1px solid #bbf7d0;">
+      <p style="color:#15803d;font-weight:700;margin:0 0 8px;">📋 Détails de la mission</p>
+      <p style="color:#166534;font-size:13px;margin:4px 0;">🧹 <strong>{intv.get("service_type") or intv.get("title","Nettoyage")}</strong></p>
+      <p style="color:#166534;font-size:13px;margin:4px 0;">📅 {intv.get("scheduled_date","—")} à {intv.get("scheduled_time","—")}</p>
+      <p style="color:#166534;font-size:13px;margin:4px 0;">📍 {intv.get("address","—")}</p>
+      <p style="color:#166534;font-size:13px;margin:4px 0;">⏱️ Durée : {intv.get("duration_hours","—")}h</p>
+    </div>
+    <div style="text-align:center;margin:20px 0;">
+      <a href="{portal_url}" style="display:inline-block;background:linear-gradient(135deg,#10b981,#059669);color:white;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:700;font-size:14px;">
+        📱 Voir sur mon portail
+      </a>
+    </div>
+  </div>
+  <div style="background:#0f172a;padding:16px;text-align:center;">
+    <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0;">Global Clean Home · 06 22 66 53 08</p>
+  </div>
+</div></body></html>"""
+                    await _send_gmail_message(token, member["email"],
+                        f"📋 Nouvelle mission — {intv.get('scheduled_date','')}", html)
+                    logger.info(f"Assignment email sent to {member['email']}")
+        except Exception as e:
+            logger.warning(f"Assignment notification failed: {e}")
+    
     return {"success": True, "message": "Intervention mise a jour"}
 
 @planning_router.delete("/interventions/{intervention_id}")

@@ -40,7 +40,6 @@ const IntervenantLogin = ({ onAuth }) => {
     setLoading(true);
     try {
       const res = await axios.post(`${API}/auth/request`, { email });
-      if (res.data.dev_code) setCode(res.data.dev_code);
       setStep(2);
       toast.success('Code envoyé par email !');
     } catch { toast.error('Email non reconnu'); }
@@ -281,7 +280,7 @@ const IntervenantDashboard = ({ agent, onLogout }) => {
   const TABS = [
     { id:'accueil',   label:'Accueil',         icon:Home },
     { id:'planning',  label:'Planning',         icon:Calendar, notif: todayIntvs.length },
-    { id:'tasks',     label:'Tâches',           icon:CheckSquare, notif: tasks.filter(t=>t.status==='pending').length },
+
     { id:'messages',  label:'Messages',         icon:MessageSquare },
     { id:'profil',    label:'Mon profil',       icon:User },
   ];
@@ -543,46 +542,6 @@ const IntervenantDashboard = ({ agent, onLogout }) => {
                   );
                 })}
               </div>
-            </div>
-          )}
-
-          {/* TÂCHES */}
-          {activeTab==='tasks' && (
-            <div className="space-y-4">
-              <h2 className="text-xl font-black text-slate-100">Mes tâches</h2>
-              {tasks.length===0 ? (
-                <div className="rounded-2xl border border-white/5 p-10 text-center">
-                  <CheckSquare className="w-12 h-12 text-slate-700 mx-auto mb-3"/>
-                  <p className="text-slate-500">Aucune tâche assignée</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {tasks.map(task=>(
-                    <div key={task.task_id} className="p-4 rounded-2xl border border-white/5 bg-white/2">
-                      <div className="flex items-start gap-3">
-                        <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
-                          task.priority==='urgente'?'bg-red-500 animate-pulse':
-                          task.priority==='haute'?'bg-orange-500':'bg-blue-400'
-                        }`}/>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-slate-200 text-sm">{task.title}</p>
-                          {task.description && <p className="text-xs text-slate-500 mt-0.5">{task.description}</p>}
-                          {task.due_date && (
-                            <p className="text-xs text-slate-600 flex items-center gap-1 mt-1">
-                              <Clock className="w-3 h-3"/>
-                              {new Date(task.due_date).toLocaleDateString('fr-FR')}
-                            </p>
-                          )}
-                        </div>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
-                          task.priority==='urgente'?'text-red-400 bg-red-500/10':
-                          task.priority==='haute'?'text-orange-400 bg-orange-500/10':'text-blue-400 bg-blue-500/10'
-                        }`}>{task.priority||'normale'}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           )}
 
