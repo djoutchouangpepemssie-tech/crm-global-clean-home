@@ -3,13 +3,14 @@ import axios from 'axios';
 import {
   TrendingUp, DollarSign, Users, Target, Zap, Plus,
   RefreshCw, ArrowUp, ArrowDown, Search, Globe,
-  BarChart2, Eye, MousePointer, CheckCircle,
-  AlertTriangle, ExternalLink, X, Edit2, Trash2
+  BarChart2, Eye, MousePointer, CheckCircle, Link,
+  AlertTriangle, ExternalLink, X, Edit2, Trash2,
+  Wifi, WifiOff, Settings, Play, Pause, BarChart3
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer, Cell,
-  LineChart, Line, PieChart, Pie
+  PieChart, Pie
 } from 'recharts';
 import { toast } from 'sonner';
 import BACKEND_URL from '../../config.js';
@@ -18,10 +19,18 @@ const API = BACKEND_URL + '/api';
 const COLORS = ['#4285f4','#1877f2','#e1306c','#10b981','#f59e0b','#8b5cf6'];
 
 const PLATFORMS = [
-  {id:'google_ads',    label:'Google Ads',     color:'#4285f4', icon:'🔍', url:'https://ads.google.com'},
-  {id:'facebook_ads',  label:'Facebook Ads',   color:'#1877f2', icon:'📘', url:'https://business.facebook.com'},
-  {id:'instagram',     label:'Instagram Ads',  color:'#e1306c', icon:'📸', url:'https://business.instagram.com'},
-  {id:'tiktok',        label:'TikTok Ads',     color:'#010101', icon:'🎵', url:'https://ads.tiktok.com'},
+  {id:'google_ads',   label:'Google Ads',   color:'#4285f4', icon:'🔍', bg:'rgba(66,133,244,0.1)'},
+  {id:'facebook_ads', label:'Facebook Ads', color:'#1877f2', icon:'📘', bg:'rgba(24,119,242,0.1)'},
+  {id:'instagram',    label:'Instagram',    color:'#e1306c', icon:'📸', bg:'rgba(225,48,108,0.1)'},
+  {id:'linkedin',     label:'LinkedIn Ads', color:'#0077b5', icon:'💼', bg:'rgba(0,119,181,0.1)'},
+];
+
+const OBJECTIVES = [
+  {id:'LEAD_GENERATION',  label:'Génération de leads'},
+  {id:'TRAFFIC',          label:'Trafic vers site'},
+  {id:'AWARENESS',        label:'Notoriété'},
+  {id:'CONVERSIONS',      label:'Conversions'},
+  {id:'REACH',            label:'Portée'},
 ];
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -32,94 +41,133 @@ const CustomTooltip = ({ active, payload, label }) => {
       {payload.map((p,i)=>(
         <p key={i} style={{color:p.color}} className="font-bold">
           {p.name}: {typeof p.value==='number'&&p.value>100?p.value.toLocaleString('fr-FR'):p.value}
-          {p.name?.includes('€')||p.name?.includes('Budget')||p.name?.includes('CA')?' €':''}
         </p>
       ))}
     </div>
   );
 };
 
+const StatusBadge = ({status}) => {
+  const config = {
+    active:   {label:'Active',  color:'#10b981', bg:'rgba(16,185,129,0.1)'},
+    paused:   {label:'Pausée',  color:'#f59e0b', bg:'rgba(245,158,11,0.1)'},
+    removed:  {label:'Archivée',color:'#f43f5e', bg:'rgba(244,63,94,0.1)'},
+    enabled:  {label:'Active',  color:'#10b981', bg:'rgba(16,185,129,0.1)'},
+    disabled: {label:'Pausée',  color:'#f59e0b', bg:'rgba(245,158,11,0.1)'},
+  }[status?.toLowerCase()] || {label:status, color:'#64748b', bg:'rgba(100,116,139,0.1)'};
+  return (
+    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 flex items-center gap-1"
+      style={{color:config.color, background:config.bg}}>
+      <div className="w-1.5 h-1.5 rounded-full" style={{background:config.color}}/>
+      {config.label}
+    </span>
+  );
+};
+
 const AdsDashboard = () => {
-  const [campaigns, setCampaigns] = useState([]);
-  const [attribution, setAttribution] = useState(null);
+  const [summary, setSummary] = useState(null);
+  const [googleCampaigns, setGoogleCampaigns] = useState([]);
+  const [metaCampaigns, setMetaCampaigns] = useState([]);
+  const [manualCampaigns, setManualCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('connexions');
   const [showForm, setShowForm] = useState(false);
   const [editCampaign, setEditCampaign] = useState(null);
+  const [connectingMeta, setConnectingMeta] = useState(false);
   const [form, setForm] = useState({
-    platform:'google_ads', name:'', budget_monthly:0,
-    clicks:0, impressions:0, conversions:0, cost:0, period:'30d'
+    platform:'google_ads', name:'', objective:'LEAD_GENERATION',
+    budget_daily:0, cost:0, clicks:0, impressions:0, conversions:0, status:'active'
   });
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [campRes, attrRes] = await Promise.allSettled([
+      const [summaryRes, gadsRes, metaRes, manualRes] = await Promise.allSettled([
+        axios.get(`${API}/ads-connect/summary`, {withCredentials:true}),
+        axios.get(`${API}/ads-connect/google/campaigns`, {withCredentials:true}),
+        axios.get(`${API}/ads-connect/meta/campaigns`, {withCredentials:true}),
         axios.get(`${API}/ads/campaigns`, {withCredentials:true}),
-        axios.get(`${API}/ads/attribution?period=30d`, {withCredentials:true}),
       ]);
-      setCampaigns(campRes.status==='fulfilled' ? (campRes.value.data?.campaigns||campRes.value.data||[]) : []);
-      setAttribution(attrRes.status==='fulfilled' ? attrRes.value.data : null);
+      if (summaryRes.status==='fulfilled') setSummary(summaryRes.value.data);
+      if (gadsRes.status==='fulfilled') setGoogleCampaigns(gadsRes.value.data?.campaigns||[]);
+      if (metaRes.status==='fulfilled') setMetaCampaigns(metaRes.value.data?.campaigns||[]);
+      if (manualRes.status==='fulfilled') setManualCampaigns(manualRes.value.data?.campaigns||manualRes.value.data||[]);
+
+      // Vérifier si Meta vient d'être connecté
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('meta_connected')) {
+        toast.success('✅ Meta Ads connecté !');
+        window.history.replaceState({}, '', window.location.pathname);
+      }
     } catch {}
     finally { setLoading(false); }
   }, []);
 
   useEffect(()=>{ fetchData(); },[fetchData]);
 
-  const handleSave = async (e) => {
+  const connectMeta = async () => {
+    setConnectingMeta(true);
+    try {
+      const res = await axios.get(`${API}/ads-connect/meta/auth`, {withCredentials:true});
+      window.location.href = res.data.authorization_url;
+    } catch(err) {
+      toast.error(err.response?.data?.detail || 'META_APP_ID non configuré sur Railway');
+    }
+    setConnectingMeta(false);
+  };
+
+  const disconnectMeta = async () => {
+    await axios.get(`${API}/ads-connect/meta/disconnect`, {withCredentials:true});
+    toast.success('Meta Ads déconnecté');
+    fetchData();
+  };
+
+  const handleSaveCampaign = async (e) => {
     e.preventDefault();
     try {
       if (editCampaign) {
-        await axios.put(`${API}/ads/campaigns/${editCampaign.campaign_id}`, form, {withCredentials:true});
+        await axios.put(`${API}/ads/campaigns/${editCampaign.campaign_id||editCampaign.id}`, form, {withCredentials:true});
         toast.success('Campagne mise à jour');
       } else {
         await axios.post(`${API}/ads/campaigns`, form, {withCredentials:true});
         toast.success('Campagne ajoutée');
       }
       setShowForm(false); setEditCampaign(null);
-      setForm({platform:'google_ads',name:'',budget_monthly:0,clicks:0,impressions:0,conversions:0,cost:0,period:'30d'});
+      setForm({platform:'google_ads',name:'',objective:'LEAD_GENERATION',budget_daily:0,cost:0,clicks:0,impressions:0,conversions:0,status:'active'});
       fetchData();
     } catch(err) { toast.error(err.response?.data?.detail||'Erreur'); }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Supprimer cette campagne ?')) return;
+    if (!confirm('Supprimer ?')) return;
     try {
       await axios.delete(`${API}/ads/campaigns/${id}`, {withCredentials:true});
-      toast.success('Supprimée');
-      fetchData();
+      toast.success('Supprimée'); fetchData();
     } catch { toast.error('Erreur'); }
   };
 
-  // Calculs globaux
-  const totalBudget = campaigns.reduce((s,c)=>s+parseFloat(c.budget_monthly||c.cost||0),0);
-  const totalClicks = campaigns.reduce((s,c)=>s+parseInt(c.clicks||0),0);
-  const totalImpressions = campaigns.reduce((s,c)=>s+parseInt(c.impressions||0),0);
-  const totalConversions = campaigns.reduce((s,c)=>s+parseInt(c.conversions||0),0);
-  const avgCTR = totalImpressions > 0 ? ((totalClicks/totalImpressions)*100).toFixed(2) : 0;
-  const avgCPC = totalClicks > 0 ? (totalBudget/totalClicks).toFixed(2) : 0;
-  const avgCPA = totalConversions > 0 ? (totalBudget/totalConversions).toFixed(2) : 0;
+  // Toutes les campagnes combinées
+  const allCampaigns = [
+    ...googleCampaigns.map(c=>({...c,_source:'api'})),
+    ...metaCampaigns.map(c=>({...c,_source:'api'})),
+    ...manualCampaigns.map(c=>({...c,_source:'manual'})),
+  ];
 
-  // CA attribué depuis attribution
-  const caAttrib = attribution?.total_attributed_revenue || attribution?.revenue || 0;
-  const roas = totalBudget > 0 ? (caAttrib/totalBudget).toFixed(2) : 0;
+  const totalBudget = allCampaigns.reduce((s,c)=>s+parseFloat(c.cost||c.budget_daily||0),0);
+  const totalClicks = allCampaigns.reduce((s,c)=>s+parseInt(c.clicks||0),0);
+  const totalConversions = allCampaigns.reduce((s,c)=>s+parseInt(c.conversions||0),0);
+  const totalImpressions = allCampaigns.reduce((s,c)=>s+parseInt(c.impressions||0),0);
+  const avgCTR = totalImpressions > 0 ? ((totalClicks/totalImpressions)*100).toFixed(2) : '0';
+  const avgCPA = totalConversions > 0 ? (totalBudget/totalConversions).toFixed(2) : '0';
 
-  // Par plateforme
-  const byPlatform = PLATFORMS.map(p=>({
-    ...p,
-    budget: campaigns.filter(c=>c.platform===p.id).reduce((s,c)=>s+parseFloat(c.cost||c.budget_monthly||0),0),
-    clicks: campaigns.filter(c=>c.platform===p.id).reduce((s,c)=>s+parseInt(c.clicks||0),0),
-    conversions: campaigns.filter(c=>c.platform===p.id).reduce((s,c)=>s+parseInt(c.conversions||0),0),
-    count: campaigns.filter(c=>c.platform===p.id).length,
-  })).filter(p=>p.count>0);
-
-  const inputCls = "w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 placeholder-slate-600 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-violet-500";
+  const inputCls = "w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 placeholder-slate-600 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-violet-500 transition-all";
 
   const TABS = [
-    {id:'overview',    label:'Vue globale'},
-    {id:'campaigns',   label:'Campagnes'},
-    {id:'attribution', label:'Attribution'},
-    {id:'links',       label:'Accès plateformes'},
+    {id:'connexions',  label:'🔌 Connexions'},
+    {id:'overview',    label:'📊 Vue globale'},
+    {id:'google',      label:'🔍 Google Ads'},
+    {id:'meta',        label:'📘 Meta Ads'},
+    {id:'manual',      label:'✏️ Manuel'},
   ];
 
   return (
@@ -134,7 +182,7 @@ const AdsDashboard = () => {
             </div>
             <h1 className="text-2xl font-black text-slate-100" style={{fontFamily:'Manrope,sans-serif'}}>Publicités</h1>
           </div>
-          <p className="text-slate-500 text-sm ml-10">Suivi budgets, performances & attribution · Global Clean Home</p>
+          <p className="text-slate-500 text-sm ml-10">Google Ads · Facebook Ads · Suivi & création campagnes</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={fetchData} className="p-2 rounded-xl bg-white/5 border border-white/5 text-slate-400">
@@ -142,14 +190,14 @@ const AdsDashboard = () => {
           </button>
           <button onClick={()=>setShowForm(true)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white"
-            style={{background:'linear-gradient(135deg,#4285f4,#3b82f6)',boxShadow:'0 4px 16px rgba(66,133,244,0.3)'}}>
-            <Plus className="w-4 h-4"/> Ajouter campagne
+            style={{background:'linear-gradient(135deg,#4285f4,#3b82f6)'}}>
+            <Plus className="w-4 h-4"/> Nouvelle campagne
           </button>
         </div>
       </div>
 
       {/* TABS */}
-      <div className="flex gap-1.5 bg-white/5 rounded-2xl p-1.5 w-fit overflow-x-auto">
+      <div className="flex gap-1.5 bg-white/5 rounded-2xl p-1.5 overflow-x-auto w-fit">
         {TABS.map(t=>(
           <button key={t.id} onClick={()=>setActiveTab(t.id)}
             className={`px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab===t.id?'bg-blue-600 text-white shadow-lg':'text-slate-500 hover:text-slate-300'}`}>
@@ -158,22 +206,175 @@ const AdsDashboard = () => {
         ))}
       </div>
 
+      {/* ── CONNEXIONS ── */}
+      {activeTab==='connexions' && (
+        <div className="space-y-5">
+          <p className="text-sm text-slate-500">Connectez vos comptes publicitaires pour importer automatiquement vos campagnes et performances.</p>
+
+          {/* Google Ads */}
+          <div className="section-card p-6">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl"
+                  style={{background:'rgba(66,133,244,0.15)',border:'1px solid rgba(66,133,244,0.3)'}}>🔍</div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-100">Google Ads</h3>
+                  <p className="text-sm text-slate-500">Customer ID : 282-589-9307</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {summary?.google_ads?.connected ? (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10">
+                    <Wifi className="w-4 h-4 text-emerald-400"/>
+                    <span className="text-xs font-bold text-emerald-400">Connecté</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-red-500/20 bg-red-500/10">
+                    <WifiOff className="w-4 h-4 text-red-400"/>
+                    <span className="text-xs font-bold text-red-400">Non connecté</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {summary?.google_ads?.needs_developer_token ? (
+              <div className="rounded-2xl p-4 border border-amber-500/20 bg-amber-500/5 space-y-3">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5"/>
+                  <div>
+                    <p className="text-sm font-bold text-amber-300">Developer Token requis</p>
+                    <p className="text-xs text-slate-500 mt-1">Pour accéder à l'API Google Ads, un Developer Token est nécessaire. Voici comment l'obtenir :</p>
+                  </div>
+                </div>
+                <div className="space-y-2 text-xs text-slate-400 ml-8">
+                  <p>1. Va sur <a href="https://ads.google.com/nav/selectaccount" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Google Ads</a> → Outils → Centre API</p>
+                  <p>2. Demande un Developer Token (accès test disponible immédiatement)</p>
+                  <p>3. Ajoute la variable <code className="bg-white/10 px-1 rounded">GOOGLE_ADS_DEVELOPER_TOKEN</code> sur Railway</p>
+                </div>
+                <a href="https://developers.google.com/google-ads/api/docs/get-started/dev-token" target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-xs text-blue-400 hover:text-blue-300 ml-8">
+                  <ExternalLink className="w-3.5 h-3.5"/> Guide officiel Google
+                </a>
+              </div>
+            ) : (
+              <div className="rounded-2xl p-4 border border-emerald-500/20 bg-emerald-500/5">
+                <p className="text-xs text-emerald-400 font-semibold">✅ Google Ads utilise votre connexion Gmail existante. Les campagnes sont importées automatiquement.</p>
+              </div>
+            )}
+
+            {googleCampaigns.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{googleCampaigns.length} campagne(s) importée(s)</p>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  {googleCampaigns.slice(0,3).map(c=>(
+                    <div key={c.campaign_id} className="p-2 rounded-xl bg-white/3 border border-white/5">
+                      <p className="font-bold text-slate-300 truncate">{c.name}</p>
+                      <p className="text-slate-500">{c.clicks} clics · {c.cost} €</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Meta Ads */}
+          <div className="section-card p-6">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl"
+                  style={{background:'rgba(24,119,242,0.15)',border:'1px solid rgba(24,119,242,0.3)'}}>📘</div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-100">Facebook / Meta Ads</h3>
+                  <p className="text-sm text-slate-500">Ad Account ID : 1456980709277771</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {summary?.meta_ads?.connected ? (
+                  <>
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10">
+                      <Wifi className="w-4 h-4 text-emerald-400"/>
+                      <span className="text-xs font-bold text-emerald-400">Connecté</span>
+                    </div>
+                    <button onClick={disconnectMeta}
+                      className="px-3 py-2 rounded-xl text-xs font-bold border border-red-500/20 text-red-400 hover:bg-red-500/10 transition-all">
+                      Déconnecter
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={connectMeta} disabled={connectingMeta}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+                    style={{background:'linear-gradient(135deg,#1877f2,#0d65d9)'}}>
+                    {connectingMeta ? '⏳ Connexion...' : '🔗 Connecter Meta Ads'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {!summary?.meta_ads?.connected ? (
+              <div className="rounded-2xl p-4 border border-blue-500/20 bg-blue-500/5 space-y-3">
+                <p className="text-sm font-bold text-blue-300">Configuration requise sur Railway :</p>
+                <div className="space-y-2 text-xs text-slate-400">
+                  <p>1. Va sur <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Meta for Developers</a> → Crée une app</p>
+                  <p>2. Ajoute le produit <strong className="text-slate-300">Marketing API</strong></p>
+                  <p>3. Copie l'<strong className="text-slate-300">App ID</strong> et l'<strong className="text-slate-300">App Secret</strong></p>
+                  <p>4. Ajoute sur Railway : <code className="bg-white/10 px-1 rounded">META_APP_ID</code> et <code className="bg-white/10 px-1 rounded">META_APP_SECRET</code></p>
+                  <p>5. Dans Meta App → Paramètres → URIs de redirection OAuth valides, ajoute :</p>
+                  <code className="block bg-white/5 px-3 py-2 rounded-xl text-emerald-400 mt-1 text-[11px]">
+                    https://crm-global-clean-home-production.up.railway.app/api/ads-connect/meta/callback
+                  </code>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="rounded-2xl p-3 border border-emerald-500/20 bg-emerald-500/5 mb-4">
+                  <p className="text-xs text-emerald-400 font-semibold">✅ Meta Ads connecté · {metaCampaigns.length} campagne(s) importée(s)</p>
+                </div>
+                {metaCampaigns.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    {metaCampaigns.slice(0,3).map(c=>(
+                      <div key={c.campaign_id} className="p-2 rounded-xl bg-white/3 border border-white/5">
+                        <p className="font-bold text-slate-300 truncate">{c.name}</p>
+                        <p className="text-slate-500">{c.clicks} clics · {c.cost} €</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* LinkedIn - coming soon */}
+          <div className="section-card p-6 opacity-60">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl"
+                  style={{background:'rgba(0,119,181,0.15)',border:'1px solid rgba(0,119,181,0.3)'}}>💼</div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-100">LinkedIn Ads</h3>
+                  <p className="text-sm text-slate-500">Connexion bientôt disponible</p>
+                </div>
+              </div>
+              <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-white/5 text-slate-500 border border-white/10">Bientôt</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── OVERVIEW ── */}
       {activeTab==='overview' && (
         <div className="space-y-5">
-          {/* KPIs */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               {label:'Budget total', value:`${Math.round(totalBudget).toLocaleString('fr-FR')} €`, icon:DollarSign, color:'#4285f4'},
               {label:'Clics totaux', value:totalClicks.toLocaleString('fr-FR'), icon:MousePointer, color:'#10b981'},
               {label:'Conversions', value:totalConversions, icon:CheckCircle, color:'#f97316'},
-              {label:'ROAS', value:`×${roas}`, icon:TrendingUp, color:'#8b5cf6'},
-              {label:'CTR moyen', value:`${avgCTR}%`, icon:Eye, color:'#f59e0b'},
-              {label:'CPC moyen', value:`${avgCPC} €`, icon:Target, color:'#f43f5e'},
-              {label:'CPA moyen', value:`${avgCPA} €`, icon:Zap, color:'#34d399'},
+              {label:'CTR moyen', value:`${avgCTR}%`, icon:Eye, color:'#8b5cf6'},
+              {label:'CPA moyen', value:`${avgCPA} €`, icon:Target, color:'#f43f5e'},
               {label:'Impressions', value:totalImpressions.toLocaleString('fr-FR'), icon:Globe, color:'#60a5fa'},
+              {label:'Campagnes actives', value:allCampaigns.filter(c=>c.status==='active'||c.status==='enabled').length, icon:Zap, color:'#34d399'},
+              {label:'Plateformes', value:new Set(allCampaigns.map(c=>c.platform)).size, icon:Link, color:'#a78bfa'},
             ].map(k=>(
-              <div key={k.label} className="section-card p-5">
+              <div key={k.label} className="section-card p-4">
                 <div className="w-9 h-9 rounded-xl mb-3 flex items-center justify-center"
                   style={{background:`${k.color}20`,border:`1px solid ${k.color}30`}}>
                   <k.icon className="w-4 h-4" style={{color:k.color}}/>
@@ -184,62 +385,196 @@ const AdsDashboard = () => {
             ))}
           </div>
 
-          {/* Par plateforme */}
-          {byPlatform.length > 0 ? (
-            <div className="section-card p-5">
-              <h3 className="text-sm font-black text-slate-200 mb-4">Performance par plateforme</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {byPlatform.map((p,i)=>(
-                  <div key={p.id} className="p-4 rounded-2xl border transition-all hover:border-white/10"
-                    style={{borderColor:`${p.color}20`,background:`${p.color}08`}}>
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="text-2xl">{p.icon}</span>
-                      <p className="text-sm font-black text-slate-200">{p.label}</p>
-                    </div>
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-500">Budget</span>
-                        <span className="font-bold" style={{color:p.color}}>{Math.round(p.budget).toLocaleString('fr-FR')} €</span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-500">Clics</span>
-                        <span className="font-bold text-slate-300">{p.clicks.toLocaleString('fr-FR')}</span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-500">Conversions</span>
-                        <span className="font-bold text-emerald-400">{p.conversions}</span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-500">CPA</span>
-                        <span className="font-bold text-slate-300">{p.conversions>0?(p.budget/p.conversions).toFixed(2):'-'} €</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+          {allCampaigns.length === 0 ? (
+            <div className="section-card p-10 text-center">
+              <BarChart2 className="w-14 h-14 text-slate-700 mx-auto mb-4"/>
+              <p className="text-slate-400 font-bold mb-2">Aucune campagne</p>
+              <p className="text-sm text-slate-600 mb-4">Connectez vos comptes ou ajoutez vos campagnes manuellement.</p>
+              <div className="flex gap-3 justify-center">
+                <button onClick={()=>setActiveTab('connexions')}
+                  className="px-4 py-2.5 rounded-xl text-sm font-bold border border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/5">
+                  🔌 Connecter un compte
+                </button>
+                <button onClick={()=>setShowForm(true)}
+                  className="px-4 py-2.5 rounded-xl text-sm font-bold text-white"
+                  style={{background:'linear-gradient(135deg,#4285f4,#3b82f6)'}}>
+                  ✏️ Saisie manuelle
+                </button>
               </div>
             </div>
           ) : (
-            <div className="section-card p-10 text-center">
-              <Target className="w-14 h-14 text-slate-700 mx-auto mb-4"/>
-              <p className="text-slate-400 font-bold mb-2">Aucune campagne enregistrée</p>
-              <p className="text-sm text-slate-600 mb-4">Ajoutez vos campagnes Google Ads, Facebook Ads pour suivre vos performances.</p>
-              <button onClick={()=>setShowForm(true)}
-                className="px-5 py-2.5 rounded-xl text-sm font-bold text-white"
-                style={{background:'linear-gradient(135deg,#4285f4,#3b82f6)'}}>
-                + Ajouter ma première campagne
-              </button>
+            <div className="section-card p-5">
+              <h3 className="text-sm font-black text-slate-200 mb-4">Budget par plateforme</h3>
+              <div className="space-y-3">
+                {PLATFORMS.filter(p=>allCampaigns.some(c=>c.platform===p.id)).map((p,i)=>{
+                  const pCamps = allCampaigns.filter(c=>c.platform===p.id);
+                  const budget = pCamps.reduce((s,c)=>s+parseFloat(c.cost||0),0);
+                  const clicks = pCamps.reduce((s,c)=>s+parseInt(c.clicks||0),0);
+                  const convs = pCamps.reduce((s,c)=>s+parseInt(c.conversions||0),0);
+                  const pct = totalBudget > 0 ? (budget/totalBudget)*100 : 0;
+                  return (
+                    <div key={p.id} className="flex items-center gap-4">
+                      <span className="text-xl w-8 flex-shrink-0">{p.icon}</span>
+                      <div className="w-24 flex-shrink-0">
+                        <p className="text-xs font-bold text-slate-300 truncate">{p.label}</p>
+                        <p className="text-[10px] text-slate-600">{pCamps.length} camp.</p>
+                      </div>
+                      <div className="flex-1 h-2.5 bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full" style={{width:`${pct}%`,background:p.color}}/>
+                      </div>
+                      <div className="text-right w-20 flex-shrink-0">
+                        <p className="text-xs font-black" style={{color:p.color}}>{Math.round(budget).toLocaleString('fr-FR')} €</p>
+                        <p className="text-[10px] text-slate-600">{clicks} clics</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* ── CAMPAGNES ── */}
-      {activeTab==='campaigns' && (
+      {/* ── GOOGLE ADS ── */}
+      {activeTab==='google' && (
         <div className="space-y-4">
-          {campaigns.length === 0 ? (
+          {!summary?.google_ads?.connected || summary?.google_ads?.needs_developer_token ? (
+            <div className="section-card p-8 text-center">
+              <p className="text-4xl mb-4">🔍</p>
+              <p className="text-lg font-black text-slate-200 mb-2">Google Ads non configuré</p>
+              <p className="text-sm text-slate-500 mb-4">Configurez le Developer Token pour voir vos campagnes.</p>
+              <button onClick={()=>setActiveTab('connexions')}
+                className="px-5 py-2.5 rounded-xl text-sm font-bold border border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/5">
+                Voir la configuration →
+              </button>
+            </div>
+          ) : googleCampaigns.length === 0 ? (
+            <div className="section-card p-8 text-center">
+              <p className="text-slate-500">Aucune campagne Google Ads trouvée</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {googleCampaigns.map(c=>(
+                  <div key={c.campaign_id} className="section-card p-5"
+                    style={{borderLeft:'3px solid #4285f4'}}>
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">🔍</span>
+                        <div>
+                          <p className="font-black text-slate-100 text-sm">{c.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <StatusBadge status={c.status}/>
+                            {c.type && <span className="text-[10px] text-slate-600">{c.type}</span>}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">API</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        {l:'Budget',v:`${c.cost} €`,c:'#4285f4'},
+                        {l:'Clics',v:parseInt(c.clicks).toLocaleString(),c:'#10b981'},
+                        {l:'Conv.',v:c.conversions,c:'#f97316'},
+                        {l:'CTR',v:`${c.ctr}%`,c:'#a78bfa'},
+                      ].map(m=>(
+                        <div key={m.l} className="text-center p-2 rounded-xl" style={{background:`${m.c}10`}}>
+                          <p className="text-sm font-black" style={{color:m.c,fontFamily:'Manrope,sans-serif'}}>{m.v}</p>
+                          <p className="text-[9px] text-slate-600">{m.l}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-center justify-between mt-3 text-xs text-slate-500">
+                      <span>Impressions : {parseInt(c.impressions).toLocaleString()}</span>
+                      <span>CPC moy : {c.avg_cpc} €</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── META ADS ── */}
+      {activeTab==='meta' && (
+        <div className="space-y-4">
+          {!summary?.meta_ads?.connected ? (
+            <div className="section-card p-8 text-center">
+              <p className="text-4xl mb-4">📘</p>
+              <p className="text-lg font-black text-slate-200 mb-2">Meta Ads non connecté</p>
+              <p className="text-sm text-slate-500 mb-4">Connectez votre compte Meta Ads pour voir vos campagnes.</p>
+              <button onClick={()=>setActiveTab('connexions')}
+                className="px-5 py-2.5 rounded-xl text-sm font-bold text-white"
+                style={{background:'linear-gradient(135deg,#1877f2,#0d65d9)'}}>
+                Connecter Meta Ads →
+              </button>
+            </div>
+          ) : metaCampaigns.length === 0 ? (
+            <div className="section-card p-8 text-center">
+              <p className="text-slate-500 mb-4">Aucune campagne Meta Ads trouvée</p>
+              <button onClick={()=>{setForm(p=>({...p,platform:'facebook_ads'}));setShowForm(true);}}
+                className="px-4 py-2 rounded-xl text-sm font-bold text-white"
+                style={{background:'linear-gradient(135deg,#1877f2,#0d65d9)'}}>
+                + Créer une campagne
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {metaCampaigns.map(c=>(
+                <div key={c.campaign_id} className="section-card p-5"
+                  style={{borderLeft:'3px solid #1877f2'}}>
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">📘</span>
+                      <div>
+                        <p className="font-black text-slate-100 text-sm">{c.name}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <StatusBadge status={c.status}/>
+                          {c.objective && <span className="text-[10px] text-slate-600 capitalize">{c.objective.toLowerCase().replace('_',' ')}</span>}
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">API</span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      {l:'Budget',v:`${c.cost} €`,c:'#1877f2'},
+                      {l:'Clics',v:parseInt(c.clicks).toLocaleString(),c:'#10b981'},
+                      {l:'Conv.',v:c.conversions,c:'#f97316'},
+                      {l:'CTR',v:`${c.ctr}%`,c:'#a78bfa'},
+                    ].map(m=>(
+                      <div key={m.l} className="text-center p-2 rounded-xl" style={{background:`${m.c}10`}}>
+                        <p className="text-sm font-black" style={{color:m.c,fontFamily:'Manrope,sans-serif'}}>{m.v}</p>
+                        <p className="text-[9px] text-slate-600">{m.l}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {c.daily_budget > 0 && (
+                    <p className="text-xs text-slate-500 mt-2">Budget quotidien : {c.daily_budget} €</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── MANUEL ── */}
+      {activeTab==='manual' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-slate-500">Campagnes saisies manuellement</p>
+            <button onClick={()=>setShowForm(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white"
+              style={{background:'linear-gradient(135deg,#4285f4,#3b82f6)'}}>
+              <Plus className="w-4 h-4"/> Ajouter
+            </button>
+          </div>
+          {manualCampaigns.length === 0 ? (
             <div className="section-card p-10 text-center">
               <BarChart2 className="w-12 h-12 text-slate-700 mx-auto mb-3"/>
-              <p className="text-slate-500 mb-4">Aucune campagne</p>
+              <p className="text-slate-500 mb-4">Aucune campagne manuelle</p>
               <button onClick={()=>setShowForm(true)}
                 className="px-5 py-2.5 rounded-xl text-sm font-bold text-white"
                 style={{background:'linear-gradient(135deg,#4285f4,#3b82f6)'}}>
@@ -248,18 +583,16 @@ const AdsDashboard = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {campaigns.map(c=>{
+              {manualCampaigns.map(c=>{
                 const p = PLATFORMS.find(pl=>pl.id===c.platform)||PLATFORMS[0];
-                const cpa = parseInt(c.conversions||0) > 0 ? (parseFloat(c.cost||0)/parseInt(c.conversions)).toFixed(2) : '—';
-                const ctr = parseInt(c.impressions||0) > 0 ? ((parseInt(c.clicks||0)/parseInt(c.impressions))*100).toFixed(2) : '—';
                 return (
-                  <div key={c.campaign_id||c.id} className="section-card p-5">
+                  <div key={c.campaign_id||c.id} className="section-card p-5" style={{borderLeft:`3px solid ${p.color}`}}>
                     <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{p.icon}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{p.icon}</span>
                         <div>
-                          <p className="font-black text-slate-100">{c.name||'Campagne'}</p>
-                          <p className="text-xs font-semibold" style={{color:p.color}}>{p.label}</p>
+                          <p className="font-black text-slate-100 text-sm">{c.name}</p>
+                          <p className="text-xs text-slate-500">{p.label}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
@@ -273,22 +606,18 @@ const AdsDashboard = () => {
                         </button>
                       </div>
                     </div>
-                    <div className="grid grid-cols-4 gap-2 mb-3">
+                    <div className="grid grid-cols-4 gap-2">
                       {[
-                        {label:'Budget', value:`${parseFloat(c.cost||c.budget_monthly||0).toFixed(0)} €`, color:p.color},
-                        {label:'Clics', value:parseInt(c.clicks||0).toLocaleString(), color:'#10b981'},
-                        {label:'Conv.', value:c.conversions||0, color:'#f97316'},
-                        {label:'CPA', value:`${cpa} €`, color:'#a78bfa'},
+                        {l:'Coût',v:`${parseFloat(c.cost||0).toFixed(0)} €`,cc:p.color},
+                        {l:'Clics',v:parseInt(c.clicks||0).toLocaleString(),cc:'#10b981'},
+                        {l:'Conv.',v:c.conversions||0,cc:'#f97316'},
+                        {l:'CPA',v:parseInt(c.conversions||0)>0?`${(parseFloat(c.cost||0)/parseInt(c.conversions)).toFixed(0)} €`:'—',cc:'#a78bfa'},
                       ].map(m=>(
-                        <div key={m.label} className="text-center p-2 rounded-xl" style={{background:`${m.color}10`}}>
-                          <p className="text-sm font-black" style={{color:m.color,fontFamily:'Manrope,sans-serif'}}>{m.value}</p>
-                          <p className="text-[9px] text-slate-600 font-semibold">{m.label}</p>
+                        <div key={m.l} className="text-center p-2 rounded-xl" style={{background:`${m.cc}10`}}>
+                          <p className="text-sm font-black" style={{color:m.cc,fontFamily:'Manrope,sans-serif'}}>{m.v}</p>
+                          <p className="text-[9px] text-slate-600">{m.l}</p>
                         </div>
                       ))}
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-slate-500">
-                      <span>CTR : <strong className="text-slate-300">{ctr}%</strong></span>
-                      <span>Impressions : <strong className="text-slate-300">{parseInt(c.impressions||0).toLocaleString()}</strong></span>
                     </div>
                   </div>
                 );
@@ -298,140 +627,96 @@ const AdsDashboard = () => {
         </div>
       )}
 
-      {/* ── ATTRIBUTION ── */}
-      {activeTab==='attribution' && (
-        <div className="space-y-5">
-          {attribution ? (
-            <>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  {label:'CA Attribué', value:`${Math.round(caAttrib).toLocaleString('fr-FR')} €`, icon:DollarSign, color:'#10b981'},
-                  {label:'Budget total', value:`${Math.round(totalBudget).toLocaleString('fr-FR')} €`, icon:CreditCard, color:'#4285f4'},
-                  {label:'ROAS global', value:`×${roas}`, icon:TrendingUp, color:'#8b5cf6'},
-                  {label:'Leads attribués', value:attribution.total_leads||totalConversions, icon:Users, color:'#f97316'},
-                ].map(k=>(
-                  <div key={k.label} className="section-card p-5">
-                    <div className="w-9 h-9 rounded-xl mb-3 flex items-center justify-center" style={{background:`${k.color}20`,border:`1px solid ${k.color}30`}}>
-                      <k.icon className="w-4 h-4" style={{color:k.color}}/>
-                    </div>
-                    <p className="text-xl font-black text-slate-100 mb-1" style={{fontFamily:'Manrope,sans-serif'}}>{k.value}</p>
-                    <p className="text-xs text-slate-500 font-semibold">{k.label}</p>
-                  </div>
-                ))}
-              </div>
-              {/* Sources attribution */}
-              {attribution.by_source?.length > 0 && (
-                <div className="section-card p-5">
-                  <h3 className="text-sm font-black text-slate-200 mb-4">Attribution par source</h3>
-                  <div className="space-y-3">
-                    {attribution.by_source.map((s,i)=>(
-                      <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-white/5 bg-white/2">
-                        <div className="w-8 h-8 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{background:`${COLORS[i%COLORS.length]}20`}}>
-                          {s.source?.includes('google')?'🔍':s.source?.includes('facebook')||s.source?.includes('meta')?'📘':s.source?.includes('organic')?'🌿':'📊'}
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-bold text-slate-200 capitalize">{s.source||'Autre'}</p>
-                          <p className="text-xs text-slate-500">{s.leads||0} leads · {s.conversions||0} conversions</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-black" style={{color:COLORS[i%COLORS.length]}}>{Math.round(s.revenue||s.ca||0).toLocaleString('fr-FR')} €</p>
-                          <p className="text-[10px] text-slate-600">CA attribué</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="section-card p-10 text-center">
-              <AlertTriangle className="w-12 h-12 text-amber-600 mx-auto mb-3"/>
-              <p className="text-slate-400 font-bold mb-2">Données d'attribution non disponibles</p>
-              <p className="text-sm text-slate-600">Ajoutez des campagnes et renseignez les sources dans les fiches leads.</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── LIENS PLATEFORMES ── */}
-      {activeTab==='links' && (
-        <div className="space-y-4">
-          <p className="text-sm text-slate-500">Accès directs à vos plateformes publicitaires.</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {PLATFORMS.map(p=>(
-              <a key={p.id} href={p.url} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-4 p-5 rounded-2xl border transition-all hover:scale-105"
-                style={{borderColor:`${p.color}25`,background:`${p.color}08`}}>
-                <span className="text-3xl">{p.icon}</span>
-                <div className="flex-1">
-                  <p className="font-black text-slate-100">{p.label}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{p.url}</p>
-                </div>
-                <ExternalLink className="w-4 h-4" style={{color:p.color}}/>
-              </a>
-            ))}
-          </div>
-          {/* Conseils */}
-          <div className="section-card p-5">
-            <h3 className="text-sm font-black text-slate-200 mb-4">💡 Conseils pour globalcleanhome.com</h3>
-            <div className="space-y-3">
-              {[
-                {icon:'🎯', title:'Google Ads', tip:'Ciblez les mots-clés "nettoyage canapé Paris", "ménage domicile Paris 16". Budget recommandé : 500-1000 €/mois.'},
-                {icon:'📘', title:'Facebook/Meta Ads', tip:'Retargeting sur les visiteurs du site vitrine. Audiences lookalike depuis vos clients existants. Budget : 200-400 €/mois.'},
-                {icon:'🔎', title:'SEO Local', tip:'Optimisez votre fiche Google My Business. Publiez des avis clients régulièrement. Créez du contenu sur Paris et IDF.'},
-                {icon:'📸', title:'Instagram', tip:'Avant/après de vos nettoyages canapé et matelas. Stories avec témoignages clients. Très efficace visuellement.'},
-              ].map(c=>(
-                <div key={c.title} className="flex items-start gap-3 p-3 rounded-xl border border-white/5 bg-white/2">
-                  <span className="text-xl flex-shrink-0">{c.icon}</span>
-                  <div>
-                    <p className="text-sm font-bold text-slate-200">{c.title}</p>
-                    <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{c.tip}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL AJOUT/EDIT CAMPAGNE */}
+      {/* MODAL CAMPAGNE */}
       {showForm && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{background:'rgba(0,0,0,0.8)'}} onClick={()=>{setShowForm(false);setEditCampaign(null);}}>
-          <div className="rounded-2xl p-6 max-w-md w-full animate-fade-in"
-            style={{background:'hsl(224,71%,6%)',border:'1px solid rgba(255,255,255,0.1)'}} onClick={e=>e.stopPropagation()}>
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{background:'rgba(0,0,0,0.8)'}}
+          onClick={()=>{setShowForm(false);setEditCampaign(null);}}>
+          <div className="rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto animate-fade-in"
+            style={{background:'hsl(224,71%,6%)',border:'1px solid rgba(255,255,255,0.1)'}}
+            onClick={e=>e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-black text-slate-100">{editCampaign?'Modifier':'Nouvelle campagne'}</h3>
               <button onClick={()=>{setShowForm(false);setEditCampaign(null);}} className="p-2 text-slate-500 hover:text-slate-300 hover:bg-white/5 rounded-xl">
                 <X className="w-4 h-4"/>
               </button>
             </div>
-            <form onSubmit={handleSave} className="space-y-4">
+            <form onSubmit={handleSaveCampaign} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1.5">Plateforme</label>
-                <select value={form.platform} onChange={e=>setForm(p=>({...p,platform:e.target.value}))} className={inputCls}>
-                  {PLATFORMS.map(p=><option key={p.id} value={p.id} className="bg-slate-800">{p.icon} {p.label}</option>)}
-                </select>
+                <div className="grid grid-cols-2 gap-2">
+                  {PLATFORMS.slice(0,4).map(p=>(
+                    <button key={p.id} type="button" onClick={()=>setForm(f=>({...f,platform:p.id}))}
+                      className={`flex items-center gap-2 p-3 rounded-xl border transition-all text-left ${form.platform===p.id?'text-white':'text-slate-500 border-white/5 hover:border-white/10'}`}
+                      style={form.platform===p.id?{borderColor:`${p.color}40`,background:`${p.color}15`}:{}}>
+                      <span className="text-lg">{p.icon}</span>
+                      <span className="text-xs font-bold">{p.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1.5">Nom de la campagne</label>
-                <input value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} required placeholder="Ex: Google Ads - Ménage Paris" className={inputCls}/>
+                <label className="block text-xs font-semibold text-slate-400 mb-1.5">Nom de la campagne *</label>
+                <input required value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))}
+                  placeholder="Ex: Nettoyage canapé Paris - Google Ads" className={inputCls}/>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1.5">Objectif</label>
+                <select value={form.objective} onChange={e=>setForm(p=>({...p,objective:e.target.value}))} className={inputCls}>
+                  {OBJECTIVES.map(o=><option key={o.id} value={o.id} className="bg-slate-800">{o.label}</option>)}
+                </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  {k:'cost',label:'Budget dépensé (€)',placeholder:'500'},
-                  {k:'clicks',label:'Clics',placeholder:'1200'},
-                  {k:'impressions',label:'Impressions',placeholder:'50000'},
-                  {k:'conversions',label:'Conversions',placeholder:'15'},
+                  {k:'cost',l:'Coût dépensé (€)',ph:'500'},
+                  {k:'budget_daily',l:'Budget quotidien (€)',ph:'20'},
+                  {k:'impressions',l:'Impressions',ph:'50000'},
+                  {k:'clicks',l:'Clics',ph:'1200'},
+                  {k:'conversions',l:'Conversions / Leads',ph:'15'},
                 ].map(f=>(
                   <div key={f.k}>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">{f.label}</label>
-                    <input type="number" min="0" value={form[f.k]} onChange={e=>setForm(p=>({...p,[f.k]:e.target.value}))} placeholder={f.placeholder} className={inputCls}/>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">{f.l}</label>
+                    <input type="number" min="0" value={form[f.k]||0}
+                      onChange={e=>setForm(p=>({...p,[f.k]:e.target.value}))}
+                      placeholder={f.ph} className={inputCls}/>
                   </div>
                 ))}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Statut</label>
+                  <select value={form.status} onChange={e=>setForm(p=>({...p,status:e.target.value}))} className={inputCls}>
+                    <option value="active" className="bg-slate-800">✅ Active</option>
+                    <option value="paused" className="bg-slate-800">⏸️ Pausée</option>
+                    <option value="ended" className="bg-slate-800">🏁 Terminée</option>
+                  </select>
+                </div>
               </div>
+              {/* Résumé calculs */}
+              {(form.cost > 0 && form.conversions > 0) && (
+                <div className="p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
+                  <p className="text-xs font-bold text-emerald-300 mb-2">Calculs automatiques</p>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="text-center">
+                      <p className="font-black text-emerald-400">{(parseFloat(form.cost)/parseInt(form.conversions)).toFixed(2)} €</p>
+                      <p className="text-slate-600">CPA</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="font-black text-blue-400">{parseInt(form.impressions)>0?((parseInt(form.clicks)/parseInt(form.impressions))*100).toFixed(2):'—'}%</p>
+                      <p className="text-slate-600">CTR</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="font-black text-violet-400">{parseInt(form.clicks)>0?(parseFloat(form.cost)/parseInt(form.clicks)).toFixed(2):'—'} €</p>
+                      <p className="text-slate-600">CPC</p>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={()=>{setShowForm(false);setEditCampaign(null);}} className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 rounded-xl text-sm font-bold">Annuler</button>
-                <button type="submit" className="flex-1 px-4 py-3 text-white rounded-xl text-sm font-bold" style={{background:'linear-gradient(135deg,#4285f4,#3b82f6)'}}>
+                <button type="button" onClick={()=>{setShowForm(false);setEditCampaign(null);}}
+                  className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 rounded-xl text-sm font-bold">
+                  Annuler
+                </button>
+                <button type="submit"
+                  className="flex-1 px-4 py-3 text-white rounded-xl text-sm font-bold"
+                  style={{background:'linear-gradient(135deg,#4285f4,#3b82f6)'}}>
                   {editCampaign?'Mettre à jour':'Ajouter'}
                 </button>
               </div>
