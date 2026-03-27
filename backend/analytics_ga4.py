@@ -421,3 +421,97 @@ async def get_realtime(request: Request):
             return {"active_users": total, "details": details}
     except Exception as e:
         return {"active_users": 0, "details": [], "error": str(e)}
+
+@analytics_router.get("/crm-stats")
+async def get_crm_stats(request: Request):
+    """Statistiques CRM réelles - leads, devis, factures, interventions."""
+    from server import require_auth
+    try:
+        await require_auth(request)
+    except:
+        pass
+    
+    from datetime import datetime, timedelta, timezone
+    now = datetime.now(timezone.utc)
+    
+    # Derniers 30 jours
+    start_30 = (now - timedelta(days=30)).isoformat()
+    start_7  = (now - timedelta(days=7)).isoformat()
+    prev_start = (now - timedelta(days=60)).isoformat()
+    prev_end   = (now - timedelta(days=30)).isoformat()
+
+    leads       = await _db.leads.find({}, {"_id":0,"created_at":1,"status":1,"service_type":1,"source":1}).to_list(10000)
+    quotes      = await _db.quotes.find({}, {"_id":0,"created_at":1,"status":1,"amount_ht":1}).to_list(10000)
+    invoices    = await _db.invoices.find({}, {"_id":0,"created_at":1,"status":1,"amount_ttc":1}).to_list(10000)
+    interventions = await _db.interventions.find({}, {"_id":0,"scheduled_date":1,"status":1,"service_type":1}).to_list(10000)
+
+    def in_period(item, start, end=None):
+        d = item.get("created_at") or item.get("scheduled_date") or ""
+        if not d: return False
+        return d >= start and (not end or d <= end)
+
+    # KPIs 30 jours
+    leads_30    = [l for l in leads    if in_period(l, start_30)]
+    quotes_30   = [q for q in quotes   if in_period(q, start_30)]
+    invoices_30 = [i for i in invoices if in_period(i, start_30)]
+    intv_30     = [i for i in interventions if in_period(i, start_30)]
+
+    # KPIs période précédente
+    leads_prev  = [l for l in leads if in_period(l, prev_start, prev_end)]
+    quotes_prev = [q for q in quotes if in_period(q, prev_start, prev_end)]
+
+    def pct(curr, prev):
+        if prev == 0: return 0
+        return round(((curr-prev)/prev)*100, 1)
+
+    # CA
+    ca_30   = sum(float(i.get("amount_ttc",0) or 0) for i in invoices_30 if i.get("status")=="payée")
+    ca_total= sum(float(i.get("amount_ttc",0) or 0) for i in invoices if i.get("status")=="payée")
+
+    # Taux conversion
+    conv_rate = round((len(quotes_30)/max(len(leads_30),1))*100, 1)
+
+    # Par service
+    services = {}
+    for l in leads:
+        s = l.get("service_type","Autre") or "Autre"
+        services[s] = services.get(s,0)+1
+
+    # Par source
+    sources = {}
+    for l in leads:
+        s = l.get("source","Direct") or "Direct"
+        sources[s] = sources.get(s,0)+1
+
+    # Evolution par semaine (12 semaines)
+    weekly = []
+    for w in range(11,-1,-1):
+        ws = (now - timedelta(weeks=w+1)).isoformat()
+        we = (now - timedelta(weeks=w)).isoformat()
+        weekly.append({
+            "week": (now - timedelta(weeks=w)).strftime("S%W"),
+            "leads":   len([l for l in leads    if in_period(l, ws, we)]),
+            "quotes":  len([q for q in quotes   if in_period(q, ws, we)]),
+            "invoices":len([i for i in invoices if in_period(i, ws, we)]),
+            "ca":      round(sum(float(i.get("amount_ttc",0) or 0) for i in invoices if in_period(i, ws, we) and i.get("status")=="payée"), 2),
+        })
+
+    return {
+        "kpis": {
+            "leads":         {"value": len(leads_30),    "change": pct(len(leads_30), len(leads_prev)), "total": len(leads)},
+            "quotes":        {"value": len(quotes_30),   "change": pct(len(quotes_30), len(quotes_prev)), "total": len(quotes)},
+            "interventions": {"value": len(intv_30),     "total": len(interventions)},
+            "ca_30":         {"value": round(ca_30, 2),  "total": round(ca_total, 2)},
+            "conv_rate":     {"value": conv_rate},
+            "invoices_paid": {"value": len([i for i in invoices_30 if i.get("status")=="payée"])},
+        },
+        "services": [{"name":k,"value":v} for k,v in sorted(services.items(), key=lambda x:-x[1])[:8]],
+        "sources":  [{"name":k,"value":v} for k,v in sorted(sources.items(),  key=lambda x:-x[1])[:6]],
+        "weekly":   weekly,
+        "funnel": {
+            "leads":     len(leads),
+            "quotes":    len(quotes),
+            "invoices":  len(invoices),
+            "paid":      len([i for i in invoices if i.get("status")=="payée"]),
+        }
+    }
