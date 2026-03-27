@@ -363,6 +363,12 @@ async def debug_token():
                 f"https://www.googleapis.com/oauth2/v1/tokeninfo?access_token={token}",
                 timeout=10
             )
+            # Test GA4 - lister les properties accessibles
+            ga4_list = await client.get(
+                "https://analyticsadmin.googleapis.com/v1alpha/accountSummaries",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=10
+            )
             # Test GA4 direct
             ga4_test = await client.post(
                 f"https://analyticsdata.googleapis.com/v1beta/properties/{GA4_PROPERTY_ID}:runReport",
@@ -376,8 +382,9 @@ async def debug_token():
             return {
                 "token_info": info.json(),
                 "ga4_status": ga4_test.status_code,
-                "ga4_response": ga4_test.text[:300],
-                "property_id": GA4_PROPERTY_ID,
+                "ga4_error": ga4_test.text[:200],
+                "properties_accessible": ga4_list.text[:500],
+                "property_id_used": GA4_PROPERTY_ID,
             }
     except Exception as e:
         return {"error": str(e)}
