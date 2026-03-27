@@ -37,6 +37,8 @@ GOOGLE_SCOPES = os.environ.get("GOOGLE_SCOPES", " ".join([
     "https://mail.google.com/",
     "https://www.googleapis.com/auth/analytics.readonly",
     "https://www.googleapis.com/auth/webmasters.readonly",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "openid",
 ]))
 GMAIL_FROM_ADDRESS = os.environ.get("GMAIL_FROM_ADDRESS", "contact@globalcleanhome.com")
 GMAIL_FROM_NAME = os.environ.get("GMAIL_FROM_NAME", "Global Clean Home")
