@@ -843,9 +843,15 @@ const AdsDashboard = () => {
                       <label className="block text-xs font-semibold text-slate-400 mb-1.5">Bouton CTA</label>
                       <select value={adForm.cta} onChange={e=>setAdForm(p=>({...p,cta:e.target.value}))}
                         className="w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
-                        {[['LEARN_MORE','En savoir plus'],['GET_QUOTE','Obtenir un devis'],['BOOK_NOW','Réserver'],['CONTACT_US','Nous contacter'],['SIGN_UP','S'inscrire']].map(([v,l])=>(
-                          <option key={v} value={v} className="bg-slate-800">{l}</option>
-                        ))}
+                        {[
+                            {v:"LEARN_MORE", l:"En savoir plus"},
+                            {v:"GET_QUOTE",  l:"Obtenir un devis"},
+                            {v:"BOOK_NOW",   l:"Réserver maintenant"},
+                            {v:"CONTACT_US", l:"Nous contacter"},
+                            {v:"SIGN_UP",    l:"Inscription"},
+                          ].map(o=>(
+                            <option key={o.v} value={o.v} className="bg-slate-800">{o.l}</option>
+                          ))}
                       </select>
                     </div>
                   </div>
