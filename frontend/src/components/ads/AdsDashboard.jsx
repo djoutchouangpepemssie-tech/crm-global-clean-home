@@ -75,6 +75,23 @@ const AdsDashboard = () => {
   const [showForm, setShowForm] = useState(false);
   const [editCampaign, setEditCampaign] = useState(null);
   const [connectingMeta, setConnectingMeta] = useState(false);
+  const [alerts, setAlerts] = useState([]);
+  const [weeklyReport, setWeeklyReport] = useState(null);
+  const [showCreateAd, setShowCreateAd] = useState(false);
+  const [adForm, setAdForm] = useState({
+    campaign_name: '', objective: 'OUTCOME_LEADS', status: 'PAUSED',
+    daily_budget: 10, start_date: '', end_date: '',
+    age_min: 25, age_max: 65, genders: [],
+    cities: [{key:'542609',name:'Paris',country:'FR'}],
+    interests: [], interest_search: '',
+    headline: '', primary_text: '', description: '', cta: 'LEARN_MORE',
+    image_url: '', link_url: 'https://www.globalcleanhome.com',
+    ab_test: false, headline_b: '', primary_text_b: '',
+    budget_alert: 50, cpa_alert: 30,
+    optimization_goal: 'LEAD_GENERATION',
+  });
+  const [interestResults, setInterestResults] = useState([]);
+  const [abVariant, setAbVariant] = useState('A');
   const [form, setForm] = useState({
     platform:'google_ads', name:'', objective:'LEAD_GENERATION',
     budget_daily:0, cost:0, clicks:0, impressions:0, conversions:0, status:'active'
@@ -88,6 +105,8 @@ const AdsDashboard = () => {
         axios.get(`${API}/ads-connect/google/campaigns`, {withCredentials:true}),
         axios.get(`${API}/ads-connect/meta/campaigns`, {withCredentials:true}),
         axios.get(`${API}/ads/campaigns`, {withCredentials:true}),
+        axios.get(`${API}/ads-connect/alerts`, {withCredentials:true}),
+        axios.get(`${API}/ads-connect/report/weekly`, {withCredentials:true}),
       ]);
       if (summaryRes.status==='fulfilled') setSummary(summaryRes.value.data);
       if (gadsRes.status==='fulfilled') setGoogleCampaigns(gadsRes.value.data?.campaigns||[]);
@@ -168,6 +187,10 @@ const AdsDashboard = () => {
     {id:'overview',    label:'📊 Vue globale'},
     {id:'google',      label:'🔍 Google Ads'},
     {id:'meta',        label:'📘 Meta Ads'},
+    {id:'creer',       label:'✨ Créer annonce'},
+    {id:'abtest',      label:'🧪 A/B Test'},
+    {id:'alertes',     label:`🔔 Alertes${alerts.length>0?' ('+alerts.length+')':''}`},
+    {id:'rapport',     label:'📈 Rapport'},
     {id:'manual',      label:'✏️ Manuel'},
   ];
 
@@ -669,6 +692,657 @@ const AdsDashboard = () => {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── CRÉER ANNONCE ── */}
+      {activeTab==='creer' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-black text-slate-100">✨ Créer une annonce</h2>
+              <p className="text-sm text-slate-500 mt-1">Créez et publiez directement sur Meta Ads</p>
+            </div>
+            {!summary?.meta_ads?.connected && (
+              <div className="px-4 py-2 rounded-xl border border-amber-500/20 bg-amber-500/5 text-xs text-amber-400">
+                ⚠️ Connectez Meta Ads d'abord
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* FORMULAIRE */}
+            <div className="space-y-5">
+              {/* Objectif */}
+              <div className="section-card p-5">
+                <h3 className="text-sm font-black text-slate-200 mb-4">1️⃣ Objectif de campagne</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    {id:'OUTCOME_LEADS',label:'Génération de leads',icon:'🎯'},
+                    {id:'OUTCOME_TRAFFIC',label:'Trafic vers site',icon:'🌐'},
+                    {id:'OUTCOME_AWARENESS',label:'Notoriété',icon:'📢'},
+                    {id:'OUTCOME_SALES',label:'Ventes',icon:'💰'},
+                  ].map(o=>(
+                    <button key={o.id} onClick={()=>setAdForm(p=>({...p,objective:o.id}))}
+                      className={`flex items-center gap-2 p-3 rounded-xl border text-left transition-all ${adForm.objective===o.id?'border-blue-500/40 bg-blue-500/15 text-white':'border-white/5 text-slate-500 hover:border-white/10'}`}>
+                      <span className="text-xl">{o.icon}</span>
+                      <span className="text-xs font-semibold">{o.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Audience */}
+              <div className="section-card p-5">
+                <h3 className="text-sm font-black text-slate-200 mb-4">2️⃣ Audience cible</h3>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-400 mb-1.5">Âge minimum</label>
+                      <input type="number" min="18" max="65" value={adForm.age_min}
+                        onChange={e=>setAdForm(p=>({...p,age_min:parseInt(e.target.value)}))}
+                        className="w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"/>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-400 mb-1.5">Âge maximum</label>
+                      <input type="number" min="18" max="65" value={adForm.age_max}
+                        onChange={e=>setAdForm(p=>({...p,age_max:parseInt(e.target.value)}))}
+                        className="w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"/>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">Genre</label>
+                    <div className="flex gap-2">
+                      {[{v:[],l:'Tous'},{v:[1],l:'Hommes'},{v:[2],l:'Femmes'}].map(g=>(
+                        <button key={g.l} onClick={()=>setAdForm(p=>({...p,genders:g.v}))}
+                          className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${JSON.stringify(adForm.genders)===JSON.stringify(g.v)?'border-blue-500/40 bg-blue-500/15 text-blue-300':'border-white/5 text-slate-500'}`}>
+                          {g.l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">Intérêts</label>
+                    <div className="relative">
+                      <input value={adForm.interest_search}
+                        onChange={async(e)=>{
+                          setAdForm(p=>({...p,interest_search:e.target.value}));
+                          if(e.target.value.length>=2){
+                            try{
+                              const res = await axios.get(`${API}/ads-connect/meta/interests?q=${e.target.value}`,{withCredentials:true});
+                              setInterestResults(res.data?.interests||[]);
+                            }catch{}
+                          }
+                        }}
+                        placeholder="Rechercher: nettoyage, maison, Paris..."
+                        className="w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 placeholder-slate-600 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"/>
+                      {interestResults.length>0 && (
+                        <div className="absolute top-full left-0 right-0 mt-1 rounded-xl border border-white/10 overflow-hidden z-20 max-h-40 overflow-y-auto"
+                          style={{background:'hsl(224,71%,8%)'}}>
+                          {interestResults.map(i=>(
+                            <button key={i.id} onClick={()=>{
+                              setAdForm(p=>({...p,interests:[...p.interests.filter(x=>x.id!==i.id),{id:i.id,name:i.name}],interest_search:''}));
+                              setInterestResults([]);
+                            }} className="w-full text-left px-3 py-2 hover:bg-white/5 text-xs text-slate-300 border-b border-white/5">
+                              {i.name} <span className="text-slate-600">· {(i.audience_size||0).toLocaleString('fr-FR')} pers.</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {adForm.interests.length>0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {adForm.interests.map(i=>(
+                          <span key={i.id} className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/20">
+                            {i.name}
+                            <button onClick={()=>setAdForm(p=>({...p,interests:p.interests.filter(x=>x.id!==i.id)}))} className="text-blue-400 hover:text-red-400">×</button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Contenu annonce */}
+              <div className="section-card p-5">
+                <h3 className="text-sm font-black text-slate-200 mb-4">3️⃣ Contenu de l'annonce</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">Texte principal *</label>
+                    <textarea value={adForm.primary_text}
+                      onChange={e=>setAdForm(p=>({...p,primary_text:e.target.value}))}
+                      rows={3} maxLength={125}
+                      placeholder="Votre appartement brille en 3h ! Nettoyage professionnel à Paris dès 89€. Équipe certifiée, produits écologiques. Réservez maintenant !"
+                      className="w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 placeholder-slate-600 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"/>
+                    <p className="text-[10px] text-slate-600 text-right mt-0.5">{adForm.primary_text.length}/125</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">Titre *</label>
+                    <input value={adForm.headline} onChange={e=>setAdForm(p=>({...p,headline:e.target.value}))}
+                      maxLength={40} placeholder="Nettoyage Pro Paris | -20% Aujourd'hui"
+                      className="w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 placeholder-slate-600 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"/>
+                    <p className="text-[10px] text-slate-600 text-right mt-0.5">{adForm.headline.length}/40</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">Description</label>
+                    <input value={adForm.description} onChange={e=>setAdForm(p=>({...p,description:e.target.value}))}
+                      maxLength={30} placeholder="Devis gratuit en 2 min"
+                      className="w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 placeholder-slate-600 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"/>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-400 mb-1.5">URL image</label>
+                      <input value={adForm.image_url} onChange={e=>setAdForm(p=>({...p,image_url:e.target.value}))}
+                        placeholder="https://..."
+                        className="w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 placeholder-slate-600 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"/>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-400 mb-1.5">Bouton CTA</label>
+                      <select value={adForm.cta} onChange={e=>setAdForm(p=>({...p,cta:e.target.value}))}
+                        className="w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        {[['LEARN_MORE','En savoir plus'],['GET_QUOTE','Obtenir un devis'],['BOOK_NOW','Réserver'],['CONTACT_US','Nous contacter'],['SIGN_UP','S'inscrire']].map(([v,l])=>(
+                          <option key={v} value={v} className="bg-slate-800">{l}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">URL de destination</label>
+                    <input value={adForm.link_url} onChange={e=>setAdForm(p=>({...p,link_url:e.target.value}))}
+                      className="w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"/>
+                  </div>
+                </div>
+              </div>
+
+              {/* Budget */}
+              <div className="section-card p-5">
+                <h3 className="text-sm font-black text-slate-200 mb-4">4️⃣ Budget & Planning</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">Budget quotidien (€)</label>
+                    <input type="number" min="1" value={adForm.daily_budget}
+                      onChange={e=>setAdForm(p=>({...p,daily_budget:parseFloat(e.target.value)}))}
+                      className="w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"/>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">Alerte budget (€)</label>
+                    <input type="number" min="0" value={adForm.budget_alert}
+                      onChange={e=>setAdForm(p=>({...p,budget_alert:parseFloat(e.target.value)}))}
+                      className="w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"/>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">Date début</label>
+                    <input type="date" value={adForm.start_date}
+                      onChange={e=>setAdForm(p=>({...p,start_date:e.target.value}))}
+                      className="w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"/>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">Date fin</label>
+                    <input type="date" value={adForm.end_date}
+                      onChange={e=>setAdForm(p=>({...p,end_date:e.target.value}))}
+                      className="w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"/>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">Alerte CPA max (€)</label>
+                    <input type="number" min="0" value={adForm.cpa_alert}
+                      onChange={e=>setAdForm(p=>({...p,cpa_alert:parseFloat(e.target.value)}))}
+                      className="w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"/>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">Nom campagne *</label>
+                    <input value={adForm.campaign_name}
+                      onChange={e=>setAdForm(p=>({...p,campaign_name:e.target.value}))}
+                      placeholder="Ménage Paris - Mai 2026"
+                      className="w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 placeholder-slate-600 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"/>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bouton publier */}
+              <button
+                onClick={async()=>{
+                  if(!adForm.campaign_name||!adForm.headline||!adForm.primary_text){
+                    toast.error('Remplissez le nom, titre et texte principal');return;
+                  }
+                  try{
+                    const res = await axios.post(`${API}/ads-connect/meta/campaigns/create-full`,{
+                      ...adForm,
+                      interest_ids: adForm.interests.map(i=>i.id),
+                    },{withCredentials:true});
+                    toast.success('✅ Campagne créée sur Meta Ads !');
+                    setAdForm(p=>({...p,campaign_name:'',headline:'',primary_text:'',description:''}));
+                    fetchData();
+                  }catch(err){toast.error(err.response?.data?.detail||'Erreur création');}
+                }}
+                disabled={!summary?.meta_ads?.connected}
+                className="w-full py-4 rounded-2xl font-black text-white text-sm disabled:opacity-40 transition-all"
+                style={{background:'linear-gradient(135deg,#1877f2,#0d65d9)',boxShadow:'0 4px 20px rgba(24,119,242,0.3)'}}>
+                🚀 Publier sur Meta Ads
+              </button>
+            </div>
+
+            {/* PRÉVISUALISATION */}
+            <div className="space-y-4">
+              <div className="section-card p-5 sticky top-4">
+                <h3 className="text-sm font-black text-slate-200 mb-4">👁️ Prévisualisation Facebook</h3>
+                <div className="rounded-2xl overflow-hidden border border-white/10" style={{background:'#fff'}}>
+                  {/* Header Facebook */}
+                  <div className="flex items-center gap-2 p-3" style={{background:'#fff'}}>
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-sm"
+                      style={{background:'linear-gradient(135deg,#f97316,#ea580c)'}}>GCH</div>
+                    <div>
+                      <p className="text-xs font-bold text-gray-900">Global Clean Home</p>
+                      <p className="text-[10px] text-gray-500">Sponsorisé · 🌍</p>
+                    </div>
+                  </div>
+                  {/* Texte */}
+                  <div className="px-3 pb-2" style={{background:'#fff'}}>
+                    <p className="text-xs text-gray-800 leading-relaxed">
+                      {adForm.primary_text || 'Votre texte principal apparaîtra ici...'}
+                    </p>
+                  </div>
+                  {/* Image */}
+                  <div className="w-full aspect-video flex items-center justify-center"
+                    style={{background:'#f0f2f5'}}>
+                    {adForm.image_url ? (
+                      <img src={adForm.image_url} alt="Ad preview" className="w-full h-full object-cover"
+                        onError={e=>e.target.style.display='none'}/>
+                    ) : (
+                      <div className="text-center">
+                        <p className="text-4xl mb-2">🏠</p>
+                        <p className="text-xs text-gray-400">Ajoutez une image URL</p>
+                      </div>
+                    )}
+                  </div>
+                  {/* Footer */}
+                  <div className="flex items-center justify-between p-3" style={{background:'#f0f2f5'}}>
+                    <div>
+                      <p className="text-[10px] text-gray-500 uppercase">{adForm.link_url.replace('https://','').split('/')[0]}</p>
+                      <p className="text-xs font-bold text-gray-900">{adForm.headline||'Votre titre ici'}</p>
+                      <p className="text-[10px] text-gray-500">{adForm.description}</p>
+                    </div>
+                    <div className="px-3 py-1.5 rounded text-xs font-bold text-gray-700 flex-shrink-0"
+                      style={{background:'#e4e6eb'}}>
+                      {adForm.cta==='LEARN_MORE'?'En savoir plus':adForm.cta==='GET_QUOTE'?'Devis':adForm.cta==='BOOK_NOW'?'Réserver':'Contacter'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Prévisualisation Instagram */}
+                <h3 className="text-sm font-black text-slate-200 mt-5 mb-3">👁️ Prévisualisation Instagram</h3>
+                <div className="rounded-2xl overflow-hidden border border-white/10" style={{background:'#fff'}}>
+                  <div className="flex items-center gap-2 p-3">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black"
+                      style={{background:'linear-gradient(135deg,#f97316,#ea580c)'}}>GCH</div>
+                    <p className="text-xs font-bold text-gray-900">globalcleanhome</p>
+                    <span className="ml-auto text-[10px] text-blue-500 font-semibold">Sponsorisé</span>
+                  </div>
+                  <div className="aspect-square flex items-center justify-center" style={{background:'#f0f2f5'}}>
+                    {adForm.image_url ? (
+                      <img src={adForm.image_url} alt="Ad preview" className="w-full h-full object-cover"/>
+                    ) : (
+                      <div className="text-center"><p className="text-5xl">🏠</p></div>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <p className="text-xs font-bold text-gray-900">globalcleanhome <span className="font-normal text-gray-700">{adForm.primary_text?.slice(0,60)||'Texte principal...'}{adForm.primary_text?.length>60?'...':''}</span></p>
+                    <p className="text-[10px] text-blue-500 font-semibold mt-1">
+                      {adForm.cta==='LEARN_MORE'?'En savoir plus':adForm.cta==='GET_QUOTE'?'Obtenir un devis':adForm.cta==='BOOK_NOW'?'Réserver':'Contacter'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Estimation audience */}
+                <div className="mt-4 p-4 rounded-2xl border border-white/5 bg-white/2">
+                  <p className="text-xs font-bold text-slate-300 mb-2">📊 Estimation portée</p>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div>
+                      <p className="text-sm font-black text-blue-400" style={{fontFamily:'Manrope,sans-serif'}}>
+                        {(adForm.daily_budget * 100 * (adForm.interests.length>0?0.8:1)).toFixed(0)}
+                      </p>
+                      <p className="text-[10px] text-slate-600">Reach/jour</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-emerald-400" style={{fontFamily:'Manrope,sans-serif'}}>
+                        {(adForm.daily_budget * 3).toFixed(0)}
+                      </p>
+                      <p className="text-[10px] text-slate-600">Clics/jour</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-orange-400" style={{fontFamily:'Manrope,sans-serif'}}>
+                        {adForm.daily_budget > 0 ? Math.round(adForm.daily_budget * 0.15) : 0}
+                      </p>
+                      <p className="text-[10px] text-slate-600">Leads/jour</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── A/B TEST ── */}
+      {activeTab==='abtest' && (
+        <div className="space-y-5">
+          <div>
+            <h2 className="text-xl font-black text-slate-100">🧪 A/B Testing</h2>
+            <p className="text-sm text-slate-500 mt-1">Comparez 2 versions de votre annonce pour optimiser les performances</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* Version A */}
+            <div className="section-card p-5" style={{borderTop:'3px solid #10b981'}}>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center font-black text-emerald-400">A</div>
+                <h3 className="text-sm font-black text-slate-200">Version A (Contrôle)</h3>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Titre A</label>
+                  <input value={adForm.headline} onChange={e=>setAdForm(p=>({...p,headline:e.target.value}))}
+                    placeholder="Nettoyage Pro Paris | -20% Aujourd'hui"
+                    className="w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 placeholder-slate-600 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"/>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Texte A</label>
+                  <textarea value={adForm.primary_text} onChange={e=>setAdForm(p=>({...p,primary_text:e.target.value}))}
+                    rows={3} placeholder="Version A du texte principal..."
+                    className="w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 placeholder-slate-600 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none"/>
+                </div>
+                {/* Préview A */}
+                <div className="rounded-xl p-3 border border-emerald-500/20 bg-emerald-500/5">
+                  <p className="text-xs font-bold text-emerald-300 mb-1">{adForm.headline||'Titre A'}</p>
+                  <p className="text-[11px] text-slate-400">{adForm.primary_text?.slice(0,80)||'Texte A...'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Version B */}
+            <div className="section-card p-5" style={{borderTop:'3px solid #f97316'}}>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-xl bg-orange-500/20 border border-orange-500/30 flex items-center justify-center font-black text-orange-400">B</div>
+                <h3 className="text-sm font-black text-slate-200">Version B (Variante)</h3>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Titre B</label>
+                  <input value={adForm.headline_b} onChange={e=>setAdForm(p=>({...p,headline_b:e.target.value}))}
+                    placeholder="Appartement impeccable en 3h ✨"
+                    className="w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 placeholder-slate-600 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"/>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Texte B</label>
+                  <textarea value={adForm.primary_text_b} onChange={e=>setAdForm(p=>({...p,primary_text_b:e.target.value}))}
+                    rows={3} placeholder="Version B du texte principal..."
+                    className="w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 placeholder-slate-600 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 resize-none"/>
+                </div>
+                {/* Préview B */}
+                <div className="rounded-xl p-3 border border-orange-500/20 bg-orange-500/5">
+                  <p className="text-xs font-bold text-orange-300 mb-1">{adForm.headline_b||'Titre B'}</p>
+                  <p className="text-[11px] text-slate-400">{adForm.primary_text_b?.slice(0,80)||'Texte B...'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Résultats A/B (si campagnes Meta) */}
+          {metaCampaigns.length > 0 && (
+            <div className="section-card p-5">
+              <h3 className="text-sm font-black text-slate-200 mb-4">📊 Résultats comparatifs</h3>
+              <div className="grid grid-cols-2 gap-4">
+                {metaCampaigns.slice(0,2).map((c,i)=>{
+                  const isWinner = i===0 ? metaCampaigns[0]?.ctr >= (metaCampaigns[1]?.ctr||0) : metaCampaigns[1]?.ctr > (metaCampaigns[0]?.ctr||0);
+                  return (
+                    <div key={c.campaign_id} className={`p-4 rounded-2xl border ${isWinner?'border-emerald-500/30 bg-emerald-500/5':'border-white/5 bg-white/2'}`}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-black text-sm ${isWinner?'bg-emerald-500/20 text-emerald-400':'bg-white/10 text-slate-400'}`}>
+                          {['A','B'][i]}
+                        </div>
+                        <p className="text-sm font-bold text-slate-200 truncate">{c.name}</p>
+                        {isWinner && <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 ml-auto">🏆 Gagnant</span>}
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          {l:'CTR',v:`${c.ctr}%`,color:isWinner?'#10b981':'#64748b'},
+                          {l:'CPC',v:`${c.avg_cpc}€`,color:'#60a5fa'},
+                          {l:'Conv.',v:c.conversions,color:'#f97316'},
+                        ].map(m=>(
+                          <div key={m.l} className="text-center">
+                            <p className="text-sm font-black" style={{color:m.color,fontFamily:'Manrope,sans-serif'}}>{m.v}</p>
+                            <p className="text-[9px] text-slate-600">{m.l}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {metaCampaigns.length >= 2 && (
+                <div className="mt-4 p-3 rounded-xl border border-violet-500/20 bg-violet-500/5">
+                  <p className="text-xs font-bold text-violet-300">🤖 Recommandation IA</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {metaCampaigns[0]?.ctr >= (metaCampaigns[1]?.ctr||0)
+                      ? `La version A "${metaCampaigns[0]?.name}" performe mieux avec un CTR de ${metaCampaigns[0]?.ctr}% vs ${metaCampaigns[1]?.ctr}%. Continuez avec cette version et augmentez le budget.`
+                      : `La version B "${metaCampaigns[1]?.name}" performe mieux avec un CTR de ${metaCampaigns[1]?.ctr}% vs ${metaCampaigns[0]?.ctr}%. Considérez de stopper la version A.`
+                    }
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <button
+            onClick={async()=>{
+              if(!adForm.campaign_name||!adForm.headline||!adForm.headline_b){
+                toast.error('Remplissez le nom et les deux titres'); return;
+              }
+              try{
+                // Créer version A
+                await axios.post(`${API}/ads-connect/meta/campaigns/create-full`,{
+                  ...adForm, campaign_name:`${adForm.campaign_name} - Version A`, ab_test:true
+                },{withCredentials:true});
+                // Créer version B
+                await axios.post(`${API}/ads-connect/meta/campaigns/create-full`,{
+                  ...adForm, campaign_name:`${adForm.campaign_name} - Version B`,
+                  headline: adForm.headline_b, primary_text: adForm.primary_text_b, ab_test:true
+                },{withCredentials:true});
+                toast.success('✅ A/B Test créé sur Meta Ads !');
+                fetchData();
+              }catch(err){toast.error(err.response?.data?.detail||'Erreur');}
+            }}
+            disabled={!summary?.meta_ads?.connected}
+            className="w-full py-4 rounded-2xl font-black text-white text-sm disabled:opacity-40"
+            style={{background:'linear-gradient(135deg,#7c3aed,#4f46e5)'}}>
+            🧪 Lancer le A/B Test sur Meta Ads
+          </button>
+        </div>
+      )}
+
+      {/* ── ALERTES ── */}
+      {activeTab==='alertes' && (
+        <div className="space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-black text-slate-100">🔔 Alertes performance</h2>
+              <p className="text-sm text-slate-500 mt-1">{alerts.length} alerte(s) active(s)</p>
+            </div>
+            <button onClick={fetchData} className="p-2 rounded-xl bg-white/5 border border-white/5 text-slate-400">
+              <RefreshCw className="w-4 h-4"/>
+            </button>
+          </div>
+
+          {alerts.length === 0 ? (
+            <div className="section-card p-10 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-8 h-8 text-emerald-400"/>
+              </div>
+              <p className="text-lg font-black text-slate-200 mb-2">Tout va bien ! 🎉</p>
+              <p className="text-sm text-slate-500">Aucune alerte de budget ou de performance pour le moment.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {alerts.map((alert,i)=>(
+                <div key={i} className={`section-card p-5 border-l-4 ${alert.severity==='high'?'border-red-500':'border-amber-500'}`}>
+                  <div className="flex items-start gap-3">
+                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 ${alert.severity==='high'?'bg-red-500/15 border border-red-500/20':'bg-amber-500/15 border border-amber-500/20'}`}>
+                      <AlertTriangle className={`w-5 h-5 ${alert.severity==='high'?'text-red-400':'text-amber-400'}`}/>
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-sm font-black text-slate-100">{alert.campaign}</p>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${alert.severity==='high'?'bg-red-500/15 text-red-400':'bg-amber-500/15 text-amber-400'}`}>
+                          {alert.type==='budget'?'💰 Budget':'📊 CPA'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400">{alert.message}</p>
+                      <div className="flex items-center gap-4 mt-2">
+                        <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full" style={{
+                            width:`${Math.min((alert.value/alert.threshold)*100,100)}%`,
+                            background:alert.severity==='high'?'#f43f5e':'#f59e0b'
+                          }}/>
+                        </div>
+                        <span className="text-xs font-bold" style={{color:alert.severity==='high'?'#f43f5e':'#f59e0b'}}>
+                          {((alert.value/alert.threshold)*100).toFixed(0)}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Config alertes */}
+          <div className="section-card p-5">
+            <h3 className="text-sm font-black text-slate-200 mb-4">⚙️ Configurer les alertes</h3>
+            <div className="space-y-3">
+              {[
+                {label:'Alerte budget journalier (€)', key:'budget_alert', placeholder:'50'},
+                {label:'Alerte CPA maximum (€)', key:'cpa_alert', placeholder:'30'},
+              ].map(f=>(
+                <div key={f.key} className="flex items-center gap-3">
+                  <label className="text-xs text-slate-400 w-48 flex-shrink-0">{f.label}</label>
+                  <input type="number" min="0" value={adForm[f.key]}
+                    onChange={e=>setAdForm(p=>({...p,[f.key]:parseFloat(e.target.value)}))}
+                    placeholder={f.placeholder}
+                    className="flex-1 px-3 py-2 bg-white/5 border border-white/10 text-slate-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-violet-500"/>
+                </div>
+              ))}
+              <p className="text-xs text-slate-600">Ces seuils s'appliquent aux nouvelles campagnes créées depuis le CRM.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── RAPPORT ── */}
+      {activeTab==='rapport' && (
+        <div className="space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-black text-slate-100">📈 Rapport hebdomadaire</h2>
+              <p className="text-sm text-slate-500 mt-1">7 derniers jours · Toutes plateformes</p>
+            </div>
+            <button onClick={fetchData} className="p-2 rounded-xl bg-white/5 border border-white/5 text-slate-400">
+              <RefreshCw className="w-4 h-4"/>
+            </button>
+          </div>
+
+          {weeklyReport ? (
+            <>
+              {/* KPIs hebdo */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  {l:'Budget dépensé', v:`${weeklyReport.summary?.total_spend?.toFixed(2)||0} €`, color:'#4285f4', icon:DollarSign},
+                  {l:'Clics totaux', v:(weeklyReport.summary?.total_clicks||0).toLocaleString(), color:'#10b981', icon:MousePointer},
+                  {l:'Conversions', v:weeklyReport.summary?.total_conversions||0, color:'#f97316', icon:Target},
+                  {l:'ROAS estimé', v:weeklyReport.summary?.total_spend>0?`×${((weeklyReport.summary?.total_conversions||0)*50/(weeklyReport.summary?.total_spend||1)).toFixed(1)}`:'—', color:'#8b5cf6', icon:TrendingUp},
+                ].map(k=>(
+                  <div key={k.l} className="section-card p-5">
+                    <div className="w-9 h-9 rounded-xl mb-3 flex items-center justify-center" style={{background:`${k.color}20`,border:`1px solid ${k.color}30`}}>
+                      <k.icon className="w-4 h-4" style={{color:k.color}}/>
+                    </div>
+                    <p className="text-xl font-black text-slate-100 mb-1" style={{fontFamily:'Manrope,sans-serif'}}>{k.v}</p>
+                    <p className="text-xs text-slate-500 font-semibold">{k.l}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Meta détails */}
+              {weeklyReport.meta?.impressions > 0 && (
+                <div className="section-card p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-xl">📘</span>
+                    <h3 className="text-sm font-black text-slate-200">Facebook Ads — 7 jours</h3>
+                  </div>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    {[
+                      {l:'Impressions', v:(weeklyReport.meta.impressions||0).toLocaleString(), c:'#1877f2'},
+                      {l:'Portée', v:(weeklyReport.meta.reach||0).toLocaleString(), c:'#a78bfa'},
+                      {l:'Clics', v:(weeklyReport.meta.clicks||0).toLocaleString(), c:'#10b981'},
+                      {l:'Dépensé', v:`${(weeklyReport.meta.spend||0).toFixed(2)} €`, c:'#f97316'},
+                      {l:'CTR', v:`${(weeklyReport.meta.ctr||0).toFixed(2)}%`, c:'#f59e0b'},
+                      {l:'CPC', v:`${(weeklyReport.meta.cpc||0).toFixed(2)} €`, c:'#60a5fa'},
+                      {l:'Conversions', v:weeklyReport.meta.conversions||0, c:'#34d399'},
+                      {l:'CPA', v:`${(weeklyReport.meta.cpa||0).toFixed(2)} €`, c:'#f43f5e'},
+                    ].map(m=>(
+                      <div key={m.l} className="p-3 rounded-xl text-center" style={{background:`${m.c}10`}}>
+                        <p className="text-lg font-black" style={{color:m.c,fontFamily:'Manrope,sans-serif'}}>{m.v}</p>
+                        <p className="text-[10px] text-slate-600 font-semibold">{m.l}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Recommandations */}
+              <div className="section-card p-5">
+                <h3 className="text-sm font-black text-slate-200 mb-4">🤖 Recommandations automatiques</h3>
+                <div className="space-y-2">
+                  {[
+                    weeklyReport.meta?.ctr < 2 && {icon:'⚠️', color:'#f59e0b', text:'CTR faible (< 2%). Testez de nouveaux visuels et textes plus accrocheurs.'},
+                    weeklyReport.meta?.cpa > 50 && {icon:'💸', color:'#f43f5e', text:`CPA élevé (${weeklyReport.meta.cpa.toFixed(0)}€). Affinez votre ciblage ou réduisez le budget.`},
+                    weeklyReport.meta?.ctr >= 3 && {icon:'🎉', color:'#10b981', text:'Excellent CTR ! Augmentez le budget de cette campagne pour scaler.'},
+                    weeklyReport.summary?.total_conversions === 0 && {icon:'❌', color:'#f43f5e', text:'Aucune conversion cette semaine. Vérifiez votre pixel Facebook et votre page de destination.'},
+                    weeklyReport.summary?.total_conversions > 5 && {icon:'🚀', color:'#8b5cf6', text:`Bonne performance ! ${weeklyReport.summary.total_conversions} conversions cette semaine. Continuez sur cette lancée.`},
+                  ].filter(Boolean).map((r,i)=>r&&(
+                    <div key={i} className="flex items-start gap-3 p-3 rounded-xl border border-white/5 bg-white/2">
+                      <span className="text-lg flex-shrink-0">{r.icon}</span>
+                      <p className="text-xs text-slate-400 leading-relaxed">{r.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Envoyer rapport par email */}
+              <button onClick={async()=>{
+                try{
+                  await axios.post(`${API}/gmail/send`,{
+                    to:'info@globalcleanhome.com',
+                    subject:`Rapport publicités hebdomadaire — Global Clean Home`,
+                    html:`<h2>Rapport publicités — 7 derniers jours</h2>
+                    <p><strong>Budget total :</strong> ${weeklyReport.summary?.total_spend?.toFixed(2)||0} €</p>
+                    <p><strong>Clics :</strong> ${weeklyReport.summary?.total_clicks||0}</p>
+                    <p><strong>Conversions :</strong> ${weeklyReport.summary?.total_conversions||0}</p>
+                    <p><strong>CTR Meta :</strong> ${weeklyReport.meta?.ctr?.toFixed(2)||0}%</p>
+                    <p><strong>CPA Meta :</strong> ${weeklyReport.meta?.cpa?.toFixed(2)||0}€</p>`,
+                  },{withCredentials:true});
+                  toast.success('📧 Rapport envoyé par email !');
+                }catch{toast.error('Erreur envoi email');}
+              }}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-white text-sm"
+                style={{background:'linear-gradient(135deg,#10b981,#059669)'}}>
+                📧 Envoyer le rapport par email
+              </button>
+            </>
+          ) : (
+            <div className="section-card p-10 text-center">
+              <RefreshCw className="w-12 h-12 text-slate-700 mx-auto mb-3 animate-spin"/>
+              <p className="text-slate-500">Chargement du rapport...</p>
             </div>
           )}
         </div>

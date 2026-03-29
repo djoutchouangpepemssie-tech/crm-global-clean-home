@@ -170,3 +170,236 @@ async def get_meta_campaigns():
 async def meta_disconnect():
     await _db.meta_tokens.delete_many({"account_id": META_AD_ACCOUNT_ID})
     return {"success": True}
+
+
+# ── CRÉER CAMPAGNE META COMPLÈTE ──
+@ads_connect_router.post("/meta/campaigns/create-full")
+async def create_full_meta_campaign(request: Request):
+    """Créer une campagne Meta complète avec adset et annonce."""
+    token_doc = await _db.meta_tokens.find_one({"account_id": META_AD_ACCOUNT_ID}, {"_id":0})
+    if not token_doc:
+        raise HTTPException(status_code=401, detail="Meta Ads non connecté")
+    
+    body = await request.json()
+    token = token_doc["access_token"]
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            # 1. Créer la campagne
+            camp_res = await client.post(
+                f"https://graph.facebook.com/v19.0/{META_AD_ACCOUNT_ID}/campaigns",
+                params={"access_token": token},
+                json={
+                    "name": body.get("campaign_name"),
+                    "objective": body.get("objective", "OUTCOME_LEADS"),
+                    "status": body.get("status", "PAUSED"),
+                    "special_ad_categories": [],
+                },
+                timeout=15
+            )
+            if camp_res.status_code not in [200, 201]:
+                raise HTTPException(status_code=400, detail=f"Erreur campagne: {camp_res.text[:200]}")
+            
+            campaign_id = camp_res.json().get("id")
+            
+            # 2. Créer l'adset (ensemble de publicités)
+            targeting = {
+                "geo_locations": {"countries": ["FR"], "cities": body.get("cities", [{"key": "542609", "name": "Paris", "region": "Île-de-France", "country": "FR"}])},
+                "age_min": body.get("age_min", 25),
+                "age_max": body.get("age_max", 65),
+                "genders": body.get("genders", []),
+                "interests": [{"id": i} for i in body.get("interest_ids", [])],
+            }
+            
+            adset_res = await client.post(
+                f"https://graph.facebook.com/v19.0/{META_AD_ACCOUNT_ID}/adsets",
+                params={"access_token": token},
+                json={
+                    "name": body.get("adset_name", f"{body.get('campaign_name')} - Ensemble"),
+                    "campaign_id": campaign_id,
+                    "billing_event": "IMPRESSIONS",
+                    "optimization_goal": body.get("optimization_goal", "LEAD_GENERATION"),
+                    "bid_strategy": "LOWEST_COST_WITHOUT_CAP",
+                    "daily_budget": int(float(body.get("daily_budget", 10)) * 100),
+                    "targeting": targeting,
+                    "start_time": body.get("start_date"),
+                    "end_time": body.get("end_date"),
+                    "status": "PAUSED",
+                },
+                timeout=15
+            )
+            
+            adset_id = adset_res.json().get("id") if adset_res.status_code in [200,201] else None
+            
+            # 3. Sauvegarder en DB
+            await _db.meta_campaigns_full.insert_one({
+                "campaign_id": campaign_id,
+                "adset_id": adset_id,
+                "name": body.get("campaign_name"),
+                "objective": body.get("objective"),
+                "daily_budget": body.get("daily_budget"),
+                "budget_alert": body.get("budget_alert", 0),
+                "cpa_alert": body.get("cpa_alert", 0),
+                "ab_test": body.get("ab_test", False),
+                "ad_creative": body.get("creative", {}),
+                "targeting": targeting,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "status": "PAUSED",
+            })
+            
+            return {
+                "success": True,
+                "campaign_id": campaign_id,
+                "adset_id": adset_id,
+                "message": "Campagne créée avec succès (en pause)"
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── ALERTES BUDGET ──
+@ads_connect_router.get("/alerts")
+async def get_alerts():
+    """Récupérer les alertes de budget et performance."""
+    alerts = []
+    token_doc = await _db.meta_tokens.find_one({"account_id": META_AD_ACCOUNT_ID}, {"_id":0})
+    
+    if token_doc:
+        campaigns = await _db.meta_campaigns_full.find({}, {"_id":0}).to_list(100)
+        for camp in campaigns:
+            try:
+                async with httpx.AsyncClient() as client:
+                    res = await client.get(
+                        f"https://graph.facebook.com/v19.0/{camp['campaign_id']}/insights",
+                        params={
+                            "access_token": token_doc["access_token"],
+                            "fields": "spend,cpa,impressions,clicks",
+                            "date_preset": "today",
+                        },
+                        timeout=10
+                    )
+                    if res.status_code == 200:
+                        data = res.json().get("data", [{}])
+                        if data:
+                            spend = float(data[0].get("spend", 0))
+                            cpa = float(data[0].get("cpa", 0))
+                            
+                            if camp.get("budget_alert") and spend >= float(camp["budget_alert"]):
+                                alerts.append({
+                                    "type": "budget",
+                                    "severity": "high",
+                                    "campaign": camp["name"],
+                                    "message": f"Budget alerte atteint ! Dépenses aujourd'hui : {spend:.2f}€ / Alerte : {camp['budget_alert']}€",
+                                    "value": spend,
+                                    "threshold": camp["budget_alert"],
+                                })
+                            
+                            if camp.get("cpa_alert") and cpa > float(camp["cpa_alert"]) and cpa > 0:
+                                alerts.append({
+                                    "type": "cpa",
+                                    "severity": "medium",
+                                    "campaign": camp["name"],
+                                    "message": f"CPA trop élevé : {cpa:.2f}€ / Alerte : {camp['cpa_alert']}€",
+                                    "value": cpa,
+                                    "threshold": camp["cpa_alert"],
+                                })
+            except:
+                pass
+    
+    # Alertes manuelles depuis les campagnes DB
+    manual_camps = await _db.ad_campaigns.find({}, {"_id":0}).to_list(100)
+    for camp in manual_camps:
+        if camp.get("budget_alert") and float(camp.get("cost",0)) >= float(camp["budget_alert"]):
+            alerts.append({
+                "type": "budget",
+                "severity": "high",
+                "campaign": camp.get("name",""),
+                "message": f"Budget dépassé : {camp.get('cost',0)}€ / Alerte : {camp['budget_alert']}€",
+                "value": float(camp.get("cost",0)),
+                "threshold": float(camp["budget_alert"]),
+            })
+    
+    return {"alerts": alerts, "count": len(alerts)}
+
+
+# ── RAPPORT PERFORMANCE ──
+@ads_connect_router.get("/report/weekly")
+async def get_weekly_report():
+    """Générer un rapport de performance hebdomadaire."""
+    token_doc = await _db.meta_tokens.find_one({"account_id": META_AD_ACCOUNT_ID}, {"_id":0})
+    report = {
+        "period": "7 derniers jours",
+        "meta": {},
+        "google": {},
+        "summary": {},
+    }
+    
+    if token_doc:
+        try:
+            async with httpx.AsyncClient() as client:
+                res = await client.get(
+                    f"https://graph.facebook.com/v19.0/{META_AD_ACCOUNT_ID}/insights",
+                    params={
+                        "access_token": token_doc["access_token"],
+                        "fields": "impressions,clicks,spend,actions,ctr,cpc,reach",
+                        "date_preset": "last_7d",
+                        "level": "account",
+                    },
+                    timeout=15
+                )
+                if res.status_code == 200:
+                    data = res.json().get("data", [{}])
+                    if data:
+                        d = data[0]
+                        actions = d.get("actions", [])
+                        conversions = sum(int(a.get("value",0)) for a in actions if a.get("action_type") in ["lead","purchase"])
+                        report["meta"] = {
+                            "impressions": int(d.get("impressions",0)),
+                            "clicks": int(d.get("clicks",0)),
+                            "spend": float(d.get("spend",0)),
+                            "ctr": float(d.get("ctr",0)),
+                            "cpc": float(d.get("cpc",0)),
+                            "reach": int(d.get("reach",0)),
+                            "conversions": conversions,
+                            "cpa": float(d.get("spend",0))/max(conversions,1),
+                        }
+        except Exception as e:
+            logger.warning(f"Weekly report Meta error: {e}")
+    
+    # Summary global
+    report["summary"] = {
+        "total_spend": report["meta"].get("spend",0) + report["google"].get("spend",0),
+        "total_conversions": report["meta"].get("conversions",0) + report["google"].get("conversions",0),
+        "total_clicks": report["meta"].get("clicks",0) + report["google"].get("clicks",0),
+    }
+    
+    return report
+
+
+# ── INTERESTS META (pour ciblage) ──
+@ads_connect_router.get("/meta/interests")
+async def search_interests(q: str = "nettoyage"):
+    """Rechercher des intérêts Meta pour le ciblage."""
+    token_doc = await _db.meta_tokens.find_one({"account_id": META_AD_ACCOUNT_ID}, {"_id":0})
+    if not token_doc:
+        return {"interests": []}
+    try:
+        async with httpx.AsyncClient() as client:
+            res = await client.get(
+                "https://graph.facebook.com/v19.0/search",
+                params={
+                    "access_token": token_doc["access_token"],
+                    "type": "adinterest",
+                    "q": q,
+                    "limit": 10,
+                    "locale": "fr_FR",
+                },
+                timeout=10
+            )
+            if res.status_code == 200:
+                return {"interests": res.json().get("data", [])}
+    except:
+        pass
+    return {"interests": []}
