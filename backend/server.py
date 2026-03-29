@@ -1828,8 +1828,7 @@ async def startup_db_indexes():
                     logger.info(f"Sync Gmail auto: {synced} emails synchronises")
                 
                 # 2. Envoyer les relances 48h
-                from gmail_service import check_followups_auto
-                await check_followups_auto()
+                pass  # check_followups_auto deprecated
                 
             except Exception as e:
                 logger.warning(f"Erreur taches auto: {e}")
