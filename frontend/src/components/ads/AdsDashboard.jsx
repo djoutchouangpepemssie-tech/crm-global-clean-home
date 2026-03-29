@@ -17,6 +17,7 @@ import BACKEND_URL from '../../config.js';
 const API = BACKEND_URL + '/api';
 
 const COLORS = ['#4285f4','#1877f2','#e1306c','#10b981','#f59e0b','#8b5cf6'];
+const META_AD_ACCOUNT_ID = 'act_1456980709277771';
 
 const PLATFORMS = [
   {id:'google_ads',   label:'Google Ads',   color:'#4285f4', icon:'🔍', bg:'rgba(66,133,244,0.1)'},
@@ -498,64 +499,110 @@ const AdsDashboard = () => {
 
       {/* ── META ADS ── */}
       {activeTab==='meta' && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           {!summary?.meta_ads?.connected ? (
             <div className="section-card p-8 text-center">
               <p className="text-4xl mb-4">📘</p>
               <p className="text-lg font-black text-slate-200 mb-2">Meta Ads non connecté</p>
-              <p className="text-sm text-slate-500 mb-4">Connectez votre compte Meta Ads pour voir vos campagnes.</p>
-              <button onClick={()=>setActiveTab('connexions')}
-                className="px-5 py-2.5 rounded-xl text-sm font-bold text-white"
-                style={{background:'linear-gradient(135deg,#1877f2,#0d65d9)'}}>
-                Connecter Meta Ads →
-              </button>
-            </div>
-          ) : metaCampaigns.length === 0 ? (
-            <div className="section-card p-8 text-center">
-              <p className="text-slate-500 mb-4">Aucune campagne Meta Ads trouvée</p>
-              <button onClick={()=>{setForm(p=>({...p,platform:'facebook_ads'}));setShowForm(true);}}
-                className="px-4 py-2 rounded-xl text-sm font-bold text-white"
-                style={{background:'linear-gradient(135deg,#1877f2,#0d65d9)'}}>
-                + Créer une campagne
-              </button>
+              <button onClick={()=>setActiveTab('connexions')} className="px-5 py-2.5 rounded-xl text-sm font-bold text-white" style={{background:'linear-gradient(135deg,#1877f2,#0d65d9)'}}>Connecter →</button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {metaCampaigns.map(c=>(
-                <div key={c.campaign_id} className="section-card p-5"
-                  style={{borderLeft:'3px solid #1877f2'}}>
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">📘</span>
-                      <div>
-                        <p className="font-black text-slate-100 text-sm">{c.name}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <StatusBadge status={c.status}/>
-                          {c.objective && <span className="text-[10px] text-slate-600 capitalize">{c.objective.toLowerCase().replace('_',' ')}</span>}
-                        </div>
-                      </div>
+            <>
+              {/* KPIs Meta */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  {l:'Budget dépensé', v:`${metaCampaigns.reduce((s,c)=>s+c.cost,0).toFixed(2)} €`, color:'#1877f2', icon:DollarSign},
+                  {l:'Clics totaux',   v:metaCampaigns.reduce((s,c)=>s+c.clicks,0).toLocaleString(), color:'#10b981', icon:MousePointer},
+                  {l:'Impressions',    v:metaCampaigns.reduce((s,c)=>s+c.impressions,0).toLocaleString(), color:'#a78bfa', icon:Eye},
+                  {l:'Conversions',   v:metaCampaigns.reduce((s,c)=>s+c.conversions,0), color:'#f97316', icon:Target},
+                  {l:'CTR moyen',     v:`${metaCampaigns.length>0?(metaCampaigns.reduce((s,c)=>s+c.ctr,0)/metaCampaigns.length).toFixed(2):0}%`, color:'#f59e0b', icon:TrendingUp},
+                  {l:'CPC moyen',     v:`${metaCampaigns.length>0?(metaCampaigns.reduce((s,c)=>s+c.avg_cpc,0)/metaCampaigns.length).toFixed(2):0} €`, color:'#34d399', icon:Zap},
+                  {l:'CPA moyen',     v:metaCampaigns.reduce((s,c)=>s+c.conversions,0)>0?`${(metaCampaigns.reduce((s,c)=>s+c.cost,0)/metaCampaigns.reduce((s,c)=>s+c.conversions,0)).toFixed(2)} €`:'—', color:'#f43f5e', icon:Target},
+                  {l:'Campagnes',     v:metaCampaigns.length, color:'#60a5fa', icon:BarChart2},
+                ].map(k=>(
+                  <div key={k.l} className="section-card p-4">
+                    <div className="w-8 h-8 rounded-xl mb-2 flex items-center justify-center" style={{background:`${k.color}20`,border:`1px solid ${k.color}30`}}>
+                      <k.icon className="w-4 h-4" style={{color:k.color}}/>
                     </div>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">API</span>
+                    <p className="text-lg font-black text-slate-100 mb-0.5" style={{fontFamily:'Manrope,sans-serif'}}>{k.v}</p>
+                    <p className="text-[10px] text-slate-500 font-semibold">{k.l}</p>
                   </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[
-                      {l:'Budget',v:`${c.cost} €`,c:'#1877f2'},
-                      {l:'Clics',v:parseInt(c.clicks).toLocaleString(),c:'#10b981'},
-                      {l:'Conv.',v:c.conversions,c:'#f97316'},
-                      {l:'CTR',v:`${c.ctr}%`,c:'#a78bfa'},
-                    ].map(m=>(
-                      <div key={m.l} className="text-center p-2 rounded-xl" style={{background:`${m.c}10`}}>
-                        <p className="text-sm font-black" style={{color:m.c,fontFamily:'Manrope,sans-serif'}}>{m.v}</p>
-                        <p className="text-[9px] text-slate-600">{m.l}</p>
-                      </div>
-                    ))}
-                  </div>
-                  {c.daily_budget > 0 && (
-                    <p className="text-xs text-slate-500 mt-2">Budget quotidien : {c.daily_budget} €</p>
-                  )}
+                ))}
+              </div>
+
+              {/* Campagnes */}
+              <div className="section-card p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-black text-slate-200">Campagnes Meta ({metaCampaigns.length})</h3>
+                  <button onClick={()=>{setForm(p=>({...p,platform:'facebook_ads'}));setShowForm(true);}}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white"
+                    style={{background:'linear-gradient(135deg,#1877f2,#0d65d9)'}}>
+                    <Plus className="w-3.5 h-3.5"/> Nouvelle campagne
+                  </button>
                 </div>
-              ))}
-            </div>
+                {metaCampaigns.length === 0 ? (
+                  <p className="text-slate-500 text-sm text-center py-8">Aucune campagne trouvée</p>
+                ) : (
+                  <div className="space-y-3">
+                    {metaCampaigns.map(c=>{
+                      const cpa = c.conversions > 0 ? (c.cost/c.conversions).toFixed(2) : '—';
+                      const roas = c.cost > 0 ? (c.conversions * 50 / c.cost).toFixed(1) : '—';
+                      return (
+                        <div key={c.campaign_id} className="p-4 rounded-2xl border border-white/5 bg-white/2 hover:bg-white/3 transition-all"
+                          style={{borderLeft:'3px solid #1877f2'}}>
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">📘</span>
+                              <div>
+                                <p className="font-black text-slate-100 text-sm">{c.name}</p>
+                                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                  <StatusBadge status={c.status}/>
+                                  {c.objective && <span className="text-[10px] text-slate-600">{c.objective.replace('OUTCOME_','').toLowerCase()}</span>}
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400">API Live</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-4 lg:grid-cols-7 gap-2">
+                            {[
+                              {l:'Dépensé',    v:`${c.cost} €`,                      color:'#1877f2'},
+                              {l:'Impressions',v:c.impressions.toLocaleString(),      color:'#a78bfa'},
+                              {l:'Clics',      v:c.clicks.toLocaleString(),           color:'#10b981'},
+                              {l:'CTR',        v:`${c.ctr}%`,                         color:'#f59e0b'},
+                              {l:'CPC',        v:`${c.avg_cpc} €`,                    color:'#60a5fa'},
+                              {l:'Conv.',      v:c.conversions,                       color:'#f97316'},
+                              {l:'CPA',        v:`${cpa}${cpa!=='—'?' €':''}`, color:'#f43f5e'},
+                            ].map(m=>(
+                              <div key={m.l} className="text-center p-2 rounded-xl" style={{background:`${m.color}10`}}>
+                                <p className="text-xs font-black" style={{color:m.color,fontFamily:'Manrope,sans-serif'}}>{m.v}</p>
+                                <p className="text-[9px] text-slate-600">{m.l}</p>
+                              </div>
+                            ))}
+                          </div>
+                          {/* Barre performance */}
+                          <div className="mt-3 flex items-center gap-2">
+                            <span className="text-[10px] text-slate-500 w-16">Performance</span>
+                            <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                              <div className="h-full rounded-full" style={{
+                                width:`${Math.min(c.ctr*10,100)}%`,
+                                background:'linear-gradient(90deg,#1877f2,#10b981)'
+                              }}/>
+                            </div>
+                            <span className="text-[10px] text-slate-500">CTR {c.ctr}%</span>
+                          </div>
+                          {/* Lien Meta */}
+                          <a href={`https://business.facebook.com/adsmanager/manage/campaigns?act=${META_AD_ACCOUNT_ID?.replace('act_','')}`}
+                            target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 mt-2 transition-colors">
+                            <ExternalLink className="w-3 h-3"/> Voir dans Meta Ads Manager
+                          </a>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -642,18 +689,30 @@ const AdsDashboard = () => {
             </div>
             <form onSubmit={handleSaveCampaign} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1.5">Plateforme</label>
+                <label className="block text-xs font-semibold text-slate-400 mb-1.5">Plateforme *</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {PLATFORMS.slice(0,4).map(p=>(
+                  {PLATFORMS.map(p=>(
                     <button key={p.id} type="button" onClick={()=>setForm(f=>({...f,platform:p.id}))}
                       className={`flex items-center gap-2 p-3 rounded-xl border transition-all text-left ${form.platform===p.id?'text-white':'text-slate-500 border-white/5 hover:border-white/10'}`}
                       style={form.platform===p.id?{borderColor:`${p.color}40`,background:`${p.color}15`}:{}}>
                       <span className="text-lg">{p.icon}</span>
-                      <span className="text-xs font-bold">{p.label}</span>
+                      <div>
+                        <p className="text-xs font-bold">{p.label}</p>
+                        {p.id==='facebook_ads'&&summary?.meta_ads?.connected&&<p className="text-[9px] text-emerald-400">✅ Connecté</p>}
+                        {p.id==='google_ads'&&!summary?.google_ads?.needs_developer_token&&<p className="text-[9px] text-emerald-400">✅ Connecté</p>}
+                      </div>
                     </button>
                   ))}
                 </div>
               </div>
+              
+              {/* Info campagne Meta */}
+              {form.platform==='facebook_ads'&&summary?.meta_ads?.connected&&(
+                <div className="p-3 rounded-xl border border-blue-500/20 bg-blue-500/5">
+                  <p className="text-xs text-blue-300 font-semibold">📘 Campagne Meta Ads</p>
+                  <p className="text-[10px] text-slate-500 mt-1">Compte : {META_AD_ACCOUNT_ID} · La campagne sera créée en mode PAUSED</p>
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1.5">Nom de la campagne *</label>
                 <input required value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))}
