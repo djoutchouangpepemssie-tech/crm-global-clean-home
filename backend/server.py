@@ -1832,7 +1832,6 @@ app.add_middleware(
     allow_origins=["https://crm.globalcleanhome.com", "https://www.globalcleanhome.com", "https://globalcleanhome.com", "http://localhost:3000", "http://localhost:5173", "http://localhost:4173"],
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_credentials=True,
-    allow_methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
     allow_headers=["*", "X-Portal-Token", "Content-Type", "Authorization", "Accept", "Origin"],
     expose_headers=["*"],
     max_age=86400,
