@@ -38,12 +38,27 @@ const KanbanBoard = () => {
     e.preventDefault();
     setDragOverColumn(null);
     if (!draggedLead || draggedLead.status === targetColumnId) { setDraggedLead(null); return; }
+    
+    // Sauvegarder l'état précédent pour rollback
+    const previousStatus = draggedLead.status;
+    const previousLeads = leads;
+    
+    // Optimistic update - mettre à jour l'UI immédiatement
     setLeads(prev => prev.map(l => l.lead_id === draggedLead.lead_id ? { ...l, status: targetColumnId } : l));
+    setDraggedLead(null);
+    
     try {
       await axios.patch(`${API_URL}/leads/${draggedLead.lead_id}`, { status: targetColumnId }, { withCredentials: true });
-      toast.success(`Déplacé vers "${COLUMNS.find(c => c.id === targetColumnId)?.title}"`);
-    } catch { toast.error('Erreur'); fetchLeads(); }
-    setDraggedLead(null);
+      const col = COLUMNS.find(c => c.id === targetColumnId);
+      toast.success(`✅ Déplacé vers "${col?.title}"`, { duration: 2000 });
+    } catch (err) {
+      // ROLLBACK - restaurer l'état précédent avec animation
+      toast.error(`❌ Erreur - retour à "${COLUMNS.find(c=>c.id===previousStatus)?.title}"`, { duration: 3000 });
+      // Rollback visuel avec délai pour que l'utilisateur voit l'animation
+      setTimeout(() => {
+        setLeads(previousLeads);
+      }, 300);
+    }
   };
 
   if (loading) return (

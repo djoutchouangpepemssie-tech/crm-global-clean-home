@@ -1074,6 +1074,20 @@ async def get_templates(request: Request, type: Optional[str] = None):
     
     return templates
 
+@api_router.put("/templates/{template_id}")
+async def update_template(template_id: str, request: Request):
+    """Update an existing template."""
+    await _require_auth(request)
+    body = await request.json()
+    body["updated_at"] = datetime.now(timezone.utc).isoformat()
+    result = await db.templates.update_one(
+        {"template_id": template_id},
+        {"$set": body}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Template introuvable")
+    return {"success": True, "message": "Template mis à jour"}
+
 @api_router.delete("/templates/{template_id}")
 async def delete_template(template_id: str, request: Request):
     """Delete a template."""
