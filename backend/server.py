@@ -24,9 +24,87 @@ db = client[os.environ['DB_NAME']]
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
+
+# ── RATE LIMITING ──
+from collections import defaultdict
+import time
+
+_rate_limit_store = defaultdict(list)
+RATE_LIMIT_REQUESTS = 60  # max requêtes
+RATE_LIMIT_WINDOW = 60    # par minute
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    # Endpoints publics à protéger
+    public_paths = ["/api/leads", "/api/auth", "/api/intervenant/auth", "/api/portal"]
+    path = request.url.path
+    
+    if any(path.startswith(p) for p in public_paths):
+        client_ip = request.client.host if request.client else "unknown"
+        now = time.time()
+        
+        # Nettoyer les anciennes requêtes
+        _rate_limit_store[client_ip] = [t for t in _rate_limit_store[client_ip] if now - t < RATE_LIMIT_WINDOW]
+        
+        if len(_rate_limit_store[client_ip]) >= RATE_LIMIT_REQUESTS:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Trop de requêtes. Réessayez dans une minute."}
+            )
+        
+        _rate_limit_store[client_ip].append(now)
+    
+    return await call_next(request)
+
 # Logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+
+# ── SANITIZATION ──
+import re
+import html
+
+def sanitize_string(value: str, max_length: int = 500) -> str:
+    """Nettoyer et sécuriser les inputs utilisateur."""
+    if not value:
+        return value
+    # Échapper HTML
+    value = html.escape(str(value))
+    # Supprimer scripts
+    value = re.sub(r'<script[^>]*>.*?</script>', '', value, flags=re.IGNORECASE|re.DOTALL)
+    # Supprimer tags dangereux
+    value = re.sub(r'<(iframe|object|embed|form)[^>]*>.*?</\1>', '', value, flags=re.IGNORECASE|re.DOTALL)
+    # Limiter longueur
+    return value[:max_length].strip()
+
+def sanitize_email(email: str) -> str:
+    """Valider et normaliser un email."""
+    if not email:
+        return email
+    email = email.lower().strip()[:254]
+    if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+        raise HTTPException(status_code=400, detail="Format email invalide")
+    return email
+
+def sanitize_phone(phone: str) -> str:
+    """Nettoyer un numéro de téléphone."""
+    if not phone:
+        return phone
+    return re.sub(r'[^0-9+\-\s\(\)]', '', phone)[:20]
+
+# ── ENUMS STATUTS ──
+LEAD_STATUSES = {"nouveau","contacté","qualifié","devis_envoyé","devis_accepté","gagné","perdu","archivé"}
+QUOTE_STATUSES = {"brouillon","envoyé","accepté","refusé","expiré"}
+INVOICE_STATUSES = {"en_attente","payée","en_retard","annulée"}
+INTERVENTION_STATUSES = {"planifiée","en_cours","terminée","annulée"}
+
+def validate_status(value: str, valid_statuses: set, field: str = "status") -> str:
+    if value not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Statut '{value}' invalide pour {field}. Valeurs acceptées: {sorted(valid_statuses)}")
+    return value
+
 
 # ============= MODELS =============
 
@@ -138,6 +216,12 @@ class QuoteCreate(BaseModel):
     lead_id: Optional[str] = None
     service_type: str
     surface: Optional[float] = None
+    
+    @validator("surface")
+    def surface_must_be_positive(cls, v):
+        if v is not None and v <= 0:
+            raise ValueError("La surface doit être positive")
+        return v
     amount: float
     details: str
 
@@ -718,7 +802,7 @@ async def get_leads(
         
         query["created_at"] = {"$gte": start_date.isoformat()}
     
-    leads = await db.leads.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    leads = await db.leads.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
     
     for lead in leads:
         # Add default values for new fields if missing
@@ -922,7 +1006,7 @@ async def get_templates(request: Request, type: Optional[str] = None):
     if type:
         query["type"] = type
     
-    templates = await db.templates.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    templates = await db.templates.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
     
     for template in templates:
         if isinstance(template["created_at"], str):
@@ -979,7 +1063,7 @@ async def get_quotes(request: Request, lead_id: Optional[str] = None):
     if lead_id:
         query["lead_id"] = lead_id
     
-    quotes = await db.quotes.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    quotes = await db.quotes.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
     
     for quote in quotes:
         if isinstance(quote["created_at"], str):
@@ -1104,7 +1188,7 @@ async def get_interactions(request: Request, lead_id: Optional[str] = None):
     if lead_id:
         query["lead_id"] = lead_id
     
-    interactions = await db.interactions.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    interactions = await db.interactions.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
     
     for interaction in interactions:
         if isinstance(interaction["created_at"], str):
@@ -1143,7 +1227,7 @@ async def get_events(request: Request, lead_id: Optional[str] = None):
     if lead_id:
         query["lead_id"] = lead_id
     
-    events = await db.events.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    events = await db.events.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
     
     for event in events:
         if isinstance(event["created_at"], str):
@@ -1188,7 +1272,7 @@ async def get_tasks(request: Request, status: Optional[str] = None):
     if status:
         query["status"] = status
     
-    tasks = await db.tasks.find(query, {"_id": 0}).sort("due_date", 1).to_list(1000)
+    tasks = await db.tasks.find(query, {"_id": 0}).sort("due_date", 1).to_list(500)
     
     for task in tasks:
         if isinstance(task["created_at"], str):
@@ -1307,7 +1391,7 @@ async def get_visitor_journey(visitor_id: str, request: Request):
     events = await db.tracking_events.find(
         {"visitor_id": visitor_id},
         {"_id": 0}
-    ).sort("timestamp", 1).to_list(1000)
+    ).sort("timestamp", 1).to_list(500)
     
     return {
         "visitor_id": visitor_id,
@@ -1431,7 +1515,7 @@ async def get_dashboard_stats(request: Request, period: str = "30d"):
     
     # Leads by source
     leads_by_source = {}
-    all_leads = await db.leads.find({"created_at": {"$gte": start_date.isoformat()}}, {"_id": 0, "source": 1}).to_list(1000)
+    all_leads = await db.leads.find({"created_at": {"$gte": start_date.isoformat()}}, {"_id": 0, "source": 1}).to_list(500)
     for lead in all_leads:
         source = lead.get("source") or "Direct"
         leads_by_source[source] = leads_by_source.get(source, 0) + 1
@@ -1463,12 +1547,12 @@ async def get_dashboard_stats(request: Request, period: str = "30d"):
     pending_tasks = await db.tasks.count_documents({"status": "pending"})
     
     # Average lead score
-    all_leads_full = await db.leads.find({"created_at": {"$gte": start_date.isoformat()}}, {"_id": 0, "score": 1, "source": 1, "service_type": 1}).to_list(1000)
+    all_leads_full = await db.leads.find({"created_at": {"$gte": start_date.isoformat()}}, {"_id": 0, "score": 1, "source": 1, "service_type": 1}).to_list(500)
     avg_score = sum([lead.get("score", 50) for lead in all_leads_full]) / len(all_leads_full) if all_leads_full else 50
     
     # Top performing source (by conversion rate)
     source_performance = {}
-    for lead in await db.leads.find({"created_at": {"$gte": start_date.isoformat()}}, {"_id": 0, "lead_id": 1, "source": 1, "status": 1}).to_list(1000):
+    for lead in await db.leads.find({"created_at": {"$gte": start_date.isoformat()}}, {"_id": 0, "lead_id": 1, "source": 1, "status": 1}).to_list(500):
         source = lead.get("source", "Direct")
         if source not in source_performance:
             source_performance[source] = {"total": 0, "won": 0}
@@ -1737,8 +1821,47 @@ app.include_router(ads_connect_router)
 @app.on_event("startup")
 async def startup_db_indexes():
     """Create MongoDB indexes for performance."""
+    # ── INDEX MONGODB COMPLETS ──
+    # Leads
     await db.leads.create_index("lead_id", unique=True)
     await db.leads.create_index("status")
+    await db.leads.create_index("created_at")
+    await db.leads.create_index("email")
+    await db.leads.create_index([("status", 1), ("created_at", -1)])
+    await db.leads.create_index([("name", "text"), ("email", "text"), ("address", "text")])
+    
+    # Interventions
+    await db.interventions.create_index("intervention_id", unique=True)
+    await db.interventions.create_index("status")
+    await db.interventions.create_index("scheduled_date")
+    await db.interventions.create_index("assigned_agent_id")
+    await db.interventions.create_index([("scheduled_date", 1), ("status", 1)])
+    
+    # Factures
+    await db.invoices.create_index([("status", 1), ("created_at", -1)])
+    await db.invoices.create_index("lead_id")
+    
+    # Devis
+    await db.quotes.create_index("quote_id", unique=True)
+    await db.quotes.create_index([("status", 1), ("created_at", -1)])
+    
+    # Emails
+    await db.emails.create_index("lead_id")
+    await db.emails.create_index("created_at")
+    
+    # Sessions
+    await db.sessions.create_index("token", unique=True)
+    await db.sessions.create_index("expires_at", expireAfterSeconds=0)
+    
+    # Notifications
+    await db.notifications.create_index([("read", 1), ("created_at", -1)])
+    
+    # Intervenants
+    await db.intervenant_sessions.create_index("token", unique=True)
+    await db.intervenant_sessions.create_index("expires_at", expireAfterSeconds=0)
+    await db.intervenant_codes.create_index("expires_at", expireAfterSeconds=0)
+    
+    logger.info("MongoDB indexes created successfully")
     await db.leads.create_index("created_at")
     await db.leads.create_index("source")
     await db.leads.create_index("service_type")
