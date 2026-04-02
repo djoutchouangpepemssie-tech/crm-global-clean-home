@@ -281,11 +281,7 @@ class QuoteCreate(BaseModel):
     service_type: str
     surface: Optional[float] = None
     
-    @validator("surface")
-    def surface_must_be_positive(cls, v):
-        if v is not None and v <= 0:
-            raise ValueError("La surface doit être positive")
-        return v
+
     amount: float
     details: str
 
