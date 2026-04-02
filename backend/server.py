@@ -25,6 +25,35 @@ app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
 
+
+# ── GESTION ERREURS MONGODB ──
+from pymongo.errors import PyMongoError, ConnectionFailure, ServerSelectionTimeoutError
+
+@app.exception_handler(PyMongoError)
+async def mongodb_exception_handler(request: Request, exc: PyMongoError):
+    logger.error(f"MongoDB error: {type(exc).__name__}: {str(exc)[:100]}")
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Service temporairement indisponible. Réessayez dans quelques secondes."}
+    )
+
+@app.exception_handler(ConnectionFailure)
+async def mongodb_connection_handler(request: Request, exc: ConnectionFailure):
+    logger.error(f"MongoDB connection failed: {str(exc)[:100]}")
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Base de données indisponible."}
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    # Ne pas exposer les détails en production
+    logger.error(f"Unhandled error on {request.url.path}: {type(exc).__name__}: {str(exc)[:200]}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Une erreur interne est survenue."}
+    )
+
 # ── RATE LIMITING ──
 from collections import defaultdict
 import time
@@ -93,6 +122,24 @@ def sanitize_phone(phone: str) -> str:
     if not phone:
         return phone
     return re.sub(r'[^0-9+\-\s\(\)]', '', phone)[:20]
+
+
+# ── MACHINE À ÉTATS LEADS ──
+LEAD_STATE_TRANSITIONS = {
+    "nouveau":        {"contacté", "archivé"},
+    "contacté":       {"qualifié", "perdu", "archivé"},
+    "qualifié":       {"devis_envoyé", "perdu", "archivé"},
+    "devis_envoyé":   {"devis_accepté", "perdu", "archivé"},
+    "devis_accepté":  {"gagné", "perdu", "archivé"},
+    "gagné":          {"archivé"},
+    "perdu":          {"nouveau", "archivé"},
+    "archivé":        set(),
+}
+
+def validate_lead_transition(current: str, new: str) -> bool:
+    """Vérifier si la transition de statut est valide."""
+    allowed = LEAD_STATE_TRANSITIONS.get(current, set())
+    return new in allowed or new == current
 
 # ── ENUMS STATUTS ──
 LEAD_STATUSES = {"nouveau","contacté","qualifié","devis_envoyé","devis_accepté","gagné","perdu","archivé"}
