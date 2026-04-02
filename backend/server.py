@@ -124,6 +124,23 @@ def sanitize_phone(phone: str) -> str:
     return re.sub(r'[^0-9+\-\s\(\)]', '', phone)[:20]
 
 
+
+# ── SYSTÈME DE VERROUS (anti race conditions) ──
+import asyncio
+_execution_locks = {}
+
+async def acquire_lock(key: str, timeout: int = 30) -> bool:
+    """Acquérir un verrou pour éviter les exécutions simultanées."""
+    if key in _execution_locks:
+        return False
+    _execution_locks[key] = datetime.now(timezone.utc)
+    asyncio.get_event_loop().call_later(timeout, lambda: _execution_locks.pop(key, None))
+    return True
+
+def release_lock(key: str):
+    """Libérer un verrou."""
+    _execution_locks.pop(key, None)
+
 # ── MACHINE À ÉTATS LEADS ──
 LEAD_STATE_TRANSITIONS = {
     "nouveau":        {"contacté", "archivé"},

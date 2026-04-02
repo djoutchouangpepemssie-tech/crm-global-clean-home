@@ -101,7 +101,7 @@ const Sidebar = () => {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-2 space-y-1 hide-scrollbar">
+      <nav aria-label="Navigation principale" className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-2 space-y-1 hide-scrollbar">
         {navGroups.map((group) => {
           const isOpen = openGroups[group.label];
           const isActive = isGroupActive(group);
@@ -204,7 +204,7 @@ const Sidebar = () => {
 
         <button onClick={logout}
           className={`w-full flex items-center gap-2 px-2 py-2 rounded-xl text-slate-600 hover:text-red-400 hover:bg-red-500/5 transition-all text-xs ${collapsed?'justify-center':''}`}>
-          <LogOut className="w-4 h-4 flex-shrink-0"/>
+          <LogOut className="w-4 h-4 flex-shrink-0" aria-hidden="true"/>
           {!collapsed && <span>Déconnexion</span>}
         </button>
       </div>
