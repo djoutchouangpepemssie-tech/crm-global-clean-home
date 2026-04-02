@@ -808,7 +808,7 @@ const AdsDashboard = () => {
 
               {/* Contenu annonce */}
               <div className="section-card p-5">
-                <h3 className="text-sm font-black text-slate-200 mb-4">3️⃣ Contenu de l'annonce</h3>
+                <h3 className="text-sm font-black text-slate-200 mb-4">3️⃣ Contenu de l&apos;annonce</h3>
                 <div className="space-y-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-400 mb-1.5">Texte principal *</label>
@@ -947,7 +947,7 @@ const AdsDashboard = () => {
                   {/* Texte */}
                   <div className="px-3 pb-2" style={{background:'#fff'}}>
                     <p className="text-xs text-gray-800 leading-relaxed">
-                      {adForm.primary_text || 'Votre texte principal apparaîtra ici...'}
+                      {adForm.primary_text || "Votre texte principal apparaîtra ici..."}
                     </p>
                   </div>
                   {/* Image */}
@@ -967,7 +967,7 @@ const AdsDashboard = () => {
                   <div className="flex items-center justify-between p-3" style={{background:'#f0f2f5'}}>
                     <div>
                       <p className="text-[10px] text-gray-500 uppercase">{adForm.link_url.replace('https://','').split('/')[0]}</p>
-                      <p className="text-xs font-bold text-gray-900">{adForm.headline||'Votre titre ici'}</p>
+                      <p className="text-xs font-bold text-gray-900">{adForm.headline||"Votre titre ici"}</p>
                       <p className="text-[10px] text-gray-500">{adForm.description}</p>
                     </div>
                     <div className="px-3 py-1.5 rounded text-xs font-bold text-gray-700 flex-shrink-0"
@@ -994,7 +994,7 @@ const AdsDashboard = () => {
                     )}
                   </div>
                   <div className="p-3">
-                    <p className="text-xs font-bold text-gray-900">globalcleanhome <span className="font-normal text-gray-700">{adForm.primary_text?.slice(0,60)||'Texte principal...'}{adForm.primary_text?.length>60?'...':''}</span></p>
+                    <p className="text-xs font-bold text-gray-900">globalcleanhome <span className="font-normal text-gray-700">{adForm.primary_text?.slice(0,60)||"Texte principal..."}{adForm.primary_text?.length>60?'...':''}</span></p>
                     <p className="text-[10px] text-blue-500 font-semibold mt-1">
                       {adForm.cta==='LEARN_MORE'?'En savoir plus':adForm.cta==='GET_QUOTE'?'Obtenir un devis':adForm.cta==='BOOK_NOW'?'Réserver':'Contacter'}
                     </p>
@@ -1061,8 +1061,8 @@ const AdsDashboard = () => {
                 </div>
                 {/* Préview A */}
                 <div className="rounded-xl p-3 border border-emerald-500/20 bg-emerald-500/5">
-                  <p className="text-xs font-bold text-emerald-300 mb-1">{adForm.headline||'Titre A'}</p>
-                  <p className="text-[11px] text-slate-400">{adForm.primary_text?.slice(0,80)||'Texte A...'}</p>
+                  <p className="text-xs font-bold text-emerald-300 mb-1">{adForm.headline||"Titre A"}</p>
+                  <p className="text-[11px] text-slate-400">{adForm.primary_text?.slice(0,80)||"Texte A..."}</p>
                 </div>
               </div>
             </div>
@@ -1088,8 +1088,8 @@ const AdsDashboard = () => {
                 </div>
                 {/* Préview B */}
                 <div className="rounded-xl p-3 border border-orange-500/20 bg-orange-500/5">
-                  <p className="text-xs font-bold text-orange-300 mb-1">{adForm.headline_b||'Titre B'}</p>
-                  <p className="text-[11px] text-slate-400">{adForm.primary_text_b?.slice(0,80)||'Texte B...'}</p>
+                  <p className="text-xs font-bold text-orange-300 mb-1">{adForm.headline_b||"Titre B"}</p>
+                  <p className="text-[11px] text-slate-400">{adForm.primary_text_b?.slice(0,80)||"Texte B..."}</p>
                 </div>
               </div>
             </div>
@@ -1239,7 +1239,7 @@ const AdsDashboard = () => {
                     className="flex-1 px-3 py-2 bg-white/5 border border-white/10 text-slate-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-violet-500"/>
                 </div>
               ))}
-              <p className="text-xs text-slate-600">Ces seuils s'appliquent aux nouvelles campagnes créées depuis le CRM.</p>
+              <p className="text-xs text-slate-600">Ces seuils s&apos;appliquent aux nouvelles campagnes créées depuis le CRM.</p>
             </div>
           </div>
         </div>
