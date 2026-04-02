@@ -54,6 +54,18 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"detail": "Une erreur interne est survenue."}
     )
 
+
+# ── SECURITY HEADERS ──
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    return response
+
 # ── RATE LIMITING ──
 from collections import defaultdict
 import time
@@ -1818,6 +1830,7 @@ async def force_cors_middleware(request: StarletteRequest, call_next):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://crm.globalcleanhome.com", "https://www.globalcleanhome.com", "https://globalcleanhome.com", "http://localhost:3000", "http://localhost:5173", "http://localhost:4173"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_credentials=True,
     allow_methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
     allow_headers=["*", "X-Portal-Token", "Content-Type", "Authorization", "Accept", "Origin"],
@@ -1978,6 +1991,11 @@ async def startup_db_indexes():
     init_notifications_db(db)
     init_chat_db(db)
     init_intervenant_db(db)
+    try:
+        from portal import init_portal_db
+        init_portal_db(db)
+    except Exception as e:
+        logger.warning(f"Portal init: {e}")
     init_analytics_db(db)
     init_ads_connect_db(db)
     

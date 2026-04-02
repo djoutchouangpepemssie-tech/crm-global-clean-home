@@ -13,14 +13,19 @@ import uuid
 import hashlib
 import logging
 
+_db = None
+
+def init_portal_db(database):
+    global _db
+    _db = database
+
+
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 logger = logging.getLogger(__name__)
 
-mongo_url = os.environ['MONGO_URL']
-_client = AsyncIOMotorClient(mongo_url)
-_db = _client[os.environ['DB_NAME']]
 
 portal_router = APIRouter(prefix="/api/portal")
 
@@ -401,7 +406,7 @@ async def sign_quote_portal(quote_id: str, request: Request):
     if not portal_token:
         raise HTTPException(status_code=401, detail="Token requis")
     
-    session = await db.portal_sessions.find_one({"token": portal_token})
+    session = await _db.portal_sessions.find_one({"token": portal_token})
     if not session:
         raise HTTPException(status_code=401, detail="Session invalide")
     
@@ -409,7 +414,7 @@ async def sign_quote_portal(quote_id: str, request: Request):
     signature = body.get("signature", "")
     signed_at = body.get("signed_at", datetime.now(timezone.utc).isoformat())
     
-    await db.quotes.update_one(
+    await _db.quotes.update_one(
         {"quote_id": quote_id},
         {"$set": {
             "status": "accepte",

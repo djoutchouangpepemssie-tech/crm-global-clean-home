@@ -96,12 +96,8 @@ async def request_auth_code(request: Request):
         logger.warning(f"Code email failed: {e}")
 
     response = {"message": "Code envoyé", "expires_in": 600}
-    # En dev, retourner le code
     if os.getenv("ENVIRONMENT", "production") != "production":
         response["dev_code"] = code
-    # Toujours retourner pour debug
-    response["dev_code"] = code
-
     return response
 
 @intervenant_router.post("/auth/verify")
