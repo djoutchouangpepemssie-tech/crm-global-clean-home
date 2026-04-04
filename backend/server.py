@@ -2083,3 +2083,126 @@ async def gmail_status():
     except Exception as e:
         return {"connected": False, "error": str(e)}
 # CORS fix Wed Mar 18 13:48:54 UTC 2026
+
+# ── DEVIS PAR COMMANDE VOCALE ──
+@app.post("/api/voice-quote/analyze")
+async def analyze_voice_quote(request: Request):
+    """Analyser un transcript vocal et générer les données du devis via IA."""
+    user = await _require_auth(request)
+    body = await request.json()
+    transcript = sanitize_string(body.get("transcript", ""), 1000)
+    lead_id = body.get("lead_id")
+    
+    if not transcript:
+        raise HTTPException(status_code=400, detail="Transcript vide")
+    
+    # Tarifs de référence Global Clean Home
+    TARIFS = {
+        "Ménage domicile": {"prix_m2": 3.5, "min": 89},
+        "Nettoyage canapé": {"prix_m2": None, "min": 79},
+        "Nettoyage matelas": {"prix_m2": None, "min": 69},
+        "Nettoyage bureaux": {"prix_m2": 4.0, "min": 150},
+        "Nettoyage tapis": {"prix_m2": 8.0, "min": 49},
+        "Nettoyage vitres": {"prix_m2": 5.0, "min": 59},
+        "Grand nettoyage": {"prix_m2": 5.0, "min": 199},
+    }
+    
+    # Essayer Claude API
+    import httpx
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    
+    if anthropic_key:
+        try:
+            prompt = f"""Tu es un assistant pour Global Clean Home, entreprise de nettoyage à Paris.
+Analyse ce transcript vocal et extrait les informations pour créer un devis.
+
+Transcript: "{transcript}"
+
+Services disponibles et tarifs:
+{chr(10).join([f"- {k}: min {v['min']}€" + (f", {v['prix_m2']}€/m²" if v['prix_m2'] else "") for k,v in TARIFS.items()])}
+
+Réponds UNIQUEMENT en JSON valide avec ces champs:
+{{
+  "service_type": "nom exact du service parmi la liste",
+  "surface": null ou nombre en m²,
+  "amount": montant TTC calculé,
+  "client_name": "nom du client ou null",
+  "address": "adresse complète ou null",
+  "details": "description détaillée du service",
+  "confidence": 0.0 à 1.0,
+  "notes": "informations supplémentaires"
+}}
+
+Règles de calcul:
+- Si surface mentionnée: montant = max(min, surface * prix_m2)
+- Si prix mentionné: utiliser ce prix
+- Sinon: utiliser le minimum
+- Toujours arrondir au nombre entier"""
+
+            async with httpx.AsyncClient() as client:
+                res = await client.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers={
+                        "x-api-key": anthropic_key,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json",
+                    },
+                    json={
+                        "model": "claude-haiku-4-5-20251001",
+                        "max_tokens": 500,
+                        "messages": [{"role": "user", "content": prompt}]
+                    },
+                    timeout=15
+                )
+                if res.status_code == 200:
+                    text = res.json()["content"][0]["text"]
+                    import json, re
+                    json_match = re.search(r'\{.*\}', text, re.DOTALL)
+                    if json_match:
+                        data = json.loads(json_match.group())
+                        data["lead_id"] = lead_id
+                        return data
+        except Exception as e:
+            logger.warning(f"Claude API error in voice-quote: {e}")
+    
+    # Fallback: analyse locale Python
+    import re as re_module
+    lower = transcript.lower()
+    service = "Ménage domicile"
+    amount = 89
+    surface = None
+    
+    if "canapé" in lower or "canape" in lower: service, amount = "Nettoyage canapé", 79
+    elif "matelas" in lower: service, amount = "Nettoyage matelas", 69
+    elif "bureau" in lower: service, amount = "Nettoyage bureaux", 150
+    elif "tapis" in lower: service, amount = "Nettoyage tapis", 49
+    elif "vitre" in lower or "fenêtre" in lower: service, amount = "Nettoyage vitres", 59
+    elif "grand" in lower and "nettoyage" in lower: service, amount = "Grand nettoyage", 199
+    
+    m2_match = re_module.search(r"(\d+)\s*m²", transcript)
+    if m2_match:
+        surface = float(m2_match.group(1))
+        tarif = TARIFS.get(service, {})
+        if tarif.get("prix_m2"):
+            amount = max(tarif["min"], round(surface * tarif["prix_m2"]))
+    
+    prix_match = re_module.search(r"(\d+)\s*euros?", transcript, re_module.IGNORECASE)
+    if prix_match: amount = float(prix_match.group(1))
+    
+    nom_match = re_module.search(r"(?:M\.|Mme|Madame|Monsieur|pour)\s+([A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+)?)", transcript)
+    client_name = nom_match.group(1) if nom_match else None
+    
+    addr_match = re_module.search(r"(?:à|rue|avenue|bd|boulevard)\s+[^,\.]+", transcript, re_module.IGNORECASE)
+    address = addr_match.group(0) if addr_match else None
+    
+    return {
+        "service_type": service,
+        "surface": surface,
+        "amount": amount,
+        "client_name": client_name,
+        "address": address,
+        "details": transcript,
+        "confidence": 0.7,
+        "notes": "",
+        "lead_id": lead_id,
+    }

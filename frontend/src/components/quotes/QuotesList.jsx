@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Plus, Send, FileText, Download, Search, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { Plus, Send, FileText, Download, Search, CheckCircle, Clock, XCircle, Mic } from 'lucide-react';
+import VoiceQuote from './VoiceQuote';
 import { formatDateTime, formatCurrency } from '../../lib/utils';
 import { toast } from 'sonner';
 import BACKEND_URL from '../../config.js';
@@ -22,6 +23,7 @@ const QuotesList = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sending, setSending] = useState(null);
+  const [showVoice, setShowVoice] = useState(false);
 
   useEffect(() => { fetchQuotes(); }, []);
 
@@ -68,6 +70,13 @@ const QuotesList = () => {
   };
 
   return (
+    <>
+      {showVoice && (
+        <VoiceQuote
+          onQuoteCreated={() => { fetchQuotes(); setShowVoice(false); }}
+          onClose={() => setShowVoice(false)}
+        />
+      )}
     <div className="p-4 md:p-6 lg:p-8 animate-fade-in" data-testid="quotes-page">
       
       {/* Header */}
@@ -79,7 +88,16 @@ const QuotesList = () => {
           </div>
           <p className="text-slate-500 text-sm"><span className="text-violet-400 font-semibold">{filtered.length}</span> devis trouvé(s)</p>
         </div>
-        <button onClick={() => navigate('/quotes/new')} data-testid="create-quote-button"
+        <button onClick={() => setShowVoice(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white mr-2"
+            style={{background:'linear-gradient(135deg,#7c3aed,#4f46e5)',boxShadow:'0 4px 16px rgba(124,58,237,0.3)'}}>
+            <Mic className="w-4 h-4"/> Devis vocal
+          </button><button
+            onClick={() => setShowVoice(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white mr-2"
+            style={{background:'linear-gradient(135deg,#7c3aed,#4f46e5)',boxShadow:'0 4px 16px rgba(124,58,237,0.3)'}}>
+            <Mic className="w-4 h-4"/> 🎤 Devis vocal
+          </button><button onClick={() => navigate('/quotes/new')} data-testid="create-quote-button"
           className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-all text-sm font-medium"
           style={{boxShadow:'0 0 15px rgba(139,92,246,0.25)'}}>
           <Plus className="w-4 h-4" /> Nouveau devis
@@ -190,6 +208,7 @@ const QuotesList = () => {
         })}
       </div>
     </div>
+    </>
   );
 };
 
