@@ -43,9 +43,12 @@ export default function TicketsList() {
         axios.get(API + "/tickets/stats", {withCredentials:true}),
         axios.get(API + "/leads?limit=50", {withCredentials:true}),
       ]);
-      setTickets(t.data || []);
+      // Handle paginated response formats
+      const tData = t.data;
+      setTickets(Array.isArray(tData) ? tData : (tData?.items || tData?.tickets || []));
       setStats(s.data || {});
-      setLeads(Array.isArray(l.data) ? l.data : []);
+      const lData = l.data;
+      setLeads(Array.isArray(lData) ? lData : (lData?.items || lData?.leads || []));
     } catch(e) { console.error(e); }
     finally { setLoading(false); }
   };

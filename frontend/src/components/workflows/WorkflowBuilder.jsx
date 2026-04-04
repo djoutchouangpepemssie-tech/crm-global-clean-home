@@ -98,10 +98,14 @@ const WorkflowBuilder = () => {
         axios.get(API_URL + '/workflows/executions', { withCredentials: true }),
         axios.get(API_URL + '/leads?limit=30', { withCredentials: true }),
       ]);
-      setWorkflows(wfRes.data || []);
+      // Handle paginated response formats
+      const wfData = wfRes.data;
+      setWorkflows(Array.isArray(wfData) ? wfData : (wfData?.items || wfData?.workflows || []));
       setStats(statsRes.data);
-      setExecutions(execRes.data || []);
-      setLeads(Array.isArray(leadsRes.data) ? leadsRes.data : []);
+      const execData = execRes.data;
+      setExecutions(Array.isArray(execData) ? execData : (execData?.items || execData?.executions || []));
+      const leadData = leadsRes.data;
+      setLeads(Array.isArray(leadData) ? leadData : (leadData?.items || leadData?.leads || []));
     } catch(e) { toast.error('Erreur chargement'); }
     finally { setLoading(false); }
   };
