@@ -243,7 +243,7 @@
      Section card
   ══════════════════════════════════════ */
   .section-card {
-    @apply rounded-2xl border border-white/8 overflow-hidden;
+    @apply rounded-2xl border border-white/10 overflow-hidden;
     background: rgba(255,255,255,0.03);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
