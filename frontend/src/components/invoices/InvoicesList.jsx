@@ -75,7 +75,8 @@ const InvoicesList = () => {
     try {
       const params = filter ? `?status=${filter}` : '';
       const res = await axios.get(`${API_URL}/invoices${params}`, { withCredentials: true });
-      setInvoices(Array.isArray(res.data) ? res.data : res.data.invoices || []);
+      const raw = res.data;
+      setInvoices(Array.isArray(raw) ? raw : (raw?.items || raw?.invoices || []));
     } catch { toast.error('Erreur lors du chargement'); }
     finally { setLoading(false); }
   };

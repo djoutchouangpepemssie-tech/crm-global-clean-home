@@ -415,8 +415,10 @@ const Dashboard = () => {
       ]);
       const s = statsRes.status       === 'fulfilled' ? statsRes.value.data                                : {};
       const f = financialRes.status   === 'fulfilled' ? financialRes.value.data                            : {};
-      const i = interventionsRes.status === 'fulfilled' ? (interventionsRes.value.data?.interventions || []) : [];
-      const t = tasksRes.status       === 'fulfilled' ? (tasksRes.value.data || [])                        : [];
+      const iRaw = interventionsRes.status === 'fulfilled' ? interventionsRes.value.data : [];
+      const i = Array.isArray(iRaw) ? iRaw : (iRaw?.items || iRaw?.interventions || []);
+      const tRaw = tasksRes.status === 'fulfilled' ? tasksRes.value.data : [];
+      const t = Array.isArray(tRaw) ? tRaw : (tRaw?.items || tRaw?.tasks || []);
       setStats(s); setFinancial(f); setInterventions(i); setTasks(t);
       apiCache.set(cacheKey, { stats: s, financial: f });
     } catch {

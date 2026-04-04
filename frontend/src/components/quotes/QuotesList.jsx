@@ -65,7 +65,8 @@ const QuotesList = () => {
     setLoading(true);
     try {
       const res = await axios.get(`${API_URL}/quotes`, { withCredentials: true });
-      setQuotes(Array.isArray(res.data) ? res.data : res.data.quotes || []);
+      const raw = res.data;
+      setQuotes(Array.isArray(raw) ? raw : (raw?.items || raw?.quotes || []));
     } catch { toast.error('Erreur lors du chargement'); }
     finally { setLoading(false); }
   };

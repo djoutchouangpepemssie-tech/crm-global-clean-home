@@ -66,7 +66,8 @@ const LeadsList = () => {
       const params = new URLSearchParams();
       Object.entries(filters).forEach(([k, v]) => { if (v) params.append(k, v); });
       const response = await axios.get(`${API_URL}/leads?${params.toString()}`, { withCredentials: true });
-      setLeads(Array.isArray(response.data) ? response.data : response.data.leads || []);
+      const raw = response.data;
+      setLeads(Array.isArray(raw) ? raw : (raw?.items || raw?.leads || []));
     } catch {
       toast.error('Erreur lors du chargement des leads');
     } finally {

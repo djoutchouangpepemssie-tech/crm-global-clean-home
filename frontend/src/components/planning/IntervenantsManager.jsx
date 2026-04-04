@@ -53,14 +53,18 @@ const IntervenantsManager = () => {
         axios.get(`${API}/team-members`, {withCredentials:true}),
         axios.get(`${API}/interventions?limit=200`, {withCredentials:true}),
       ]);
-      const m = teamsRes.status==='fulfilled' ? (teamsRes.value.data||[]) : [];
-      const i = intvRes.status==='fulfilled' ? (intvRes.value.data?.interventions||intvRes.value.data||[]) : [];
+      // Handle paginated and array response formats
+      const mData = teamsRes.status==='fulfilled' ? teamsRes.value.data : {};
+      const m = Array.isArray(mData) ? mData : (mData?.items || mData?.team_members || []);
+      const iData = intvRes.status==='fulfilled' ? intvRes.value.data : {};
+      const i = Array.isArray(iData) ? iData : (iData?.items || iData?.interventions || []);
 
       if (!Array.isArray(m) || m.length===0) {
         // Fallback: extraire des équipes
         try {
           const teamsRes2 = await axios.get(`${API}/teams`, {withCredentials:true});
-          const teams = teamsRes2.data?.teams || teamsRes2.data || [];
+          const tData = teamsRes2.data;
+          const teams = Array.isArray(tData) ? tData : (tData?.teams || []);
           const allM = teams.flatMap(t=>(t.members||[]).map(mb=>({...mb,team_name:t.name})));
           setMembers(allM);
         } catch { setMembers([]); }

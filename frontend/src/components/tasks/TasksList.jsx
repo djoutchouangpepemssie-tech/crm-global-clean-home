@@ -168,7 +168,9 @@ const TasksList = () => {
     try {
       const params = filter!=='all' ? `?status=${filter}` : '';
       const res = await axios.get(`${API_URL}/tasks${params}`, {withCredentials:true});
-      setTasks(Array.isArray(res.data) ? res.data : res.data.tasks || []);
+      // Handle both array and paginated response formats
+      const raw = res.data;
+      setTasks(Array.isArray(raw) ? raw : (raw?.items || raw?.tasks || []));
     } catch { toast.error('Erreur lors du chargement'); }
     finally { setLoading(false); }
   }, [filter]);

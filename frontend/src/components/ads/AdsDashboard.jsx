@@ -109,9 +109,16 @@ const AdsDashboard = () => {
         axios.get(`${API}/ads-connect/report/weekly`, {withCredentials:true}),
       ]);
       if (summaryRes.status==='fulfilled') setSummary(summaryRes.value.data);
-      if (gadsRes.status==='fulfilled') setGoogleCampaigns(gadsRes.value.data?.campaigns||[]);
-      if (metaRes.status==='fulfilled') setMetaCampaigns(metaRes.value.data?.campaigns||[]);
-      if (manualRes.status==='fulfilled') setManualCampaigns(manualRes.value.data?.campaigns||manualRes.value.data||[]);
+      // Handle paginated response formats
+      const gadsData = gadsRes.status==='fulfilled' ? gadsRes.value.data : {};
+      const gads = Array.isArray(gadsData) ? gadsData : (gadsData?.items || gadsData?.campaigns || []);
+      setGoogleCampaigns(gads);
+      const metaData = metaRes.status==='fulfilled' ? metaRes.value.data : {};
+      const meta = Array.isArray(metaData) ? metaData : (metaData?.items || metaData?.campaigns || []);
+      setMetaCampaigns(meta);
+      const manualData = manualRes.status==='fulfilled' ? manualRes.value.data : {};
+      const manual = Array.isArray(manualData) ? manualData : (manualData?.items || manualData?.campaigns || []);
+      setManualCampaigns(manual);
 
       // Vérifier si Meta vient d'être connecté
       const urlParams = new URLSearchParams(window.location.search);
