@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Query
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -6,11 +6,12 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, EmailStr, ConfigDict
+from pydantic import BaseModel, Field, EmailStr, ConfigDict, field_validator
 from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone, timedelta
 import httpx
+import math
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -135,6 +136,76 @@ def sanitize_phone(phone: str) -> str:
         return phone
     return re.sub(r'[^0-9+\-\s\(\)]', '', phone)[:20]
 
+# ── DISPOSABLE EMAIL DOMAINS ──
+DISPOSABLE_EMAIL_DOMAINS = {
+    "mailinator.com", "guerrillamail.com", "10minutemail.com", "throwaway.email",
+    "yopmail.com", "tempmail.com", "trashmail.com", "sharklasers.com",
+    "guerrillamailblock.com", "grr.la", "guerrillamail.info", "spam4.me",
+    "temp-mail.org", "dispostable.com", "mailnull.com", "maildrop.cc",
+    "fakeinbox.com", "getnada.com", "throwam.com", "discard.email",
+    "mailsac.com", "mohmal.com", "inboxkitten.com", "spamgourmet.com",
+}
+
+def check_disposable_email(email: str) -> str:
+    """Vérifier que l'email n'est pas un email jetable."""
+    if not email:
+        return email
+    domain = email.lower().split("@")[-1] if "@" in email else ""
+    if domain in DISPOSABLE_EMAIL_DOMAINS:
+        raise ValueError(f"Les emails temporaires/jetables ne sont pas acceptés")
+    return email
+
+# ── PAGINATION HELPER ──
+def paginate(items: list, page: int, page_size: int) -> dict:
+    """Paginate a list and return standard pagination object."""
+    total = len(items)
+    total_pages = math.ceil(total / page_size) if page_size > 0 else 1
+    start = (page - 1) * page_size
+    end = start + page_size
+    return {
+        "items": items[start:end],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+    }
+
+async def paginate_cursor(cursor, page: int, page_size: int, total_count: int) -> dict:
+    """Paginate a MongoDB cursor."""
+    skip = (page - 1) * page_size
+    items = await cursor.skip(skip).limit(page_size).to_list(page_size)
+    total_pages = math.ceil(total_count / page_size) if page_size > 0 else 1
+    return {
+        "items": items,
+        "total": total_count,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+    }
+
+# ── AUDIT LOG ──
+async def write_audit_log(
+    entity_type: str,
+    entity_id: str,
+    action: str,
+    user_id: str = "system",
+    changes: Optional[Dict[str, Any]] = None
+):
+    """Write an entry to the audit_log collection."""
+    try:
+        log = {
+            "audit_id": f"audit_{uuid.uuid4().hex[:16]}",
+            "entity_type": entity_type,
+            "entity_id": entity_id,
+            "action": action,
+            "user_id": user_id,
+            "changes": changes or {},
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.audit_log.insert_one(log)
+    except Exception as e:
+        logger.warning(f"Audit log write error: {e}")
+
 
 
 # ── SYSTÈME DE VERROUS (anti race conditions) ──
@@ -245,12 +316,43 @@ class LeadCreate(BaseModel):
     date_preference: Optional[str] = None
     manual: Optional[bool] = False
 
+    @field_validator("phone")
+    @classmethod
+    def sanitize_phone_field(cls, v: str) -> str:
+        return re.sub(r'[^0-9+\-\s\(\)]', '', v)[:20]
+
+    @field_validator("email")
+    @classmethod
+    def validate_email_domain(cls, v: str) -> str:
+        return check_disposable_email(str(v))
+
+    @field_validator("surface")
+    @classmethod
+    def validate_surface(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None and v <= 0:
+            raise ValueError("La surface doit être supérieure à 0")
+        return v
+
+    @field_validator("estimated_price")
+    @classmethod
+    def validate_estimated_price(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None and v < 0:
+            raise ValueError("Le prix estimé doit être >= 0")
+        return v
+
 class LeadUpdate(BaseModel):
     status: Optional[str] = None
     probability: Optional[int] = None
     assigned_to: Optional[str] = None
     notes: Optional[str] = None
     tags: Optional[List[str]] = None
+
+    @field_validator("status")
+    @classmethod
+    def validate_status_field(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in LEAD_STATUSES:
+            raise ValueError(f"Statut '{v}' invalide. Valeurs acceptées: {sorted(LEAD_STATUSES)}")
+        return v
 
 class LeadBulkUpdate(BaseModel):
     lead_ids: List[str]
@@ -292,10 +394,22 @@ class QuoteCreate(BaseModel):
     lead_id: Optional[str] = None
     service_type: str
     surface: Optional[float] = None
-    
-
     amount: float
     details: str
+
+    @field_validator("surface")
+    @classmethod
+    def validate_surface(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None and v <= 0:
+            raise ValueError("La surface doit être supérieure à 0")
+        return v
+
+    @field_validator("amount")
+    @classmethod
+    def validate_amount(cls, v: float) -> float:
+        if v < 0:
+            raise ValueError("Le montant doit être >= 0")
+        return v
 
 class Interaction(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -840,18 +954,25 @@ async def create_lead(input: LeadCreate, request: Request):
     
     return Lead(**lead_doc)
 
-@api_router.get("/leads", response_model=List[Lead])
+@api_router.get("/leads")
 async def get_leads(
     request: Request,
     status: Optional[str] = None,
     service_type: Optional[str] = None,
     source: Optional[str] = None,
-    period: Optional[str] = "30d"
+    period: Optional[str] = "30d",
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200),
+    include_deleted: bool = Query(default=False),
 ):
-    """Get all leads with filters."""
+    """Get all leads with filters. Returns paginated results."""
     await require_auth(request)
     
     query = {}
+    
+    # Soft delete filter
+    if not include_deleted:
+        query["deleted_at"] = {"$exists": False}
     
     if status:
         query["status"] = status
@@ -874,7 +995,9 @@ async def get_leads(
         
         query["created_at"] = {"$gte": start_date.isoformat()}
     
-    leads = await db.leads.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    total = await db.leads.count_documents(query)
+    skip = (page - 1) * page_size
+    leads = await db.leads.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(page_size).to_list(page_size)
     
     for lead in leads:
         # Add default values for new fields if missing
@@ -883,12 +1006,18 @@ async def get_leads(
         if "tags" not in lead:
             lead["tags"] = []
         
-        if isinstance(lead["created_at"], str):
+        if isinstance(lead.get("created_at"), str):
             lead["created_at"] = datetime.fromisoformat(lead["created_at"])
-        if isinstance(lead["updated_at"], str):
+        if isinstance(lead.get("updated_at"), str):
             lead["updated_at"] = datetime.fromisoformat(lead["updated_at"])
     
-    return leads
+    return {
+        "items": [Lead(**lead) for lead in leads],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": math.ceil(total / page_size) if page_size > 0 else 1,
+    }
 
 # IMPORTANT: Static routes (/leads/recent, /leads/export) must be defined BEFORE dynamic route (/leads/{lead_id})
 # to prevent FastAPI from matching "recent" or "export" as a lead_id
@@ -1007,7 +1136,7 @@ async def get_lead(lead_id: str, request: Request):
     """Get a specific lead."""
     await require_auth(request)
     
-    lead_doc = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
+    lead_doc = await db.leads.find_one({"lead_id": lead_id, "deleted_at": {"$exists": False}}, {"_id": 0})
     if not lead_doc:
         raise HTTPException(status_code=404, detail="Lead not found")
     
@@ -1033,7 +1162,7 @@ async def update_lead(lead_id: str, input: LeadUpdate, request: Request):
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     
     result = await db.leads.update_one(
-        {"lead_id": lead_id},
+        {"lead_id": lead_id, "deleted_at": {"$exists": False}},
         {"$set": update_data}
     )
     
@@ -1041,8 +1170,44 @@ async def update_lead(lead_id: str, input: LeadUpdate, request: Request):
         raise HTTPException(status_code=404, detail="Lead not found")
     
     await log_activity(user.user_id, "update_lead", "lead", lead_id, update_data)
+    await write_audit_log("lead", lead_id, "update", user.user_id, update_data)
     
     return {"message": "Lead updated"}
+
+@api_router.delete("/leads/{lead_id}")
+async def delete_lead(lead_id: str, request: Request):
+    """Soft-delete a lead."""
+    user = await require_auth(request)
+    now = datetime.now(timezone.utc).isoformat()
+    
+    result = await db.leads.update_one(
+        {"lead_id": lead_id, "deleted_at": {"$exists": False}},
+        {"$set": {"deleted_at": now, "updated_at": now}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    await log_activity(user.user_id, "delete_lead", "lead", lead_id)
+    await write_audit_log("lead", lead_id, "delete", user.user_id)
+    
+    return {"message": "Lead deleted"}
+
+@api_router.post("/leads/{lead_id}/restore")
+async def restore_lead(lead_id: str, request: Request):
+    """Restore a soft-deleted lead."""
+    user = await require_auth(request)
+    
+    result = await db.leads.update_one(
+        {"lead_id": lead_id, "deleted_at": {"$exists": True}},
+        {"$unset": {"deleted_at": ""}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Lead not found or not deleted")
+    
+    await write_audit_log("lead", lead_id, "restore", user.user_id)
+    return {"message": "Lead restored"}
 
 # ============= TEMPLATES ENDPOINTS =============
 
@@ -1903,6 +2068,12 @@ app.include_router(ga4_router)
 
 from ads_connect import ads_connect_router, init_ads_connect_db
 app.include_router(ads_connect_router)
+
+from contracts import contracts_router
+app.include_router(contracts_router)
+
+from satisfaction import satisfaction_router
+app.include_router(satisfaction_router)
 
 @app.on_event("startup")
 async def startup_db_indexes():
