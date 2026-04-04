@@ -36,6 +36,17 @@ const getZoneFromAddress = (addr='') => {
   return 'Autre';
 };
 
+// ── AGENT COLORS (unique per agent) ──
+const AGENT_COLOR_PALETTE = [
+  '#8b5cf6','#06b6d4','#10b981','#f59e0b','#f43f5e','#ec4899',
+  '#6366f1','#84cc16','#f97316','#a78bfa','#34d399','#60a5fa',
+];
+const getAgentColor = (agentId, members) => {
+  if (!agentId) return '#64748b';
+  const idx = members.findIndex(m => m.member_id === agentId);
+  return idx >= 0 ? AGENT_COLOR_PALETTE[idx % AGENT_COLOR_PALETTE.length] : '#64748b';
+};
+
 const ZONE_COLORS = {
   'Paris 1-4':'#f97316','Paris 5-8':'#8b5cf6','Paris 9-12':'#06b6d4',
   'Paris 13-16':'#10b981','Paris 17-20':'#f43f5e','Banlieue Nord':'#f59e0b',
@@ -121,6 +132,7 @@ const PlanningCalendar = () => {
   const [leadSearch, setLeadSearch] = useState('');
   const [leadSuggestions, setLeadSuggestions] = useState([]);
   const [loadingLead, setLoadingLead] = useState(false);
+  const [quickCreateDate, setQuickCreateDate] = useState(null);
 
   // Auto-fetch lead quand ID renseigné
   const fetchLead = useCallback(async (leadId) => {
@@ -252,6 +264,15 @@ const PlanningCalendar = () => {
       ? `${year}-${String(month).padStart(2,'0')}-${String(date).padStart(2,'0')}`
       : date.toISOString().slice(0,10);
     return filtered.filter(i=>(i.scheduled_date||'').startsWith(ds));
+  };
+
+  // Load indicator level per day
+  const getDayLoad = (date) => {
+    const n = getIntvForDay(date).length;
+    if (n === 0) return 0;
+    if (n === 1) return 1;
+    if (n <= 3) return 2;
+    return 3;
   };
 
   const handleCheckInOut = async (id, action) => {
@@ -555,21 +576,35 @@ const PlanningCalendar = () => {
                 const intvs = getIntvForDay(date);
                 const ds = date.toISOString().slice(0,10);
                 const isToday = ds===today;
+                const load = getDayLoad(date);
+                const loadColors = ['transparent','rgba(96,165,250,0.2)','rgba(245,158,11,0.3)','rgba(244,63,94,0.35)'];
                 return (
                   <div key={idx}
-                    className={`rounded-xl p-2 border transition-all min-h-[120px] ${isToday?'border-violet-500/40 bg-violet-500/5':'border-white/5 bg-white/2'} ${dragOver===ds?'bg-emerald-500/10 border-emerald-500/30':''}`}
+                    className={`rounded-xl p-2 border transition-all min-h-[130px] relative group/day ${
+                      isToday
+                        ? 'border-violet-500/60 bg-violet-500/8 shadow-lg shadow-violet-500/10'
+                        : 'border-white/5 bg-white/2'
+                    } ${dragOver===ds?'bg-emerald-500/10 border-emerald-500/30':''}`}
+                    style={isToday ? {boxShadow:'inset 0 1px 0 rgba(139,92,246,0.3)'} : {}}
                     onDragOver={e=>{e.preventDefault();setDragOver(ds);}}
                     onDragLeave={()=>setDragOver(null)}
                     onDrop={e=>handleDrop(e,date)}>
+                    {/* Load indicator bar */}
+                    {load > 0 && (
+                      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-xl" style={{background:loadColors[load]}} />
+                    )}
                     <div className="text-center mb-2">
                       <p className="text-[10px] text-slate-500 font-bold uppercase">{DAYS_FR[idx]}</p>
-                      <p className={`text-xl font-black ${isToday?'text-violet-400':'text-slate-300'}`}>{date.getDate()}</p>
+                      <div className={`text-xl font-black mx-auto w-8 h-8 flex items-center justify-center rounded-full ${
+                        isToday ? 'bg-violet-600 text-white shadow-md shadow-violet-500/40' : 'text-slate-300'
+                      }`}>{date.getDate()}</div>
                       {intvs.length>0 && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-400">{intvs.length}</span>}
                     </div>
                     <div className="space-y-1.5">
                       {intvs.map(i=>{
                         const sc=STATUS[i.status]||STATUS.planifiée;
                         const hasConflict=conflicts.has(i.intervention_id||i.id);
+                        const agentColor = getAgentColor(i.assigned_agent_id, members);
                         return (
                           <div key={i.intervention_id||i.id}
                             draggable
@@ -583,11 +618,22 @@ const PlanningCalendar = () => {
                               {hasConflict && <AlertTriangle className="w-3 h-3 text-red-400 flex-shrink-0"/>}
                             </div>
                             <p className="text-[11px] font-semibold text-slate-200 truncate">{i.title||i.service_type}</p>
-                            {i.assigned_agent_name && <p className="text-[10px] text-slate-500 truncate">👷 {i.assigned_agent_name}</p>}
+                            {i.assigned_agent_name && (
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{background:agentColor}} />
+                                <p className="text-[10px] text-slate-500 truncate">{i.assigned_agent_name.split(' ')[0]}</p>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
                     </div>
+                    {/* Quick create button */}
+                    <button
+                      onClick={() => { setQuickCreateDate(ds); setForm(p=>({...p,scheduled_date:ds})); setShowForm(true); }}
+                      className="absolute bottom-1.5 right-1.5 w-6 h-6 rounded-lg bg-violet-500/20 hover:bg-violet-500/40 border border-violet-500/30 text-violet-400 flex items-center justify-center opacity-0 group-hover/day:opacity-100 transition-all">
+                      <Plus className="w-3 h-3" />
+                    </button>
                   </div>
                 );
               })}
@@ -692,48 +738,115 @@ const PlanningCalendar = () => {
 
         {/* ── VUE LISTE ── */}
         {view==='liste' && (
-          <div className="section-card divide-y divide-white/5">
-            {filtered.length===0 && (
-              <div className="flex flex-col items-center justify-center py-16 gap-3">
-                <CalendarDays className="w-12 h-12 text-slate-700"/>
-                <p className="text-slate-500">Aucune intervention</p>
-              </div>
-            )}
-            {[...filtered].sort((a,b)=>(a.scheduled_date||'').localeCompare(b.scheduled_date||'')).map(i=>{
-              const sc=STATUS[i.status]||STATUS.planifiée;
-              const hasConflict=conflicts.has(i.intervention_id||i.id);
-              const zone=getZoneFromAddress(i.address);
+          <div className="space-y-4">
+            {/* Today's interventions highlighted */}
+            {(() => {
+              const todayIntvs = filtered.filter(i=>(i.scheduled_date||'').startsWith(today));
+              if (todayIntvs.length === 0) return null;
               return (
-                <div key={i.intervention_id||i.id}
-                  className="flex items-center gap-4 p-4 hover:bg-white/3 cursor-pointer group transition-all"
-                  onClick={()=>setSelected(i)}>
-                  <div className="flex-shrink-0 text-center w-12">
-                    <p className="text-xl font-black text-slate-200">{(i.scheduled_date||'').slice(8,10)}</p>
-                    <p className="text-[10px] text-slate-500 font-semibold uppercase">{MONTHS_FR[parseInt((i.scheduled_date||'').slice(5,7))-1]?.slice(0,3)}</p>
-                  </div>
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-                    style={{background:sc.bg,border:`1px solid ${sc.border}`}}>{getSvcIcon(i.service_type)}</div>
-                  <div className="flex-1 min-w-0">
+                <div className="section-card overflow-hidden">
+                  <div className="px-4 py-3 border-b border-white/5" style={{background:'rgba(139,92,246,0.05)'}}>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold text-slate-200 truncate">{i.title||i.service_type}</p>
-                      {hasConflict && <AlertTriangle className="w-3.5 h-3.5 text-red-400 flex-shrink-0"/>}
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{color:sc.color,background:sc.bg}}>{sc.label}</span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{background:ZONE_COLORS[zone]+'20',color:ZONE_COLORS[zone]||'#64748b'}}>📍 {zone}</span>
-                    </div>
-                    <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                      {i.lead_name && <span className="text-xs text-slate-500">{i.lead_name}</span>}
-                      {i.scheduled_time && <span className="text-xs text-slate-500"><Clock className="w-3 h-3 inline mr-0.5"/>{i.scheduled_time}{i.duration_hours?` (${i.duration_hours}h)`:''}</span>}
-                      {i.address && <span className="text-xs text-slate-500 truncate"><MapPin className="w-3 h-3 inline mr-0.5"/>{i.address}</span>}
-                      {i.assigned_agent_name && <span className="text-xs text-emerald-400">👷 {i.assigned_agent_name}</span>}
+                      <div className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
+                      <p className="text-sm font-bold text-violet-300">Aujourd'hui · {todayIntvs.length} intervention(s)</p>
                     </div>
                   </div>
-                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
-                    {i.status==='planifiée' && <button onClick={e=>{e.stopPropagation();handleCheckInOut(i.intervention_id||i.id,'check_in');}} className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"><Play className="w-3.5 h-3.5"/></button>}
-                    {i.status==='en_cours' && <button onClick={e=>{e.stopPropagation();handleCheckInOut(i.intervention_id||i.id,'check_out');}} className="p-1.5 rounded-lg bg-blue-500/15 text-blue-400 border border-blue-500/20"><CheckCircle className="w-3.5 h-3.5"/></button>}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                    {todayIntvs.map(i=>{
+                      const sc=STATUS[i.status]||STATUS.planifiée;
+                      const agentColor=getAgentColor(i.assigned_agent_id,members);
+                      return (
+                        <div key={i.intervention_id||i.id}
+                          onClick={()=>setSelected(i)}
+                          className="p-4 rounded-xl border cursor-pointer hover:scale-[1.01] transition-all relative overflow-hidden"
+                          style={{background:sc.bg,borderColor:sc.border}}>
+                          <div className="absolute top-0 left-0 right-0 h-0.5" style={{background:sc.color}}/>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-lg">{getSvcIcon(i.service_type)}</span>
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{color:sc.color,background:'rgba(0,0,0,0.2)'}}>
+                              {sc.label}
+                            </span>
+                          </div>
+                          <p className="font-bold text-slate-200 text-sm truncate mb-1">{i.title||i.service_type}</p>
+                          {i.lead_name && <p className="text-xs text-slate-400 truncate mb-1">👤 {i.lead_name}</p>}
+                          {i.address && <p className="text-xs text-slate-500 truncate mb-1"><MapPin className="w-3 h-3 inline mr-0.5"/>{i.address}</p>}
+                          <div className="flex items-center justify-between mt-2">
+                            <span className="text-xs font-bold" style={{color:sc.color}}>
+                              <Clock className="w-3 h-3 inline mr-0.5"/>{i.scheduled_time||'—'}
+                              {i.duration_hours ? ` (${i.duration_hours}h)` : ''}
+                            </span>
+                            {i.assigned_agent_name && (
+                              <div className="flex items-center gap-1">
+                                <div className="w-2 h-2 rounded-full" style={{background:agentColor}}/>
+                                <span className="text-[10px] text-slate-500">{i.assigned_agent_name.split(' ')[0]}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
-            })}
+            })()}
+
+            {/* Full sorted list */}
+            <div className="section-card divide-y divide-white/5">
+              {filtered.length===0 && (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <CalendarDays className="w-12 h-12 text-slate-700"/>
+                  <p className="text-slate-500">Aucune intervention</p>
+                </div>
+              )}
+              {[...filtered].sort((a,b)=>(a.scheduled_date||'').localeCompare(b.scheduled_date||'')).map(i=>{
+                const sc=STATUS[i.status]||STATUS.planifiée;
+                const hasConflict=conflicts.has(i.intervention_id||i.id);
+                const zone=getZoneFromAddress(i.address);
+                const agentColor=getAgentColor(i.assigned_agent_id,members);
+                const isInterventionToday = (i.scheduled_date||'').startsWith(today);
+                return (
+                  <div key={i.intervention_id||i.id}
+                    className={`flex items-center gap-4 p-4 hover:bg-white/3 cursor-pointer group transition-all ${isInterventionToday?'bg-violet-500/3':''}`}
+                    onClick={()=>setSelected(i)}>
+                    <div className="flex-shrink-0 text-center w-12">
+                      <p className={`text-xl font-black ${isInterventionToday?'text-violet-400':'text-slate-200'}`}>{(i.scheduled_date||'').slice(8,10)}</p>
+                      <p className="text-[10px] text-slate-500 font-semibold uppercase">{MONTHS_FR[parseInt((i.scheduled_date||'').slice(5,7))-1]?.slice(0,3)}</p>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 relative"
+                      style={{background:sc.bg,border:`1px solid ${sc.border}`}}>
+                      {getSvcIcon(i.service_type)}
+                      {/* Agent color dot */}
+                      {i.assigned_agent_id && (
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-slate-900" style={{background:agentColor}}/>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-bold text-slate-200 truncate">{i.title||i.service_type}</p>
+                        {hasConflict && <AlertTriangle className="w-3.5 h-3.5 text-red-400 flex-shrink-0"/>}
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{color:sc.color,background:sc.bg}}>{sc.label}</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{background:ZONE_COLORS[zone]+'20',color:ZONE_COLORS[zone]||'#64748b'}}>📍 {zone}</span>
+                      </div>
+                      <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                        {i.lead_name && <span className="text-xs text-slate-500">{i.lead_name}</span>}
+                        {i.scheduled_time && <span className="text-xs text-slate-500"><Clock className="w-3 h-3 inline mr-0.5"/>{i.scheduled_time}{i.duration_hours?` (${i.duration_hours}h)`:''}</span>}
+                        {i.address && <span className="text-xs text-slate-500 truncate"><MapPin className="w-3 h-3 inline mr-0.5"/>{i.address}</span>}
+                        {i.assigned_agent_name && (
+                          <span className="text-xs flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full" style={{background:agentColor}}/>
+                            <span style={{color:agentColor}}>{i.assigned_agent_name}</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
+                      {i.status==='planifiée' && <button onClick={e=>{e.stopPropagation();handleCheckInOut(i.intervention_id||i.id,'check_in');}} className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"><Play className="w-3.5 h-3.5"/></button>}
+                      {i.status==='en_cours' && <button onClick={e=>{e.stopPropagation();handleCheckInOut(i.intervention_id||i.id,'check_out');}} className="p-1.5 rounded-lg bg-blue-500/15 text-blue-400 border border-blue-500/20"><CheckCircle className="w-3.5 h-3.5"/></button>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
         </>

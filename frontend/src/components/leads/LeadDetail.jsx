@@ -44,6 +44,8 @@ const LeadDetail = () => {
   const [tasks, setTasks] = useState([]);
   const [aiScore, setAiScore] = useState(null);
   const [scoringLoading, setScoringLoading] = useState(false);
+  const [notes, setNotes] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
 
   const fetchLeadData = useCallback(async () => {
     setLoading(true);
@@ -56,6 +58,7 @@ const LeadDetail = () => {
         axios.get(`${API_URL}/tasks?lead_id=${id}`, { withCredentials: true }).catch(() => ({ data: [] })),
       ]);
       setLead(leadRes.data);
+      setNotes(leadRes.data.notes || '');
       setInteractions(interactionsRes.data);
       setQuotes(quotesRes.data);
       setEmails(emailsRes.data.emails || []);
@@ -98,6 +101,15 @@ const LeadDetail = () => {
       fetchLeadData();
     } catch { toast.error('Erreur lors de l\'envoi'); }
     finally { setSendingQuote(null); }
+  };
+
+  const handleSaveNotes = async () => {
+    setSavingNotes(true);
+    try {
+      await axios.patch(`${API_URL}/leads/${id}`, { notes }, { withCredentials: true });
+      toast.success('Notes sauvegardées');
+    } catch { toast.error('Erreur sauvegarde notes'); }
+    finally { setSavingNotes(false); }
   };
 
   if (loading) {
@@ -195,20 +207,41 @@ const LeadDetail = () => {
         </div>
 
         {/* Score bar */}
-        <div className="mt-4 flex items-center gap-3">
-          <span className="text-xs text-slate-500">Score</span>
-          <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden max-w-xs">
-            <div className="h-full rounded-full transition-all duration-500"
-              style={{
-                width: `${lead.score || 50}%`,
-                background: lead.score >= 70 ? '#34d399' : lead.score >= 40 ? '#f59e0b' : '#f43f5e'
-              }} />
+        <div className="mt-4 flex items-center gap-4">
+          {/* Big score circle */}
+          {(() => {
+            const score = lead.score || 50;
+            const scoreColor = score >= 70 ? '#34d399' : score >= 40 ? '#f59e0b' : '#f43f5e';
+            const radius = 18; const circ = 2 * Math.PI * radius;
+            const filled = (score / 100) * circ;
+            return (
+              <div className="relative flex-shrink-0 w-14 h-14 flex items-center justify-center">
+                <svg width="56" height="56" viewBox="0 0 56 56" className="absolute inset-0 -rotate-90">
+                  <circle cx="28" cy="28" r={radius} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="4" />
+                  <circle cx="28" cy="28" r={radius} fill="none" stroke={scoreColor} strokeWidth="4"
+                    strokeDasharray={`${filled} ${circ - filled}`} strokeLinecap="round"
+                    style={{ transition: 'stroke-dasharray 0.7s ease' }} />
+                </svg>
+                <span className="text-sm font-black" style={{ color: scoreColor }}>{score}</span>
+              </div>
+            );
+          })()}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-semibold" style={{ color: lead.score >= 70 ? '#34d399' : lead.score >= 40 ? '#f59e0b' : '#f43f5e' }}>
+                {lead.score >= 70 ? '🔥 Lead chaud' : lead.score >= 40 ? '♨️ Lead tiède' : '❄️ Lead froid'}
+              </span>
+              <span className="text-xs text-slate-600">·</span>
+              <span className="text-xs text-slate-500">{lead.probability || 50}% probabilité</span>
+            </div>
+            <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+              <div className="h-full rounded-full transition-all duration-700"
+                style={{
+                  width: `${lead.score || 50}%`,
+                  background: lead.score >= 70 ? 'linear-gradient(90deg,#059669,#34d399)' : lead.score >= 40 ? 'linear-gradient(90deg,#d97706,#f59e0b)' : 'linear-gradient(90deg,#be123c,#f43f5e)'
+                }} />
+            </div>
           </div>
-          <span className="text-xs font-semibold" style={{color: lead.score >= 70 ? '#34d399' : lead.score >= 40 ? '#f59e0b' : '#f43f5e'}}>
-            {lead.score || 50}/100
-          </span>
-          <span className="text-xs text-slate-500">·</span>
-          <span className="text-xs text-slate-500">{lead.probability || 50}% probabilité</span>
         </div>
       </div>
 
@@ -257,13 +290,14 @@ const LeadDetail = () => {
           <div className="section-card">
             <div className="flex border-b border-white/5 overflow-x-auto scrollbar-none" style={{WebkitOverflowScrolling:"touch"}}>
               {[
-                { key: 'interactions', label: 'Interactions', count: interactions.length },
-                { key: 'quotes', label: 'Devis', count: quotes.length },
-                { key: 'emails', label: 'Emails', count: emails.length },
-                { key: 'tasks', label: 'Taches', count: tasks.length },
-                { key: 'timeline', label: 'Timeline', count: interactions.length + quotes.length },
-                { key: 'ai', label: 'IA', count: null },
-                { key: 'chat', label: 'Chat client', count: null },
+                { key: 'interactions', label: '📝 Interactions', count: interactions.length },
+                { key: 'quotes', label: '📄 Devis', count: quotes.length },
+                { key: 'emails', label: '📧 Emails', count: emails.length },
+                { key: 'tasks', label: '✅ Tâches', count: tasks.length },
+                { key: 'timeline', label: '📅 Timeline', count: interactions.length + quotes.length },
+                { key: 'notes', label: '🗒️ Notes', count: null },
+                { key: 'ai', label: '🤖 IA', count: null },
+                { key: 'chat', label: '💬 Chat', count: null },
               ].map(tab => (
                 <button key={tab.key} onClick={() => setActiveTab(tab.key)}
                   className={"flex items-center gap-1 px-3 py-3 text-xs font-medium transition-all border-b-2 -mb-px whitespace-nowrap flex-shrink-0 " + (activeTab === tab.key ? "text-violet-300 border-violet-500" : "text-slate-500 border-transparent hover:text-slate-300")}>
@@ -489,6 +523,33 @@ const LeadDetail = () => {
               )}
 
               {/* AI Scoring tab */}
+              {/* Notes tab */}
+              {activeTab === 'notes' && (
+                <div className="p-4 space-y-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-sm font-semibold text-slate-200">Notes privées</span>
+                    <span className="text-xs text-slate-600">· Visibles uniquement par l'équipe</span>
+                  </div>
+                  <textarea
+                    value={notes}
+                    onChange={e => setNotes(e.target.value)}
+                    placeholder="Ajouter des notes, observations, informations importantes sur ce lead..."
+                    rows={8}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 text-slate-200 placeholder-slate-600 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-violet-500 resize-none leading-relaxed"
+                  />
+                  <div className="flex justify-end">
+                    <button onClick={handleSaveNotes} disabled={savingNotes}
+                      className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
+                      style={{ boxShadow: '0 0 15px rgba(139,92,246,0.2)' }}>
+                      {savingNotes ? (
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : '💾'}
+                      {savingNotes ? 'Sauvegarde...' : 'Sauvegarder les notes'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {activeTab === 'ai' && (
                 <div className="p-4 space-y-4">
                   <div className="flex items-center justify-between">
@@ -558,7 +619,6 @@ const LeadDetail = () => {
                   )}
                 </div>
               )}
-              )}
             </div>
           </div>
         </div>
@@ -616,48 +676,82 @@ const LeadDetail = () => {
             </div>
           </div>
 
-          {/* Quick actions */}
-          <div className="section-card p-5">
+          {/* Quick actions bar — big buttons */}
+          <div className="section-card p-4">
             <h2 className="text-sm font-semibold text-slate-200 mb-3">Actions rapides</h2>
-            <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
               <a href={`tel:${lead.phone}`}
-                className="w-full flex items-center gap-3 px-3 py-2.5 bg-white/3 hover:bg-white/5 border border-white/5 hover:border-white/10 rounded-lg transition-all text-sm text-slate-300 hover:text-slate-100">
-                <Phone className="w-4 h-4 text-green-400" /> Appeler {lead.phone}
+                className="flex flex-col items-center gap-1.5 p-3 bg-green-500/10 hover:bg-green-500/20 border border-green-500/15 hover:border-green-500/30 rounded-xl transition-all text-green-400 hover:text-green-300">
+                <Phone className="w-5 h-5" />
+                <span className="text-xs font-semibold">Appeler</span>
               </a>
+              <button onClick={async () => {
+                try {
+                  const res = await axios.post(`${API_URL}/whatsapp/send`, {
+                    lead_id: lead.lead_id,
+                    message: `Bonjour ${lead.name}, merci pour votre demande. - Global Clean Home`,
+                  }, { withCredentials: true });
+                  window.open(res.data.whatsapp_link, '_blank');
+                } catch { toast.error('Erreur WhatsApp'); }
+              }}
+                className="flex flex-col items-center gap-1.5 p-3 bg-green-500/10 hover:bg-green-500/20 border border-green-500/15 hover:border-green-500/30 rounded-xl transition-all text-green-400 hover:text-green-300">
+                <MessageSquare className="w-5 h-5" />
+                <span className="text-xs font-semibold">WhatsApp</span>
+              </button>
               <a href={`mailto:${lead.email}`}
-                className="w-full flex items-center gap-3 px-3 py-2.5 bg-white/3 hover:bg-white/5 border border-white/5 hover:border-white/10 rounded-lg transition-all text-sm text-slate-300 hover:text-slate-100">
-                <Mail className="w-4 h-4 text-blue-400" /> Envoyer un email
+                className="flex flex-col items-center gap-1.5 p-3 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/15 hover:border-blue-500/30 rounded-xl transition-all text-blue-400 hover:text-blue-300">
+                <Mail className="w-5 h-5" />
+                <span className="text-xs font-semibold">Email</span>
               </a>
               <button onClick={() => navigate('/quotes/new', { state: { lead } })}
-                className="w-full flex items-center gap-3 px-3 py-2.5 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/15 hover:border-violet-500/30 rounded-lg transition-all text-sm text-violet-300 hover:text-violet-200">
-                <FileText className="w-4 h-4" /> Créer un devis
+                className="flex flex-col items-center gap-1.5 p-3 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/15 hover:border-violet-500/30 rounded-xl transition-all text-violet-400 hover:text-violet-300">
+                <FileText className="w-5 h-5" />
+                <span className="text-xs font-semibold">Devis</span>
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Mobile actions */}
-      <div className="fixed bottom-14 left-0 right-0 z-30 border-t border-white/5 p-3 flex gap-2 sm:hidden"
-        style={{background:'hsl(224,71%,5%)'}} data-testid="mobile-lead-actions">
-        <a href={`tel:${lead.phone}`} data-testid="mobile-call-btn"
-          className="flex-1 flex items-center justify-center gap-2 py-3 bg-white/5 border border-white/10 text-slate-300 rounded-xl text-sm font-medium transition-all">
-          <Phone className="w-4 h-4" /> Appeler
-        </a>
-        <button data-testid="mobile-whatsapp-btn"
-          onClick={async () => {
-            try {
-              const res = await axios.post(`${API_URL}/whatsapp/send`, { lead_id: lead.lead_id, message: `Bonjour ${lead.name}, merci pour votre demande. - Global Clean Home` }, { withCredentials: true });
-              window.open(res.data.whatsapp_link, '_blank');
-            } catch { toast.error('Erreur WhatsApp'); }
-          }}
-          className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-500/15 border border-green-500/20 text-green-400 rounded-xl text-sm font-medium transition-all">
-          <MessageSquare className="w-4 h-4" /> WhatsApp
-        </button>
-        <button data-testid="mobile-quote-btn" onClick={() => navigate('/quotes/new', { state: { lead } })}
-          className="flex-1 flex items-center justify-center gap-2 py-3 bg-violet-600 text-white rounded-xl text-sm font-medium transition-all">
-          <FileText className="w-4 h-4" /> Devis
-        </button>
+      {/* Mobile sticky contact quick actions bar */}
+      <div className="fixed bottom-14 left-0 right-0 z-30 p-3 sm:hidden"
+        style={{
+          background: 'rgba(10,12,28,0.92)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          borderTop: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: '0 -4px 24px rgba(0,0,0,0.4)',
+        }}
+        data-testid="mobile-lead-actions">
+        <div className="flex gap-2">
+          <a href={`tel:${lead.phone}`} data-testid="mobile-call-btn"
+            className="flex-1 flex flex-col items-center gap-1 py-2.5 bg-green-500/10 border border-green-500/20 text-green-400 rounded-xl text-xs font-semibold transition-all active:scale-95">
+            <Phone className="w-4 h-4" />
+            Appel
+          </a>
+          <button data-testid="mobile-whatsapp-btn"
+            onClick={async () => {
+              try {
+                const res = await axios.post(`${API_URL}/whatsapp/send`, { lead_id: lead.lead_id, message: `Bonjour ${lead.name}, merci pour votre demande. - Global Clean Home` }, { withCredentials: true });
+                window.open(res.data.whatsapp_link, '_blank');
+              } catch { toast.error('Erreur WhatsApp'); }
+            }}
+            className="flex-1 flex flex-col items-center gap-1 py-2.5 bg-green-500/15 border border-green-500/20 text-green-400 rounded-xl text-xs font-semibold transition-all active:scale-95">
+            <MessageSquare className="w-4 h-4" />
+            WhatsApp
+          </button>
+          <a href={`mailto:${lead.email}`} data-testid="mobile-email-btn"
+            className="flex-1 flex flex-col items-center gap-1 py-2.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-xl text-xs font-semibold transition-all active:scale-95">
+            <Mail className="w-4 h-4" />
+            Email
+          </a>
+          <button data-testid="mobile-quote-btn" onClick={() => navigate('/quotes/new', { state: { lead } })}
+            className="flex-1 flex flex-col items-center gap-1 py-2.5 bg-violet-600 text-white rounded-xl text-xs font-semibold transition-all active:scale-95"
+            style={{ boxShadow: '0 0 12px rgba(139,92,246,0.3)' }}>
+            <FileText className="w-4 h-4" />
+            Devis
+          </button>
+        </div>
       </div>
     </div>
   );
