@@ -838,6 +838,9 @@ async def create_lead(input: LeadCreate, request: Request):
     user = await get_current_user(request)
     if user:
         await log_activity(user.user_id, "create_lead", "lead", lead_id)
+        await write_audit_log("lead", lead_id, "create", user.user_id, {"name": input.name, "email": str(input.email), "service_type": input.service_type})
+    else:
+        await write_audit_log("lead", lead_id, "create", "public", {"name": input.name, "service_type": input.service_type})
     
     # Notification nouveau lead
     try:
@@ -1298,6 +1301,7 @@ async def create_quote(input: QuoteCreate, request: Request):
     
     await db.quotes.insert_one(quote)
     await log_activity(user.user_id, "create_quote", "quote", quote_id)
+    await write_audit_log("quote", quote_id, "create", user.user_id, input.model_dump())
     
     quote_doc = await db.quotes.find_one({"quote_id": quote_id}, {"_id": 0})
     if isinstance(quote_doc["created_at"], str):
@@ -1305,19 +1309,29 @@ async def create_quote(input: QuoteCreate, request: Request):
     
     return Quote(**quote_doc)
 
-@api_router.get("/quotes", response_model=List[Quote])
-async def get_quotes(request: Request, lead_id: Optional[str] = None):
-    """Get all quotes."""
+@api_router.get("/quotes")
+async def get_quotes(
+    request: Request,
+    lead_id: Optional[str] = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200),
+    include_deleted: bool = Query(default=False),
+):
+    """Get all quotes with pagination."""
     await require_auth(request)
     
     query = {}
+    if not include_deleted:
+        query["deleted_at"] = {"$exists": False}
     if lead_id:
         query["lead_id"] = lead_id
     
-    quotes = await db.quotes.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    total = await db.quotes.count_documents(query)
+    skip = (page - 1) * page_size
+    quotes = await db.quotes.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(page_size).to_list(page_size)
     
     for quote in quotes:
-        if isinstance(quote["created_at"], str):
+        if isinstance(quote.get("created_at"), str):
             quote["created_at"] = datetime.fromisoformat(quote["created_at"])
         if quote.get("sent_at") and isinstance(quote["sent_at"], str):
             quote["sent_at"] = datetime.fromisoformat(quote["sent_at"])
@@ -1326,7 +1340,42 @@ async def get_quotes(request: Request, lead_id: Optional[str] = None):
         if quote.get("responded_at") and isinstance(quote["responded_at"], str):
             quote["responded_at"] = datetime.fromisoformat(quote["responded_at"])
     
-    return quotes
+    return {
+        "items": quotes,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": math.ceil(total / page_size) if page_size > 0 else 1,
+    }
+
+@api_router.delete("/quotes/{quote_id}")
+async def delete_quote(quote_id: str, request: Request):
+    """Soft-delete a quote."""
+    user = await require_auth(request)
+    now = datetime.now(timezone.utc).isoformat()
+    
+    result = await db.quotes.update_one(
+        {"quote_id": quote_id, "deleted_at": {"$exists": False}},
+        {"$set": {"deleted_at": now}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Devis introuvable")
+    
+    await write_audit_log("quote", quote_id, "delete", user.user_id)
+    return {"message": "Devis supprimé"}
+
+@api_router.post("/quotes/{quote_id}/restore")
+async def restore_quote(quote_id: str, request: Request):
+    """Restore a soft-deleted quote."""
+    user = await require_auth(request)
+    result = await db.quotes.update_one(
+        {"quote_id": quote_id, "deleted_at": {"$exists": True}},
+        {"$unset": {"deleted_at": ""}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Devis introuvable ou non supprimé")
+    await write_audit_log("quote", quote_id, "restore", user.user_id)
+    return {"message": "Devis restauré"}
 
 @api_router.post("/quotes/{quote_id}/send")
 async def send_quote(quote_id: str, request: Request):
@@ -1514,26 +1563,69 @@ async def create_task(input: TaskCreate, request: Request):
     
     return Task(**task_doc)
 
-@api_router.get("/tasks", response_model=List[Task])
-async def get_tasks(request: Request, status: Optional[str] = None):
-    """Get tasks."""
+@api_router.get("/tasks")
+async def get_tasks(
+    request: Request,
+    status: Optional[str] = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200),
+    include_deleted: bool = Query(default=False),
+):
+    """Get tasks with pagination."""
     await require_auth(request)
     
     query = {}
+    if not include_deleted:
+        query["deleted_at"] = {"$exists": False}
     if status:
         query["status"] = status
     
-    tasks = await db.tasks.find(query, {"_id": 0}).sort("due_date", 1).to_list(500)
+    total = await db.tasks.count_documents(query)
+    skip = (page - 1) * page_size
+    tasks = await db.tasks.find(query, {"_id": 0}).sort("due_date", 1).skip(skip).limit(page_size).to_list(page_size)
     
     for task in tasks:
-        if isinstance(task["created_at"], str):
+        if isinstance(task.get("created_at"), str):
             task["created_at"] = datetime.fromisoformat(task["created_at"])
         if task.get("due_date") and isinstance(task["due_date"], str):
             task["due_date"] = datetime.fromisoformat(task["due_date"])
         if task.get("completed_at") and isinstance(task["completed_at"], str):
             task["completed_at"] = datetime.fromisoformat(task["completed_at"])
     
-    return tasks
+    return {
+        "items": [Task(**task) for task in tasks],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": math.ceil(total / page_size) if page_size > 0 else 1,
+    }
+
+@api_router.delete("/tasks/{task_id}")
+async def delete_task(task_id: str, request: Request):
+    """Soft-delete a task."""
+    user = await require_auth(request)
+    now = datetime.now(timezone.utc).isoformat()
+    result = await db.tasks.update_one(
+        {"task_id": task_id, "deleted_at": {"$exists": False}},
+        {"$set": {"deleted_at": now}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Tâche introuvable")
+    await write_audit_log("task", task_id, "delete", user.user_id)
+    return {"message": "Tâche supprimée"}
+
+@api_router.post("/tasks/{task_id}/restore")
+async def restore_task(task_id: str, request: Request):
+    """Restore a soft-deleted task."""
+    user = await require_auth(request)
+    result = await db.tasks.update_one(
+        {"task_id": task_id, "deleted_at": {"$exists": True}},
+        {"$unset": {"deleted_at": ""}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Tâche introuvable ou non supprimée")
+    await write_audit_log("task", task_id, "restore", user.user_id)
+    return {"message": "Tâche restaurée"}
 
 @api_router.patch("/tasks/{task_id}/complete")
 async def complete_task(task_id: str, request: Request):
@@ -1567,6 +1659,147 @@ async def get_activity_logs(request: Request, limit: int = 100):
             log["created_at"] = datetime.fromisoformat(log["created_at"])
     
     return logs
+
+# ============= AUDIT LOG ENDPOINT =============
+
+@api_router.get("/audit-log")
+async def get_audit_log(
+    request: Request,
+    entity_type: Optional[str] = None,
+    entity_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200),
+):
+    """Get audit log with filters."""
+    await require_auth(request)
+    
+    query = {}
+    if entity_type:
+        query["entity_type"] = entity_type
+    if entity_id:
+        query["entity_id"] = entity_id
+    if user_id:
+        query["user_id"] = user_id
+    if date_from:
+        query.setdefault("timestamp", {})["$gte"] = date_from
+    if date_to:
+        query.setdefault("timestamp", {})["$lte"] = date_to
+    
+    total = await db.audit_log.count_documents(query)
+    skip = (page - 1) * page_size
+    logs = await db.audit_log.find(query, {"_id": 0}).sort("timestamp", -1).skip(skip).limit(page_size).to_list(page_size)
+    
+    return {
+        "items": logs,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": math.ceil(total / page_size) if page_size > 0 else 1,
+    }
+
+# ============= GLOBAL SEARCH ENDPOINT =============
+
+@api_router.get("/search")
+async def global_search(
+    request: Request,
+    q: str = Query(..., min_length=1, description="Search query"),
+):
+    """Search across leads, quotes, invoices, and interventions."""
+    await require_auth(request)
+    
+    if not q or len(q.strip()) < 1:
+        raise HTTPException(status_code=400, detail="Paramètre q requis")
+    
+    q = q.strip()
+    pattern = re.compile(re.escape(q), re.IGNORECASE)
+    results = {}
+    
+    # Search leads
+    lead_query = {
+        "deleted_at": {"$exists": False},
+        "$or": [
+            {"name": pattern},
+            {"email": pattern},
+            {"phone": pattern},
+            {"address": pattern},
+            {"message": pattern},
+        ]
+    }
+    leads = await db.leads.find(lead_query, {"_id": 0, "lead_id": 1, "name": 1, "email": 1, "phone": 1, "service_type": 1, "status": 1, "created_at": 1}).limit(10).to_list(10)
+    results["leads"] = [
+        {
+            "type": "lead",
+            "id": l["lead_id"],
+            "snippet": f"{l.get('name','')} · {l.get('email','')} · {l.get('service_type','')} ({l.get('status','')})",
+            "data": l,
+        }
+        for l in leads
+    ]
+    
+    # Search quotes
+    quote_query = {
+        "deleted_at": {"$exists": False},
+        "$or": [
+            {"details": pattern},
+            {"service_type": pattern},
+        ]
+    }
+    quotes = await db.quotes.find(quote_query, {"_id": 0, "quote_id": 1, "service_type": 1, "amount": 1, "status": 1, "created_at": 1}).limit(10).to_list(10)
+    results["quotes"] = [
+        {
+            "type": "quote",
+            "id": q_doc["quote_id"],
+            "snippet": f"Devis {q_doc.get('service_type','')} · {q_doc.get('amount',0)}€ ({q_doc.get('status','')})",
+            "data": q_doc,
+        }
+        for q_doc in quotes
+    ]
+    
+    # Search invoices
+    invoice_query = {
+        "deleted_at": {"$exists": False},
+        "$or": [
+            {"lead_name": pattern},
+            {"lead_email": pattern},
+            {"details": pattern},
+        ]
+    }
+    invoices_found = await db.invoices.find(invoice_query, {"_id": 0, "invoice_id": 1, "lead_name": 1, "lead_email": 1, "amount_ttc": 1, "status": 1, "created_at": 1}).limit(10).to_list(10)
+    results["invoices"] = [
+        {
+            "type": "invoice",
+            "id": inv["invoice_id"],
+            "snippet": f"Facture {inv.get('lead_name','')} · {inv.get('amount_ttc',0)}€ ({inv.get('status','')})",
+            "data": inv,
+        }
+        for inv in invoices_found
+    ]
+    
+    # Search interventions
+    intervention_query = {
+        "deleted_at": {"$exists": False},
+        "$or": [
+            {"title": pattern},
+            {"address": pattern},
+            {"description": pattern},
+        ]
+    }
+    interventions_found = await db.interventions.find(intervention_query, {"_id": 0, "intervention_id": 1, "title": 1, "address": 1, "status": 1, "scheduled_date": 1}).limit(10).to_list(10)
+    results["interventions"] = [
+        {
+            "type": "intervention",
+            "id": i["intervention_id"],
+            "snippet": f"Intervention {i.get('title','')} · {i.get('address','')} ({i.get('status','')})",
+            "data": i,
+        }
+        for i in interventions_found
+    ]
+    
+    total = sum(len(v) for v in results.values())
+    return {"query": q, "total": total, "results": results}
 
 # ============= TRACKING ENDPOINTS (PUBLIC) =============
 
@@ -2052,6 +2285,10 @@ app.include_router(ext_router)
 from exports import exports_router
 app.include_router(exports_router)
 
+# Include Bulk Operations router (Phase 8)
+from bulk_operations import bulk_router
+app.include_router(bulk_router)
+
 # Include Google Calendar router
 from google_calendar import gcal_router
 app.include_router(gcal_router)
@@ -2130,6 +2367,12 @@ async def startup_db_indexes():
     await db.interactions.create_index("lead_id")
     await db.events.create_index("event_id", unique=True)
     await db.activity_logs.create_index("created_at")
+    # Audit log indexes
+    await db.audit_log.create_index("audit_id", unique=True)
+    await db.audit_log.create_index("entity_type")
+    await db.audit_log.create_index("entity_id")
+    await db.audit_log.create_index("user_id")
+    await db.audit_log.create_index("timestamp")
     await db.users.create_index("user_id", unique=True)
     await db.users.create_index("email", unique=True)
     await db.user_sessions.create_index("session_token", unique=True)
