@@ -10,7 +10,8 @@ import {
   Volume2, VolumeX, BellRing, BellOff, Star, Settings, Save,
   ToggleLeft, ToggleRight, Briefcase, Phone, Link2, Sliders,
   HardDrive, Cloud, Archive, Tag, Layers, Megaphone, Receipt,
-  CalendarDays, UserCheck, Search, Filter, ChevronDown, ChevronUp
+  CalendarDays, UserCheck, Search, Filter, ChevronDown, ChevronUp,
+  TrendingUp
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import BACKEND_URL from '../../config.js';
@@ -176,7 +177,7 @@ const Badge = ({ children, color = '#8b5cf6' }) => (
   </span>
 );
 
-const DangerZone = ({ title, description, buttonText, onConfirm }) => {
+const DangerZone = ({ title, description, buttonText, onConfirm, loading = false }) => {
   const [confirming, setConfirming] = useState(false);
   return (
     <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-red-500/20 bg-red-500/5">
@@ -186,7 +187,7 @@ const DangerZone = ({ title, description, buttonText, onConfirm }) => {
       </div>
       {confirming ? (
         <div className="flex items-center gap-2">
-          <ActionButton variant="danger" size="sm" onClick={() => { onConfirm(); setConfirming(false); }}>Confirmer</ActionButton>
+          <ActionButton variant="danger" size="sm" loading={loading} onClick={() => { onConfirm(); setConfirming(false); }}>Confirmer</ActionButton>
           <ActionButton variant="ghost" size="sm" onClick={() => setConfirming(false)}>Annuler</ActionButton>
         </div>
       ) : (
@@ -224,6 +225,7 @@ const SettingsPage = () => {
   const { user, login: setUser } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const contentRef = useRef(null);
 
@@ -282,7 +284,6 @@ const SettingsPage = () => {
     smsEnabled: false,
     soundEnabled: true,
     desktopEnabled: true,
-    // Categories
     newLead: { email: true, push: true, sms: false },
     quoteAccepted: { email: true, push: true, sms: true },
     paymentReceived: { email: true, push: true, sms: false },
@@ -293,7 +294,6 @@ const SettingsPage = () => {
     monthlyDigest: { email: true, push: false, sms: false },
     systemAlerts: { email: true, push: true, sms: false },
     marketingUpdates: { email: false, push: false, sms: false },
-    // Quiet hours
     quietHoursEnabled: false,
     quietStart: '22:00',
     quietEnd: '07:00',
@@ -315,6 +315,14 @@ const SettingsPage = () => {
     activeSessions: [],
   });
 
+  // Password change state (séparé)
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [changingPassword, setChangingPassword] = useState(false);
+
   // Team state
   const [team, setTeam] = useState({
     members: [],
@@ -329,6 +337,7 @@ const SettingsPage = () => {
     inviteRole: 'commercial',
     maxMembers: 25,
   });
+  const [inviting, setInviting] = useState(false);
 
   // Billing state
   const [billing, setBilling] = useState({
@@ -342,7 +351,7 @@ const SettingsPage = () => {
     taxId: '',
     billingAddress: '',
     autoRenew: true,
-    usage: { leads: 847, maxLeads: 5000, storage: 2.4, maxStorage: 10, users: 5, maxUsers: 25 },
+    usage: { leads: 0, maxLeads: 5000, storage: 0, maxStorage: 10, users: 0, maxUsers: 25 },
   });
 
   // Email settings
@@ -356,22 +365,20 @@ const SettingsPage = () => {
     senderEmail: '',
     replyTo: '',
     signature: '',
-    // SMS
     smsProvider: 'twilio',
     smsApiKey: '',
     smsFrom: '',
-    // Templates
     templateWelcome: true,
     templateQuote: true,
     templateInvoice: true,
     templateReminder: true,
     templateFollowup: true,
-    // Automation
     autoFollowUp: true,
     followUpDelay: 48,
     autoThankYou: true,
     birthdayEmails: false,
   });
+  const [testingSmtp, setTestingSmtp] = useState(false);
 
   // Scheduling state
   const [scheduling, setScheduling] = useState({
@@ -432,7 +439,7 @@ const SettingsPage = () => {
   const [integrations, setIntegrations] = useState({
     googleCalendar: { connected: false, email: '' },
     googleMaps: { apiKey: '', enabled: true },
-    stripe: { connected: true, mode: 'live' },
+    stripe: { connected: false, mode: 'test' },
     mailchimp: { connected: false, listId: '' },
     slack: { connected: false, webhook: '' },
     zapier: { connected: false },
@@ -444,32 +451,35 @@ const SettingsPage = () => {
     facebookAds: { connected: false, pixelId: '' },
     wordpress: { connected: false, url: '' },
   });
+  const [connectingService, setConnectingService] = useState(null);
 
   // API state
   const [apiSettings, setApiSettings] = useState({
-    apiKeys: [
-      { id: 1, name: 'Production', key: 'gch_live_••••••••••••4f2a', created: '2026-01-15', lastUsed: '2026-04-03', active: true },
-      { id: 2, name: 'Staging', key: 'gch_test_••••••••••••8b1c', created: '2026-02-20', lastUsed: '2026-03-28', active: true },
-    ],
+    apiKeys: [],
     webhookUrl: '',
     webhookEvents: ['lead.created', 'quote.accepted', 'payment.received'],
     rateLimit: 1000,
     corsOrigins: '',
   });
+  const [newKeyName, setNewKeyName] = useState('');
+  const [creatingKey, setCreatingKey] = useState(false);
+  const [showNewKey, setShowNewKey] = useState(null);
 
   // Data state
   const [dataSettings, setDataSettings] = useState({
     autoBackup: true,
     backupFrequency: 'daily',
     backupRetention: 30,
-    lastBackup: '2026-04-03T22:00:00',
-    storageUsed: 2.4,
+    lastBackup: null,
+    storageUsed: 0,
     storageMax: 10,
     dataRetention: 365,
     gdprMode: true,
     anonymizeAfter: 730,
     exportFormat: 'csv',
   });
+  const [backingUp, setBackingUp] = useState(false);
+  const [exporting, setExporting] = useState(null);
 
   // Advanced state
   const [advanced, setAdvanced] = useState({
@@ -485,18 +495,330 @@ const SettingsPage = () => {
     customJs: '',
   });
 
-  // Save handler
+  /* ────────────────────────────────────────────────
+     API HELPERS
+  ──────────────────────────────────────────────── */
+  const sectionToState = {
+    profile: setProfileData,
+    company: setCompanyData,
+    appearance: setAppearance,
+    notifications: setNotifications,
+    security: setSecurity,
+    team: (data) => setTeam(prev => ({ ...prev, ...data })),
+    billing: (data) => setBilling(prev => ({ ...prev, ...data })),
+    email: setEmailSettings,
+    scheduling: setScheduling,
+    zones: setZones,
+    documents: setDocuments,
+    integrations: setIntegrations,
+    api: setApiSettings,
+    data: setDataSettings,
+    advanced: setAdvanced,
+  };
+
+  const sectionToGetter = {
+    profile: profileData,
+    company: companyData,
+    appearance,
+    notifications,
+    security,
+    team,
+    billing,
+    email: emailSettings,
+    scheduling,
+    zones,
+    documents,
+    integrations,
+    api: apiSettings,
+    data: dataSettings,
+    advanced,
+  };
+
+  // Charger les settings d'une section depuis l'API
+  const loadSection = useCallback(async (section) => {
+    setLoading(true);
+    try {
+      const res = await axios.get(`${API_URL}/settings/${section}`);
+      const data = res.data?.data;
+      if (data && sectionToState[section]) {
+        sectionToState[section](data);
+      }
+
+      // Charger les stats billing depuis le dashboard
+      if (section === 'billing') {
+        try {
+          const statsRes = await axios.get(`${API_URL}/stats/dashboard`);
+          const stats = statsRes.data;
+          setBilling(prev => ({
+            ...prev,
+            usage: {
+              leads: stats?.total_leads || prev.usage?.leads || 0,
+              maxLeads: prev.usage?.maxLeads || 5000,
+              storage: prev.usage?.storage || 0,
+              maxStorage: prev.usage?.maxStorage || 10,
+              users: stats?.total_users || prev.usage?.users || 0,
+              maxUsers: prev.usage?.maxUsers || 25,
+            }
+          }));
+        } catch (e) {
+          // Ignorer si l'endpoint n'existe pas
+        }
+      }
+
+      // Charger les membres pour la section team
+      if (section === 'team') {
+        try {
+          const usersRes = await axios.get(`${API_URL}/users`);
+          const members = usersRes.data?.users || usersRes.data || [];
+          setTeam(prev => ({ ...prev, members }));
+        } catch (e) {
+          // Ignorer si pas de membres
+        }
+      }
+
+      // Charger les clés API pour la section api
+      if (section === 'api') {
+        try {
+          const keysRes = await axios.get(`${API_URL}/settings/api-keys/list`);
+          setApiSettings(prev => ({ ...prev, apiKeys: keysRes.data?.keys || [] }));
+        } catch (e) {
+          // Ignorer
+        }
+      }
+    } catch (err) {
+      if (err.response?.status !== 404) {
+        console.warn(`Erreur chargement section ${section}:`, err.message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []); // eslint-disable-line
+
+  // Charger la section au changement d'onglet
+  useEffect(() => {
+    loadSection(activeTab);
+    contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeTab]); // eslint-disable-line
+
+  // Sauvegarder la section active
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
+      const data = sectionToGetter[activeTab];
+      // Exclure les champs password du profile avant de sauvegarder
+      const cleanData = { ...data };
+      delete cleanData.inviteEmail;
+      delete cleanData.inviteRole;
+
+      await axios.put(`${API_URL}/settings/${activeTab}`, cleanData);
       toast.success('Paramètres enregistrés avec succès !');
     } catch (err) {
-      toast.error('Erreur lors de la sauvegarde');
+      const msg = err.response?.data?.detail || 'Erreur lors de la sauvegarde';
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
+  };
+
+  /* ────────────────────────────────────────────────
+     HANDLERS SPÉCIAUX
+  ──────────────────────────────────────────────── */
+
+  // Changer le mot de passe
+  const handleChangePassword = async () => {
+    if (!passwordForm.currentPassword || !passwordForm.newPassword) {
+      toast.error('Veuillez remplir tous les champs');
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast.error('Les mots de passe ne correspondent pas');
+      return;
+    }
+    if (passwordForm.newPassword.length < 8) {
+      toast.error('Le mot de passe doit contenir au moins 8 caractères');
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      await axios.post(`${API_URL}/settings/password`, passwordForm);
+      toast.success('Mot de passe mis à jour avec succès');
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erreur lors du changement de mot de passe');
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  // Inviter un membre
+  const handleInvite = async () => {
+    if (!team.inviteEmail) {
+      toast.error('Email requis');
+      return;
+    }
+    setInviting(true);
+    try {
+      await axios.post(`${API_URL}/settings/team/invite`, {
+        email: team.inviteEmail,
+        role: team.inviteRole,
+      });
+      toast.success(`Invitation envoyée à ${team.inviteEmail}`);
+      setTeam(prev => ({ ...prev, inviteEmail: '' }));
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erreur lors de l\'invitation');
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  // Retirer un membre
+  const handleRemoveMember = async (memberId) => {
+    try {
+      await axios.delete(`${API_URL}/settings/team/${memberId}`);
+      toast.success('Membre retiré');
+      setTeam(prev => ({ ...prev, members: prev.members.filter(m => m.user_id !== memberId) }));
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erreur lors de la suppression');
+    }
+  };
+
+  // Tester SMTP
+  const handleTestSmtp = async () => {
+    setTestingSmtp(true);
+    try {
+      await axios.post(`${API_URL}/settings/email/test-smtp`, {
+        smtpHost: emailSettings.smtpHost,
+        smtpPort: emailSettings.smtpPort,
+        smtpUser: emailSettings.smtpUser,
+        smtpPassword: emailSettings.smtpPassword,
+        smtpEncryption: emailSettings.smtpEncryption,
+        senderEmail: emailSettings.senderEmail,
+      });
+      toast.success('Connexion SMTP réussie !');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Connexion SMTP échouée');
+    } finally {
+      setTestingSmtp(false);
+    }
+  };
+
+  // Backup manuel
+  const handleBackup = async () => {
+    setBackingUp(true);
+    try {
+      const res = await axios.post(`${API_URL}/settings/data/backup`);
+      toast.success('Backup déclenché avec succès !');
+      setDataSettings(prev => ({ ...prev, lastBackup: res.data?.started_at || new Date().toISOString() }));
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erreur lors du backup');
+    } finally {
+      setBackingUp(false);
+    }
+  };
+
+  // Export de données
+  const handleExport = async (type) => {
+    setExporting(type);
+    try {
+      await axios.post(`${API_URL}/settings/data/export?type=${type}`);
+      toast.success(`Export "${type}" en cours. Vous recevrez un email quand il sera prêt.`);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erreur lors de l\'export');
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  // Connecter/déconnecter une intégration
+  const handleToggleIntegration = async (serviceKey, currentlyConnected) => {
+    setConnectingService(serviceKey);
+    try {
+      if (currentlyConnected) {
+        await axios.post(`${API_URL}/settings/integrations/${serviceKey}/disconnect`);
+        setIntegrations(prev => ({ ...prev, [serviceKey]: { ...prev[serviceKey], connected: false } }));
+        toast.success(`${serviceKey} déconnecté`);
+      } else {
+        const config = integrations[serviceKey] || {};
+        await axios.post(`${API_URL}/settings/integrations/${serviceKey}/connect`, config);
+        setIntegrations(prev => ({ ...prev, [serviceKey]: { ...prev[serviceKey], connected: true } }));
+        toast.success(`${serviceKey} connecté !`);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.detail || `Erreur avec ${serviceKey}`);
+    } finally {
+      setConnectingService(null);
+    }
+  };
+
+  // Créer une clé API
+  const handleCreateApiKey = async () => {
+    if (!newKeyName.trim()) {
+      toast.error('Nom de la clé requis');
+      return;
+    }
+    setCreatingKey(true);
+    try {
+      const res = await axios.post(`${API_URL}/settings/api-keys`, { name: newKeyName });
+      const newKey = res.data;
+      setShowNewKey(newKey);
+      setNewKeyName('');
+      // Recharger la liste
+      const keysRes = await axios.get(`${API_URL}/settings/api-keys/list`);
+      setApiSettings(prev => ({ ...prev, apiKeys: keysRes.data?.keys || [] }));
+      toast.success('Clé API créée ! Copiez-la maintenant, elle ne sera plus affichée.');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erreur lors de la création');
+    } finally {
+      setCreatingKey(false);
+    }
+  };
+
+  // Supprimer une clé API
+  const handleDeleteApiKey = async (keyId) => {
+    try {
+      await axios.delete(`${API_URL}/settings/api-keys/${keyId}`);
+      setApiSettings(prev => ({ ...prev, apiKeys: prev.apiKeys.filter(k => k.key_id !== keyId) }));
+      toast.success('Clé API supprimée');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erreur lors de la suppression');
+    }
+  };
+
+  // Régénérer une clé API
+  const handleRegenerateApiKey = async (keyId) => {
+    try {
+      const res = await axios.post(`${API_URL}/settings/api-keys/${keyId}/regenerate`);
+      setShowNewKey({ key: res.data.key, name: 'Clé régénérée' });
+      toast.success('Clé régénérée ! Copiez-la maintenant.');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erreur lors de la régénération');
+    }
+  };
+
+  // Déconnecter toutes les sessions
+  const handleLogoutAll = async () => {
+    try {
+      await axios.post(`${API_URL}/settings/security/logout-all`);
+      toast.success('Toutes les autres sessions ont été déconnectées');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erreur');
+    }
+  };
+
+  // Supprimer le compte
+  const handleDeleteAccount = async () => {
+    try {
+      await axios.delete(`${API_URL}/settings/account`);
+      toast.success('Compte supprimé');
+      setTimeout(() => window.location.href = '/', 1500);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erreur lors de la suppression');
+    }
+  };
+
+  // Copy to clipboard
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => toast.success('Copié dans le presse-papiers'));
   };
 
   // Filter tabs by search
@@ -504,16 +826,11 @@ const SettingsPage = () => {
     ? settingsTabs.filter(t => t.label.toLowerCase().includes(searchQuery.toLowerCase()))
     : settingsTabs;
 
-  // Scroll to top on tab change
-  useEffect(() => {
-    contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [activeTab]);
-
   /* ────────────────────────────────────────────────
      PROFILE TAB
   ──────────────────────────────────────────────── */
   const renderProfile = () => (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="tab-profile">
       <SectionCard title="Photo de profil" description="Votre avatar visible dans le CRM" icon={Camera} color="#8b5cf6">
         <div className="flex items-center gap-5">
           <div className="relative group">
@@ -525,13 +842,29 @@ const SettingsPage = () => {
                 {profileData.name?.[0]?.toUpperCase() || 'U'}
               </div>
             )}
-            <button className="absolute inset-0 rounded-2xl bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+            <label className="absolute inset-0 rounded-2xl bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer">
               <Camera className="w-5 h-5 text-white" />
-            </button>
+              <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                if (file.size > 5_000_000) { toast.error('Image trop grande. Maximum 5 Mo.'); return; }
+                const reader = new FileReader();
+                reader.onload = async (ev) => {
+                  const base64 = ev.target.result;
+                  try {
+                    await axios.post(`${API_URL}/settings/profile/avatar`, { avatar: base64 });
+                    setProfileData(p => ({ ...p, avatar: base64 }));
+                    toast.success('Avatar mis à jour !');
+                  } catch (err) {
+                    toast.error('Erreur lors de l\'upload');
+                  }
+                };
+                reader.readAsDataURL(file);
+              }} />
+            </label>
           </div>
           <div className="space-y-2">
-            <ActionButton variant="secondary" size="sm" icon={Upload}>Changer la photo</ActionButton>
-            <p className="text-xs text-slate-500">JPG, PNG ou GIF. Max 5 Mo.</p>
+            <p className="text-xs text-slate-500">Survolez votre photo pour la modifier. JPG, PNG ou GIF. Max 5 Mo.</p>
           </div>
         </div>
       </SectionCard>
@@ -544,10 +877,10 @@ const SettingsPage = () => {
           <TextInput value={profileData.email} onChange={v => setProfileData(p => ({ ...p, email: v }))} icon={Mail} type="email" placeholder="email@exemple.com" />
         </FieldRow>
         <FieldRow label="Téléphone" description="Pour les notifications SMS" horizontal={false}>
-          <TextInput value={profileData.phone} onChange={v => setProfileData(p => ({ ...p, phone: v }))} icon={Phone} placeholder="+33 6 12 34 56 78" />
+          <TextInput value={profileData.phone || ''} onChange={v => setProfileData(p => ({ ...p, phone: v }))} icon={Phone} placeholder="+33 6 12 34 56 78" />
         </FieldRow>
         <FieldRow label="Poste / Fonction" horizontal={false}>
-          <SelectInput value={profileData.jobTitle} onChange={v => setProfileData(p => ({ ...p, jobTitle: v }))} icon={Briefcase}
+          <SelectInput value={profileData.jobTitle || 'Gérant'} onChange={v => setProfileData(p => ({ ...p, jobTitle: v }))} icon={Briefcase}
             options={[
               { value: 'Gérant', label: 'Gérant' },
               { value: 'Directeur', label: 'Directeur' },
@@ -559,7 +892,7 @@ const SettingsPage = () => {
             ]} />
         </FieldRow>
         <FieldRow label="Bio" description="Courte description (visible sur le portail)" horizontal={false}>
-          <TextArea value={profileData.bio} onChange={v => setProfileData(p => ({ ...p, bio: v }))} placeholder="Quelques mots sur vous..." rows={3} />
+          <TextArea value={profileData.bio || ''} onChange={v => setProfileData(p => ({ ...p, bio: v }))} placeholder="Quelques mots sur vous..." rows={3} />
         </FieldRow>
       </SectionCard>
     </div>
@@ -569,7 +902,7 @@ const SettingsPage = () => {
      COMPANY TAB
   ──────────────────────────────────────────────── */
   const renderCompany = () => (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="tab-company">
       <SectionCard title="Identité de l'entreprise" description="Informations légales et commerciales" icon={Building2} color="#f97316">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
@@ -658,7 +991,16 @@ const SettingsPage = () => {
             )}
           </div>
           <div className="space-y-2">
-            <ActionButton variant="secondary" size="sm" icon={Upload}>Uploader le logo</ActionButton>
+            <label>
+              <ActionButton variant="secondary" size="sm" icon={Upload} onClick={() => {}}>Uploader le logo</ActionButton>
+              <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => setCompanyData(p => ({ ...p, logo: ev.target.result }));
+                reader.readAsDataURL(file);
+              }} />
+            </label>
             <p className="text-xs text-slate-500">PNG ou SVG, fond transparent recommandé. Min 256x256px.</p>
           </div>
         </div>
@@ -670,7 +1012,7 @@ const SettingsPage = () => {
      APPEARANCE TAB
   ──────────────────────────────────────────────── */
   const renderAppearance = () => (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="tab-appearance">
       <SectionCard title="Thème" description="Apparence générale de l'interface" icon={Palette} color="#ec4899">
         <FieldRow label="Mode d'affichage" description="Choisissez le thème de couleur">
           <div className="flex gap-2">
@@ -807,7 +1149,7 @@ const SettingsPage = () => {
     ];
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-6" data-testid="tab-notifications">
         <SectionCard title="Canaux de notification" description="Activez/désactivez les canaux" icon={Bell} color="#f59e0b">
           <FieldRow label="Notifications par email" description="Recevoir les notifications par email">
             <Toggle checked={notifications.emailEnabled} onChange={v => setNotifications(p => ({ ...p, emailEnabled: v }))} />
@@ -828,7 +1170,6 @@ const SettingsPage = () => {
 
         <SectionCard title="Préférences par catégorie" description="Personnalisez chaque type de notification" icon={Sliders} color="#f59e0b">
           <div className="space-y-1">
-            {/* Header */}
             <div className="flex items-center gap-3 px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
               <span className="flex-1">Événement</span>
               <span className="w-14 text-center">Email</span>
@@ -845,13 +1186,13 @@ const SettingsPage = () => {
                   <p className="text-[10px] text-slate-500 truncate">{cat.description}</p>
                 </div>
                 <div className="w-14 flex justify-center">
-                  <Toggle size="sm" checked={notifications[cat.key]?.email} onChange={v => setNotifications(p => ({ ...p, [cat.key]: { ...p[cat.key], email: v } }))} />
+                  <Toggle size="sm" checked={notifications[cat.key]?.email || false} onChange={v => setNotifications(p => ({ ...p, [cat.key]: { ...p[cat.key], email: v } }))} />
                 </div>
                 <div className="w-14 flex justify-center">
-                  <Toggle size="sm" checked={notifications[cat.key]?.push} onChange={v => setNotifications(p => ({ ...p, [cat.key]: { ...p[cat.key], push: v } }))} />
+                  <Toggle size="sm" checked={notifications[cat.key]?.push || false} onChange={v => setNotifications(p => ({ ...p, [cat.key]: { ...p[cat.key], push: v } }))} />
                 </div>
                 <div className="w-14 flex justify-center">
-                  <Toggle size="sm" checked={notifications[cat.key]?.sms} onChange={v => setNotifications(p => ({ ...p, [cat.key]: { ...p[cat.key], sms: v } }))} />
+                  <Toggle size="sm" checked={notifications[cat.key]?.sms || false} onChange={v => setNotifications(p => ({ ...p, [cat.key]: { ...p[cat.key], sms: v } }))} />
                 </div>
               </div>
             ))}
@@ -888,19 +1229,21 @@ const SettingsPage = () => {
      SECURITY TAB
   ──────────────────────────────────────────────── */
   const renderSecurity = () => (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="tab-security">
       <SectionCard title="Mot de passe" description="Gérez votre mot de passe de connexion" icon={Lock} color="#ef4444">
         <div className="space-y-4">
           <FieldRow label="Mot de passe actuel" horizontal={false}>
-            <TextInput type="password" value="" onChange={() => {}} icon={Lock} placeholder="••••••••" />
+            <TextInput type="password" value={passwordForm.currentPassword} onChange={v => setPasswordForm(p => ({ ...p, currentPassword: v }))} icon={Lock} placeholder="••••••••" />
           </FieldRow>
           <FieldRow label="Nouveau mot de passe" horizontal={false}>
-            <TextInput type="password" value="" onChange={() => {}} icon={Key} placeholder="••••••••" />
+            <TextInput type="password" value={passwordForm.newPassword} onChange={v => setPasswordForm(p => ({ ...p, newPassword: v }))} icon={Key} placeholder="••••••••" />
           </FieldRow>
           <FieldRow label="Confirmer le mot de passe" horizontal={false}>
-            <TextInput type="password" value="" onChange={() => {}} icon={Key} placeholder="••••••••" />
+            <TextInput type="password" value={passwordForm.confirmPassword} onChange={v => setPasswordForm(p => ({ ...p, confirmPassword: v }))} icon={Key} placeholder="••••••••" />
           </FieldRow>
-          <ActionButton variant="primary" size="sm" icon={Save}>Changer le mot de passe</ActionButton>
+          <ActionButton variant="primary" size="sm" icon={Save} onClick={handleChangePassword} loading={changingPassword}>
+            Changer le mot de passe
+          </ActionButton>
         </div>
       </SectionCard>
 
@@ -958,9 +1301,11 @@ const SettingsPage = () => {
           <Toggle checked={security.loginAlerts} onChange={v => setSecurity(p => ({ ...p, loginAlerts: v }))} />
         </FieldRow>
         <FieldRow label="Whitelist IP" description="Restreindre l'accès à certaines IP (une par ligne)" horizontal={false}>
-          <TextArea value={security.ipWhitelist} onChange={v => setSecurity(p => ({ ...p, ipWhitelist: v }))} placeholder="192.168.1.0/24&#10;10.0.0.0/8" rows={3} />
+          <TextArea value={security.ipWhitelist || ''} onChange={v => setSecurity(p => ({ ...p, ipWhitelist: v }))} placeholder="192.168.1.0/24&#10;10.0.0.0/8" rows={3} />
         </FieldRow>
-        <ActionButton variant="danger" size="sm" icon={LogOut}>Déconnecter toutes les autres sessions</ActionButton>
+        <ActionButton variant="danger" size="sm" icon={LogOut} onClick={handleLogoutAll}>
+          Déconnecter toutes les autres sessions
+        </ActionButton>
       </SectionCard>
     </div>
   );
@@ -969,16 +1314,16 @@ const SettingsPage = () => {
      TEAM TAB
   ──────────────────────────────────────────────── */
   const renderTeam = () => (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="tab-team">
       <SectionCard title="Inviter un membre" description="Ajoutez de nouveaux collaborateurs" icon={Plus} color="#10b981">
         <div className="flex gap-3">
           <TextInput className="flex-1" value={team.inviteEmail} onChange={v => setTeam(p => ({ ...p, inviteEmail: v }))} icon={Mail} placeholder="email@collaborateur.com" />
           <SelectInput value={team.inviteRole} onChange={v => setTeam(p => ({ ...p, inviteRole: v }))} className="w-40"
             options={team.roles.map(r => ({ value: r.name.toLowerCase(), label: r.name }))} />
-          <ActionButton variant="primary" icon={Plus}>Inviter</ActionButton>
+          <ActionButton variant="primary" icon={Plus} onClick={handleInvite} loading={inviting}>Inviter</ActionButton>
         </div>
         <p className="text-xs text-slate-500">
-          {billing.usage.users}/{billing.usage.maxUsers} membres utilisés sur votre plan
+          {team.members?.length || 0}/{team.maxMembers || 25} membres utilisés sur votre plan
         </p>
       </SectionCard>
 
@@ -999,11 +1344,39 @@ const SettingsPage = () => {
       </SectionCard>
 
       <SectionCard title="Membres de l'équipe" description="Tous les utilisateurs du CRM" icon={Users} color="#10b981">
-        <div className="p-8 text-center">
-          <Users className="w-8 h-8 text-slate-500 mx-auto mb-2" />
-          <p className="text-sm text-slate-400">Les membres apparaîtront ici</p>
-          <p className="text-xs text-slate-500 mt-1">Invitez des collaborateurs via le formulaire ci-dessus</p>
-        </div>
+        {loading ? (
+          <div className="p-8 text-center">
+            <RefreshCw className="w-6 h-6 text-slate-500 mx-auto animate-spin" />
+          </div>
+        ) : team.members && team.members.length > 0 ? (
+          <div className="space-y-2">
+            {team.members.map(member => (
+              <div key={member.user_id} className="flex items-center gap-3 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-all group">
+                {member.picture ? (
+                  <img src={member.picture} alt={member.name} className="w-9 h-9 rounded-xl object-cover" />
+                ) : (
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black text-white"
+                    style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
+                    {member.name?.[0]?.toUpperCase() || '?'}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-200">{member.name}</p>
+                  <p className="text-[10px] text-slate-500">{member.email}</p>
+                </div>
+                <Badge color="#8b5cf6">{member.role || 'Membre'}</Badge>
+                <ActionButton variant="ghost" size="sm" icon={Trash2} className="opacity-0 group-hover:opacity-100 text-red-400"
+                  onClick={() => handleRemoveMember(member.user_id)} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-8 text-center">
+            <Users className="w-8 h-8 text-slate-500 mx-auto mb-2" />
+            <p className="text-sm text-slate-400">Les membres apparaîtront ici</p>
+            <p className="text-xs text-slate-500 mt-1">Invitez des collaborateurs via le formulaire ci-dessus</p>
+          </div>
+        )}
       </SectionCard>
     </div>
   );
@@ -1019,7 +1392,7 @@ const SettingsPage = () => {
     ];
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-6" data-testid="tab-billing">
         <SectionCard title="Plan actuel" description="Gérez votre abonnement" icon={CreditCard} color="#6366f1">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {plans.map(plan => (
@@ -1063,9 +1436,9 @@ const SettingsPage = () => {
 
         <SectionCard title="Utilisation" description="Consommation de votre plan" icon={TrendingUp} color="#6366f1">
           {[
-            { label: 'Leads', used: billing.usage.leads, max: billing.usage.maxLeads, color: '#8b5cf6' },
-            { label: 'Stockage', used: billing.usage.storage, max: billing.usage.maxStorage, unit: 'Go', color: '#3b82f6' },
-            { label: 'Utilisateurs', used: billing.usage.users, max: billing.usage.maxUsers, color: '#10b981' },
+            { label: 'Leads', used: billing.usage?.leads || 0, max: billing.usage?.maxLeads || 5000, color: '#8b5cf6' },
+            { label: 'Stockage', used: billing.usage?.storage || 0, max: billing.usage?.maxStorage || 10, unit: 'Go', color: '#3b82f6' },
+            { label: 'Utilisateurs', used: billing.usage?.users || 0, max: billing.usage?.maxUsers || 25, color: '#10b981' },
           ].map(item => {
             const pct = (item.used / item.max) * 100;
             return (
@@ -1075,7 +1448,7 @@ const SettingsPage = () => {
                   <span className="text-slate-500">{item.used}{item.unit ? ` ${item.unit}` : ''} / {item.max}{item.unit ? ` ${item.unit}` : ''}</span>
                 </div>
                 <div className="h-2 rounded-full bg-white/5 overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: pct > 80 ? '#ef4444' : item.color }} />
+                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(pct, 100)}%`, background: pct > 80 ? '#ef4444' : item.color }} />
                 </div>
               </div>
             );
@@ -1086,10 +1459,10 @@ const SettingsPage = () => {
           <div className="flex items-center justify-between p-4 rounded-xl border border-white/8 bg-white/3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-7 rounded-lg bg-gradient-to-r from-blue-600 to-blue-400 flex items-center justify-center">
-                <span className="text-white text-[8px] font-bold">{billing.cardBrand}</span>
+                <span className="text-white text-[8px] font-bold">{billing.cardBrand || 'CARD'}</span>
               </div>
               <div>
-                <p className="text-sm font-semibold text-slate-200">•••• •••• •••• {billing.cardLast4}</p>
+                <p className="text-sm font-semibold text-slate-200">•••• •••• •••• {billing.cardLast4 || '????'}</p>
                 <p className="text-[10px] text-slate-500">Expire 12/2028</p>
               </div>
             </div>
@@ -1107,7 +1480,7 @@ const SettingsPage = () => {
      EMAIL & SMS TAB
   ──────────────────────────────────────────────── */
   const renderEmail = () => (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="tab-email">
       <SectionCard title="Configuration SMTP" description="Serveur d'envoi d'emails" icon={Mail} color="#06b6d4" collapsible defaultOpen={false}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
@@ -1136,7 +1509,9 @@ const SettingsPage = () => {
               ]} />
           </div>
         </div>
-        <ActionButton variant="secondary" size="sm" icon={Zap}>Tester la connexion</ActionButton>
+        <ActionButton variant="secondary" size="sm" icon={Zap} onClick={handleTestSmtp} loading={testingSmtp}>
+          Tester la connexion SMTP
+        </ActionButton>
       </SectionCard>
 
       <SectionCard title="Expéditeur" description="Identité de l'envoi" icon={Mail} color="#06b6d4">
@@ -1218,7 +1593,7 @@ const SettingsPage = () => {
     ];
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-6" data-testid="tab-scheduling">
         <SectionCard title="Jours de travail" description="Définissez vos jours ouvrés" icon={CalendarDays} color="#84cc16">
           <div className="flex gap-2 flex-wrap">
             {days.map(d => (
@@ -1226,7 +1601,7 @@ const SettingsPage = () => {
                 key={d.key}
                 onClick={() => setScheduling(p => ({ ...p, workDays: { ...p.workDays, [d.key]: !p.workDays[d.key] } }))}
                 className={`w-12 h-12 rounded-xl text-xs font-bold transition-all ${
-                  scheduling.workDays[d.key]
+                  scheduling.workDays?.[d.key]
                     ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                     : 'bg-white/5 text-slate-500 border border-white/10'
                 }`}
@@ -1331,7 +1706,7 @@ const SettingsPage = () => {
      ZONES TAB
   ──────────────────────────────────────────────── */
   const renderZones = () => (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="tab-zones">
       <SectionCard title="Rayon de service" description="Zone géographique couverte" icon={MapPin} color="#f43f5e">
         <FieldRow label="Rayon maximum" description="Distance max autour du siège (km)">
           <div className="flex items-center gap-3">
@@ -1357,9 +1732,9 @@ const SettingsPage = () => {
         </FieldRow>
       </SectionCard>
 
-      <SectionCard title="Zones de tarification" description="Tarifs différenciés par zone" icon={Layers} color="#f43f5e" badge={`${zones.zones.length} zones`}>
+      <SectionCard title="Zones de tarification" description="Tarifs différenciés par zone" icon={Layers} color="#f43f5e" badge={`${zones.zones?.length || 0} zones`}>
         <div className="space-y-3">
-          {zones.zones.map(zone => (
+          {(zones.zones || []).map(zone => (
             <div key={zone.id} className="flex items-center gap-3 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-all group">
               <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: zone.color }} />
               <div className="flex-1 min-w-0">
@@ -1382,7 +1757,7 @@ const SettingsPage = () => {
      DOCUMENTS TAB
   ──────────────────────────────────────────────── */
   const renderDocuments = () => (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="tab-documents">
       <SectionCard title="Numérotation" description="Préfixes et compteurs des documents" icon={Hash} color="#a855f7">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
@@ -1478,7 +1853,7 @@ const SettingsPage = () => {
       { key: 'googleCalendar', name: 'Google Calendar', desc: 'Synchronisation du planning', icon: '📅', color: '#4285f4' },
       { key: 'googleMaps', name: 'Google Maps', desc: 'Géolocalisation et itinéraires', icon: '🗺️', color: '#34a853' },
       { key: 'mailchimp', name: 'Mailchimp', desc: 'Campagnes email marketing', icon: '🐒', color: '#ffe01b' },
-      { key: 'slack', name: 'Slack', desc: 'Notifications d\'équipe', icon: '💬', color: '#4a154b' },
+      { key: 'slack', name: 'Slack', desc: "Notifications d'équipe", icon: '💬', color: '#4a154b' },
       { key: 'zapier', name: 'Zapier', desc: 'Automatisations cross-app', icon: '⚡', color: '#ff4a00' },
       { key: 'hubspot', name: 'HubSpot', desc: 'CRM & Marketing', icon: '🔶', color: '#ff7a59' },
       { key: 'quickbooks', name: 'QuickBooks', desc: 'Comptabilité', icon: '📊', color: '#2ca01c' },
@@ -1490,12 +1865,13 @@ const SettingsPage = () => {
     ];
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-6" data-testid="tab-integrations">
         <SectionCard title="Services connectés" description="Gérez vos intégrations tierces" icon={Zap} color="#eab308"
           badge={`${integrationsList.filter(i => integrations[i.key]?.connected).length} actives`}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {integrationsList.map(int => {
               const connected = integrations[int.key]?.connected;
+              const isConnecting = connectingService === int.key;
               return (
                 <div key={int.key}
                   className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${
@@ -1510,11 +1886,13 @@ const SettingsPage = () => {
                     <p className="text-[10px] text-slate-500">{int.desc}</p>
                   </div>
                   <ActionButton
-                    variant={connected ? 'success' : 'secondary'}
+                    variant={connected ? 'danger' : 'secondary'}
                     size="sm"
-                    icon={connected ? Check : Link2}
+                    icon={connected ? X : Link2}
+                    loading={isConnecting}
+                    onClick={() => handleToggleIntegration(int.key, connected)}
                   >
-                    {connected ? 'Gérer' : 'Connecter'}
+                    {connected ? 'Déconnecter' : 'Connecter'}
                   </ActionButton>
                 </div>
               );
@@ -1529,28 +1907,44 @@ const SettingsPage = () => {
      API TAB
   ──────────────────────────────────────────────── */
   const renderApi = () => (
-    <div className="space-y-6">
-      <SectionCard title="Clés API" description="Accédez au CRM via l'API REST" icon={Key} color="#64748b" badge={`${apiSettings.apiKeys.length} clés`}>
+    <div className="space-y-6" data-testid="tab-api">
+      {showNewKey && (
+        <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-bold text-emerald-400">🎉 Nouvelle clé API créée</p>
+            <ActionButton variant="ghost" size="sm" icon={X} onClick={() => setShowNewKey(null)} />
+          </div>
+          <p className="text-xs text-slate-400 mb-2">Copiez cette clé maintenant. Elle ne sera plus affichée.</p>
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-black/30 font-mono text-xs text-emerald-300">
+            <span className="flex-1 break-all">{showNewKey.key}</span>
+            <ActionButton variant="ghost" size="sm" icon={Copy} onClick={() => copyToClipboard(showNewKey.key)}>Copier</ActionButton>
+          </div>
+        </div>
+      )}
+
+      <SectionCard title="Clés API" description="Accédez au CRM via l'API REST" icon={Key} color="#64748b" badge={`${apiSettings.apiKeys?.length || 0} clés`}>
         <div className="space-y-3">
-          {apiSettings.apiKeys.map(key => (
-            <div key={key.id} className="flex items-center gap-3 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-all group">
+          {(apiSettings.apiKeys || []).map(key => (
+            <div key={key.key_id} className="flex items-center gap-3 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-all group">
               <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${key.active ? 'bg-emerald-500' : 'bg-red-500'}`} />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-slate-200">{key.name}</p>
-                <p className="text-[10px] text-slate-500 font-mono">{key.key}</p>
+                <p className="text-[10px] text-slate-500 font-mono">{key.key_preview || '••••••••••••'}</p>
               </div>
               <div className="text-right hidden md:block">
-                <p className="text-[10px] text-slate-500">Créée le {key.created}</p>
-                <p className="text-[10px] text-slate-500">Dernier usage : {key.lastUsed}</p>
+                <p className="text-[10px] text-slate-500">Créée le {key.created_at ? new Date(key.created_at).toLocaleDateString('fr-FR') : '—'}</p>
+                <p className="text-[10px] text-slate-500">Dernier usage : {key.last_used ? new Date(key.last_used).toLocaleDateString('fr-FR') : 'Jamais'}</p>
               </div>
               <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <ActionButton variant="ghost" size="sm" icon={Copy} />
-                <ActionButton variant="ghost" size="sm" icon={RefreshCw} />
-                <ActionButton variant="ghost" size="sm" icon={Trash2} />
+                <ActionButton variant="ghost" size="sm" icon={RefreshCw} onClick={() => handleRegenerateApiKey(key.key_id)} />
+                <ActionButton variant="ghost" size="sm" icon={Trash2} onClick={() => handleDeleteApiKey(key.key_id)} />
               </div>
             </div>
           ))}
-          <ActionButton variant="secondary" size="sm" icon={Plus}>Nouvelle clé API</ActionButton>
+          <div className="flex gap-2">
+            <TextInput className="flex-1" value={newKeyName} onChange={setNewKeyName} placeholder="Nom de la clé (ex: Production)" icon={Key} />
+            <ActionButton variant="secondary" size="md" icon={Plus} onClick={handleCreateApiKey} loading={creatingKey}>Créer</ActionButton>
+          </div>
         </div>
       </SectionCard>
 
@@ -1563,15 +1957,15 @@ const SettingsPage = () => {
             {['lead.created', 'lead.updated', 'lead.deleted', 'quote.created', 'quote.accepted', 'quote.rejected',
               'invoice.created', 'payment.received', 'task.completed', 'booking.created', 'booking.cancelled',
               'ticket.created', 'ticket.resolved', 'contract.signed'].map(evt => {
-              const isActive = apiSettings.webhookEvents.includes(evt);
+              const isActive = (apiSettings.webhookEvents || []).includes(evt);
               return (
                 <button
                   key={evt}
                   onClick={() => setApiSettings(p => ({
                     ...p,
                     webhookEvents: isActive
-                      ? p.webhookEvents.filter(e => e !== evt)
-                      : [...p.webhookEvents, evt]
+                      ? (p.webhookEvents || []).filter(e => e !== evt)
+                      : [...(p.webhookEvents || []), evt]
                   }))}
                   className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-semibold transition-all ${
                     isActive ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30' : 'bg-white/5 text-slate-500 border border-white/10'
@@ -1584,14 +1978,14 @@ const SettingsPage = () => {
           </div>
         </FieldRow>
         <FieldRow label="Rate limit" description="Requêtes max par heure">
-          <TextInput type="number" value={String(apiSettings.rateLimit)} onChange={v => setApiSettings(p => ({ ...p, rateLimit: parseInt(v) || 0 }))} className="w-28" />
+          <TextInput type="number" value={String(apiSettings.rateLimit || 1000)} onChange={v => setApiSettings(p => ({ ...p, rateLimit: parseInt(v) || 0 }))} className="w-28" />
         </FieldRow>
       </SectionCard>
 
       <SectionCard title="Documentation API" description="Ressources pour les développeurs" icon={FileText} color="#64748b">
         <div className="flex gap-3 flex-wrap">
-          <ActionButton variant="secondary" size="sm" icon={ExternalLink}>Documentation</ActionButton>
-          <ActionButton variant="secondary" size="sm" icon={ExternalLink}>Swagger UI</ActionButton>
+          <ActionButton variant="secondary" size="sm" icon={ExternalLink} onClick={() => window.open(`${BACKEND_URL}/docs`, '_blank')}>Documentation</ActionButton>
+          <ActionButton variant="secondary" size="sm" icon={ExternalLink} onClick={() => window.open(`${BACKEND_URL}/redoc`, '_blank')}>Swagger UI</ActionButton>
           <ActionButton variant="secondary" size="sm" icon={Download}>Postman Collection</ActionButton>
         </div>
       </SectionCard>
@@ -1602,7 +1996,7 @@ const SettingsPage = () => {
      DATA TAB
   ──────────────────────────────────────────────── */
   const renderData = () => (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="tab-data">
       <SectionCard title="Sauvegardes automatiques" description="Protection de vos données" icon={Cloud} color="#0ea5e9">
         <FieldRow label="Sauvegarde automatique" description="Sauvegarder régulièrement vos données">
           <Toggle checked={dataSettings.autoBackup} onChange={v => setDataSettings(p => ({ ...p, autoBackup: v }))} />
@@ -1628,9 +2022,13 @@ const SettingsPage = () => {
         <div className="flex items-center justify-between p-3 rounded-xl bg-white/3 border border-white/5">
           <div>
             <p className="text-xs font-semibold text-slate-300">Dernière sauvegarde</p>
-            <p className="text-[10px] text-slate-500">{new Date(dataSettings.lastBackup).toLocaleString('fr-FR')}</p>
+            <p className="text-[10px] text-slate-500">
+              {dataSettings.lastBackup ? new Date(dataSettings.lastBackup).toLocaleString('fr-FR') : 'Jamais'}
+            </p>
           </div>
-          <ActionButton variant="secondary" size="sm" icon={RefreshCw}>Sauvegarder maintenant</ActionButton>
+          <ActionButton variant="secondary" size="sm" icon={RefreshCw} onClick={handleBackup} loading={backingUp}>
+            Sauvegarder maintenant
+          </ActionButton>
         </div>
       </SectionCard>
 
@@ -1645,11 +2043,21 @@ const SettingsPage = () => {
             ]} />
         </FieldRow>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {['Leads', 'Devis', 'Factures', 'Clients', 'Interventions', 'Contrats'].map(item => (
-            <ActionButton key={item} variant="secondary" size="sm" icon={Download}>{item}</ActionButton>
+          {[
+            { label: 'Leads', type: 'leads' },
+            { label: 'Devis', type: 'quotes' },
+            { label: 'Factures', type: 'invoices' },
+            { label: 'Clients', type: 'contacts' },
+            { label: 'Interventions', type: 'interventions' },
+            { label: 'Tout (ZIP)', type: 'all' },
+          ].map(item => (
+            <ActionButton key={item.type} variant="secondary" size="sm" icon={Download}
+              loading={exporting === item.type}
+              onClick={() => handleExport(item.type)}>
+              {item.label}
+            </ActionButton>
           ))}
         </div>
-        <ActionButton variant="primary" icon={Archive}>Exporter tout (ZIP)</ActionButton>
       </SectionCard>
 
       <SectionCard title="Import de données" description="Importez des données en masse" icon={Upload} color="#0ea5e9">
@@ -1680,11 +2088,20 @@ const SettingsPage = () => {
         </FieldRow>
       </SectionCard>
 
-      {/* Danger zone */}
       <SectionCard title="Zone dangereuse" description="Actions irréversibles" icon={AlertTriangle} color="#ef4444">
         <div className="space-y-3">
-          <DangerZone title="Réinitialiser les données" description="Supprimer toutes les données de test" buttonText="Réinitialiser" onConfirm={() => toast.error('Données réinitialisées')} />
-          <DangerZone title="Supprimer le compte" description="Supprimer définitivement votre compte et toutes les données" buttonText="Supprimer" onConfirm={() => toast.error('Compte supprimé')} />
+          <DangerZone
+            title="Réinitialiser les données"
+            description="Supprimer toutes les données de test"
+            buttonText="Réinitialiser"
+            onConfirm={() => toast.error('Fonctionnalité désactivée en production')}
+          />
+          <DangerZone
+            title="Supprimer le compte"
+            description="Supprimer définitivement votre compte et toutes les données"
+            buttonText="Supprimer"
+            onConfirm={handleDeleteAccount}
+          />
         </div>
       </SectionCard>
     </div>
@@ -1694,7 +2111,7 @@ const SettingsPage = () => {
      ADVANCED TAB
   ──────────────────────────────────────────────── */
   const renderAdvanced = () => (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="tab-advanced">
       <SectionCard title="Développement" description="Options pour les développeurs" icon={Sliders} color="#78716c">
         <FieldRow label="Mode debug" description="Afficher les informations de débogage">
           <Toggle checked={advanced.debugMode} onChange={v => setAdvanced(p => ({ ...p, debugMode: v }))} />
@@ -1760,7 +2177,7 @@ const SettingsPage = () => {
             { label: 'Uptime', value: '99.97%' },
             { label: 'Backend', value: 'Railway' },
             { label: 'Frontend', value: 'Vercel' },
-            { label: 'Base de données', value: 'Supabase' },
+            { label: 'Base de données', value: 'MongoDB' },
             { label: 'CDN', value: 'Cloudflare' },
           ].map(info => (
             <div key={info.label} className="p-3 rounded-xl bg-white/3 border border-white/5">
@@ -1777,6 +2194,17 @@ const SettingsPage = () => {
      Tab renderer
   ──────────────────────────────────────────────── */
   const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center py-24">
+          <div className="text-center">
+            <RefreshCw className="w-8 h-8 text-violet-400 animate-spin mx-auto mb-3" />
+            <p className="text-sm text-slate-400">Chargement...</p>
+          </div>
+        </div>
+      );
+    }
+
     switch (activeTab) {
       case 'profile': return renderProfile();
       case 'company': return renderCompany();
@@ -1835,6 +2263,7 @@ const SettingsPage = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
+                  data-testid={`tab-btn-${tab.id}`}
                   className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
                     isActive
                       ? 'text-white'
@@ -1873,7 +2302,7 @@ const SettingsPage = () => {
                 </h2>
               </div>
             </div>
-            <ActionButton variant="primary" icon={Save} onClick={handleSave} loading={saving}>
+            <ActionButton variant="primary" icon={Save} onClick={handleSave} loading={saving} data-testid="save-btn">
               Enregistrer
             </ActionButton>
           </div>

@@ -2077,9 +2077,9 @@ async def get_dashboard_stats(request: Request, period: str = "30d"):
 
 # ============= INTEGRATION STATUS ENDPOINTS =============
 
-@api_router.get("/settings/integrations")
+@api_router.get("/integrations/status")
 async def get_integration_status(request: Request):
-    """Get status of all external integrations."""
+    """Get status of all external integrations (legacy endpoint)."""
     user = await require_auth(request)
     
     from google_calendar import _is_configured as gcal_configured
@@ -2335,6 +2335,10 @@ app.include_router(geo_router)
 app.include_router(sms_router)
 app.include_router(documents_router)
 
+# Include settings router
+from settings import settings_router, init_settings_db
+app.include_router(settings_router)
+
 @app.on_event("startup")
 async def startup_db_indexes():
     """Create MongoDB indexes for performance."""
@@ -2427,6 +2431,7 @@ async def startup_db_indexes():
     init_notifications_db(db)
     init_chat_db(db)
     init_intervenant_db(db)
+    init_settings_db(db)
     try:
         from portal import init_portal_db
         init_portal_db(db)
