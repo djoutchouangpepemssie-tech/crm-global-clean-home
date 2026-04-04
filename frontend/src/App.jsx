@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, NavLink } from 'react-router-dom';
 import { Toaster } from 'sonner';
-import { LayoutDashboard, Users, FileText, MoreHorizontal, X, LogOut, Trello, CreditCard, BarChart3, CalendarDays, CheckSquare, TrendingUp, Plug, Activity, ChevronRight, Briefcase, Star, Settings, Globe, MessageSquare, Ticket, Workflow, BarChart2, UserCheck } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, MoreHorizontal, X, LogOut, Trello, CreditCard, BarChart3, CalendarDays, CheckSquare, TrendingUp, Plug, Activity, ChevronRight, Briefcase, Star, Settings, Globe, MessageSquare, Ticket, Workflow, BarChart2, UserCheck, Map, BookOpen, ThumbsUp, FolderOpen, Scroll, Search } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import PWAInstallBanner, { OfflineIndicator } from './components/pwa/PWAInstallBanner';
 
@@ -83,6 +83,20 @@ const AdsDashboard = lazy(() => import('./components/ads/AdsDashboard'));
 const AICenter = lazy(() => import('./components/ai/AICenter'));
 const WorkflowBuilder = lazy(() => import('./components/workflows/WorkflowBuilder'));
 const TicketsList = lazy(() => import('./components/tickets/TicketsList'));
+const ContractsList = lazy(() => import('./components/contracts/ContractsList'));
+const InterventionsMap = lazy(() => import('./components/map/InterventionsMap'));
+const SatisfactionDashboard = lazy(() => import('./components/satisfaction/SatisfactionDashboard'));
+const DocumentsManager = lazy(() => import('./components/documents/DocumentsManager'));
+const BookingManager = lazy(() => import('./components/booking/BookingManager'));
+const GlobalSearchFull = lazy(() =>
+  import('./components/shared/GlobalSearch').then(m => ({ default: m.GlobalSearch || m.default }))
+);
+// Trigger button: just visual, no shortcut logic
+const GlobalSearchTrigger = () => (
+  <React.Suspense fallback={<div style={{width:200,height:32}} />}>
+    <GlobalSearchFull triggerOnly />
+  </React.Suspense>
+);
 import './App.css';
 import { requestNotificationPermission, onMessageListener } from './firebase';
 
@@ -106,6 +120,8 @@ const menuCategories = [
       { to: '/intervenants', icon: UserCheck,    label: 'Intervenants' },
       { to: '/tasks',        icon: CheckSquare,  label: 'Tâches' },
       { to: '/tickets',      icon: Ticket,       label: 'Tickets' },
+      { to: '/bookings',     icon: BookOpen,     label: 'Réservations' },
+      { to: '/map',          icon: Map,          label: 'Carte' },
     ]
   },
   {
@@ -116,6 +132,15 @@ const menuCategories = [
       { to: '/rentabilite',icon: BarChart2,  label: 'Rentabilité' },
       { to: '/ads',        icon: Globe,      label: 'Publicité' },
       { to: '/activity',   icon: Activity,   label: 'Journal' },
+    ]
+  },
+  {
+    label: '📋 Gestion',
+    color: '#06b6d4',
+    items: [
+      { to: '/contracts',    icon: Scroll,        label: 'Contrats' },
+      { to: '/satisfaction', icon: ThumbsUp,      label: 'Satisfaction' },
+      { to: '/documents',    icon: FolderOpen,    label: 'Documents' },
     ]
   },
   {
@@ -340,7 +365,10 @@ function AppRouter() {
                 </div>
 
                 {/* Desktop header avec notifications */}
-                <div className="hidden lg:flex items-center justify-end px-6 py-3 border-b border-white/5 flex-shrink-0" style={{background:"hsl(224,71%,5%)",zIndex:9000,position:"relative"}}>
+                <div className="hidden lg:flex items-center justify-between px-6 py-3 border-b border-white/5 flex-shrink-0" style={{background:"hsl(224,71%,5%)",zIndex:9000,position:"relative"}}>
+                  <React.Suspense fallback={null}>
+                    <GlobalSearchTrigger />
+                  </React.Suspense>
                   <NotificationBell />
                 </div>
                 <div className="flex-1 overflow-y-auto overflow-x-hidden pb-16 lg:pb-0">
@@ -378,6 +406,11 @@ function AppRouter() {
                     <Route path="/ai" element={<AICenter />} />
                     <Route path="/workflows" element={<WorkflowBuilder />} />
                     <Route path="/tickets" element={<TicketsList />} />
+                    <Route path="/contracts" element={<ContractsList />} />
+                    <Route path="/map" element={<InterventionsMap />} />
+                    <Route path="/satisfaction" element={<SatisfactionDashboard />} />
+                    <Route path="/documents" element={<DocumentsManager />} />
+                    <Route path="/bookings" element={<BookingManager />} />
                     <Route path="/" element={<Navigate to="/login" replace />} />
                   </Routes>
         </Suspense>
@@ -398,6 +431,9 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <NotificationHandler />
+        <React.Suspense fallback={null}>
+          <GlobalSearchFull />
+        </React.Suspense>
         <AppRouter />
         <Toaster
           position="top-right"

@@ -1,20 +1,67 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { FileText, CreditCard, Clock, CheckCircle, AlertTriangle, Plus, Download, TrendingUp } from 'lucide-react';
-import { formatCurrency, formatDateTime } from '../../lib/utils';
+import { FileText, CreditCard, Clock, CheckCircle, AlertTriangle, Plus, Download, TrendingUp, Send } from 'lucide-react';
+import { formatDateTime } from '../../lib/utils';
 import { toast } from 'sonner';
 import BACKEND_URL from '../../config.js';
 const API_URL = BACKEND_URL + '/api';
 
-const STATUS_CONFIG = {
-  'en_attente': { label: 'En attente', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.2)', icon: Clock },
-  'payée': { label: 'Payée', color: '#34d399', bg: 'rgba(52,211,153,0.1)', border: 'rgba(52,211,153,0.2)', icon: CheckCircle },
-  'payee': { label: 'Payée', color: '#34d399', bg: 'rgba(52,211,153,0.1)', border: 'rgba(52,211,153,0.2)', icon: CheckCircle },
-  'en_retard': { label: 'En retard', color: '#f43f5e', bg: 'rgba(244,63,94,0.1)', border: 'rgba(244,63,94,0.2)', icon: AlertTriangle },
-  'annulée': { label: 'Annulée', color: '#94a3b8', bg: 'rgba(148,163,184,0.1)', border: 'rgba(148,163,184,0.2)', icon: FileText },
+// ── helpers ───────────────────────────────────
+const fmt = (v) =>
+  new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(v || 0);
+
+const isOverdue = (inv) => {
+  if (['payée', 'payee', 'annulée'].includes(inv.status)) return false;
+  if (inv.status === 'en_retard') return true;
+  if (inv.due_date) return new Date(inv.due_date) < new Date();
+  // fallback: if created more than 30 days ago and not paid
+  return new Date(inv.created_at) < new Date(Date.now() - 30 * 86400000);
 };
 
+// ── status config ─────────────────────────────
+const STATUS_CONFIG = {
+  'en_attente': { label: 'En attente', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.2)', icon: Clock },
+  'payée':      { label: 'Payée',      color: '#34d399', bg: 'rgba(52,211,153,0.1)', border: 'rgba(52,211,153,0.2)', icon: CheckCircle },
+  'payee':      { label: 'Payée',      color: '#34d399', bg: 'rgba(52,211,153,0.1)', border: 'rgba(52,211,153,0.2)', icon: CheckCircle },
+  'en_retard':  { label: 'En retard',  color: '#f43f5e', bg: 'rgba(244,63,94,0.1)',  border: 'rgba(244,63,94,0.2)',  icon: AlertTriangle },
+  'annulée':    { label: 'Annulée',    color: '#94a3b8', bg: 'rgba(148,163,184,0.1)', border: 'rgba(148,163,184,0.2)', icon: FileText },
+};
+
+// ── Payment status timeline ───────────────────
+function PaymentTimeline({ invoice }) {
+  const steps = [
+    { key: 'sent',   label: 'Envoyée', done: true },
+    { key: 'viewed', label: 'Vue',     done: !!invoice.viewed_at },
+    { key: 'paid',   label: 'Payée',   done: ['payée', 'payee'].includes(invoice.status) },
+  ];
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+      {steps.map((step, i) => (
+        <React.Fragment key={step.key}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <div style={{
+              width: 8, height: 8, borderRadius: '50%',
+              background: step.done ? '#34d399' : 'rgba(255,255,255,0.1)',
+              border: step.done ? '1px solid #34d399' : '1px solid rgba(255,255,255,0.2)',
+              transition: 'all 0.2s',
+            }} />
+            <span style={{ fontSize: 8, color: step.done ? '#34d399' : '#475569', whiteSpace: 'nowrap' }}>{step.label}</span>
+          </div>
+          {i < steps.length - 1 && (
+            <div style={{
+              height: 1, flex: 1, minWidth: 12,
+              background: steps[i + 1].done ? '#34d399' : 'rgba(255,255,255,0.08)',
+              marginBottom: 10,
+            }} />
+          )}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────
 const InvoicesList = () => {
   const navigate = useNavigate();
   const [invoices, setInvoices] = useState([]);
@@ -48,13 +95,13 @@ const InvoicesList = () => {
     } catch { toast.error('Erreur lors de la création du paiement'); }
   };
 
-  const totalPaid = invoices.filter(i => ['payée','payee'].includes(i.status)).reduce((s, i) => s + (i.amount_ttc || 0), 0);
+  const totalPaid    = invoices.filter(i => ['payée','payee'].includes(i.status)).reduce((s, i) => s + (i.amount_ttc || 0), 0);
   const totalPending = invoices.filter(i => i.status === 'en_attente').reduce((s, i) => s + (i.amount_ttc || 0), 0);
-  const totalLate = invoices.filter(i => i.status === 'en_retard').reduce((s, i) => s + (i.amount_ttc || 0), 0);
+  const totalLate    = invoices.filter(i => isOverdue(i)).reduce((s, i) => s + (i.amount_ttc || 0), 0);
 
   return (
     <div className="p-4 md:p-6 lg:p-8 animate-fade-in" data-testid="invoices-page">
-      
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
@@ -64,7 +111,7 @@ const InvoicesList = () => {
           </div>
           <p className="text-slate-500 text-sm"><span className="text-violet-400 font-semibold">{invoices.length}</span> facture(s)</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <a href={`${API_URL}/exports/invoices/csv`} data-testid="export-invoices-csv"
             className="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-slate-200 rounded-lg transition-all text-sm font-medium">
             <Download className="w-4 h-4" /> CSV
@@ -84,13 +131,14 @@ const InvoicesList = () => {
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         {[
-          { label: 'Total encaissé', value: formatCurrency(totalPaid), color: '#34d399', icon: CheckCircle, desc: `${invoices.filter(i => ['payée','payee'].includes(i.status)).length} factures payées` },
-          { label: 'En attente', value: formatCurrency(totalPending), color: '#f59e0b', icon: Clock, desc: `${invoices.filter(i => i.status === 'en_attente').length} factures en attente` },
-          { label: 'En retard', value: formatCurrency(totalLate), color: '#f43f5e', icon: AlertTriangle, desc: `${invoices.filter(i => i.status === 'en_retard').length} factures en retard` },
+          { label: 'Total encaissé',  value: fmt(totalPaid),    color: '#34d399', icon: CheckCircle,   desc: `${invoices.filter(i => ['payée','payee'].includes(i.status)).length} factures payées` },
+          { label: 'En attente',      value: fmt(totalPending), color: '#f59e0b', icon: Clock,         desc: `${invoices.filter(i => i.status === 'en_attente').length} factures en attente` },
+          { label: 'En retard',       value: fmt(totalLate),    color: '#f43f5e', icon: AlertTriangle, desc: `${invoices.filter(i => isOverdue(i)).length} factures en retard` },
         ].map((s, i) => (
           <div key={i} className="metric-card">
             <div className="flex items-center justify-between mb-3">
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{background:`${s.color}15`,border:`1px solid ${s.color}25`}}>
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center"
+                style={{background:`${s.color}15`,border:`1px solid ${s.color}25`}}>
                 <s.icon className="w-4 h-4" style={{color:s.color}} />
               </div>
             </div>
@@ -104,9 +152,9 @@ const InvoicesList = () => {
       {/* Filters */}
       <div className="flex gap-2 mb-4 flex-wrap" data-testid="invoice-filters">
         {[
-          { value: '', label: 'Toutes' },
+          { value: '',          label: 'Toutes' },
           { value: 'en_attente', label: 'En attente' },
-          { value: 'payée', label: 'Payées' },
+          { value: 'payée',     label: 'Payées' },
           { value: 'en_retard', label: 'En retard' },
         ].map(f => (
           <button key={f.value} data-testid={`filter-${f.value || 'all'}`}
@@ -143,7 +191,7 @@ const InvoicesList = () => {
               <table className="w-full">
                 <thead>
                   <tr style={{borderBottom:'1px solid rgba(255,255,255,0.05)',background:'rgba(255,255,255,0.02)'}}>
-                    {['Réf.','Client','Service','Montant','Statut','Date','Actions'].map(h => (
+                    {['Réf.','Client','Service','Montant','Statut / Timeline','Date','Actions'].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{h}</th>
                     ))}
                   </tr>
@@ -152,14 +200,31 @@ const InvoicesList = () => {
                   {invoices.map(inv => {
                     const cfg = STATUS_CONFIG[inv.status] || STATUS_CONFIG['en_attente'];
                     const StatusIcon = cfg.icon;
+                    const overdue = isOverdue(inv);
                     return (
                       <tr key={inv.invoice_id} data-testid={`invoice-row-${inv.invoice_id}`}
                         className="group hover:bg-white/3 transition-all"
-                        style={{borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
+                        style={{
+                          borderBottom: '1px solid rgba(255,255,255,0.04)',
+                          boxShadow: overdue ? 'inset 0 0 0 1px rgba(244,63,94,0.15)' : 'none',
+                          background: overdue ? 'rgba(244,63,94,0.03)' : 'transparent',
+                        }}>
                         <td className="px-4 py-3">
                           <span className="font-mono text-xs text-slate-500 bg-white/5 px-2 py-1 rounded">
                             #{inv.invoice_id?.slice(-6)}
                           </span>
+                          {overdue && (
+                            <div style={{
+                              display:'inline-block',marginLeft:6,
+                              background:'rgba(244,63,94,0.12)',
+                              border:'1px solid rgba(244,63,94,0.25)',
+                              color:'#f43f5e',
+                              borderRadius:4,padding:'1px 6px',fontSize:9,fontWeight:700,
+                              textTransform:'uppercase',letterSpacing:'0.05em',verticalAlign:'middle',
+                            }}>
+                              RETARD
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <p className="text-sm font-medium text-slate-200">{inv.lead_name}</p>
@@ -167,7 +232,7 @@ const InvoicesList = () => {
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-400">{inv.service_type}</td>
                         <td className="px-4 py-3">
-                          <span className="text-sm font-bold text-slate-200">{formatCurrency(inv.amount_ttc)}</span>
+                          <span className="text-sm font-bold" style={{color: overdue ? '#f43f5e' : '#e2e8f0'}}>{fmt(inv.amount_ttc)}</span>
                         </td>
                         <td className="px-4 py-3">
                           <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold w-fit"
@@ -175,14 +240,15 @@ const InvoicesList = () => {
                             <StatusIcon className="w-3 h-3" />
                             {cfg.label}
                           </span>
+                          <PaymentTimeline invoice={inv} />
                         </td>
                         <td className="px-4 py-3 text-xs text-slate-500">{formatDateTime(inv.created_at)}</td>
                         <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <button onClick={() => handleSendInvoice(inv)}
                               className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 text-blue-400 rounded-lg text-xs font-medium transition-all"
                               title="Envoyer au client">
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                              <Send className="w-3 h-3" />
                               Envoyer
                             </button>
                             {inv.status === 'en_attente' && (
@@ -207,6 +273,38 @@ const InvoicesList = () => {
                     );
                   })}
                 </tbody>
+
+                {/* Totals footer */}
+                <tfoot>
+                  <tr style={{borderTop:'2px solid rgba(255,255,255,0.08)',background:'rgba(255,255,255,0.02)'}}>
+                    <td colSpan={3} className="px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      Totaux
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span style={{width:6,height:6,borderRadius:'50%',background:'#34d399',display:'inline-block'}} />
+                          <span className="text-xs text-slate-400">Payé:</span>
+                          <span className="text-xs font-bold text-green-400">{fmt(totalPaid)}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span style={{width:6,height:6,borderRadius:'50%',background:'#f59e0b',display:'inline-block'}} />
+                          <span className="text-xs text-slate-400">En attente:</span>
+                          <span className="text-xs font-bold text-amber-400">{fmt(totalPending)}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span style={{width:6,height:6,borderRadius:'50%',background:'#f43f5e',display:'inline-block'}} />
+                          <span className="text-xs text-slate-400">En retard:</span>
+                          <span className="text-xs font-bold text-red-400">{fmt(totalLate)}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td colSpan={3} className="px-4 py-3">
+                      <span className="text-xs text-slate-500">Total: </span>
+                      <span className="text-sm font-bold text-slate-200">{fmt(totalPaid + totalPending)}</span>
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
 
@@ -214,12 +312,19 @@ const InvoicesList = () => {
             <div className="md:hidden divide-y divide-white/5">
               {invoices.map(inv => {
                 const cfg = STATUS_CONFIG[inv.status] || STATUS_CONFIG['en_attente'];
+                const overdue = isOverdue(inv);
                 return (
-                  <div key={inv.invoice_id} data-testid={`invoice-card-${inv.invoice_id}`} className="p-4">
+                  <div key={inv.invoice_id} data-testid={`invoice-card-${inv.invoice_id}`}
+                    className="p-4"
+                    style={{
+                      borderLeft: overdue ? '3px solid #f43f5e' : '3px solid transparent',
+                      background: overdue ? 'rgba(244,63,94,0.04)' : 'transparent',
+                    }}>
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="min-w-0">
                         <p className="font-semibold text-slate-200 text-sm">{inv.lead_name}</p>
                         <p className="text-xs text-slate-500 mt-0.5">{inv.service_type}</p>
+                        <PaymentTimeline invoice={inv} />
                       </div>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0"
                         style={{color:cfg.color,background:cfg.bg}}>
@@ -227,7 +332,7 @@ const InvoicesList = () => {
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <p className="font-bold text-violet-400 text-lg">{formatCurrency(inv.amount_ttc)}</p>
+                      <p className="font-bold text-lg" style={{color: overdue ? '#f43f5e' : '#a78bfa'}}>{fmt(inv.amount_ttc)}</p>
                       <div className="flex items-center gap-2">
                         {inv.status === 'en_attente' && (
                           <button onClick={() => handlePay(inv)} data-testid={`pay-btn-mobile-${inv.invoice_id}`}
@@ -244,6 +349,23 @@ const InvoicesList = () => {
                   </div>
                 );
               })}
+
+              {/* Mobile totals */}
+              <div className="p-4 bg-white/2">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Totaux</p>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: 'Payé', value: fmt(totalPaid), color: '#34d399' },
+                    { label: 'En attente', value: fmt(totalPending), color: '#f59e0b' },
+                    { label: 'En retard', value: fmt(totalLate), color: '#f43f5e' },
+                  ].map(t => (
+                    <div key={t.label} className="text-center">
+                      <p className="text-xs font-bold" style={{color:t.color}}>{t.value}</p>
+                      <p className="text-[10px] text-slate-600 mt-0.5">{t.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </>
         )}
