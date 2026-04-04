@@ -75,6 +75,7 @@ const navGroups = [
       { to: '/documents',    icon: FolderOpen,   label: 'Documents' },
       { to: '/integrations', icon: Plug,         label: 'Intégrations' },
       { to: '/activity',     icon: Activity,     label: 'Journal' },
+      { to: '/settings',     icon: Settings,     label: 'Paramètres' },
     ]
   },
 ];

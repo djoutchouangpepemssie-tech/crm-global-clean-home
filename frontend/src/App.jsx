@@ -88,6 +88,7 @@ const InterventionsMap = lazy(() => import('./components/map/InterventionsMap'))
 const SatisfactionDashboard = lazy(() => import('./components/satisfaction/SatisfactionDashboard'));
 const DocumentsManager = lazy(() => import('./components/documents/DocumentsManager'));
 const BookingManager = lazy(() => import('./components/booking/BookingManager'));
+const SettingsPage = lazy(() => import('./components/settings/SettingsPage'));
 const GlobalSearchFull = lazy(() =>
   import('./components/shared/GlobalSearch').then(m => ({ default: m.GlobalSearch || m.default }))
 );
@@ -151,6 +152,7 @@ const menuCategories = [
       { to: '/integrations', icon: Plug,          label: 'Intégrations' },
       { to: '/ai',           icon: Star,          label: 'IA' },
       { to: '/chat',         icon: MessageSquare, label: 'Messages' },
+      { to: '/settings',     icon: Settings,      label: 'Paramètres' },
     ]
   },
 ];
@@ -411,6 +413,7 @@ function AppRouter() {
                     <Route path="/satisfaction" element={<SatisfactionDashboard />} />
                     <Route path="/documents" element={<DocumentsManager />} />
                     <Route path="/bookings" element={<BookingManager />} />
+                    <Route path="/settings" element={<SettingsPage />} />
                     <Route path="/" element={<Navigate to="/login" replace />} />
                   </Routes>
         </Suspense>
