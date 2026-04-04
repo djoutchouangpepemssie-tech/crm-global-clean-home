@@ -2306,11 +2306,17 @@ app.include_router(ga4_router)
 from ads_connect import ads_connect_router, init_ads_connect_db
 app.include_router(ads_connect_router)
 
+from ai_assistant import ai_assistant_router, init_ai_assistant_db
+app.include_router(ai_assistant_router)
+
 from contracts import contracts_router
 app.include_router(contracts_router)
 
 from satisfaction import satisfaction_router
 app.include_router(satisfaction_router)
+
+from booking import booking_router
+app.include_router(booking_router)
 
 # ── PHASE 4/5/7: Geo, SMS, Documents ──
 from geo import geo_router
@@ -2419,6 +2425,7 @@ async def startup_db_indexes():
         logger.warning(f"Portal init: {e}")
     init_analytics_db(db)
     init_ads_connect_db(db)
+    init_ai_assistant_db(db)
     
     # Scheduler pour traiter les workflows toutes les 30 minutes
     import asyncio
@@ -2448,6 +2455,13 @@ async def startup_db_indexes():
     await db.teams.create_index("team_id", unique=True)
     await db.notifications.create_index([("user_id", 1), ("read", 1)])
     await db.notifications.create_index("created_at")
+
+    # Booking Widget (Phase 9)
+    await db.bookings.create_index("booking_id", unique=True)
+    await db.bookings.create_index("email")
+    await db.bookings.create_index("status")
+    await db.bookings.create_index("preferred_date")
+    await db.bookings.create_index("created_at")
     
     # Lancer la tache de relance automatique toutes les heures
     import asyncio

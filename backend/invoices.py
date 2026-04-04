@@ -1,7 +1,7 @@
 """
 Global Clean Home CRM - Module Facturation & Paiements Stripe
 """
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Query
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, timezone, timedelta
@@ -11,6 +11,7 @@ from pathlib import Path
 import os
 import uuid
 import logging
+import math
 
 
 ROOT_DIR = Path(__file__).parent
@@ -103,16 +104,57 @@ async def create_invoice_from_quote(quote_id: str, request: Request):
 
 
 @invoices_router.get("/invoices")
-async def list_invoices(request: Request, status: Optional[str] = None):
-    """List all invoices."""
+async def list_invoices(
+    request: Request,
+    status: Optional[str] = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200),
+    include_deleted: bool = Query(default=False),
+):
+    """List all invoices with pagination."""
     await _require_auth(request)
 
     query = {}
+    if not include_deleted:
+        query["deleted_at"] = {"$exists": False}
     if status:
         query["status"] = status
 
-    invoices = await _db.invoices.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
-    return invoices
+    total = await _db.invoices.count_documents(query)
+    skip = (page - 1) * page_size
+    invoices = await _db.invoices.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(page_size).to_list(page_size)
+    return {
+        "items": invoices,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": math.ceil(total / page_size) if page_size > 0 else 1,
+    }
+
+@invoices_router.delete("/invoices/{invoice_id}")
+async def delete_invoice(invoice_id: str, request: Request):
+    """Soft-delete an invoice."""
+    user = await _require_auth(request)
+    now = datetime.now(timezone.utc).isoformat()
+    result = await _db.invoices.update_one(
+        {"invoice_id": invoice_id, "deleted_at": {"$exists": False}},
+        {"$set": {"deleted_at": now}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Facture introuvable")
+    return {"message": "Facture supprimée"}
+
+@invoices_router.post("/invoices/{invoice_id}/restore")
+async def restore_invoice(invoice_id: str, request: Request):
+    """Restore a soft-deleted invoice."""
+    await _require_auth(request)
+    result = await _db.invoices.update_one(
+        {"invoice_id": invoice_id, "deleted_at": {"$exists": True}},
+        {"$unset": {"deleted_at": ""}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Facture introuvable ou non supprimée")
+    return {"message": "Facture restaurée"}
 
 
 @invoices_router.get("/invoices/{invoice_id}")

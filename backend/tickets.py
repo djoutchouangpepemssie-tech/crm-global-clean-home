@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, timezone, timedelta
 import uuid
 import logging
+import math
 
 logger = logging.getLogger(__name__)
 tickets_router = APIRouter(prefix="/api/tickets", tags=["tickets"])
@@ -123,15 +124,22 @@ async def get_tickets(
     status: Optional[str] = None,
     priority: Optional[str] = None,
     category: Optional[str] = None,
-    limit: int = 50
+    limit: int = Query(default=50, ge=1, le=500),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200),
+    include_deleted: bool = Query(default=False),
 ):
     await _require_auth(request)
     query = {}
+    if not include_deleted:
+        query["deleted_at"] = {"$exists": False}
     if status: query["status"] = status
     if priority: query["priority"] = priority
     if category: query["category"] = category
 
-    tickets = await _db.tickets.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    total = await _db.tickets.count_documents(query)
+    skip = (page - 1) * page_size
+    tickets = await _db.tickets.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(page_size).to_list(page_size)
 
     now = datetime.now(timezone.utc)
     for t in tickets:
@@ -145,7 +153,13 @@ async def get_tickets(
                 t["sla_remaining_hours"] = round(sla_hours - hours_elapsed, 1)
                 t["sla_breached"] = hours_elapsed > sla_hours
             except: pass
-    return tickets
+    return {
+        "items": tickets,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": math.ceil(total / page_size) if page_size > 0 else 1,
+    }
 
 @tickets_router.post("/")
 async def create_ticket(ticket: TicketCreate, request: Request):
@@ -340,3 +354,28 @@ async def reply_ticket(ticket_id: str, reply: TicketReply, request: Request):
 
     return reply_doc
 
+
+@tickets_router.delete("/{ticket_id}")
+async def delete_ticket(ticket_id: str, request: Request):
+    """Soft-delete a ticket."""
+    user = await _require_auth(request)
+    now = datetime.now(timezone.utc).isoformat()
+    result = await _db.tickets.update_one(
+        {"ticket_id": ticket_id, "deleted_at": {"$exists": False}},
+        {"$set": {"deleted_at": now}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Ticket introuvable")
+    return {"message": "Ticket supprimé"}
+
+@tickets_router.post("/{ticket_id}/restore")
+async def restore_ticket(ticket_id: str, request: Request):
+    """Restore a soft-deleted ticket."""
+    await _require_auth(request)
+    result = await _db.tickets.update_one(
+        {"ticket_id": ticket_id, "deleted_at": {"$exists": True}},
+        {"$unset": {"deleted_at": ""}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Ticket introuvable ou non supprimé")
+    return {"message": "Ticket restauré"}

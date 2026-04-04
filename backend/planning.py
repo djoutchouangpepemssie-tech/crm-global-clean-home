@@ -1,7 +1,7 @@
 """
 Global Clean Home CRM - Interventions & Team Planning Module
 """
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Query
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, timezone, timedelta
@@ -11,6 +11,7 @@ from pathlib import Path
 import os
 import uuid
 import logging
+import math
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -247,10 +248,15 @@ async def list_interventions(
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
     team_id: Optional[str] = None,
-    status: Optional[str] = None
+    status: Optional[str] = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200),
+    include_deleted: bool = Query(default=False),
 ):
     await _require_auth(request)
     query = {}
+    if not include_deleted:
+        query["deleted_at"] = {"$exists": False}
     if date_from:
         query.setdefault("scheduled_date", {})["$gte"] = date_from
     if date_to:
@@ -260,7 +266,16 @@ async def list_interventions(
     if status:
         query["status"] = status
     
-    return await _db.interventions.find(query, {"_id": 0}).sort("scheduled_date", 1).to_list(1000)
+    total = await _db.interventions.count_documents(query)
+    skip = (page - 1) * page_size
+    items = await _db.interventions.find(query, {"_id": 0}).sort("scheduled_date", 1).skip(skip).limit(page_size).to_list(page_size)
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": math.ceil(total / page_size) if page_size > 0 else 1,
+    }
 
 @planning_router.get("/interventions/{intervention_id}")
 async def get_intervention(intervention_id: str, request: Request):
@@ -338,11 +353,27 @@ async def update_intervention(intervention_id: str, request: Request):
 @planning_router.delete("/interventions/{intervention_id}")
 async def delete_intervention(intervention_id: str, request: Request):
     user = await _require_auth(request)
-    result = await _db.interventions.delete_one({"intervention_id": intervention_id})
-    if result.deleted_count == 0:
+    now = datetime.now(timezone.utc).isoformat()
+    result = await _db.interventions.update_one(
+        {"intervention_id": intervention_id, "deleted_at": {"$exists": False}},
+        {"$set": {"deleted_at": now}}
+    )
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Intervention introuvable")
     await _log_activity(user.user_id, "delete_intervention", "intervention", intervention_id)
     return {"message": "Intervention supprimée"}
+
+@planning_router.post("/interventions/{intervention_id}/restore")
+async def restore_intervention(intervention_id: str, request: Request):
+    """Restore a soft-deleted intervention."""
+    user = await _require_auth(request)
+    result = await _db.interventions.update_one(
+        {"intervention_id": intervention_id, "deleted_at": {"$exists": True}},
+        {"$unset": {"deleted_at": ""}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Intervention introuvable ou non supprimée")
+    return {"message": "Intervention restaurée"}
 
 # ============= CHECK-IN / CHECK-OUT =============
 
