@@ -52,14 +52,29 @@ const NotificationBell = () => (
   </React.Suspense>
 );
 
-// Prefetch les pages les plus visitées après le premier render
+// Prefetch agressif : les pages les plus visitées après le premier render
 const prefetchPages = () => {
-  import('./components/leads/LeadsList');
+  // Priorité 1 : pages critiques (1s après load)
   import('./components/dashboard/Dashboard');
-  import('./components/quotes/QuotesList');
+  import('./components/leads/LeadsList');
+  // Priorité 2 : pages fréquentes (3s)
+  setTimeout(() => {
+    import('./components/quotes/QuotesList');
+    import('./components/planning/PlanningCalendar');
+    import('./components/tasks/TasksList');
+    import('./components/kanban/KanbanBoard');
+  }, 2000);
+  // Priorité 3 : le reste (idle time)
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(() => {
+      import('./components/invoices/InvoicesList');
+      import('./components/analytics/Analytics');
+      import('./components/settings/SettingsPage');
+    });
+  }
 };
 if (typeof window !== 'undefined') {
-  window.addEventListener('load', () => setTimeout(prefetchPages, 2000));
+  window.addEventListener('load', () => setTimeout(prefetchPages, 1000));
 }
 const Dashboard = lazy(() => import('./components/dashboard/Dashboard'));
 const LeadsList = lazy(() => import('./components/leads/LeadsList'));
@@ -377,10 +392,16 @@ function AppRouter() {
                   <PWAInstallBanner />
         <ErrorBoundary>
         <Suspense fallback={
-          <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'hsl(224,71%,4%)',flexDirection:'column',gap:'12px'}}>
-            <div style={{width:'40px',height:'40px',border:'2px solid rgba(139,92,246,0.3)',borderTop:'2px solid #8b5cf6',borderRadius:'50%',animation:'spin 1s linear infinite'}} />
-            <p style={{color:'#64748b',fontSize:'14px'}}>Chargement...</p>
-            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+          <div style={{padding:'24px',background:'hsl(224,71%,4%)',minHeight:'100vh'}}>
+            {/* Skeleton header */}
+            <div style={{display:'flex',gap:'16px',marginBottom:'24px'}}>
+              {[1,2,3,4].map(i => (
+                <div key={i} style={{flex:1,height:'90px',borderRadius:'16px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.05)',animation:'pulse 1.5s ease-in-out infinite',animationDelay:`${i*100}ms`}} />
+              ))}
+            </div>
+            {/* Skeleton content */}
+            <div style={{height:'300px',borderRadius:'16px',background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.05)',animation:'pulse 1.5s ease-in-out infinite'}} />
+            <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}`}</style>
           </div>
         }>
         <Routes>

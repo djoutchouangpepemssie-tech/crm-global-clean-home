@@ -13,12 +13,28 @@ export const AuthProvider = ({ children }) => {
   const checkAuth = useCallback(async () => {
     try {
       const token = localStorage.getItem('session_token');
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const response = await axios.get(`${API_URL}/auth/me`, {
-        withCredentials: true,
-        headers
-      });
-      setUser(response.data);
+      if (!token) { setUser(null); setLoading(false); return; }
+      const headers = { Authorization: `Bearer ${token}` };
+      // Retry avec backoff pour gérer le cold start Railway
+      let lastErr;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const response = await axios.get(`${API_URL}/auth/me`, {
+            withCredentials: true,
+            headers,
+            timeout: 10000,
+          });
+          setUser(response.data);
+          return;
+        } catch (error) {
+          lastErr = error;
+          // Si 401/403, pas la peine de retry
+          if (error?.response?.status === 401 || error?.response?.status === 403) break;
+          if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+        }
+      }
+      console.warn('Auth check failed after retries:', lastErr?.message);
+      setUser(null);
     } catch (error) {
       setUser(null);
     } finally {
@@ -29,7 +45,8 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     // CRITICAL: If returning from OAuth callback, skip the /me check.
     // AuthCallback will exchange the session_id and establish the session first.
-    if (window.location.hash?.includes('session_id=')) {
+    // Skip /me check si on arrive du callback OAuth (access_token ou session_id dans le hash)
+    if (window.location.hash?.includes('access_token=') || window.location.hash?.includes('session_id=')) {
       setLoading(false);
       return;
     }
