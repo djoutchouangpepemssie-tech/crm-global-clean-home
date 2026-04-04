@@ -2312,6 +2312,14 @@ app.include_router(contracts_router)
 from satisfaction import satisfaction_router
 app.include_router(satisfaction_router)
 
+# ── PHASE 4/5/7: Geo, SMS, Documents ──
+from geo import geo_router
+from sms_service import sms_router
+from documents import documents_router
+app.include_router(geo_router)
+app.include_router(sms_router)
+app.include_router(documents_router)
+
 @app.on_event("startup")
 async def startup_db_indexes():
     """Create MongoDB indexes for performance."""
@@ -2469,6 +2477,14 @@ async def startup_db_indexes():
     await db.emails.create_index([("lead_id", 1), ("created_at", -1)])
     await db.emails.create_index("gmail_message_id", unique=True, sparse=True)
     await db.emails.create_index("direction")
+    # Geo / SMS / Documents indexes
+    await db.geocache.create_index("address", unique=True)
+    await db.sms_log.create_index("sent_at")
+    await db.sms_log.create_index([("to", 1), ("type", 1)])
+    await db.sms_templates.create_index("id", unique=True)
+    await db.documents.create_index("id", unique=True)
+    await db.documents.create_index([("entity_type", 1), ("entity_id", 1)])
+    await db.documents.create_index("deleted")
     logger.info("MongoDB indexes created successfully")
 
 @app.on_event("shutdown")
