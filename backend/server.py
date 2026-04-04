@@ -2227,7 +2227,16 @@ async def force_cors_middleware(request: StarletteRequest, call_next):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://crm.globalcleanhome.com", "https://www.globalcleanhome.com", "https://globalcleanhome.com", "http://localhost:3000", "http://localhost:5173", "http://localhost:4173"],
+    allow_origins=[
+        "https://crm.globalcleanhome.com",
+        "https://www.globalcleanhome.com",
+        "https://globalcleanhome.com",
+        "https://crm-global-clean-home-production.up.railway.app",
+        "https://crm-global-clean-home.up.railway.app",
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:4173"
+    ],
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_credentials=True,
     allow_headers=["*", "X-Portal-Token", "Content-Type", "Authorization", "Accept", "Origin"],
