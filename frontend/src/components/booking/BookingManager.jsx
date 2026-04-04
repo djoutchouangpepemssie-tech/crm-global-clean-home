@@ -34,11 +34,13 @@ const BookingManager = () => {
       let data = [];
       try {
         const res = await axios.get(`${API_URL}/bookings`, { withCredentials: true });
-        data = Array.isArray(res.data) ? res.data : res.data.bookings || [];
+        const raw = res.data;
+        data = Array.isArray(raw) ? raw : (raw?.items || raw?.bookings || []);
       } catch {
         try {
           const res = await axios.get(`${API_URL}/planning/bookings`, { withCredentials: true });
-          data = Array.isArray(res.data) ? res.data : res.data.bookings || [];
+          const raw = res.data;
+          data = Array.isArray(raw) ? raw : (raw?.items || raw?.bookings || []);
         } catch {
           // no endpoint yet — stay empty
         }
