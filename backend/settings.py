@@ -316,44 +316,6 @@ async def _save_setting(section: str, data: dict, user_id: str = None):
     return data
 
 
-# ─── GET /api/settings/{section} ──────────────────────────────────────────────
-@settings_router.get("/{section}")
-async def get_settings(section: str, request: Request):
-    """Charger les settings d'une section."""
-    user = await _require_auth(request)
-
-    all_sections = USER_SECTIONS | GLOBAL_SECTIONS
-    if section not in all_sections:
-        raise HTTPException(status_code=404, detail=f"Section '{section}' inconnue")
-
-    data = await _get_setting(section, user.user_id)
-    return {"section": section, "data": data}
-
-
-# ─── PUT /api/settings/{section} ──────────────────────────────────────────────
-@settings_router.put("/{section}")
-async def save_settings(section: str, request: Request):
-    """Sauvegarder les settings d'une section."""
-    user = await _require_auth(request)
-
-    all_sections = USER_SECTIONS | GLOBAL_SECTIONS
-    if section not in all_sections:
-        raise HTTPException(status_code=404, detail=f"Section '{section}' inconnue")
-
-    body = await request.json()
-    data = body if isinstance(body, dict) else {}
-
-    # Ne pas stocker le mot de passe en clair dans les settings profile
-    data.pop("password", None)
-    data.pop("newPassword", None)
-    data.pop("currentPassword", None)
-
-    saved = await _save_setting(section, data, user.user_id)
-    await _log(user.user_id, f"update_settings_{section}", "settings", section)
-
-    return {"success": True, "section": section, "data": saved}
-
-
 # ─── POST /api/settings/profile/avatar ────────────────────────────────────────
 @settings_router.post("/profile/avatar")
 async def upload_avatar(request: Request):
@@ -774,3 +736,46 @@ async def delete_account(request: Request):
 
     await _log(user.user_id, "delete_account", "user", user.user_id)
     return {"success": True, "message": "Compte supprimé avec succès"}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ROUTES DYNAMIQUES /{section} — DOIVENT ÊTRE EN DERNIER
+# FastAPI résout dans l'ordre de déclaration. Si ces routes sont placées avant
+# les routes spécifiques (/password, /api-keys/list, /data/backup, etc.),
+# elles capturent tout et les routes spécifiques ne sont jamais atteintes.
+# ══════════════════════════════════════════════════════════════════════════════
+
+@settings_router.get("/{section}")
+async def get_settings(section: str, request: Request):
+    """Charger les settings d'une section."""
+    user = await _require_auth(request)
+
+    all_sections = USER_SECTIONS | GLOBAL_SECTIONS
+    if section not in all_sections:
+        raise HTTPException(status_code=404, detail=f"Section '{section}' inconnue")
+
+    data = await _get_setting(section, user.user_id)
+    return {"section": section, "data": data}
+
+
+@settings_router.put("/{section}")
+async def save_settings(section: str, request: Request):
+    """Sauvegarder les settings d'une section."""
+    user = await _require_auth(request)
+
+    all_sections = USER_SECTIONS | GLOBAL_SECTIONS
+    if section not in all_sections:
+        raise HTTPException(status_code=404, detail=f"Section '{section}' inconnue")
+
+    body = await request.json()
+    data = body if isinstance(body, dict) else {}
+
+    # Ne pas stocker le mot de passe en clair dans les settings profile
+    data.pop("password", None)
+    data.pop("newPassword", None)
+    data.pop("currentPassword", None)
+
+    saved = await _save_setting(section, data, user.user_id)
+    await _log(user.user_id, f"update_settings_{section}", "settings", section)
+
+    return {"success": True, "section": section, "data": saved}
