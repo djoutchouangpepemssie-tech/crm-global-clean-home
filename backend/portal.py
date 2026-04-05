@@ -252,16 +252,44 @@ async def portal_pay_invoice(invoice_id: str, request: Request):
     raise HTTPException(status_code=503, detail="Paiement Stripe non configuré")
 
 @portal_router.get("/interventions")
-async def get_client_interventions(request: Request):
-    """Get interventions for the authenticated client."""
+async def get_portal_interventions(request: Request):
+    """Récupérer les interventions du client avec statut en temps réel et détails intervenants."""
     session = await _get_portal_session(request)
+    lead_id = session["lead_id"]
     
     interventions = await _db.interventions.find(
-        {"lead_id": session["lead_id"]},
+        {"lead_id": lead_id},
         {"_id": 0}
-    ).sort("scheduled_date", -1).to_list(100)
+    ).sort("scheduled_date", -1).to_list(20)
     
-    return interventions
+    # Enrichir avec les noms des intervenants
+    for intv in interventions:
+        members = intv.get("assigned_members", [])
+        member_names = []
+        for mid in members:
+            m = await _db.team_members.find_one({"member_id": mid}, {"_id": 0})
+            if m:
+                member_names.append({"name": m.get("name"), "role": m.get("role", "technicien")})
+        # Aussi chercher assigned_agent_id
+        if intv.get("assigned_agent_id"):
+            m = await _db.team_members.find_one({"member_id": intv["assigned_agent_id"]}, {"_id": 0})
+            if m and not any(x["name"] == m.get("name") for x in member_names):
+                member_names.append({"name": m.get("name"), "role": m.get("role", "technicien")})
+        intv["assigned_team"] = member_names
+        
+        # Statut lisible avec couleur et icône
+        status_map = {
+            "planifiée": {"label": "Planifiée", "color": "#3b82f6", "icon": "📅"},
+            "en_cours": {"label": "En cours", "color": "#10b981", "icon": "🧹"},
+            "terminée": {"label": "Terminée", "color": "#f59e0b", "icon": "✅"},
+            "annulée": {"label": "Annulée", "color": "#ef4444", "icon": "❌"},
+        }
+        intv["status_info"] = status_map.get(
+            intv.get("status", ""),
+            {"label": intv.get("status", ""), "color": "#64748b", "icon": "📋"}
+        )
+    
+    return {"interventions": interventions}
 
 
 # ============= REVIEWS =============

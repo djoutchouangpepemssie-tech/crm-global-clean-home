@@ -225,6 +225,45 @@ Si jamais vous avez besoin d'un coup de pouce professionnel, vous savez où me t
 Belle semaine,
 Merylis"""
     },
+    "intervention_planifiee_client": {
+        "subject": "✅ Votre intervention est planifiée — {date}",
+        "body": """Bonjour {prenom},
+
+Bonne nouvelle ! Votre intervention de {service} est désormais planifiée.
+
+📅 Date : {date} à {time}
+📍 Adresse : {address}
+⏱️ Durée estimée : {duration}h
+👤 Intervenant(s) : {team_names}
+
+Notre équipe est impatiente de prendre soin de votre intérieur. Si vous avez des questions ou besoin de modifier le créneau, n'hésitez surtout pas à nous appeler ou à répondre à cet email.
+
+Vous pouvez suivre votre intervention en temps réel depuis votre espace client :
+{portal_url}
+
+À très bientôt,
+Merylis
+Global Clean Home
+📞 06 22 66 53 08"""
+    },
+    "intervenant_planning_email": {
+        "subject": "📋 Votre planning — {date}",
+        "body": """Bonjour {prenom},
+
+Vous avez une nouvelle mission assignée :
+
+- Service : {service}
+- Client : {client_name}
+- Adresse : {address}
+- Date : {date} à {time}
+- Durée : {duration}h
+
+Accédez à votre portail pour plus de détails :
+{portal_url}
+
+Bonne mission !
+L'équipe Global Clean Home"""
+    },
     "nurturing_semaine2": {
         "subject": "Une offre spéciale pour vous",
         "body": """Bonjour {prenom},
@@ -361,6 +400,11 @@ async def process_pending_executions():
                 {"$set": {"status": "failed", "error": str(e)}}
             )
 
+# Templates relance qui doivent être skippés si le lead est déjà converti ou a répondu récemment
+RELANCE_TEMPLATES = {"relance_24h", "relance_48h", "devis_relance"}
+# Statuts qui indiquent que le lead est déjà converti
+CONVERTED_STATUSES = {"converti", "gagne", "gagné", "devis_accepte", "devis_accepté"}
+
 async def _execute_step(exec_item: dict):
     """Execute une étape concrète."""
     step_type = exec_item.get("step_type")
@@ -371,12 +415,64 @@ async def _execute_step(exec_item: dict):
     lead = await _db.leads.find_one({"lead_id": exec_item["lead_id"]}, {"_id": 0}) or {}
     service = SERVICE_LABELS.get(lead.get("service_type", ""), lead.get("service_type", "nettoyage"))
     
+    # === SMART SKIP pour les relances ===
+    template_key = exec_item.get("template", "")
+    if step_type == "send_email" and template_key in RELANCE_TEMPLATES:
+        lead_status = (lead.get("status") or "").lower().replace(" ", "_")
+        # Skip si le lead est déjà converti
+        if lead_status in CONVERTED_STATUSES:
+            logger.info(f"Skipping relance '{template_key}' for lead {exec_item['lead_id']} — already converted (status: {lead_status})")
+            await _db.workflow_executions.update_one(
+                {"execution_id": exec_item["execution_id"]},
+                {"$set": {"status": "skipped", "skip_reason": f"Lead déjà converti (statut: {lead_status})"}}
+            )
+            return
+        # Skip si une interaction récente (< 24h) existe (le lead a répondu)
+        cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+        recent_interaction = await _db.interactions.find_one({
+            "lead_id": exec_item["lead_id"],
+            "created_at": {"$gte": cutoff},
+            "automated": {"$ne": True},  # Ignorer les emails auto, ne compter que les vrais échanges
+        })
+        if recent_interaction:
+            logger.info(f"Skipping relance '{template_key}' for lead {exec_item['lead_id']} — recent interaction found")
+            await _db.workflow_executions.update_one(
+                {"execution_id": exec_item["execution_id"]},
+                {"$set": {"status": "skipped", "skip_reason": "Interaction récente détectée (< 24h)"}}
+            )
+            return
+    
     if step_type == "send_email" and lead_email:
-        template_key = exec_item.get("template", "")
+        if not template_key:
+            template_key = exec_item.get("template", "")
         template = HUMAN_EMAIL_TEMPLATES.get(template_key)
         if template:
             subject = template["subject"].format(prenom=prenom, service=service, name=lead_name)
             body = template["body"].format(prenom=prenom, service=service, name=lead_name)
+            
+            # Personnaliser new_lead_welcome selon le service_type
+            if template_key == "new_lead_welcome":
+                stype = (lead.get("service_type") or "").lower()
+                if "canap" in stype:
+                    body = body.replace(
+                        "Notre équipe prend votre demande très au sérieux",
+                        "Notre équipe spécialisée en nettoyage de canapés prend votre demande très au sérieux. Que ce soit du tissu, du cuir ou du daim, nous avons la technique adaptée"
+                    )
+                elif "matelas" in stype:
+                    body = body.replace(
+                        "Notre équipe prend votre demande très au sérieux",
+                        "Notre équipe experte en hygiène de literie prend votre demande très au sérieux. Un matelas sain, c'est la clé d'un bon sommeil"
+                    )
+                elif "bureau" in stype:
+                    body = body.replace(
+                        "Notre équipe prend votre demande très au sérieux",
+                        "Notre équipe dédiée aux professionnels prend votre demande très au sérieux. Des locaux impeccables, c'est l'image de votre entreprise"
+                    )
+                elif "tapis" in stype:
+                    body = body.replace(
+                        "Notre équipe prend votre demande très au sérieux",
+                        "Notre équipe spécialisée dans l'entretien de tapis et moquettes prend votre demande très au sérieux. Nous redonnerons éclat et fraîcheur à vos tapis"
+                    )
             
             try:
                 from gmail_service import _get_any_active_token, _send_gmail_message
@@ -665,10 +761,12 @@ async def get_workflow_stats(request: Request):
     completed = await _db.workflow_executions.count_documents({"status": "completed"})
     scheduled = await _db.workflow_executions.count_documents({"status": "scheduled"})
     failed = await _db.workflow_executions.count_documents({"status": "failed"})
+    skipped = await _db.workflow_executions.count_documents({"status": "skipped"})
     emails = await _db.workflow_executions.count_documents({"step_type": "send_email", "status": "completed"})
     
     return {
         "total": total, "completed": completed,
         "scheduled": scheduled, "failed": failed,
+        "skipped": skipped,
         "emails_sent": emails
     }

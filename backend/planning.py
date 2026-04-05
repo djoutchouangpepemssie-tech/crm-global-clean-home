@@ -239,6 +239,123 @@ async def create_intervention(body: InterventionCreate, request: Request):
     
     await _db.interventions.insert_one(intervention)
     await _log_activity(user.user_id, "create_intervention", "intervention", intervention["intervention_id"])
+    
+    # === Notifier les intervenants assignés par email ===
+    if body.assigned_members:
+        try:
+            from gmail_service import _get_any_active_token, _send_gmail_message
+            token_gmail, _ = await _get_any_active_token()
+            if token_gmail:
+                from workflows import SERVICE_LABELS
+                service_label = SERVICE_LABELS.get(intervention["service_type"], intervention["service_type"] or intervention["title"])
+                portal_url = "https://crm.globalcleanhome.com/intervenant"
+                
+                for mid in body.assigned_members:
+                    member = await _db.team_members.find_one({"member_id": mid}, {"_id": 0})
+                    if member and member.get("email"):
+                        m_prenom = member.get("name", "").split()[0] or "Bonjour"
+                        html = f"""<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,sans-serif;">
+<div style="max-width:540px;margin:32px auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.1);">
+  <div style="background:linear-gradient(135deg,#10b981,#059669);padding:32px;text-align:center;">
+    <div style="font-size:44px;margin-bottom:10px;">📋</div>
+    <h1 style="color:white;margin:0;font-size:20px;font-weight:800;">Nouvelle mission assignée</h1>
+    <p style="color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:13px;">{intervention["scheduled_date"]}</p>
+  </div>
+  <div style="padding:28px 32px;">
+    <p style="color:#1e293b;font-size:16px;font-weight:700;margin:0 0 12px;">Bonjour {m_prenom} 👋</p>
+    <p style="color:#64748b;font-size:14px;line-height:1.8;margin:0 0 20px;">
+      Une nouvelle mission vous a été confiée. Voici les détails :
+    </p>
+    <div style="background:#f0fdf4;border-radius:14px;padding:20px;margin:0 0 20px;border:1px solid #bbf7d0;">
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><td style="padding:8px 0;color:#64748b;font-size:13px;">🧹 Service</td><td style="padding:8px 0;color:#166534;font-weight:700;font-size:13px;text-align:right;">{service_label}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;font-size:13px;">👤 Client</td><td style="padding:8px 0;color:#166534;font-weight:700;font-size:13px;text-align:right;">{lead.get("name","—")}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;font-size:13px;">📞 Téléphone</td><td style="padding:8px 0;color:#166534;font-weight:700;font-size:13px;text-align:right;">{lead.get("phone","—")}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;font-size:13px;">📍 Adresse</td><td style="padding:8px 0;color:#166534;font-weight:700;font-size:13px;text-align:right;">{intervention["address"] or "—"}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;font-size:13px;">📅 Date</td><td style="padding:8px 0;color:#166534;font-weight:700;font-size:13px;text-align:right;">{intervention["scheduled_date"]} à {intervention["scheduled_time"]}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;font-size:13px;">⏱️ Durée</td><td style="padding:8px 0;color:#166534;font-weight:700;font-size:13px;text-align:right;">{intervention["duration_hours"]}h</td></tr>
+      </table>
+    </div>
+    <div style="text-align:center;margin:24px 0;">
+      <a href="{portal_url}" style="display:inline-block;background:linear-gradient(135deg,#10b981,#059669);color:white;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:700;font-size:14px;">
+        📱 Voir sur mon portail
+      </a>
+    </div>
+    <p style="color:#94a3b8;font-size:12px;text-align:center;margin:0;">En cas de question, répondez directement à cet email.</p>
+  </div>
+  <div style="background:#0f172a;padding:16px;text-align:center;">
+    <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0;">Global Clean Home · 06 22 66 53 08</p>
+  </div>
+</div></body></html>"""
+                        await _send_gmail_message(token_gmail, member["email"],
+                            f"📋 Nouvelle mission — {intervention['scheduled_date']} à {intervention['scheduled_time']}", html)
+                        logger.info(f"Planning email sent to member {member['email']} for intervention {intervention['intervention_id']}")
+        except Exception as e:
+            logger.warning(f"Failed to notify assigned members: {e}")
+    
+    # === Notifier le client (lead) par email ===
+    if lead.get("email"):
+        try:
+            from gmail_service import _get_any_active_token, _send_gmail_message
+            token_gmail, _ = await _get_any_active_token()
+            if token_gmail:
+                from workflows import SERVICE_LABELS
+                service_label = SERVICE_LABELS.get(intervention["service_type"], intervention["service_type"] or intervention["title"])
+                client_prenom = lead.get("name", "Client").split()[0]
+                
+                # Récupérer noms des intervenants
+                team_names_list = []
+                for mid in (body.assigned_members or []):
+                    m = await _db.team_members.find_one({"member_id": mid}, {"_id": 0})
+                    if m:
+                        team_names_list.append(m.get("name", ""))
+                team_names_str = ", ".join(team_names_list) if team_names_list else "Notre équipe"
+                
+                frontend_url = str(os.environ.get("FRONTEND_URL", "https://crm.globalcleanhome.com"))
+                
+                html = f"""<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,sans-serif;">
+<div style="max-width:580px;margin:32px auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.1);">
+  <div style="background:linear-gradient(135deg,#1e3a5f,#1d4ed8,#059669);padding:36px 32px;text-align:center;">
+    <div style="font-size:44px;margin-bottom:10px;">✅</div>
+    <h1 style="color:white;margin:0;font-size:22px;font-weight:800;">Votre intervention est planifiée !</h1>
+    <p style="color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;">Global Clean Home</p>
+  </div>
+  <div style="padding:32px;">
+    <p style="color:#1e293b;font-size:16px;font-weight:700;margin:0 0 12px;">Bonjour {client_prenom} 😊</p>
+    <p style="color:#475569;font-size:14px;line-height:1.8;margin:0 0 24px;">
+      Excellente nouvelle ! Nous avons planifié votre intervention de <strong>{service_label}</strong>. Voici les détails :
+    </p>
+    <div style="background:#eff6ff;border-radius:14px;padding:20px;margin:0 0 24px;border:1px solid #bfdbfe;">
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><td style="padding:8px 0;color:#64748b;font-size:13px;">📅 Date</td><td style="padding:8px 0;color:#1e40af;font-weight:700;font-size:13px;text-align:right;">{intervention["scheduled_date"]} à {intervention["scheduled_time"]}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;font-size:13px;">📍 Adresse</td><td style="padding:8px 0;color:#1e40af;font-weight:700;font-size:13px;text-align:right;">{intervention["address"] or "—"}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;font-size:13px;">⏱️ Durée estimée</td><td style="padding:8px 0;color:#1e40af;font-weight:700;font-size:13px;text-align:right;">{intervention["duration_hours"]}h</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;font-size:13px;">👤 Intervenant(s)</td><td style="padding:8px 0;color:#1e40af;font-weight:700;font-size:13px;text-align:right;">{team_names_str}</td></tr>
+      </table>
+    </div>
+    <div style="text-align:center;margin:24px 0;">
+      <a href="{frontend_url}/portal" style="display:inline-block;background:linear-gradient(135deg,#1d4ed8,#059669);color:white;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:700;font-size:14px;">
+        📱 Suivre mon intervention
+      </a>
+    </div>
+    <p style="color:#64748b;font-size:13px;line-height:1.7;margin:0 0 16px;text-align:center;">
+      Si vous avez la moindre question ou besoin de changer le créneau,<br>répondez directement à cet email ou appelez-nous.
+    </p>
+    <div style="background:linear-gradient(135deg,#0f2a5e,#1d4ed8);border-radius:12px;padding:20px;text-align:center;">
+      <a href="tel:+33622665308" style="color:white;text-decoration:none;font-weight:800;font-size:16px;">📞 06 22 66 53 08</a>
+    </div>
+  </div>
+  <div style="background:#1e293b;padding:16px 32px;text-align:center;">
+    <p style="color:white;font-weight:700;margin:0 0 3px;font-size:13px;">Global Clean Home</p>
+    <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0;">Nettoyage professionnel à Paris & Île-de-France</p>
+  </div>
+</div></body></html>"""
+                await _send_gmail_message(token_gmail, lead["email"],
+                    f"✅ Votre intervention est planifiée — {intervention['scheduled_date']}", html)
+                logger.info(f"Intervention notification sent to client {lead['email']}")
+        except Exception as e:
+            logger.warning(f"Failed to notify client about intervention: {e}")
+    
     doc = await _db.interventions.find_one({"intervention_id": intervention["intervention_id"]}, {"_id": 0})
     return doc
 
