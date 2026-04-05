@@ -254,7 +254,38 @@ async def create_intervention(body: InterventionCreate, request: Request):
                     member = await _db.team_members.find_one({"member_id": mid}, {"_id": 0})
                     if member and member.get("email"):
                         m_prenom = member.get("name", "").split()[0] or "Bonjour"
-                        html = f"""<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,sans-serif;">
+                        
+                        # === Tenter génération IA ===
+                        ai_member_email = None
+                        try:
+                            from email_generator import generate_email
+                            ai_member_email = await generate_email(
+                                email_type="intervenant_planning",
+                                client_data={
+                                    "name": member.get("name", ""),
+                                    "email": member.get("email", ""),
+                                    "service_type": service_label,
+                                },
+                                extra_context={
+                                    "intervenant_name": member.get("name", ""),
+                                    "client_name": lead.get("name", "—"),
+                                    "client_phone": lead.get("phone", "—"),
+                                    "address": intervention["address"] or "—",
+                                    "date": intervention["scheduled_date"],
+                                    "heure": intervention["scheduled_time"],
+                                    "duration": intervention["duration_hours"],
+                                    "portal_url": portal_url,
+                                },
+                            )
+                        except Exception as e:
+                            logger.warning(f"AI email generation failed for member {member.get('email')}: {e}")
+                        
+                        if ai_member_email:
+                            await _send_gmail_message(token_gmail, member["email"],
+                                ai_member_email["subject"], ai_member_email["body_html"])
+                        else:
+                            # Fallback: template statique
+                            html = f"""<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,sans-serif;">
 <div style="max-width:540px;margin:32px auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.1);">
   <div style="background:linear-gradient(135deg,#10b981,#059669);padding:32px;text-align:center;">
     <div style="font-size:44px;margin-bottom:10px;">📋</div>
@@ -287,8 +318,8 @@ async def create_intervention(body: InterventionCreate, request: Request):
     <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0;">Global Clean Home · 06 22 66 53 08</p>
   </div>
 </div></body></html>"""
-                        await _send_gmail_message(token_gmail, member["email"],
-                            f"📋 Nouvelle mission — {intervention['scheduled_date']} à {intervention['scheduled_time']}", html)
+                            await _send_gmail_message(token_gmail, member["email"],
+                                f"📋 Nouvelle mission — {intervention['scheduled_date']} à {intervention['scheduled_time']}", html)
                         logger.info(f"Planning email sent to member {member['email']} for intervention {intervention['intervention_id']}")
         except Exception as e:
             logger.warning(f"Failed to notify assigned members: {e}")
@@ -313,7 +344,34 @@ async def create_intervention(body: InterventionCreate, request: Request):
                 
                 frontend_url = str(os.environ.get("FRONTEND_URL", "https://crm.globalcleanhome.com"))
                 
-                html = f"""<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,sans-serif;">
+                # === Tenter génération IA pour le client ===
+                ai_client_email = None
+                try:
+                    from email_generator import generate_email
+                    ai_client_email = await generate_email(
+                        email_type="intervention_planifiee",
+                        client_data={
+                            "name": lead.get("name", "Client"),
+                            "email": lead.get("email", ""),
+                            "service_type": service_label,
+                            "address": intervention["address"] or "",
+                            "phone": lead.get("phone", ""),
+                        },
+                        extra_context={
+                            "date": intervention["scheduled_date"],
+                            "heure": intervention["scheduled_time"],
+                            "intervenant": team_names_str,
+                        },
+                    )
+                except Exception as e:
+                    logger.warning(f"AI email generation failed for client {lead.get('email')}: {e}")
+                
+                if ai_client_email:
+                    await _send_gmail_message(token_gmail, lead["email"],
+                        ai_client_email["subject"], ai_client_email["body_html"])
+                else:
+                    # Fallback: template statique
+                    html = f"""<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,sans-serif;">
 <div style="max-width:580px;margin:32px auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.1);">
   <div style="background:linear-gradient(135deg,#1e3a5f,#1d4ed8,#059669);padding:36px 32px;text-align:center;">
     <div style="font-size:44px;margin-bottom:10px;">✅</div>
@@ -350,8 +408,8 @@ async def create_intervention(body: InterventionCreate, request: Request):
     <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0;">Nettoyage professionnel à Paris & Île-de-France</p>
   </div>
 </div></body></html>"""
-                await _send_gmail_message(token_gmail, lead["email"],
-                    f"✅ Votre intervention est planifiée — {intervention['scheduled_date']}", html)
+                    await _send_gmail_message(token_gmail, lead["email"],
+                        f"✅ Votre intervention est planifiée — {intervention['scheduled_date']}", html)
                 logger.info(f"Intervention notification sent to client {lead['email']}")
         except Exception as e:
             logger.warning(f"Failed to notify client about intervention: {e}")

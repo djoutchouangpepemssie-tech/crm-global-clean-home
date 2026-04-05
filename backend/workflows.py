@@ -445,8 +445,58 @@ async def _execute_step(exec_item: dict):
     if step_type == "send_email" and lead_email:
         if not template_key:
             template_key = exec_item.get("template", "")
+        
+        # === Tenter la génération IA d'abord ===
+        ai_email = None
+        try:
+            from email_generator import generate_email, TEMPLATE_KEY_TO_EMAIL_TYPE
+            ai_type = TEMPLATE_KEY_TO_EMAIL_TYPE.get(template_key)
+            if ai_type:
+                ai_email = await generate_email(
+                    email_type=ai_type,
+                    client_data={
+                        "name": lead_name,
+                        "email": lead_email,
+                        "service_type": service,
+                        "address": lead.get("address", ""),
+                        "phone": lead.get("phone", ""),
+                        "message": lead.get("message", ""),
+                        "score": lead.get("score", ""),
+                        "status": lead.get("status", ""),
+                        "created_at": lead.get("created_at", ""),
+                    },
+                )
+                if ai_email:
+                    logger.info(f"AI-generated email for {lead_email} (type={ai_type})")
+        except Exception as e:
+            logger.warning(f"AI email generation failed, using static template: {e}")
+        
+        # Si l'IA a généré un email, l'envoyer directement
+        if ai_email:
+            try:
+                from gmail_service import _get_any_active_token, _send_gmail_message
+                token, uid = await _get_any_active_token()
+                if token:
+                    await _send_gmail_message(token, lead_email, ai_email["subject"], ai_email["body_html"])
+                    logger.info(f"AI workflow email sent to {lead_email}: {ai_email['subject']}")
+                    await _db.interactions.insert_one({
+                        "interaction_id": f"int_{uuid.uuid4().hex[:10]}",
+                        "lead_id": exec_item["lead_id"],
+                        "type": "email_sent",
+                        "content": f"[Workflow AI] {ai_email['subject']}",
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "automated": True
+                    })
+            except Exception as e:
+                logger.error(f"AI email send error, falling back to static: {e}")
+                ai_email = None  # Force fallback
+        
+        # === Fallback: templates statiques ===
+        if not ai_email:
+            pass  # Continue with static template below
+        
         template = HUMAN_EMAIL_TEMPLATES.get(template_key)
-        if template:
+        if template and not ai_email:
             subject = template["subject"].format(prenom=prenom, service=service, name=lead_name)
             body = template["body"].format(prenom=prenom, service=service, name=lead_name)
             
