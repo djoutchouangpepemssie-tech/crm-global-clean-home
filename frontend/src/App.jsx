@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, NavLink } from 're
 import { Toaster } from 'sonner';
 import { LayoutDashboard, Users, FileText, MoreHorizontal, X, LogOut, Trello, CreditCard, BarChart3, CalendarDays, CheckSquare, TrendingUp, Plug, Activity, ChevronRight, Briefcase, Star, Settings, Globe, MessageSquare, Ticket, Workflow, BarChart2, UserCheck, Map, BookOpen, ThumbsUp, FolderOpen, Scroll, Search } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import PWAInstallBanner, { OfflineIndicator } from './components/pwa/PWAInstallBanner';
 
 import { startKeepAlive } from './lib/keepAlive.js';
@@ -13,7 +14,7 @@ import Login from './components/auth/Login';
 import AuthCallback from './components/auth/AuthCallback';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Sidebar from './components/layout/Sidebar';
-import { lazy, Suspense, Component } from 'react';
+import { lazy, Suspense, Component, memo } from 'react';
 
 class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null }; }
@@ -392,17 +393,7 @@ function AppRouter() {
                   <PWAInstallBanner />
         <ErrorBoundary>
         <Suspense fallback={
-          <div style={{padding:'24px',background:'hsl(224,71%,4%)',minHeight:'100vh'}}>
-            {/* Skeleton header */}
-            <div style={{display:'flex',gap:'16px',marginBottom:'24px'}}>
-              {[1,2,3,4].map(i => (
-                <div key={i} style={{flex:1,height:'90px',borderRadius:'16px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.05)',animation:'pulse 1.5s ease-in-out infinite',animationDelay:`${i*100}ms`}} />
-              ))}
-            </div>
-            {/* Skeleton content */}
-            <div style={{height:'300px',borderRadius:'16px',background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.05)',animation:'pulse 1.5s ease-in-out infinite'}} />
-            <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}`}</style>
-          </div>
+          <div style={{padding:'24px',minHeight:'100vh',opacity:0.5}} />
         }>
         <Routes>
                     <Route path="/dashboard" element={<Dashboard />} />
@@ -453,6 +444,7 @@ function AppRouter() {
 function App() {
   return (
     <BrowserRouter>
+      <ThemeProvider>
       <AuthProvider>
         <NotificationHandler />
         <React.Suspense fallback={null}>
@@ -470,6 +462,7 @@ function App() {
           }}
         />
       </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

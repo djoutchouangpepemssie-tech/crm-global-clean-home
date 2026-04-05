@@ -14,6 +14,7 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import BACKEND_URL from '../../config.js';
 
 const API_URL = BACKEND_URL + '/api';
@@ -223,6 +224,7 @@ const settingsTabs = [
 ──────────────────────────────────────────────── */
 const SettingsPage = () => {
   const { user, login: setUser } = useAuth();
+  const { prefs: themePrefs, updateTheme } = useTheme();
   const [activeTab, setActiveTab] = useState('profile');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -259,16 +261,16 @@ const SettingsPage = () => {
     rcs: '',
   });
 
-  // Appearance state
-  const [appearance, setAppearance] = useState({
-    theme: 'dark',
-    accentColor: '#8b5cf6',
-    fontSize: 'medium',
-    density: 'comfortable',
+  // Appearance state — synced with ThemeContext for visual keys
+  const [appearance, setAppearanceRaw] = useState({
+    theme: themePrefs.theme || 'dark',
+    accentColor: themePrefs.accentColor || '#8b5cf6',
+    fontSize: themePrefs.fontSize || 'medium',
+    density: themePrefs.density || 'comfortable',
     sidebarPosition: 'left',
-    animationsEnabled: true,
+    animationsEnabled: themePrefs.animationsEnabled !== false,
     reducedMotion: false,
-    roundedCorners: true,
+    roundedCorners: themePrefs.roundedCorners !== false,
     language: 'fr',
     dateFormat: 'DD/MM/YYYY',
     timeFormat: '24h',
@@ -276,6 +278,21 @@ const SettingsPage = () => {
     numberFormat: 'fr-FR',
     startPage: '/dashboard',
   });
+
+  // Wrapper: sync visual appearance keys to ThemeContext instantly
+  const THEME_KEYS_REF = useRef(['theme', 'accentColor', 'fontSize', 'density', 'animationsEnabled', 'roundedCorners']);
+  const setAppearance = useCallback((updater) => {
+    setAppearanceRaw(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : { ...prev, ...updater };
+      // Push visual keys to ThemeContext for instant DOM effect
+      THEME_KEYS_REF.current.forEach(key => {
+        if (next[key] !== undefined && next[key] !== prev[key]) {
+          updateTheme(key, next[key]);
+        }
+      });
+      return next;
+    });
+  }, [updateTheme]); // eslint-disable-line
 
   // Notifications state
   const [notifications, setNotifications] = useState({
