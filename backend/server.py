@@ -2340,31 +2340,76 @@ from settings import settings_router, init_settings_db
 app.include_router(settings_router)
 
 # ── PURGE ALL TEST DATA ──
-class PurgeConfirm(BaseModel):
-    confirm: str = Field(..., description="Must be 'SUPPRIMER TOUT' to confirm")
+class PurgeRequest(BaseModel):
+    confirm: str = Field(..., description="Must be 'SUPPRIMER' to confirm")
+    collections: Optional[List[str]] = Field(None, description="Specific collections to purge, or null for all")
 
-@api_router.post("/data/purge-all")
-async def purge_all_data(body: PurgeConfirm, request: Request):
-    """Purge ALL business data (leads, quotes, invoices, tasks, etc.). Keeps users & settings."""
+# Mapping lisible → collections MongoDB
+PURGE_CATEGORIES = {
+    "leads": {"collections": ["leads"], "label": "Leads / Prospects"},
+    "quotes": {"collections": ["quotes"], "label": "Devis"},
+    "invoices": {"collections": ["invoices", "payment_transactions"], "label": "Factures & Paiements"},
+    "tasks": {"collections": ["tasks"], "label": "Tâches"},
+    "planning": {"collections": ["interventions", "bookings"], "label": "Planning & Réservations"},
+    "contracts": {"collections": ["contracts"], "label": "Contrats"},
+    "documents": {"collections": ["documents"], "label": "Documents"},
+    "tickets": {"collections": ["tickets"], "label": "Tickets SAV"},
+    "workflows": {"collections": ["workflows", "workflow_executions"], "label": "Workflows"},
+    "communications": {"collections": ["emails", "sms_log", "notifications"], "label": "Emails, SMS & Notifications"},
+    "interactions": {"collections": ["interactions", "events", "reviews"], "label": "Interactions & Avis"},
+    "logs": {"collections": ["activity_logs", "audit_log", "tracking_events", "webhook_logs"], "label": "Logs & Journaux"},
+    "templates": {"collections": ["templates"], "label": "Modèles / Templates"},
+}
+
+@api_router.get("/data/purge-info")
+async def get_purge_info(request: Request):
+    """Get counts per category for the purge UI."""
     user = await get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Non autorisé")
 
-    if body.confirm != "SUPPRIMER TOUT":
-        raise HTTPException(status_code=400, detail="Confirmation invalide. Envoyez 'SUPPRIMER TOUT'.")
+    categories = {}
+    for key, info in PURGE_CATEGORIES.items():
+        total = 0
+        for coll_name in info["collections"]:
+            try:
+                total += await db[coll_name].count_documents({})
+            except Exception:
+                pass
+        categories[key] = {"label": info["label"], "count": total}
 
-    # Collections de données business à purger (on garde users, user_sessions, settings, teams)
-    collections_to_purge = [
-        "leads", "quotes", "invoices", "tasks", "interactions", "events",
-        "bookings", "interventions", "contracts", "documents", "notifications",
-        "templates", "workflows", "workflow_executions", "tickets",
-        "activity_logs", "audit_log", "tracking_events", "reviews",
-        "emails", "sms_log", "webhook_logs", "payment_transactions",
-    ]
+    return {"categories": categories}
+
+@api_router.post("/data/purge")
+async def purge_data(body: PurgeRequest, request: Request):
+    """Purge selected or all business data. Keeps users & settings."""
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Non autorisé")
+
+    if body.confirm != "SUPPRIMER":
+        raise HTTPException(status_code=400, detail="Confirmation invalide.")
+
+    # Déterminer les collections à purger
+    if body.collections and len(body.collections) > 0:
+        # Purge sélective
+        colls_to_purge = set()
+        for cat_key in body.collections:
+            if cat_key in PURGE_CATEGORIES:
+                for c in PURGE_CATEGORIES[cat_key]["collections"]:
+                    colls_to_purge.add(c)
+            else:
+                raise HTTPException(status_code=400, detail=f"Catégorie inconnue: {cat_key}")
+    else:
+        # Purge totale
+        colls_to_purge = set()
+        for info in PURGE_CATEGORIES.values():
+            for c in info["collections"]:
+                colls_to_purge.add(c)
 
     results = {}
     total_deleted = 0
-    for coll_name in collections_to_purge:
+    for coll_name in colls_to_purge:
         try:
             coll = db[coll_name]
             count = await coll.count_documents({})
@@ -2375,14 +2420,20 @@ async def purge_all_data(body: PurgeConfirm, request: Request):
         except Exception as e:
             results[coll_name] = f"erreur: {str(e)}"
 
-    logger.warning(f"PURGE: User {user.get('email')} purged {total_deleted} documents from {len(results)} collections")
+    logger.warning(f"PURGE: User {user.get('email')} purged {total_deleted} docs from collections: {list(colls_to_purge)}")
 
     return {
         "status": "purged",
         "total_deleted": total_deleted,
         "details": results,
-        "message": f"{total_deleted} éléments supprimés de {len(results)} collections."
+        "message": f"{total_deleted} éléments supprimés."
     }
+
+# Backward compat
+@api_router.post("/data/purge-all")
+async def purge_all_data(body: PurgeRequest, request: Request):
+    body.collections = None
+    return await purge_data(body, request)
 
 
 @app.on_event("startup")

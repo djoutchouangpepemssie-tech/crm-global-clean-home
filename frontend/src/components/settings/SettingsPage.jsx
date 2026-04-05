@@ -11,7 +11,7 @@ import {
   ToggleLeft, ToggleRight, Briefcase, Phone, Link2, Sliders,
   HardDrive, Cloud, Archive, Tag, Layers, Megaphone, Receipt,
   CalendarDays, UserCheck, Search, Filter, ChevronDown, ChevronUp,
-  TrendingUp
+  TrendingUp, Activity, FolderOpen, CheckSquare
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -218,6 +218,129 @@ const settingsTabs = [
   { id: 'data', label: 'Données', icon: Database, color: '#0ea5e9' },
   { id: 'advanced', label: 'Avancé', icon: Sliders, color: '#78716c' },
 ];
+
+/* ────────────────────────────────────────────────
+   PURGE PANEL — Suppression par catégorie
+──────────────────────────────────────────────── */
+const PurgePanel = ({ apiUrl }) => {
+  const [categories, setCategories] = useState({});
+  const [selected, setSelected] = useState(new Set());
+  const [loadingInfo, setLoadingInfo] = useState(true);
+  const [purging, setPurging] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await axios.get(`${apiUrl}/data/purge-info`);
+        setCategories(res.data?.categories || {});
+      } catch { /* ignore */ }
+      setLoadingInfo(false);
+    })();
+  }, [apiUrl]);
+
+  const toggleCategory = (key) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    const allKeys = Object.keys(categories);
+    setSelected(prev => prev.size === allKeys.length ? new Set() : new Set(allKeys));
+  };
+
+  const totalSelected = [...selected].reduce((sum, key) => sum + (categories[key]?.count || 0), 0);
+
+  const handlePurge = async () => {
+    if (selected.size === 0) { toast.error('Sélectionnez au moins une catégorie'); return; }
+    const userConfirm = window.prompt(`Vous allez supprimer ${totalSelected} éléments. Tapez SUPPRIMER pour confirmer :`);
+    if (userConfirm !== 'SUPPRIMER') { toast.error('Suppression annulée.'); return; }
+    setPurging(true);
+    try {
+      const isAll = selected.size === Object.keys(categories).length;
+      const res = await axios.post(`${apiUrl}/data/purge`, {
+        confirm: 'SUPPRIMER',
+        collections: isAll ? null : [...selected],
+      });
+      toast.success(`✅ ${res.data.total_deleted} éléments supprimés !`);
+      // Mettre à jour les compteurs
+      setCategories(prev => {
+        const updated = { ...prev };
+        for (const key of selected) { if (updated[key]) updated[key] = { ...updated[key], count: 0 }; }
+        return updated;
+      });
+      setSelected(new Set());
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erreur lors de la suppression');
+    } finally { setPurging(false); }
+  };
+
+  if (loadingInfo) return <div className="flex justify-center py-6"><RefreshCw className="w-5 h-5 text-slate-500 animate-spin" /></div>;
+
+  const allKeys = Object.keys(categories);
+  const categoryIcons = {
+    leads: Users, quotes: FileText, invoices: CreditCard, tasks: CheckSquare,
+    planning: CalendarDays, contracts: FileText, documents: FolderOpen,
+    tickets: AlertTriangle, workflows: Zap, communications: Mail,
+    interactions: Activity, logs: Database, templates: Layers,
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-slate-500">Sélectionnez les données à supprimer. Les comptes et paramètres sont conservés.</p>
+        <button onClick={selectAll} className="text-xs font-semibold text-violet-400 hover:text-violet-300 transition-colors">
+          {selected.size === allKeys.length ? 'Tout désélectionner' : 'Tout sélectionner'}
+        </button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        {allKeys.map(key => {
+          const cat = categories[key];
+          const isSelected = selected.has(key);
+          const IconComp = categoryIcons[key] || Database;
+          return (
+            <button
+              key={key}
+              onClick={() => toggleCategory(key)}
+              className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+                isSelected
+                  ? 'border-red-500/30 bg-red-500/10'
+                  : 'border-white/5 bg-white/2 hover:border-white/10'
+              }`}
+            >
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                isSelected ? 'bg-red-500/20' : 'bg-white/5'
+              }`}>
+                <IconComp className="w-4 h-4" style={{ color: isSelected ? '#ef4444' : '#64748b' }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-xs font-semibold ${isSelected ? 'text-red-400' : 'text-slate-300'}`}>{cat.label}</p>
+                <p className="text-[10px] text-slate-500">{cat.count} élément{cat.count !== 1 ? 's' : ''}</p>
+              </div>
+              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                isSelected ? 'border-red-500 bg-red-500' : 'border-white/20'
+              }`}>
+                {isSelected && <Check className="w-3 h-3 text-white" />}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      {selected.size > 0 && (
+        <div className="flex items-center justify-between p-3 rounded-xl border border-red-500/20 bg-red-500/5">
+          <p className="text-sm font-semibold text-red-400">
+            {selected.size} catégorie{selected.size > 1 ? 's' : ''} · {totalSelected} élément{totalSelected !== 1 ? 's' : ''}
+          </p>
+          <ActionButton variant="danger" size="sm" icon={Trash2} onClick={handlePurge} loading={purging}>
+            Supprimer la sélection
+          </ActionButton>
+        </div>
+      )}
+    </div>
+  );
+};
 
 /* ────────────────────────────────────────────────
    MAIN SETTINGS PAGE
@@ -2105,33 +2228,17 @@ const SettingsPage = () => {
         </FieldRow>
       </SectionCard>
 
-      <SectionCard title="Zone dangereuse" description="Actions irréversibles" icon={AlertTriangle} color="#ef4444">
-        <div className="space-y-3">
-          <DangerZone
-            title="Réinitialiser les données"
-            description="Supprimer TOUS les leads, devis, factures, tâches et données de test. Les comptes utilisateurs et paramètres sont conservés."
-            buttonText="Tout supprimer"
-            onConfirm={async () => {
-              const userConfirm = window.prompt('Tapez SUPPRIMER TOUT pour confirmer la suppression de toutes les données :');
-              if (userConfirm !== 'SUPPRIMER TOUT') {
-                toast.error('Suppression annulée — confirmation incorrecte.');
-                return;
-              }
-              try {
-                const res = await axios.post(`${API_URL}/data/purge-all`, { confirm: 'SUPPRIMER TOUT' });
-                toast.success(`✅ ${res.data.total_deleted} éléments supprimés de ${Object.keys(res.data.details).length} collections.`);
-              } catch (err) {
-                toast.error(err.response?.data?.detail || 'Erreur lors de la purge');
-              }
-            }}
-          />
-          <DangerZone
-            title="Supprimer le compte"
-            description="Supprimer définitivement votre compte et toutes les données"
-            buttonText="Supprimer"
-            onConfirm={handleDeleteAccount}
-          />
-        </div>
+      <SectionCard title="Suppression de données" description="Supprimez par catégorie ou tout d'un coup" icon={AlertTriangle} color="#ef4444">
+        <PurgePanel apiUrl={API_URL} />
+      </SectionCard>
+
+      <SectionCard title="Supprimer le compte" description="Action irréversible" icon={AlertTriangle} color="#ef4444">
+        <DangerZone
+          title="Supprimer le compte"
+          description="Supprimer définitivement votre compte et toutes les données"
+          buttonText="Supprimer"
+          onConfirm={handleDeleteAccount}
+        />
       </SectionCard>
     </div>
   );
