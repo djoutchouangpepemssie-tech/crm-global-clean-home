@@ -2109,9 +2109,21 @@ const SettingsPage = () => {
         <div className="space-y-3">
           <DangerZone
             title="Réinitialiser les données"
-            description="Supprimer toutes les données de test"
-            buttonText="Réinitialiser"
-            onConfirm={() => toast.error('Fonctionnalité désactivée en production')}
+            description="Supprimer TOUS les leads, devis, factures, tâches et données de test. Les comptes utilisateurs et paramètres sont conservés."
+            buttonText="Tout supprimer"
+            onConfirm={async () => {
+              const userConfirm = window.prompt('Tapez SUPPRIMER TOUT pour confirmer la suppression de toutes les données :');
+              if (userConfirm !== 'SUPPRIMER TOUT') {
+                toast.error('Suppression annulée — confirmation incorrecte.');
+                return;
+              }
+              try {
+                const res = await axios.post(`${API_URL}/data/purge-all`, { confirm: 'SUPPRIMER TOUT' });
+                toast.success(`✅ ${res.data.total_deleted} éléments supprimés de ${Object.keys(res.data.details).length} collections.`);
+              } catch (err) {
+                toast.error(err.response?.data?.detail || 'Erreur lors de la purge');
+              }
+            }}
           />
           <DangerZone
             title="Supprimer le compte"

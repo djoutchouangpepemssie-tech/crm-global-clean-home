@@ -2339,6 +2339,52 @@ app.include_router(documents_router)
 from settings import settings_router, init_settings_db
 app.include_router(settings_router)
 
+# ── PURGE ALL TEST DATA ──
+class PurgeConfirm(BaseModel):
+    confirm: str = Field(..., description="Must be 'SUPPRIMER TOUT' to confirm")
+
+@api_router.post("/data/purge-all")
+async def purge_all_data(body: PurgeConfirm, request: Request):
+    """Purge ALL business data (leads, quotes, invoices, tasks, etc.). Keeps users & settings."""
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Non autorisé")
+
+    if body.confirm != "SUPPRIMER TOUT":
+        raise HTTPException(status_code=400, detail="Confirmation invalide. Envoyez 'SUPPRIMER TOUT'.")
+
+    # Collections de données business à purger (on garde users, user_sessions, settings, teams)
+    collections_to_purge = [
+        "leads", "quotes", "invoices", "tasks", "interactions", "events",
+        "bookings", "interventions", "contracts", "documents", "notifications",
+        "templates", "workflows", "workflow_executions", "tickets",
+        "activity_logs", "audit_log", "tracking_events", "reviews",
+        "emails", "sms_log", "webhook_logs", "payment_transactions",
+    ]
+
+    results = {}
+    total_deleted = 0
+    for coll_name in collections_to_purge:
+        try:
+            coll = db[coll_name]
+            count = await coll.count_documents({})
+            if count > 0:
+                await coll.delete_many({})
+                results[coll_name] = count
+                total_deleted += count
+        except Exception as e:
+            results[coll_name] = f"erreur: {str(e)}"
+
+    logger.warning(f"PURGE: User {user.get('email')} purged {total_deleted} documents from {len(results)} collections")
+
+    return {
+        "status": "purged",
+        "total_deleted": total_deleted,
+        "details": results,
+        "message": f"{total_deleted} éléments supprimés de {len(results)} collections."
+    }
+
+
 @app.on_event("startup")
 async def startup_db_indexes():
     """Create MongoDB indexes for performance."""
