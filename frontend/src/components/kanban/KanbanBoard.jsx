@@ -682,7 +682,7 @@ const KanbanBoard = () => {
 
       {/* Board */}
       <div
-        className="kanban-board-scroll"
+        className="kanban-board-scroll crm-kanban-board"
         style={{
           display: 'flex', gap: 14,
           overflowX: 'auto',

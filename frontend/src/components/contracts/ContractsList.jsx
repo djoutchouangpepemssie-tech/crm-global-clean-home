@@ -1017,7 +1017,7 @@ const ContractsList = () => {
   const cc = confirmConfig[confirmModal.action] || {};
 
   return (
-    <div style={{ padding: '24px', maxWidth: 1400, margin: '0 auto', animation: 'ct-fade-in 0.4s ease-out' }}>
+    <div className="crm-p-mobile" style={{ padding: '24px', maxWidth: 1400, margin: '0 auto', animation: 'ct-fade-in 0.4s ease-out' }}>
       {/* ═══ Header ═══ */}
       <div className="ct-header-row" style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28,

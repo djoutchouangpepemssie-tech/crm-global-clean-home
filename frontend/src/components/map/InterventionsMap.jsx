@@ -98,9 +98,9 @@ const InterventionsMap = () => {
   const completedPct = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
 
   return (
-    <div style={{ padding: '24px', maxWidth: 1400, margin: '0 auto' }}>
+    <div className="crm-p-mobile" style={{ padding: '24px', maxWidth: 1400, margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
+      <div className="crm-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ fontFamily: 'Manrope,sans-serif', fontSize: 26, fontWeight: 800, color: '#f1f5f9', margin: 0 }}>
             Carte des Interventions
@@ -147,7 +147,7 @@ const InterventionsMap = () => {
       )}
 
       {/* Stats bar */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 14, marginBottom: 28 }}>
+      <div className="crm-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 14, marginBottom: 28 }}>
         {[
           { label: 'Interventions du jour', value: stats.total, icon: MapPin, color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)' },
           {
@@ -171,7 +171,7 @@ const InterventionsMap = () => {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: selectedZone ? '1fr 380px' : '1fr', gap: 20 }}>
+      <div className="crm-grid" style={{ display: 'grid', gridTemplateColumns: selectedZone ? '1fr 380px' : '1fr', gap: 20 }}>
         {/* Zone Grid */}
         <div>
           <h2 style={{ fontFamily: 'Manrope,sans-serif', fontSize: 15, fontWeight: 700, color: '#94a3b8', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.05em' }}>

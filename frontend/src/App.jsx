@@ -115,6 +115,7 @@ const GlobalSearchTrigger = () => (
   </React.Suspense>
 );
 import './App.css';
+import './mobile-responsive.css';
 import { requestNotificationPermission, onMessageListener } from './firebase';
 
 const menuCategories = [

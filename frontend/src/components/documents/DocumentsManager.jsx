@@ -1093,7 +1093,7 @@ const DocumentsManager = () => {
   const progressEntries = Object.entries(uploadProgress);
 
   return (
-    <div style={{ padding: '24px', maxWidth: 1440, margin: '0 auto', minHeight: '100vh' }}>
+    <div className="crm-p-mobile" style={{ padding: '24px', maxWidth: 1440, margin: '0 auto', minHeight: '100vh' }}>
       <style>{STYLES}</style>
 
       {/* ── Header ── */}

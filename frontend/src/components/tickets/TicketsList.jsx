@@ -511,10 +511,10 @@ export default function TicketsList() {
   return (
     <>
       <style>{cssAnimations}</style>
-      <div style={{ padding: "16px", maxWidth: 1200, margin: "0 auto" }}>
+      <div className="crm-p-mobile" style={{ padding: "16px", maxWidth: 1200, margin: "0 auto" }}>
 
         {/* ─── Header ─── */}
-        <div className="ticket-card-enter" style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 24 }}>
+        <div className="ticket-card-enter crm-page-header" style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 24 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
               <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, rgba(139,92,246,0.15), rgba(99,102,241,0.15))", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(139,92,246,0.2)" }}>
@@ -560,7 +560,7 @@ export default function TicketsList() {
         </div>
 
         {/* ─── Stats ─── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 24 }}>
+        <div className="crm-stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 24 }}>
           {[
             { label: "Ouverts", value: stats.open || 0, icon: Inbox, color: "#60a5fa" },
             { label: "En cours", value: stats.in_progress || 0, icon: Clock, color: "#f59e0b" },
@@ -776,7 +776,7 @@ export default function TicketsList() {
                 </div>
 
                 {!form.lead_id && (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, animation: "slideDown 0.25s ease-out both" }}>
+                  <div className="crm-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, animation: "slideDown 0.25s ease-out both" }}>
                     <div>
                       <label style={{ fontSize: 12, fontWeight: 650, color: "#94a3b8", marginBottom: 6, display: "block" }}>Nom</label>
                       <input value={form.client_name} onChange={e => setForm(p => ({ ...p, client_name: e.target.value }))} placeholder="Jean Dupont"
@@ -806,7 +806,7 @@ export default function TicketsList() {
                     style={{ width: "100%", padding: "10px 14px", borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#e2e8f0", fontSize: 13, outline: "none", resize: "none", lineHeight: 1.6, transition: "border-color 0.2s", boxSizing: "border-box" }} />
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div className="crm-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <div>
                     <label style={{ fontSize: 12, fontWeight: 650, color: "#94a3b8", marginBottom: 6, display: "flex", alignItems: "center", gap: 4 }}>
                       <Zap style={{ width: 12, height: 12 }} /> Priorité

@@ -1,0 +1,158 @@
+/* ══════════════════════════════════════
+   Global Mobile Responsive Fixes
+   CRM Global Clean Home
+══════════════════════════════════════ */
+
+/* Empêcher tout débordement horizontal */
+@media (max-width: 1024px) {
+  body, #root {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+}
+
+@media (max-width: 768px) {
+  /* ── Grilles ── */
+  .crm-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .crm-grid-2 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .crm-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  /* ── Flex layouts ── */
+  .crm-flex-row {
+    flex-direction: column !important;
+  }
+  .crm-full-width {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+  .crm-stack-mobile {
+    flex-wrap: wrap !important;
+  }
+
+  /* ── Tables ── */
+  .crm-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -12px;
+    padding: 0 12px;
+  }
+  .crm-table-wrap table {
+    min-width: 700px;
+  }
+
+  /* ── Modals ── */
+  .crm-modal {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    max-height: 90vh !important;
+    margin: 5vh auto !important;
+  }
+
+  /* ── Spacing ── */
+  .crm-gap {
+    gap: 12px !important;
+  }
+  .crm-gap-sm {
+    gap: 8px !important;
+  }
+  .crm-p-mobile {
+    padding: 12px !important;
+  }
+  .crm-text-sm-mobile {
+    font-size: 13px !important;
+  }
+
+  /* ── Visibility ── */
+  .crm-hide-mobile {
+    display: none !important;
+  }
+
+  /* ── Scroll horizontal ── */
+  .crm-scroll-x {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── Header de page mobile ── */
+  .crm-page-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+  .crm-page-header > div:last-child {
+    width: 100%;
+  }
+
+  /* ── Boutons d'action ── */
+  .crm-actions-row {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  .crm-actions-row button {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  /* ── Tabs/filtres horizontaux ── */
+  .crm-tabs-scroll {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .crm-tabs-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* ── Sidebar de filtre en overlay ── */
+  .crm-filter-sidebar {
+    position: fixed !important;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 50 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* ── Kanban scroll horizontal ── */
+  .crm-kanban-board {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 12px;
+  }
+  .crm-kanban-col {
+    min-width: 280px !important;
+    width: 280px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* ── Map layout ── */
+  .crm-map-layout {
+    flex-direction: column !important;
+  }
+  .crm-map-sidebar {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 40vh !important;
+    overflow-y: auto !important;
+  }
+  .crm-map-container {
+    width: 100% !important;
+    min-height: 50vh !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .crm-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .crm-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+}

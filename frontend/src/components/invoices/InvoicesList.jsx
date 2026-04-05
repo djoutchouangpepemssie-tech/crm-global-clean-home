@@ -858,7 +858,7 @@ const InvoicesList = () => {
       />
 
       {/* ── Header ── */}
-      <div style={{
+      <div className="crm-page-header" style={{
         display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between',
         alignItems: 'flex-start', gap: 16, marginBottom: 24,
         animation: 'inv-slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both',
@@ -929,7 +929,7 @@ const InvoicesList = () => {
       </div>
 
       {/* ── Stats Cards ── */}
-      <div style={{
+      <div className="crm-stats-grid" style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
         gap: 16, marginBottom: 24,

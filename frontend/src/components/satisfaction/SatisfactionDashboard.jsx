@@ -123,9 +123,9 @@ const SatisfactionDashboard = () => {
   }
 
   return (
-    <div style={{ padding: '24px', maxWidth: 1400, margin: '0 auto' }}>
+    <div className="crm-p-mobile" style={{ padding: '24px', maxWidth: 1400, margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
+      <div className="crm-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ fontFamily: 'Manrope,sans-serif', fontSize: 26, fontWeight: 800, color: '#f1f5f9', margin: 0 }}>
             Satisfaction Client
@@ -148,7 +148,7 @@ const SatisfactionDashboard = () => {
       </div>
 
       {/* NPS + Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 20, marginBottom: 24 }}>
+      <div className="crm-grid" style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 20, marginBottom: 24 }}>
         {/* Big NPS */}
         <div className="section-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '28px 20px' }}>
           <p style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Score NPS</p>
@@ -182,7 +182,7 @@ const SatisfactionDashboard = () => {
       </div>
 
       {/* Charts row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+      <div className="crm-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
         {/* NPS Trend */}
         <div className="section-card">
           <h3 style={{ fontFamily: 'Manrope,sans-serif', fontSize: 14, fontWeight: 800, color: '#f1f5f9', marginBottom: 16 }}>Évolution NPS mensuel</h3>
@@ -236,7 +236,7 @@ const SatisfactionDashboard = () => {
       </div>
 
       {/* Bottom row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20 }}>
+      <div className="crm-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20 }}>
         {/* Recent surveys */}
         <div className="section-card">
           <h3 style={{ fontFamily: 'Manrope,sans-serif', fontSize: 14, fontWeight: 800, color: '#f1f5f9', marginBottom: 16 }}>Dernières enquêtes</h3>
