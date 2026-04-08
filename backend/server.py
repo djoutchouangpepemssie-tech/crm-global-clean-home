@@ -1101,6 +1101,60 @@ async def get_invitation_info(token: str):
         logger.error(f"Erreur get_invitation_info: {str(e)}")
         raise HTTPException(status_code=500, detail="Erreur serveur")
 
+
+# ============= EMAIL VERIFICATION =============
+class VerifyEmailRequest(BaseModel):
+    email: str
+    code: str
+
+
+@api_router.post("/auth/verify-email")
+async def verify_email_code(body: VerifyEmailRequest):
+    """Verify email code for invitation signup."""
+    try:
+        email = body.email.lower()
+        code = body.code.strip()
+        
+        if not email or not code:
+            raise HTTPException(status_code=400, detail="Email et code requis")
+        
+        # Find verification code in DB
+        verification = await db.email_verifications.find_one({
+            "email": email,
+            "code": code,
+            "used": False
+        }, {"_id": 0})
+        
+        if not verification:
+            logger.warning(f"❌ Failed email verification for {email} - invalid code")
+            raise HTTPException(status_code=400, detail="Code invalide")
+        
+        # Check expiry
+        expires_at = verification.get("expires_at")
+        if isinstance(expires_at, str):
+            expires_at = datetime.fromisoformat(expires_at)
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        
+        if expires_at < datetime.now(timezone.utc):
+            logger.warning(f"❌ Email verification expired for {email}")
+            raise HTTPException(status_code=400, detail="Code expiré")
+        
+        # Mark as used
+        await db.email_verifications.update_one(
+            {"email": email, "code": code},
+            {"$set": {"used": True, "verified_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        
+        logger.info(f"✅ Email verified for {email}")
+        return {"success": True, "message": "Email vérifié avec succès"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erreur verify_email: {str(e)}")
+        raise HTTPException(status_code=500, detail="Erreur serveur")
+
 # ============= 2FA ENFORCEMENT FOR ADMIN =============
 
 @api_router.get("/auth/2fa-status")
