@@ -506,6 +506,10 @@ const SettingsPage = () => {
     maxMembers: 25,
   });
   const [inviting, setInviting] = useState(false);
+  const [editingRole, setEditingRole] = useState(null);
+  const [newRoleForm, setNewRoleForm] = useState({ name: '', color: '#8b5cf6', permissions: '' });
+  const [showNewRoleForm, setShowNewRoleForm] = useState(false);
+  const [editingMember, setEditingMember] = useState(null);
 
   // Billing state
   const [billing, setBilling] = useState({
@@ -547,6 +551,16 @@ const SettingsPage = () => {
     birthdayEmails: false,
   });
   const [testingSmtp, setTestingSmtp] = useState(false);
+
+  // 2FA state
+  const [twoFASetup, setTwoFASetup] = useState(null); // {secret, otpauth_uri}
+  const [twoFACode, setTwoFACode] = useState('');
+  const [settingUp2FA, setSettingUp2FA] = useState(false);
+
+  // Zone editing state
+  const [editingZone, setEditingZone] = useState(null);
+  const [showNewZoneForm, setShowNewZoneForm] = useState(false);
+  const [newZoneForm, setNewZoneForm] = useState({ name: '', zipCodes: '', color: '#8b5cf6', surcharge: 0 });
 
   // Scheduling state
   const [scheduling, setScheduling] = useState({
@@ -1010,6 +1024,135 @@ const SettingsPage = () => {
     }
   };
 
+  // ── Team: Create role ──
+  const handleCreateRole = async () => {
+    if (!newRoleForm.name.trim()) { toast.error('Nom du rôle requis'); return; }
+    try {
+      const res = await axios.post(`${API_URL}/settings/team/roles`, newRoleForm);
+      const role = res.data.role;
+      setTeam(prev => ({ ...prev, roles: [...prev.roles, role] }));
+      setNewRoleForm({ name: '', color: '#8b5cf6', permissions: '' });
+      setShowNewRoleForm(false);
+      toast.success(`Rôle "${role.name}" créé !`);
+    } catch (err) { toast.error(err.response?.data?.detail || 'Erreur'); }
+  };
+
+  // ── Team: Update role ──
+  const handleUpdateRole = async (roleId, data) => {
+    try {
+      const res = await axios.put(`${API_URL}/settings/team/roles/${roleId}`, data);
+      setTeam(prev => ({ ...prev, roles: prev.roles.map(r => r.id === roleId ? res.data.role : r) }));
+      setEditingRole(null);
+      toast.success('Rôle mis à jour');
+    } catch (err) { toast.error(err.response?.data?.detail || 'Erreur'); }
+  };
+
+  // ── Team: Delete role ──
+  const handleDeleteRole = async (roleId) => {
+    try {
+      await axios.delete(`${API_URL}/settings/team/roles/${roleId}`);
+      setTeam(prev => ({ ...prev, roles: prev.roles.filter(r => r.id !== roleId) }));
+      toast.success('Rôle supprimé');
+    } catch (err) { toast.error(err.response?.data?.detail || 'Erreur'); }
+  };
+
+  // ── Team: Update member role ──
+  const handleUpdateMember = async (memberId, data) => {
+    try {
+      await axios.put(`${API_URL}/settings/team/${memberId}`, data);
+      setTeam(prev => ({ ...prev, members: prev.members.map(m => m.user_id === memberId ? { ...m, ...data } : m) }));
+      setEditingMember(null);
+      toast.success('Membre mis à jour');
+    } catch (err) { toast.error(err.response?.data?.detail || 'Erreur'); }
+  };
+
+  // ── Company logo upload ──
+  const handleLogoUpload = async (file) => {
+    if (!file) return;
+    if (file.size > 5_000_000) { toast.error('Image trop grande. Maximum 5 Mo.'); return; }
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const base64 = ev.target.result;
+      try {
+        await axios.post(`${API_URL}/settings/company/logo`, { logo: base64 });
+        setCompanyData(p => ({ ...p, logo: base64 }));
+        toast.success('Logo mis à jour !');
+      } catch (err) { toast.error('Erreur lors de l\'upload du logo'); }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // ── Billing: Change plan ──
+  const handleChangePlan = async (planId) => {
+    if (planId === billing.plan) return;
+    try {
+      await axios.post(`${API_URL}/settings/billing/change-plan`, { plan: planId, billingCycle: billing.billingCycle });
+      setBilling(prev => ({ ...prev, plan: planId }));
+      toast.success(`Plan changé vers ${planId} !`);
+    } catch (err) { toast.error(err.response?.data?.detail || 'Erreur'); }
+  };
+
+  // ── 2FA setup ──
+  const handleSetup2FA = async () => {
+    setSettingUp2FA(true);
+    try {
+      const res = await axios.post(`${API_URL}/settings/security/2fa/setup`);
+      setTwoFASetup(res.data);
+    } catch (err) { toast.error(err.response?.data?.detail || 'Erreur'); }
+    finally { setSettingUp2FA(false); }
+  };
+
+  const handleVerify2FA = async () => {
+    if (!twoFACode || twoFACode.length !== 6) { toast.error('Code à 6 chiffres requis'); return; }
+    try {
+      await axios.post(`${API_URL}/settings/security/2fa/verify`, { code: twoFACode });
+      setSecurity(prev => ({ ...prev, twoFactorEnabled: true }));
+      setTwoFASetup(null);
+      setTwoFACode('');
+      toast.success('2FA activée avec succès !');
+    } catch (err) { toast.error(err.response?.data?.detail || 'Erreur'); }
+  };
+
+  const handleDisable2FA = async () => {
+    try {
+      await axios.post(`${API_URL}/settings/security/2fa/disable`);
+      setSecurity(prev => ({ ...prev, twoFactorEnabled: false }));
+      toast.success('2FA désactivée');
+    } catch (err) { toast.error(err.response?.data?.detail || 'Erreur'); }
+  };
+
+  // ── Zones: Add zone ──
+  const handleAddZone = async () => {
+    if (!newZoneForm.name.trim()) { toast.error('Nom de la zone requis'); return; }
+    try {
+      const res = await axios.post(`${API_URL}/settings/zones/add`, newZoneForm);
+      const zone = res.data.zone;
+      setZones(prev => ({ ...prev, zones: [...(prev.zones || []), zone] }));
+      setNewZoneForm({ name: '', zipCodes: '', color: '#8b5cf6', surcharge: 0 });
+      setShowNewZoneForm(false);
+      toast.success(`Zone "${zone.name}" ajoutée !`);
+    } catch (err) { toast.error(err.response?.data?.detail || 'Erreur'); }
+  };
+
+  // ── Zones: Update zone ──
+  const handleUpdateZone = async (zoneId, data) => {
+    try {
+      const res = await axios.put(`${API_URL}/settings/zones/${zoneId}`, data);
+      setZones(prev => ({ ...prev, zones: (prev.zones || []).map(z => z.id === zoneId ? res.data.zone : z) }));
+      setEditingZone(null);
+      toast.success('Zone mise à jour');
+    } catch (err) { toast.error(err.response?.data?.detail || 'Erreur'); }
+  };
+
+  // ── Zones: Delete zone ──
+  const handleDeleteZone = async (zoneId) => {
+    try {
+      await axios.delete(`${API_URL}/settings/zones/${zoneId}`);
+      setZones(prev => ({ ...prev, zones: (prev.zones || []).filter(z => z.id !== zoneId) }));
+      toast.success('Zone supprimée');
+    } catch (err) { toast.error(err.response?.data?.detail || 'Erreur'); }
+  };
+
   // Copy to clipboard
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text).then(() => toast.success('Copié dans le presse-papiers'));
@@ -1177,24 +1320,25 @@ const SettingsPage = () => {
 
       <SectionCard title="Logo & Branding" description="Identité visuelle de l'entreprise" icon={Palette} color="#f97316">
         <div className="flex items-center gap-5">
-          <div className="w-24 h-24 rounded-2xl border-2 border-dashed border-white/10 flex items-center justify-center bg-white/5">
+          <div className="relative group w-24 h-24 rounded-2xl border-2 border-dashed border-white/10 flex items-center justify-center bg-white/5 overflow-hidden">
             {companyData.logo ? (
               <img src={companyData.logo} alt="Logo" className="w-full h-full object-contain rounded-2xl" />
             ) : (
               <Upload className="w-6 h-6 text-slate-500" />
             )}
+            <label className="absolute inset-0 rounded-2xl bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer">
+              <Camera className="w-5 h-5 text-white" />
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => handleLogoUpload(e.target.files[0])} />
+            </label>
           </div>
           <div className="space-y-2">
-            <label>
-              <ActionButton variant="secondary" size="sm" icon={Upload} onClick={() => {}}>Uploader le logo</ActionButton>
-              <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => setCompanyData(p => ({ ...p, logo: ev.target.result }));
-                reader.readAsDataURL(file);
-              }} />
+            <label className="cursor-pointer">
+              <ActionButton variant="secondary" size="sm" icon={Upload} onClick={() => document.getElementById('logo-upload-input')?.click()}>Uploader le logo</ActionButton>
             </label>
+            <input id="logo-upload-input" type="file" accept="image/*" className="hidden" onChange={(e) => handleLogoUpload(e.target.files[0])} />
+            {companyData.logo && (
+              <ActionButton variant="ghost" size="sm" icon={Trash2} onClick={() => setCompanyData(p => ({ ...p, logo: '' }))}>Supprimer</ActionButton>
+            )}
             <p className="text-xs text-slate-500">PNG ou SVG, fond transparent recommandé. Min 256x256px.</p>
           </div>
         </div>
@@ -1442,18 +1586,53 @@ const SettingsPage = () => {
       </SectionCard>
 
       <SectionCard title="Authentification à deux facteurs" description="Ajoutez une couche de sécurité supplémentaire" icon={Shield} color="#ef4444" badge={security.twoFactorEnabled ? 'Activé' : 'Désactivé'}>
-        <FieldRow label="Activer la 2FA" description="Protégez votre compte avec un second facteur">
-          <Toggle checked={security.twoFactorEnabled} onChange={v => setSecurity(p => ({ ...p, twoFactorEnabled: v }))} />
-        </FieldRow>
-        {security.twoFactorEnabled && (
-          <FieldRow label="Méthode 2FA">
-            <SelectInput value={security.twoFactorMethod} onChange={v => setSecurity(p => ({ ...p, twoFactorMethod: v }))}
-              options={[
-                { value: 'app', label: '📱 App Authenticator' },
-                { value: 'sms', label: '💬 SMS' },
-                { value: 'email', label: '📧 Email' },
-              ]} />
-          </FieldRow>
+        {security.twoFactorEnabled ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
+              <Check className="w-5 h-5 text-emerald-400" />
+              <div>
+                <p className="text-sm font-semibold text-emerald-400">2FA activée</p>
+                <p className="text-xs text-slate-500">Votre compte est protégé par un second facteur</p>
+              </div>
+            </div>
+            <FieldRow label="Méthode 2FA">
+              <SelectInput value={security.twoFactorMethod} onChange={v => setSecurity(p => ({ ...p, twoFactorMethod: v }))}
+                options={[
+                  { value: 'app', label: '📱 App Authenticator' },
+                  { value: 'sms', label: '💬 SMS' },
+                  { value: 'email', label: '📧 Email' },
+                ]} />
+            </FieldRow>
+            <ActionButton variant="danger" size="sm" icon={X} onClick={handleDisable2FA}>Désactiver la 2FA</ActionButton>
+          </div>
+        ) : twoFASetup ? (
+          <div className="space-y-4">
+            <div className="p-4 rounded-xl bg-violet-500/5 border border-violet-500/20">
+              <p className="text-sm font-bold text-violet-400 mb-2">📱 Scannez ce code avec votre app Authenticator</p>
+              <div className="p-4 bg-white rounded-xl w-fit mx-auto mb-3">
+                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(twoFASetup.otpauth_uri)}`} alt="QR Code" className="w-48 h-48" />
+              </div>
+              <p className="text-xs text-slate-500 mb-1">Ou entrez ce code manuellement :</p>
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-black/30 font-mono text-xs text-violet-300">
+                <span className="flex-1 break-all select-all">{twoFASetup.secret}</span>
+                <ActionButton variant="ghost" size="sm" icon={Copy} onClick={() => copyToClipboard(twoFASetup.secret)} />
+              </div>
+            </div>
+            <FieldRow label="Code de vérification" description="Entrez le code à 6 chiffres de votre app" horizontal={false}>
+              <div className="flex gap-2">
+                <TextInput value={twoFACode} onChange={setTwoFACode} placeholder="123456" className="w-40 font-mono" />
+                <ActionButton variant="primary" size="sm" icon={Check} onClick={handleVerify2FA}>Vérifier</ActionButton>
+              </div>
+            </FieldRow>
+            <ActionButton variant="ghost" size="sm" icon={X} onClick={() => { setTwoFASetup(null); setTwoFACode(''); }}>Annuler</ActionButton>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-xs text-slate-500">Protégez votre compte avec un second facteur d'authentification via une app comme Google Authenticator ou Authy.</p>
+            <ActionButton variant="primary" size="sm" icon={Shield} onClick={handleSetup2FA} loading={settingUp2FA}>
+              Configurer la 2FA
+            </ActionButton>
+          </div>
         )}
       </SectionCard>
 
@@ -1524,16 +1703,69 @@ const SettingsPage = () => {
       <SectionCard title="Rôles & Permissions" description="Configurez les droits d'accès" icon={Shield} color="#10b981" badge={`${team.roles.length} rôles`}>
         <div className="space-y-2">
           {team.roles.map(role => (
-            <div key={role.id} className="flex items-center gap-3 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-all group">
-              <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: role.color }} />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-200">{role.name}</p>
-                <p className="text-[10px] text-slate-500">{role.permissions === 'all' ? 'Accès complet' : `Modules: ${role.permissions}`}</p>
-              </div>
-              <ActionButton variant="ghost" size="sm" icon={Edit3} className="opacity-0 group-hover:opacity-100">Modifier</ActionButton>
+            <div key={role.id}>
+              {editingRole === role.id ? (
+                <div className="p-4 rounded-xl border border-violet-500/30 bg-violet-500/5 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-400">Nom</label>
+                      <TextInput value={role.name} onChange={v => setTeam(prev => ({ ...prev, roles: prev.roles.map(r => r.id === role.id ? { ...r, name: v } : r) }))} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-400">Permissions</label>
+                      <TextInput value={role.permissions} onChange={v => setTeam(prev => ({ ...prev, roles: prev.roles.map(r => r.id === role.id ? { ...r, permissions: v } : r) }))} placeholder="leads,quotes,invoices" />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-400">Couleur</label>
+                    <ColorPicker value={role.color} onChange={v => setTeam(prev => ({ ...prev, roles: prev.roles.map(r => r.id === role.id ? { ...r, color: v } : r) }))}
+                      presets={['#ef4444', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#06b6d4', '#f97316']} />
+                  </div>
+                  <div className="flex gap-2">
+                    <ActionButton variant="primary" size="sm" icon={Save} onClick={() => handleUpdateRole(role.id, { name: role.name, color: role.color, permissions: role.permissions })}>Sauvegarder</ActionButton>
+                    <ActionButton variant="ghost" size="sm" icon={X} onClick={() => setEditingRole(null)}>Annuler</ActionButton>
+                    {role.id > 5 && <ActionButton variant="danger" size="sm" icon={Trash2} onClick={() => handleDeleteRole(role.id)}>Supprimer</ActionButton>}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-all group">
+                  <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: role.color }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-200">{role.name}</p>
+                    <p className="text-[10px] text-slate-500">{role.permissions === 'all' ? 'Accès complet' : `Modules: ${role.permissions}`}</p>
+                  </div>
+                  <ActionButton variant="ghost" size="sm" icon={Edit3} className="opacity-0 group-hover:opacity-100" onClick={() => setEditingRole(role.id)}>Modifier</ActionButton>
+                </div>
+              )}
             </div>
           ))}
-          <ActionButton variant="secondary" size="sm" icon={Plus}>Créer un rôle</ActionButton>
+
+          {showNewRoleForm ? (
+            <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 space-y-3">
+              <p className="text-sm font-bold text-emerald-400">Nouveau rôle</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-400">Nom</label>
+                  <TextInput value={newRoleForm.name} onChange={v => setNewRoleForm(p => ({ ...p, name: v }))} placeholder="Ex: Superviseur" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-400">Permissions</label>
+                  <TextInput value={newRoleForm.permissions} onChange={v => setNewRoleForm(p => ({ ...p, permissions: v }))} placeholder="leads,quotes,planning" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-400">Couleur</label>
+                <ColorPicker value={newRoleForm.color} onChange={v => setNewRoleForm(p => ({ ...p, color: v }))}
+                  presets={['#ef4444', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#06b6d4', '#f97316']} />
+              </div>
+              <div className="flex gap-2">
+                <ActionButton variant="primary" size="sm" icon={Plus} onClick={handleCreateRole}>Créer</ActionButton>
+                <ActionButton variant="ghost" size="sm" icon={X} onClick={() => setShowNewRoleForm(false)}>Annuler</ActionButton>
+              </div>
+            </div>
+          ) : (
+            <ActionButton variant="secondary" size="sm" icon={Plus} onClick={() => setShowNewRoleForm(true)}>Créer un rôle</ActionButton>
+          )}
         </div>
       </SectionCard>
 
@@ -1545,22 +1777,54 @@ const SettingsPage = () => {
         ) : team.members && team.members.length > 0 ? (
           <div className="space-y-2">
             {team.members.map(member => (
-              <div key={member.user_id} className="flex items-center gap-3 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-all group">
-                {member.picture ? (
-                  <img src={member.picture} alt={member.name} className="w-9 h-9 rounded-xl object-cover" />
+              <div key={member.user_id}>
+                {editingMember === member.user_id ? (
+                  <div className="p-4 rounded-xl border border-violet-500/30 bg-violet-500/5 space-y-3">
+                    <div className="flex items-center gap-3">
+                      {member.picture ? (
+                        <img src={member.picture} alt={member.name} className="w-9 h-9 rounded-xl object-cover" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black text-white"
+                          style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
+                          {member.name?.[0]?.toUpperCase() || '?'}
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-slate-200">{member.name}</p>
+                        <p className="text-[10px] text-slate-500">{member.email}</p>
+                      </div>
+                    </div>
+                    <FieldRow label="Rôle" horizontal={false}>
+                      <SelectInput value={member.role || 'Membre'} onChange={v => setTeam(prev => ({ ...prev, members: prev.members.map(m => m.user_id === member.user_id ? { ...m, role: v } : m) }))}
+                        options={team.roles.map(r => ({ value: r.name, label: r.name }))} />
+                    </FieldRow>
+                    <div className="flex gap-2">
+                      <ActionButton variant="primary" size="sm" icon={Save} onClick={() => handleUpdateMember(member.user_id, { role: member.role })}>Sauvegarder</ActionButton>
+                      <ActionButton variant="ghost" size="sm" icon={X} onClick={() => setEditingMember(null)}>Annuler</ActionButton>
+                    </div>
+                  </div>
                 ) : (
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black text-white"
-                    style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
-                    {member.name?.[0]?.toUpperCase() || '?'}
+                  <div className="flex items-center gap-3 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-all group">
+                    {member.picture ? (
+                      <img src={member.picture} alt={member.name} className="w-9 h-9 rounded-xl object-cover" />
+                    ) : (
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black text-white"
+                        style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
+                        {member.name?.[0]?.toUpperCase() || '?'}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-200">{member.name}</p>
+                      <p className="text-[10px] text-slate-500">{member.email}</p>
+                    </div>
+                    <Badge color="#8b5cf6">{member.role || 'Membre'}</Badge>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <ActionButton variant="ghost" size="sm" icon={Edit3} onClick={() => setEditingMember(member.user_id)} />
+                      <ActionButton variant="ghost" size="sm" icon={Trash2} className="text-red-400"
+                        onClick={() => handleRemoveMember(member.user_id)} />
+                    </div>
                   </div>
                 )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-200">{member.name}</p>
-                  <p className="text-[10px] text-slate-500">{member.email}</p>
-                </div>
-                <Badge color="#8b5cf6">{member.role || 'Membre'}</Badge>
-                <ActionButton variant="ghost" size="sm" icon={Trash2} className="opacity-0 group-hover:opacity-100 text-red-400"
-                  onClick={() => handleRemoveMember(member.user_id)} />
               </div>
             ))}
           </div>
@@ -1615,13 +1879,14 @@ const SettingsPage = () => {
                   ))}
                 </ul>
                 <button
+                  onClick={() => handleChangePlan(plan.id)}
                   className={`w-full mt-4 py-2 rounded-xl text-xs font-bold transition-all ${
                     billing.plan === plan.id
-                      ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30'
-                      : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
+                      ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30 cursor-default'
+                      : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10 hover:text-white cursor-pointer'
                   }`}
                 >
-                  {billing.plan === plan.id ? '✓ Plan actuel' : 'Choisir ce plan'}
+                  {billing.plan === plan.id ? '✓ Plan actuel' : plan.price > (plans.find(p => p.id === billing.plan)?.price || 0) ? 'Upgrade' : 'Downgrade'}
                 </button>
               </div>
             ))}
@@ -1660,10 +1925,20 @@ const SettingsPage = () => {
                 <p className="text-[10px] text-slate-500">Expire 12/2028</p>
               </div>
             </div>
-            <ActionButton variant="secondary" size="sm" icon={Edit3}>Modifier</ActionButton>
+            <ActionButton variant="secondary" size="sm" icon={Edit3} onClick={() => toast.info('Redirection vers le portail de paiement Stripe...')}>Modifier</ActionButton>
           </div>
+          <FieldRow label="Cycle de facturation">
+            <SelectInput value={billing.billingCycle} onChange={v => setBilling(p => ({ ...p, billingCycle: v }))}
+              options={[
+                { value: 'monthly', label: 'Mensuel' },
+                { value: 'yearly', label: 'Annuel (-20%)' },
+              ]} />
+          </FieldRow>
           <FieldRow label="Renouvellement automatique">
             <Toggle checked={billing.autoRenew} onChange={v => setBilling(p => ({ ...p, autoRenew: v }))} />
+          </FieldRow>
+          <FieldRow label="Email de facturation" horizontal={false}>
+            <TextInput value={billing.invoiceEmail || ''} onChange={v => setBilling(p => ({ ...p, invoiceEmail: v }))} icon={Mail} placeholder="facturation@entreprise.fr" />
           </FieldRow>
         </SectionCard>
       </div>
@@ -1929,19 +2204,80 @@ const SettingsPage = () => {
       <SectionCard title="Zones de tarification" description="Tarifs différenciés par zone" icon={Layers} color="#f43f5e" badge={`${zones.zones?.length || 0} zones`}>
         <div className="space-y-3">
           {(zones.zones || []).map(zone => (
-            <div key={zone.id} className="flex items-center gap-3 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-all group">
-              <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: zone.color }} />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-200">{zone.name}</p>
-                <p className="text-[10px] text-slate-500">Codes postaux : {zone.zipCodes}</p>
-              </div>
-              <span className={`text-xs font-bold ${zone.surcharge > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                {zone.surcharge > 0 ? `+${zone.surcharge}€` : 'Gratuit'}
-              </span>
-              <ActionButton variant="ghost" size="sm" icon={Edit3} className="opacity-0 group-hover:opacity-100" />
+            <div key={zone.id}>
+              {editingZone === zone.id ? (
+                <div className="p-4 rounded-xl border border-violet-500/30 bg-violet-500/5 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-400">Nom</label>
+                      <TextInput value={zone.name} onChange={v => setZones(prev => ({ ...prev, zones: prev.zones.map(z => z.id === zone.id ? { ...z, name: v } : z) }))} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-400">Codes postaux</label>
+                      <TextInput value={zone.zipCodes} onChange={v => setZones(prev => ({ ...prev, zones: prev.zones.map(z => z.id === zone.id ? { ...z, zipCodes: v } : z) }))} placeholder="75001-75009" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-400">Surcharge (€)</label>
+                      <TextInput type="number" value={String(zone.surcharge)} onChange={v => setZones(prev => ({ ...prev, zones: prev.zones.map(z => z.id === zone.id ? { ...z, surcharge: parseFloat(v) || 0 } : z) }))} />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-400">Couleur</label>
+                    <ColorPicker value={zone.color} onChange={v => setZones(prev => ({ ...prev, zones: prev.zones.map(z => z.id === zone.id ? { ...z, color: v } : z) }))}
+                      presets={['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#f97316']} />
+                  </div>
+                  <div className="flex gap-2">
+                    <ActionButton variant="primary" size="sm" icon={Save} onClick={() => handleUpdateZone(zone.id, { name: zone.name, zipCodes: zone.zipCodes, color: zone.color, surcharge: zone.surcharge })}>Sauvegarder</ActionButton>
+                    <ActionButton variant="ghost" size="sm" icon={X} onClick={() => setEditingZone(null)}>Annuler</ActionButton>
+                    <ActionButton variant="danger" size="sm" icon={Trash2} onClick={() => handleDeleteZone(zone.id)}>Supprimer</ActionButton>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-all group">
+                  <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: zone.color }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-200">{zone.name}</p>
+                    <p className="text-[10px] text-slate-500">Codes postaux : {zone.zipCodes}</p>
+                  </div>
+                  <span className={`text-xs font-bold ${zone.surcharge > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                    {zone.surcharge > 0 ? `+${zone.surcharge}€` : 'Gratuit'}
+                  </span>
+                  <ActionButton variant="ghost" size="sm" icon={Edit3} className="opacity-0 group-hover:opacity-100" onClick={() => setEditingZone(zone.id)} />
+                </div>
+              )}
             </div>
           ))}
-          <ActionButton variant="secondary" size="sm" icon={Plus}>Ajouter une zone</ActionButton>
+
+          {showNewZoneForm ? (
+            <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 space-y-3">
+              <p className="text-sm font-bold text-emerald-400">Nouvelle zone</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-400">Nom</label>
+                  <TextInput value={newZoneForm.name} onChange={v => setNewZoneForm(p => ({ ...p, name: v }))} placeholder="Ex: Banlieue Nord" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-400">Codes postaux</label>
+                  <TextInput value={newZoneForm.zipCodes} onChange={v => setNewZoneForm(p => ({ ...p, zipCodes: v }))} placeholder="93,94" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-400">Surcharge (€)</label>
+                  <TextInput type="number" value={String(newZoneForm.surcharge)} onChange={v => setNewZoneForm(p => ({ ...p, surcharge: parseFloat(v) || 0 }))} />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-400">Couleur</label>
+                <ColorPicker value={newZoneForm.color} onChange={v => setNewZoneForm(p => ({ ...p, color: v }))}
+                  presets={['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#f97316']} />
+              </div>
+              <div className="flex gap-2">
+                <ActionButton variant="primary" size="sm" icon={Plus} onClick={handleAddZone}>Ajouter</ActionButton>
+                <ActionButton variant="ghost" size="sm" icon={X} onClick={() => setShowNewZoneForm(false)}>Annuler</ActionButton>
+              </div>
+            </div>
+          ) : (
+            <ActionButton variant="secondary" size="sm" icon={Plus} onClick={() => setShowNewZoneForm(true)}>Ajouter une zone</ActionButton>
+          )}
         </div>
       </SectionCard>
     </div>
