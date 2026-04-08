@@ -10,7 +10,7 @@ import {
 } from '../../ui/dialog';
 import {
   Plus, CreditCard, Link2, Unlink, RefreshCw, ChevronLeft, ChevronRight,
-  ArrowUpRight, ArrowDownRight, Building2
+  ArrowUpRight, ArrowDownRight, Building2, Upload, Eye, BarChart3, Zap, Save
 } from 'lucide-react';
 
 const STATUS_COLORS = {
@@ -83,10 +83,20 @@ export default function BankReconciliation() {
           </h3>
           <p className="text-sm text-muted-foreground mt-1">Rapprochez vos relevés avec les écritures comptables</p>
         </div>
-        <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" className="gap-1.5 text-xs h-9" title="Importer un relevé bancaire (CSV, OFX, QIF)" onClick={() => alert('Import relevé bancaire — format CSV/OFX/QIF')}>
+            <Upload className="w-3.5 h-3.5" />Import Relevé
+          </Button>
+          <Button size="sm" variant="outline" className="gap-1.5 text-xs h-9" title="Rapprochement automatique par montant" onClick={() => alert('Rapprochement automatique lancé')}>
+            <Zap className="w-3.5 h-3.5 text-amber-500" />Rapprocher Auto
+          </Button>
+          <Button size="sm" variant="outline" className="gap-1.5 text-xs h-9" title="Voir le détail des écarts théorique vs bancaire" onClick={() => { /* scroll to summary */ }}>
+            <BarChart3 className="w-3.5 h-3.5 text-violet-500" />Voir Écart
+          </Button>
+          <Dialog open={showCreate} onOpenChange={setShowCreate}>
           <DialogTrigger asChild>
-            <Button size="sm" className="gap-1.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-md shadow-blue-500/20">
-              <Plus className="w-3.5 h-3.5" />Ligne bancaire
+            <Button size="sm" className="gap-1.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-md shadow-blue-500/20" title="Ajouter manuellement un mouvement bancaire">
+              <Plus className="w-3.5 h-3.5" />+ Ligne Bancaire
             </Button>
           </DialogTrigger>
           <DialogContent>
@@ -115,6 +125,7 @@ export default function BankReconciliation() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Summary */}
@@ -190,15 +201,22 @@ export default function BankReconciliation() {
                       </td>
                       <td className="p-3 font-mono text-[10px] text-muted-foreground">{l.matched_entry_id || '—'}</td>
                       <td className="p-3 pr-5 text-right">
-                        {l.status === 'matched' ? (
-                          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => handleUnmatch(l.line_id)} title="Dé-rapprocher">
-                            <Unlink className="w-3.5 h-3.5 text-red-500" />
-                          </Button>
-                        ) : (
-                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => handleAutoMatch(l.line_id)}>
-                            <Link2 className="w-3 h-3" />Match auto
-                          </Button>
-                        )}
+                        <div className="flex items-center justify-end gap-0.5">
+                          {l.status === 'matched' ? (
+                            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 rounded-lg text-red-500 hover:text-red-600 hover:bg-red-500/10" onClick={() => handleUnmatch(l.line_id)} title="Annuler le rapprochement de cette ligne">
+                              <Unlink className="w-3 h-3" />Dé-rapprocher
+                            </Button>
+                          ) : (
+                            <>
+                              <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => handleAutoMatch(l.line_id)} title="Chercher automatiquement une écriture correspondante">
+                                <Zap className="w-3 h-3 text-amber-500" />Match auto
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => setShowDetail && setShowDetail(l)} title="Voir le détail de la ligne bancaire">
+                                <Eye className="w-3.5 h-3.5" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

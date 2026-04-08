@@ -14,7 +14,7 @@ import {
 import {
   Plus, Receipt, CheckCircle, XCircle, Banknote, Eye,
   RefreshCw, ChevronLeft, ChevronRight, Trash2, Upload,
-  MessageSquare, ArrowRight, FileImage
+  MessageSquare, ArrowRight, FileImage, BarChart3
 } from 'lucide-react';
 
 const STATUS_MAP = {
@@ -208,20 +208,35 @@ export default function ExpenseReports() {
         </Dialog>
       </div>
 
-      {/* Status filters */}
-      <div className="flex flex-wrap gap-2">
-        {['all', 'submitted', 'approved', 'rejected', 'reimbursed'].map(s => (
-          <Button
-            key={s}
-            size="sm"
-            variant={statusFilter === s ? 'default' : 'outline'}
-            className={`text-xs h-8 ${statusFilter === s ? '' : ''}`}
-            onClick={() => { setStatusFilter(s); setPage(1); }}
-          >
-            {s === 'all' ? 'Toutes' : STATUS_MAP[s]?.icon + ' ' + STATUS_MAP[s]?.label}
-          </Button>
-        ))}
-      </div>
+      {/* Toolbar: Status filters + action buttons */}
+      <Card className="border-0 shadow-sm bg-card/50 backdrop-blur">
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              {['all', 'submitted', 'approved', 'rejected', 'reimbursed'].map(s => (
+                <Button
+                  key={s}
+                  size="sm"
+                  variant={statusFilter === s ? 'default' : 'outline'}
+                  className="text-xs h-8"
+                  onClick={() => { setStatusFilter(s); setPage(1); }}
+                  title={s === 'all' ? 'Afficher toutes les notes de frais' : `Filtrer : ${STATUS_MAP[s]?.label}`}
+                >
+                  {s === 'all' ? 'Toutes' : STATUS_MAP[s]?.icon + ' ' + STATUS_MAP[s]?.label}
+                </Button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" title="Scanner ou uploader un justificatif de reçu" onClick={() => alert('Ouvrir scanner de reçu')}>
+                <FileImage className="w-3.5 h-3.5 text-violet-500" />Scan Reçu
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" title="Voir les statistiques de notes de frais par catégorie" onClick={() => alert('Vue d\'ensemble des notes de frais')}>
+                <BarChart3 className="w-3.5 h-3.5 text-blue-500" />Vue d'ensemble
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Table */}
       <Card className="border-0 shadow-sm overflow-hidden">

@@ -216,16 +216,20 @@ export default function JournalEntries() {
           <p className="text-sm text-muted-foreground mt-1">{total} écriture(s) au total</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Export buttons */}
-          <div className="flex items-center gap-1 mr-2">
-            <Button size="sm" variant="outline" className="gap-1 text-xs h-8" onClick={() => exportData('csv')}>
-              <FileSpreadsheet className="w-3 h-3" />CSV
+          {/* Action buttons */}
+          <div className="flex items-center gap-1.5 mr-2">
+            <Button size="sm" variant="outline" className="gap-1 text-xs h-8" onClick={() => exportData('csv')} title="Télécharger le journal au format CSV">
+              <FileSpreadsheet className="w-3 h-3" />Exporter CSV
             </Button>
-            <Button size="sm" variant="outline" className="gap-1 text-xs h-8" onClick={() => exportData('pdf')}>
-              <FileText className="w-3 h-3" />PDF
+            <Button size="sm" variant="outline" className="gap-1 text-xs h-8" onClick={() => exportData('pdf')} title="Télécharger le journal au format PDF">
+              <FileText className="w-3 h-3" />Exporter PDF
             </Button>
-            <Button size="sm" variant="outline" className="gap-1 text-xs h-8" onClick={() => exportData('excel')}>
+            <Button size="sm" variant="outline" className="gap-1 text-xs h-8" onClick={() => exportData('excel')} title="Télécharger le journal au format Excel">
               <Download className="w-3 h-3" />Excel
+            </Button>
+            <div className="w-px h-6 bg-border" />
+            <Button size="sm" variant="outline" className="gap-1 text-xs h-8 text-cyan-600 border-cyan-500/30 hover:bg-cyan-500/10" title="Lettrer des écritures (rapprochement comptable)">
+              <Link2 className="w-3 h-3" />Lettrer
             </Button>
           </div>
 
@@ -415,8 +419,11 @@ export default function JournalEntries() {
                 <SelectItem value="validated">Validé</SelectItem>
               </SelectContent>
             </Select>
-            <Input type="date" className="w-36 h-10" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }} placeholder="Du" />
-            <Input type="date" className="w-36 h-10" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }} placeholder="Au" />
+            <Input type="date" className="w-36 h-10" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }} placeholder="Du" title="Date de début de filtre" />
+            <Input type="date" className="w-36 h-10" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }} placeholder="Au" title="Date de fin de filtre" />
+            <Button size="sm" variant="outline" className="gap-1 text-xs h-10" onClick={() => { setSearch(''); setJournalFilter('all'); setStatusFilter('all'); setDateFrom(''); setDateTo(''); setPage(1); }} title="Réinitialiser tous les filtres">
+              <Filter className="w-3.5 h-3.5" />Réinitialiser
+            </Button>
           </div>
         </CardContent>
       </Card>

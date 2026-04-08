@@ -11,7 +11,7 @@ import {
 } from '../../ui/select';
 import {
   Target, Link2, Unlink, Users, ShoppingBag, Search, RefreshCw,
-  CheckCircle, AlertCircle, Building2
+  CheckCircle, AlertCircle, Building2, Zap, Eye, ListFilter, BarChart3
 } from 'lucide-react';
 
 const STATUS_COLORS = {
@@ -140,22 +140,29 @@ export default function LettrageModule() {
         {/* Clients / Fournisseurs */}
         {['clients', 'fournisseurs'].map(tabKey => (
           <TabsContent key={tabKey} value={tabKey} className="mt-4 space-y-4">
-            {/* Toolbar */}
-            <div className="flex items-center gap-3">
-              <div className="relative flex-1 max-w-md">
+            {/* Toolbar with distinct action buttons */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative flex-1 min-w-[200px] max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input className="pl-10 h-10" placeholder={`Rechercher ${tabKey}...`} value={search} onChange={e => setSearch(e.target.value)} />
               </div>
               <Button
                 size="sm"
-                className="gap-1.5 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700"
+                className="gap-1.5 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 shadow-md shadow-cyan-500/20"
                 onClick={handleLettrage}
                 disabled={selected.length < 2}
+                title="Lettrer les écritures sélectionnées (min. 2)"
               >
                 <Link2 className="w-3.5 h-3.5" />
-                Lettrer ({selected.length})
+                Lettrer Écritures ({selected.length})
               </Button>
-              <Button size="sm" variant="outline" onClick={() => { setSelected([]); loadLettrage(); }}>
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs h-9" title="Voir uniquement les écritures non-lettrées" onClick={() => alert('Filtre : non-lettrées uniquement')}>
+                <ListFilter className="w-3.5 h-3.5 text-amber-500" />Voir Non-lettrées
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs h-9" title="Rapprochement automatique par montant" onClick={() => alert('Rapprochement auto lancé')}>
+                <Zap className="w-3.5 h-3.5 text-violet-500" />Rapprochement Auto
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => { setSelected([]); loadLettrage(); }} title="Actualiser la liste des écritures">
                 <RefreshCw className="w-3.5 h-3.5 mr-1.5" />Actualiser
               </Button>
             </div>

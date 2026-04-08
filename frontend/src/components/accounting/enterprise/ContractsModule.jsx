@@ -12,7 +12,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
 } from '../../ui/dialog';
-import { Plus, FileText, Eye, AlertTriangle, RefreshCw, ChevronLeft, ChevronRight, Calendar, Clock } from 'lucide-react';
+import { Plus, FileText, Eye, AlertTriangle, RefreshCw, ChevronLeft, ChevronRight, Calendar, Clock, Edit, Trash2, History } from 'lucide-react';
 
 const CONTRACT_TYPES = [
   { value: 'cdi', label: 'CDI' }, { value: 'cdd', label: 'CDD' },
@@ -231,9 +231,20 @@ export default function ContractsModule() {
                           </Badge>
                         </td>
                         <td className="p-3 pr-5 text-right">
-                          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => setShowDetail(c)}>
-                            <Eye className="w-3.5 h-3.5" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-0.5">
+                            <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => setShowDetail(c)} title="Voir les détails du contrat">
+                              <Eye className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" title="Modifier le contrat" onClick={() => alert('Éditer contrat ' + c.contract_id)}>
+                              <Edit className="w-3.5 h-3.5 text-blue-500" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" title="Voir l'historique des versions" onClick={() => alert('Historique contrat ' + c.contract_id)}>
+                              <History className="w-3.5 h-3.5 text-violet-500" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" title="Archiver le contrat" onClick={() => { if (window.confirm('Archiver ce contrat ?')) alert('Contrat archivé'); }}>
+                              <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     );

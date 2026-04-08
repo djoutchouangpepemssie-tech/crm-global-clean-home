@@ -13,7 +13,7 @@ import {
 } from '../../ui/dialog';
 import {
   Plus, Search, ClipboardList, ChevronDown, ChevronRight, RefreshCw,
-  Hash, Layers, TrendingUp, TrendingDown, Eye
+  Hash, Layers, TrendingUp, TrendingDown, Eye, History, BarChart3, Download
 } from 'lucide-react';
 
 const CLASSES = [
@@ -233,7 +233,8 @@ export default function ChartOfAccounts() {
                         <th className="text-left p-3 pl-14 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Code</th>
                         <th className="text-left p-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Libellé</th>
                         <th className="text-center p-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Type</th>
-                        <th className="text-right p-3 pr-5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Solde</th>
+                        <th className="text-right p-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Solde</th>
+                        <th className="text-right p-3 pr-5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -244,10 +245,20 @@ export default function ChartOfAccounts() {
                           <td className="p-3 text-center">
                             <Badge className={`text-[10px] ${TYPE_COLORS[a.type] || 'bg-muted'}`}>{a.type}</Badge>
                           </td>
-                          <td className={`p-3 pr-5 text-right font-mono text-sm tabular-nums font-medium ${
+                          <td className={`p-3 text-right font-mono text-sm tabular-nums font-medium ${
                             (a.balance || 0) > 0 ? 'text-emerald-500' : (a.balance || 0) < 0 ? 'text-red-500' : 'text-muted-foreground'
                           }`}>
                             {fmt(a.balance)}
+                          </td>
+                          <td className="p-3 pr-5 text-right">
+                            <div className="flex items-center justify-end gap-0.5">
+                              <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" title="Voir le solde détaillé du compte" onClick={() => alert(`Solde ${a.code}: ${fmt(a.balance)}`)}>
+                                <BarChart3 className="w-3 h-3 text-violet-500" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" title="Voir l'historique des mouvements" onClick={() => alert(`Mouvements du compte ${a.code}`)}>
+                                <History className="w-3 h-3 text-blue-500" />
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       ))}

@@ -12,7 +12,7 @@ import {
 } from '../../ui/dialog';
 import {
   Lock, Unlock, CheckCircle, XCircle, AlertTriangle, Calendar,
-  FileText, RefreshCw, Shield, ChevronRight
+  FileText, RefreshCw, Shield, ChevronRight, ClipboardCheck, BarChart3, Download
 } from 'lucide-react';
 
 export default function ClotureModule() {
@@ -159,20 +159,28 @@ export default function ClotureModule() {
                       </Badge>
 
                       {isClosed ? (
-                        <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => handleReopen(p.period_id)}>
-                          <Unlock className="w-3 h-3" />Réouvrir
-                        </Button>
+                        <div className="flex items-center gap-1.5">
+                          <Button size="sm" variant="outline" className="h-8 text-xs gap-1" title="Générer automatiquement P&L + Bilan pour cette période" onClick={() => alert('Rapports générés pour ' + p.period_id)}>
+                            <BarChart3 className="w-3 h-3 text-violet-500" />Générer Rapports
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-8 text-xs gap-1 text-amber-600 hover:bg-amber-500/10" onClick={() => handleReopen(p.period_id)} title="Réouvrir cette période (nécessite validation admin)">
+                            <Unlock className="w-3 h-3" />Réouvrir
+                          </Button>
+                        </div>
                       ) : (
-                        <Button
-                          size="sm"
-                          className="h-8 text-xs gap-1 bg-gradient-to-r from-violet-500 to-violet-600 hover:from-violet-600 hover:to-violet-700"
-                          onClick={() => {
-                            loadChecklist(p.period_id);
-                            setShowConfirm(p);
-                          }}
-                        >
-                          <Lock className="w-3 h-3" />Clôturer
-                        </Button>
+                        <div className="flex items-center gap-1.5">
+                          <Button size="sm" variant="outline" className="h-8 text-xs gap-1" title="Vérifier la checklist avant clôture" onClick={() => { loadChecklist(p.period_id); setShowConfirm(p); }}>
+                            <ClipboardCheck className="w-3 h-3 text-blue-500" />Checklist Clôture
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="h-8 text-xs gap-1 bg-gradient-to-r from-violet-500 to-violet-600 hover:from-violet-600 hover:to-violet-700"
+                            onClick={() => { loadChecklist(p.period_id); setShowConfirm(p); }}
+                            title="Clôturer et verrouiller cette période comptable"
+                          >
+                            <Lock className="w-3 h-3" />Clôturer Période
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </div>

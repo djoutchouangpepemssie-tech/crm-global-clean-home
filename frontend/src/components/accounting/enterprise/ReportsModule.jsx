@@ -126,15 +126,25 @@ export default function ReportsModule() {
           </h3>
           <p className="text-sm text-muted-foreground mt-1">Bilan, P&L, Trésorerie, Grand Livre</p>
         </div>
-        {/* Export buttons */}
+        {/* Action buttons */}
         <div className="flex items-center gap-1.5">
-          <Button size="sm" variant="outline" className="gap-1 text-xs h-8" onClick={() => exportReport('pdf')}>
-            <FileText className="w-3 h-3" />PDF
+          <Button size="sm" variant="outline" className="gap-1 text-xs h-8" onClick={() => handleTabChange('pl')} title="Voir le Compte de Résultat (P&L)">
+            <TrendingUp className="w-3 h-3 text-emerald-500" />P&L
           </Button>
-          <Button size="sm" variant="outline" className="gap-1 text-xs h-8" onClick={() => exportReport('excel')}>
-            <FileSpreadsheet className="w-3 h-3" />Excel
+          <Button size="sm" variant="outline" className="gap-1 text-xs h-8" onClick={() => handleTabChange('balance-sheet')} title="Voir le Bilan Comptable">
+            <BarChart3 className="w-3 h-3 text-blue-500" />Bilan
           </Button>
-          <Button size="sm" variant="outline" className="gap-1 text-xs h-8" onClick={() => exportReport('csv')}>
+          <Button size="sm" variant="outline" className="gap-1 text-xs h-8" onClick={() => handleTabChange('cash-flow')} title="Voir les Flux de Trésorerie">
+            <Wallet className="w-3 h-3 text-violet-500" />Cash Flow
+          </Button>
+          <div className="w-px h-6 bg-border mx-1" />
+          <Button size="sm" variant="outline" className="gap-1 text-xs h-8" onClick={() => exportReport('pdf')} title="Exporter au format PDF avec mise en page professionnelle">
+            <FileText className="w-3 h-3" />Exporter PDF
+          </Button>
+          <Button size="sm" variant="outline" className="gap-1 text-xs h-8" onClick={() => exportReport('excel')} title="Exporter au format Excel avec formules">
+            <FileSpreadsheet className="w-3 h-3" />Exporter Excel
+          </Button>
+          <Button size="sm" variant="outline" className="gap-1 text-xs h-8" onClick={() => exportReport('csv')} title="Exporter au format CSV pour import">
             <Download className="w-3 h-3" />CSV
           </Button>
         </div>
@@ -152,8 +162,14 @@ export default function ReportsModule() {
         <TabsContent value="pl" className="mt-6 space-y-6">
           <div className="flex items-center gap-3">
             <Input className="w-28 h-10 font-mono" type="number" value={year} onChange={e => setYear(parseInt(e.target.value))} />
-            <Button size="sm" variant="outline" onClick={loadPL} className="gap-1.5 h-10">
-              <RefreshCw className="w-3.5 h-3.5" />Générer
+            <Button size="sm" onClick={loadPL} className="gap-1.5 h-10 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700" title="Générer le compte de résultat pour cette année">
+              <TrendingUp className="w-3.5 h-3.5" />Voir P&L
+            </Button>
+            <Button size="sm" variant="outline" className="gap-1.5 text-xs h-10" title="Exporter le P&L au format PDF professionnel" onClick={() => exportReport('pdf')}>
+              <FileText className="w-3.5 h-3.5" />Exporter PDF
+            </Button>
+            <Button size="sm" variant="outline" className="gap-1.5 text-xs h-10" title="Exporter le P&L au format Excel avec formules" onClick={() => exportReport('excel')}>
+              <FileSpreadsheet className="w-3.5 h-3.5" />Exporter Excel
             </Button>
           </div>
 
@@ -341,8 +357,15 @@ export default function ReportsModule() {
           ) : (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <FileText className="w-10 h-10 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">Chargement du bilan...</p>
-              <Button size="sm" variant="outline" onClick={loadBS}><RefreshCw className="w-3 h-3 mr-1" />Charger</Button>
+              <p className="text-sm text-muted-foreground">Cliquez pour générer le bilan comptable</p>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={loadBS} className="gap-1.5 bg-gradient-to-r from-blue-500 to-blue-600" title="Générer le bilan comptable Actif/Passif">
+                  <BarChart3 className="w-3.5 h-3.5" />Voir Bilan
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => exportReport('pdf')} title="Exporter le bilan au format PDF">
+                  <FileText className="w-3 h-3 mr-1" />PDF
+                </Button>
+              </div>
             </div>
           )}
         </TabsContent>
@@ -406,8 +429,15 @@ export default function ReportsModule() {
           ) : (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <Wallet className="w-10 h-10 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">Chargement...</p>
-              <Button size="sm" variant="outline" onClick={loadCF}><RefreshCw className="w-3 h-3 mr-1" />Charger</Button>
+              <p className="text-sm text-muted-foreground">Cliquez pour générer le flux de trésorerie</p>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={loadCF} className="gap-1.5 bg-gradient-to-r from-blue-500 to-blue-600" title="Générer le rapport de flux de trésorerie">
+                  <Wallet className="w-3.5 h-3.5" />Voir Cash Flow
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => exportReport('pdf')} title="Exporter le cash flow au format PDF">
+                  <FileText className="w-3 h-3 mr-1" />PDF
+                </Button>
+              </div>
             </div>
           )}
         </TabsContent>

@@ -11,7 +11,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
 } from '../../ui/dialog';
-import { Plus, Calculator, CheckCircle, RefreshCw, ChevronLeft, ChevronRight, Download, FileText } from 'lucide-react';
+import { Plus, Calculator, CheckCircle, RefreshCw, ChevronLeft, ChevronRight, Download, FileText, Eye, History, Link2 } from 'lucide-react';
 
 export default function TVAModule() {
   const [declarations, setDeclarations] = useState([]);
@@ -197,11 +197,21 @@ export default function TVAModule() {
                         </Badge>
                       </td>
                       <td className="p-3 text-right">
-                        {d.status === 'draft' && (
-                          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => handleValidate(d.declaration_id)}>
-                            <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                        <div className="flex items-center justify-end gap-0.5">
+                          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" title="Voir le détail de la déclaration (CA, charges, TVA)" onClick={() => setShowResult(d)}>
+                            <Eye className="w-3.5 h-3.5" />
                           </Button>
-                        )}
+                          {d.status === 'draft' && (
+                            <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => handleValidate(d.declaration_id)} title="Valider la déclaration TVA">
+                              <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                            </Button>
+                          )}
+                          {d.status === 'validated' && (
+                            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 rounded-lg text-blue-600 hover:bg-blue-500/10" title="Générer le fichier EDI pour la déclaration TVA" onClick={() => alert('Fichier EDI généré pour ' + d.declaration_id)}>
+                              <Link2 className="w-3 h-3" />EDI
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

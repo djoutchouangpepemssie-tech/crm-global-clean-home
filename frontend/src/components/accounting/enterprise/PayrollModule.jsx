@@ -252,18 +252,26 @@ export default function PayrollModule() {
                       </td>
                       <td className="p-3 pr-5 text-right">
                         <div className="flex items-center justify-end gap-0.5">
-                          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => setShowDetail(p)}>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => setShowDetail(p)} title="Voir le détail complet de la fiche de paie">
                             <Eye className="w-3.5 h-3.5" />
                           </Button>
                           {p.status === 'draft' && (
                             <>
-                              <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => handleValidate(p.payslip_id)}>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => handleValidate(p.payslip_id)} title="Valider la fiche de paie">
                                 <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
                               </Button>
-                              <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => handleDelete(p.payslip_id)}>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" title="Modifier les montants de la fiche" onClick={() => alert('Éditer fiche ' + p.payslip_id)}>
+                                <Edit className="w-3.5 h-3.5 text-blue-500" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => handleDelete(p.payslip_id)} title="Supprimer cette fiche de paie">
                                 <Trash2 className="w-3.5 h-3.5 text-red-500" />
                               </Button>
                             </>
+                          )}
+                          {p.status === 'validated' && (
+                            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 rounded-lg text-emerald-600 hover:bg-emerald-500/10" title="Enregistrer le paiement du salaire" onClick={() => alert('Paiement enregistré : ' + p.payslip_id)}>
+                              <DollarSign className="w-3 h-3" />Payer
+                            </Button>
                           )}
                         </div>
                       </td>
