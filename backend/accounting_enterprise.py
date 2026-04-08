@@ -2697,7 +2697,7 @@ async def create_enterprise_indexes():
         await _db.leave_requests.create_index("leave_id", unique=True)
         await _db.leave_requests.create_index("employee_id")
         
-        await _db.counters_enterprise.create_index("_id", unique=True)
+        # _id is already unique by default, no need to create index
         
         logger.info("✅ Enterprise accounting indexes created")
     except Exception as e:
