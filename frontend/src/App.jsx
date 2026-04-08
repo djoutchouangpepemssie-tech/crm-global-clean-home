@@ -13,6 +13,7 @@ startKeepAlive();
 import Login from './components/auth/Login';
 import AuthCallback from './components/auth/AuthCallback';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import InvitationJoin from './pages/InvitationJoin';
 import Sidebar from './components/layout/Sidebar';
 import { lazy, Suspense, Component, memo } from 'react';
 
@@ -351,6 +352,7 @@ function AppRouter() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/auth/join" element={<InvitationJoin />} />
       <Route path="/portal" element={<ClientPortal />} />
       <Route path="/intervenant" element={<IntervenantPortal />} />
 

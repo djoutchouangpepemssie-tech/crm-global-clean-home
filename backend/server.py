@@ -12,6 +12,7 @@ import uuid
 from datetime import datetime, timezone, timedelta
 import httpx
 import math
+import hashlib
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -767,6 +768,144 @@ async def logout(request: Request, response: Response):
     
     response.delete_cookie(key="session_token", path="/")
     return {"message": "Logged out"}
+
+
+# ============= INVITATION AUTH (for team members) =============
+class InvitationJoin(BaseModel):
+    token: str
+    password: str = Field(..., min_length=8)
+    name: Optional[str] = None
+
+
+@api_router.post("/auth/join")
+async def join_with_invitation(input: InvitationJoin, response: Response):
+    """Join team using invitation token (no Google OAuth required)."""
+    try:
+        # Verify invitation token
+        invite = await db.team_invitations.find_one({
+            "token": input.token,
+            "status": "pending"
+        }, {"_id": 0})
+        
+        if not invite:
+            raise HTTPException(status_code=400, detail="Invitation invalide ou expirée")
+        
+        # Check expiry
+        expires_at = invite.get("expires_at")
+        if isinstance(expires_at, str):
+            expires_at = datetime.fromisoformat(expires_at)
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        
+        if expires_at < datetime.now(timezone.utc):
+            raise HTTPException(status_code=400, detail="Invitation expirée")
+        
+        email = invite.get("email", "").lower()
+        role = invite.get("role", "operator")
+        name = input.name or invite.get("name", email)
+        
+        # Check if user already exists
+        existing = await db.users.find_one({"email": email}, {"_id": 0})
+        if existing:
+            raise HTTPException(status_code=400, detail="Utilisateur déjà inscrit")
+        
+        # Hash password
+        password_hash = hashlib.sha256(input.password.encode()).hexdigest()
+        
+        # Create user
+        user_id = f"user_{uuid.uuid4().hex[:12]}"
+        user_doc = {
+            "user_id": user_id,
+            "email": email,
+            "name": name,
+            "password_hash": password_hash,
+            "role": role,
+            "invited_by": invite.get("invited_by"),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "picture": "",
+        }
+        
+        await db.users.insert_one(user_doc)
+        
+        # Mark invitation as used
+        await db.team_invitations.update_one(
+            {"token": input.token},
+            {"$set": {"status": "accepted", "accepted_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        
+        # Create session
+        session_token = f"st_{uuid.uuid4().hex}"
+        session_doc = {
+            "session_token": session_token,
+            "user_id": user_id,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+        }
+        await db.user_sessions.insert_one(session_doc)
+        
+        # Set cookie
+        response.set_cookie(
+            key="session_token",
+            value=session_token,
+            max_age=30*24*60*60,
+            httponly=True,
+            secure=True,
+            samesite="Lax",
+            path="/"
+        )
+        
+        logger.info(f"✅ User {email} created via invitation (role: {role})")
+        
+        return {
+            "success": True,
+            "user_id": user_id,
+            "email": email,
+            "name": name,
+            "role": role,
+            "message": "Compte créé avec succès ! Bienvenue 🎉"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erreur join_with_invitation: {str(e)}")
+        raise HTTPException(status_code=500, detail="Erreur serveur")
+
+
+@api_router.get("/auth/invitation/{token}")
+async def get_invitation_info(token: str):
+    """Get invitation info (email, role, company) without authentication."""
+    try:
+        invite = await db.team_invitations.find_one({
+            "token": token,
+            "status": "pending"
+        }, {"_id": 0, "token": 0})
+        
+        if not invite:
+            raise HTTPException(status_code=400, detail="Invitation invalide")
+        
+        # Check expiry
+        expires_at = invite.get("expires_at")
+        if isinstance(expires_at, str):
+            expires_at = datetime.fromisoformat(expires_at)
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        
+        is_expired = expires_at < datetime.now(timezone.utc)
+        
+        return {
+            "email": invite.get("email"),
+            "role": invite.get("role"),
+            "name": invite.get("name"),
+            "company": "Global Clean Home",
+            "is_expired": is_expired,
+            "expires_at": expires_at.isoformat() if not is_expired else None,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erreur get_invitation_info: {str(e)}")
+        raise HTTPException(status_code=500, detail="Erreur serveur")
 
 # ============= LEADS ENDPOINTS =============
 
