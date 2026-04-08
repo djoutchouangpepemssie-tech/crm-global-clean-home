@@ -21,6 +21,7 @@ import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
+import PayrollRHModule from './payroll-rh/PayrollRHModule';
 
 const API = `${BACKEND_URL}/api/accounting/erp`;
 const COLORS = ['#7c3aed', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#8b5cf6', '#14b8a6'];
@@ -65,7 +66,7 @@ export default function AccountingERP() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-7 h-12">
+        <TabsList className="grid w-full grid-cols-8 h-12">
           <TabsTrigger value="dashboard" className="text-xs md:text-sm">📊 Dashboard</TabsTrigger>
           <TabsTrigger value="invoices" className="text-xs md:text-sm">📄 Factures</TabsTrigger>
           <TabsTrigger value="expenses" className="text-xs md:text-sm">💸 Dépenses</TabsTrigger>
@@ -73,6 +74,7 @@ export default function AccountingERP() {
           <TabsTrigger value="journals" className="text-xs md:text-sm">📒 Journaux</TabsTrigger>
           <TabsTrigger value="tva" className="text-xs md:text-sm">🧾 TVA</TabsTrigger>
           <TabsTrigger value="reports" className="text-xs md:text-sm">📈 Rapports</TabsTrigger>
+          <TabsTrigger value="payroll-rh" className="text-xs md:text-sm">💼 Paie & RH</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard"><DashboardSection onNavigate={setActiveTab} /></TabsContent>
@@ -82,6 +84,7 @@ export default function AccountingERP() {
         <TabsContent value="journals"><JournalModule /></TabsContent>
         <TabsContent value="tva"><TVAModule /></TabsContent>
         <TabsContent value="reports"><ReportingModule /></TabsContent>
+        <TabsContent value="payroll-rh"><PayrollRHModule /></TabsContent>
       </Tabs>
     </div>
   );
