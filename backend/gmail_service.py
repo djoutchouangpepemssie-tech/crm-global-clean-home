@@ -1388,3 +1388,143 @@ async def send_confirmation_email(to_email: str, client_name: str, service_type:
     except Exception as e:
         logger.error(f"Erreur envoi email confirmation: {e}")
 
+
+async def send_invitation_email(to_email: str, member_name: str, role: str, company_name: str = "Global Clean Home", invite_link: str = None):
+    """Envoie un email d'invitation à un nouveau collaborateur."""
+    
+    if not invite_link:
+        invite_link = "https://crm.globalcleanhome.com/auth/register"
+    
+    subject = f"Invitation à rejoindre {company_name} - CRM"
+    
+    dark_css = """<meta name="color-scheme" content="light dark"><style>@media (prefers-color-scheme: dark){body{background-color:#0f172a!important;color:#f1f5f9!important;}.container{background:#1e293b!important;}.header{background:linear-gradient(135deg,#1d4ed8,#6d28d9)!important;}.highlight-box{background:#1e3a5f!important;border-left:4px solid #3b82f6!important;color:#e2e8f0!important;}}</style>"""
+    
+    html_body = f"""
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">{dark_css}
+  <style>
+    body {{ font-family: 'Segoe UI', Arial, sans-serif; background: #f4f7fb; margin: 0; padding: 0; }}
+    .container {{ max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }}
+    .header {{ background: linear-gradient(135deg, #2563eb, #7c3aed); padding: 40px 30px; text-align: center; }}
+    .header h1 {{ color: #ffffff; font-size: 24px; margin: 0; font-weight: 700; }}
+    .body {{ padding: 36px 32px; }}
+    .greeting {{ font-size: 18px; font-weight: 600; color: #1e293b; margin-bottom: 12px; }}
+    .message {{ font-size: 15px; color: #475569; line-height: 1.7; margin-bottom: 20px; }}
+    .highlight-box {{ background: linear-gradient(135deg, #eff6ff, #f5f3ff); border-left: 4px solid #2563eb; border-radius: 8px; padding: 18px 20px; margin: 24px 0; }}
+    .highlight-box p {{ margin: 6px 0; font-size: 14px; color: #334155; }}
+    .role-badge {{ background: #dbeafe; color: #1e40af; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 13px; display: inline-block; }}
+    .cta {{ text-align: center; margin: 28px 0; }}
+    .cta a {{ background: linear-gradient(135deg, #2563eb, #7c3aed); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px; display: inline-block; }}
+    .cta a:hover {{ opacity: 0.95; }}
+    .details {{ background: #f8fafc; border-radius: 8px; padding: 18px 20px; margin: 20px 0; }}
+    .detail-row {{ display: flex; margin-bottom: 12px; }}
+    .detail-label {{ font-weight: 600; color: #1e293b; width: 120px; }}
+    .detail-value {{ color: #475569; }}
+    .footer {{ background: #f1f5f9; border-top: 1px solid #e2e8f0; padding: 24px 32px; text-align: center; }}
+    .footer p {{ margin: 4px 0; font-size: 13px; color: #64748b; }}
+    .footer a {{ color: #2563eb; text-decoration: none; }}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎉 Bienvenue à bord !</h1>
+      <p>Invitation à rejoindre {company_name}</p>
+    </div>
+    
+    <div class="body">
+      <p class="greeting">Bonjour {member_name},</p>
+      
+      <p class="message">
+        Vous avez été invité à rejoindre l'équipe <strong>{company_name}</strong> en tant que <span class="role-badge">{role}</span>.
+      </p>
+      
+      <div class="highlight-box">
+        <p><strong>🔐 Vos accès :</strong></p>
+        <p>En tant que <strong>{role}</strong>, vous avez accès à :</p>
+        <ul style="margin: 8px 0; padding-left: 20px; color: #334155;">
+          <li>Dashboard et analytics</li>
+          <li>Gestion des leads et devis</li>
+          <li>Planification des interventions</li>
+          <li>Communications avec les clients</li>
+          <li>Et bien plus selon votre rôle...</li>
+        </ul>
+      </div>
+      
+      <div class="details">
+        <div class="detail-row">
+          <div class="detail-label">Entreprise :</div>
+          <div class="detail-value">{company_name}</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">Rôle :</div>
+          <div class="detail-value"><strong>{role}</strong></div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">Email :</div>
+          <div class="detail-value">{to_email}</div>
+        </div>
+      </div>
+      
+      <p class="message">
+        Cliquez sur le bouton ci-dessous pour activer votre compte et commencer à utiliser le CRM :
+      </p>
+      
+      <div class="cta">
+        <a href="{invite_link}">Activer mon compte</a>
+      </div>
+      
+      <p class="message" style="font-size: 13px; color: #64748b;">
+        Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur :<br>
+        <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; word-break: break-all;">{invite_link}</code>
+      </p>
+    </div>
+    
+    <div class="footer">
+      <p><strong>{company_name}</strong></p>
+      <p>Vous avez des questions ? Contactez l'administrateur de votre équipe.</p>
+      <p style="margin-top: 12px;">
+        <a href="https://crm.globalcleanhome.com">Accéder au CRM</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+"""
+
+    # Envoyer via Gmail API
+    try:
+        token, user_id = await _get_any_active_token()
+        if not token:
+            logger.warning(f"Gmail non connecté - email d'invitation à {to_email} non envoyé")
+            return False
+            
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = f"{GMAIL_FROM_NAME} <{GMAIL_FROM_ADDRESS}>"
+        msg['To'] = to_email
+        msg.attach(MIMEText(html_body, 'html', 'utf-8'))
+        
+        raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                json={"raw": raw},
+                timeout=10.0
+            )
+            
+            if response.status_code == 200:
+                logger.info(f"✅ Email d'invitation envoyé à {to_email} (Rôle: {role})")
+                return True
+            else:
+                logger.error(f"Erreur Gmail: {response.status_code} - {response.text}")
+                return False
+                
+    except Exception as e:
+        logger.error(f"❌ Erreur envoi email invitation à {to_email}: {str(e)}")
+        return False
+

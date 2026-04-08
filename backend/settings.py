@@ -5,7 +5,7 @@ Gestion complète des paramètres utilisateur et entreprise
 from fastapi import APIRouter, HTTPException, Request, Query
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import uuid
 import secrets
 import hashlib
@@ -387,7 +387,7 @@ class TeamInvite(BaseModel):
 
 @settings_router.post("/team/invite")
 async def invite_team_member(data: TeamInvite, request: Request):
-    """Inviter un membre de l'équipe."""
+    """Inviter un membre de l'équipe et envoyer email."""
     user = await _require_auth(request)
 
     if not data.email or "@" not in data.email:
@@ -400,21 +400,46 @@ async def invite_team_member(data: TeamInvite, request: Request):
             raise HTTPException(status_code=400, detail="Cet utilisateur est déjà membre de l'équipe")
 
         # Créer une invitation
+        invite_token = secrets.token_hex(32)
         invite = {
             "invite_id": f"inv_{uuid.uuid4().hex[:12]}",
             "email": data.email.lower(),
             "role": data.role,
             "name": data.name or "",
             "invited_by": user.user_id,
-            "token": secrets.token_hex(32),
+            "token": invite_token,
             "status": "pending",
             "created_at": datetime.now(timezone.utc).isoformat(),
-            "expires_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
         }
         await _db.team_invitations.insert_one(invite)
+        
+        # Envoyer l'email d'invitation via Gmail
+        try:
+            from gmail_service import send_invitation_email
+            invite_link = f"https://crm.globalcleanhome.com/auth/join?token={invite_token}"
+            
+            email_sent = await send_invitation_email(
+                to_email=data.email.lower(),
+                member_name=data.name or "Collaborateur",
+                role=data.role,
+                company_name="Global Clean Home",
+                invite_link=invite_link
+            )
+            
+            if email_sent:
+                logger.info(f"✅ Email d'invitation envoyé à {data.email}")
+            else:
+                logger.warning(f"⚠️ Invitation créée mais email non envoyé à {data.email}")
+        except Exception as e:
+            logger.error(f"Erreur lors de l'envoi de l'email d'invitation: {str(e)}")
 
     await _log(user.user_id, "invite_team_member", "team", data.email)
-    return {"success": True, "message": f"Invitation envoyée à {data.email}"}
+    return {
+        "success": True,
+        "message": f"Invitation créée. Un email a été envoyé à {data.email}",
+        "invite_id": invite.get("invite_id") if _db is not None else None
+    }
 
 
 # ─── DELETE /api/settings/team/{member_id} ────────────────────────────────────
