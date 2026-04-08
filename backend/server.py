@@ -2892,6 +2892,9 @@ app.include_router(payroll_router)
 from accounting_erp import erp_router, init_erp_indexes
 app.include_router(erp_router)
 
+from accounting_premium_endpoints import premium_router
+app.include_router(premium_router)
+
 # ── PURGE ALL TEST DATA ──
 class PurgeRequest(BaseModel):
     confirm: str = Field(..., description="Must be 'SUPPRIMER' to confirm")

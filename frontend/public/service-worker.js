@@ -27,41 +27,64 @@ self.addEventListener('activate', event => {
 
 // Fetch - stratégie Network First pour API, Cache First pour assets
 self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-  
-  // Ignorer les requêtes non-GET
-  if (event.request.method !== 'GET') return;
-  
-  // Ignorer les requêtes externes (Google, Firebase, Railway API)
-  if (url.hostname !== location.hostname) return;
+  try {
+    const url = new URL(event.request.url);
+    
+    // Ignorer les requêtes non-GET
+    if (event.request.method !== 'GET') return;
+    
+    // Ignorer les requêtes externes (Google, Firebase, Railway API)
+    if (url.hostname !== location.hostname) return;
 
-  // Network First pour les pages HTML
-  if (event.request.headers.get('accept')?.includes('text/html')) {
+    // Network First pour les pages HTML
+    if (event.request.headers.get('accept')?.includes('text/html')) {
+      event.respondWith(
+        fetch(event.request)
+          .then(response => {
+            if (!response || response.status !== 200 || response.type === 'error') {
+              return response;
+            }
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then(cache => {
+              try {
+                cache.put(event.request, clone);
+              } catch (e) {
+                console.error('[SW] Cache put error:', e);
+              }
+            });
+            return response;
+          })
+          .catch(() => caches.match(event.request).then(cached => cached || caches.match('/index.html')))
+      );
+      return;
+    }
+
+    // Cache First pour assets statiques (JS, CSS, images)
     event.respondWith(
-      fetch(event.request)
-        .then(response => {
+      caches.match(event.request).then(cached => {
+        if (cached) return cached;
+        return fetch(event.request).then(response => {
+          if (!response || response.status !== 200) {
+            return response;
+          }
           const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          caches.open(CACHE_NAME).then(cache => {
+            try {
+              cache.put(event.request, clone);
+            } catch (e) {
+              console.error('[SW] Cache put error:', e);
+            }
+          });
           return response;
-        })
-        .catch(() => caches.match('/index.html'))
+        }).catch(err => {
+          console.error('[SW] Fetch error:', err);
+          return cached || new Response('Network error', { status: 503 });
+        });
+      })
     );
-    return;
+  } catch (error) {
+    console.error('[SW] Fetch event error:', error);
   }
-
-  // Cache First pour assets statiques (JS, CSS, images)
-  event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request).then(response => {
-        if (response.ok) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        }
-        return response;
-      }).catch(() => cached);
-    })
-  );
 });
 
 // Push notifications
