@@ -11,7 +11,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
 } from '../../ui/dialog';
-import { Plus, Calculator, CheckCircle, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Calculator, CheckCircle, RefreshCw, ChevronLeft, ChevronRight, Download, FileText } from 'lucide-react';
 
 export default function TVAModule() {
   const [declarations, setDeclarations] = useState([]);
@@ -67,114 +67,139 @@ export default function TVAModule() {
   const fmt = (n) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n || 0);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <Calculator className="w-5 h-5 text-violet-500" />
-          TVA & Fiscalité
-        </h3>
-        <Dialog open={showCreate} onOpenChange={setShowCreate}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="gap-1"><Plus className="w-3 h-3" />Déclaration TVA</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Nouvelle déclaration TVA</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium mb-1 block">Type période</label>
-                  <Select value={form.period_type} onValueChange={v => setForm(p => ({...p, period_type: v}))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="monthly">Mensuelle</SelectItem>
-                      <SelectItem value="quarterly">Trimestrielle</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium mb-1 block">Régime</label>
-                  <Select value={form.regime} onValueChange={v => setForm(p => ({...p, regime: v}))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="normal">Normal</SelectItem>
-                      <SelectItem value="reel_simplifie">Réel simplifié</SelectItem>
-                      <SelectItem value="franchise">Franchise</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium mb-1 block">Début période</label>
-                  <Input type="date" value={form.period_start} onChange={e => setForm(p => ({...p, period_start: e.target.value}))} />
-                </div>
-                <div>
-                  <label className="text-xs font-medium mb-1 block">Fin période</label>
-                  <Input type="date" value={form.period_end} onChange={e => setForm(p => ({...p, period_end: e.target.value}))} />
-                </div>
-              </div>
-              <Button className="w-full" onClick={handleCreate}>Calculer la TVA</Button>
+        <div>
+          <h3 className="text-xl font-bold flex items-center gap-2.5 tracking-tight">
+            <div className="p-2 rounded-xl bg-emerald-500/10">
+              <Calculator className="w-5 h-5 text-emerald-500" />
             </div>
-          </DialogContent>
-        </Dialog>
+            TVA & Déclarations
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1">Gestion de la TVA collectée et déductible</p>
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" className="gap-1 text-xs h-8" title="Générer EDI">
+            <Download className="w-3 h-3" />EDI
+          </Button>
+          <Dialog open={showCreate} onOpenChange={setShowCreate}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="gap-1.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-md shadow-emerald-500/20">
+                <Plus className="w-3.5 h-3.5" />Déclaration TVA
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Calculator className="w-5 h-5 text-emerald-500" />
+                  Nouvelle déclaration TVA
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Type période</label>
+                    <Select value={form.period_type} onValueChange={v => setForm(p => ({...p, period_type: v}))}>
+                      <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monthly">Mensuelle</SelectItem>
+                        <SelectItem value="quarterly">Trimestrielle</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Régime</label>
+                    <Select value={form.regime} onValueChange={v => setForm(p => ({...p, regime: v}))}>
+                      <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="reel_simplifie">Réel simplifié</SelectItem>
+                        <SelectItem value="franchise">Franchise</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Début</label>
+                    <Input type="date" className="h-10" value={form.period_start} onChange={e => setForm(p => ({...p, period_start: e.target.value}))} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fin</label>
+                    <Input type="date" className="h-10" value={form.period_end} onChange={e => setForm(p => ({...p, period_end: e.target.value}))} />
+                  </div>
+                </div>
+                <Button className="w-full h-10 bg-gradient-to-r from-emerald-500 to-emerald-600" onClick={handleCreate}>
+                  <Calculator className="w-4 h-4 mr-2" />Calculer la TVA
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* TVA Rates */}
       {rates && (
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Taux de TVA en vigueur</CardTitle></CardHeader>
+        <Card className="border-0 shadow-sm bg-card/50 backdrop-blur">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold">Taux de TVA en vigueur</CardTitle>
+          </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               {Object.entries(rates.standard_rates || {}).map(([key, val]) => (
-                <Badge key={key} variant="outline" className="px-3 py-1">
-                  {val.label}: <span className="font-bold ml-1">{val.rate}%</span>
-                </Badge>
+                <div key={key} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-muted/30 border">
+                  <span className="text-xs text-muted-foreground">{val.label}</span>
+                  <span className="text-sm font-bold text-emerald-600">{val.rate}%</span>
+                </div>
               ))}
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Declarations Table */}
-      <Card>
+      {/* Table */}
+      <Card className="border-0 shadow-sm overflow-hidden">
         <CardContent className="p-0">
           {loading ? (
-            <div className="flex items-center justify-center py-12"><RefreshCw className="w-5 h-5 animate-spin" /></div>
+            <div className="flex items-center justify-center py-16">
+              <div className="w-10 h-10 rounded-full border-2 border-emerald-500/20 border-t-emerald-500 animate-spin" />
+            </div>
           ) : declarations.length === 0 ? (
-            <div className="text-center py-12 text-sm text-muted-foreground">Aucune déclaration TVA</div>
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <Calculator className="w-10 h-10 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">Aucune déclaration TVA</p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-muted/50">
+              <table className="w-full">
+                <thead className="bg-muted/40">
                   <tr>
-                    <th className="text-left p-3">N°</th>
-                    <th className="text-center p-3">Période</th>
-                    <th className="text-center p-3">Régime</th>
-                    <th className="text-right p-3">CA HT</th>
-                    <th className="text-right p-3">TVA collectée</th>
-                    <th className="text-right p-3">TVA déductible</th>
-                    <th className="text-right p-3">TVA à payer</th>
-                    <th className="text-center p-3">Statut</th>
-                    <th className="text-right p-3">Actions</th>
+                    <th className="text-center p-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Période</th>
+                    <th className="text-center p-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Régime</th>
+                    <th className="text-right p-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">CA HT</th>
+                    <th className="text-right p-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">TVA collectée</th>
+                    <th className="text-right p-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">TVA déductible</th>
+                    <th className="text-right p-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">TVA à payer</th>
+                    <th className="text-center p-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Statut</th>
+                    <th className="text-right p-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {declarations.map(d => (
-                    <tr key={d.declaration_id} className="border-t hover:bg-muted/20">
-                      <td className="p-3 font-mono text-[10px]">{d.declaration_id}</td>
-                      <td className="p-3 text-center">{d.period_start} → {d.period_end}</td>
+                  {declarations.map((d, idx) => (
+                    <tr key={d.declaration_id} className={`border-t border-border/50 hover:bg-muted/30 transition-colors ${idx % 2 === 0 ? '' : 'bg-muted/10'}`}>
+                      <td className="p-3 text-center text-sm">{d.period_start} → {d.period_end}</td>
                       <td className="p-3 text-center"><Badge variant="outline" className="text-[10px]">{d.regime}</Badge></td>
-                      <td className="p-3 text-right font-mono">{fmt(d.ca_ht)}</td>
-                      <td className="p-3 text-right font-mono">{fmt(d.tva_collected)}</td>
-                      <td className="p-3 text-right font-mono">{fmt(d.tva_deductible)}</td>
-                      <td className="p-3 text-right font-mono font-medium">{fmt(d.tva_to_pay)}</td>
+                      <td className="p-3 text-right font-mono text-sm tabular-nums">{fmt(d.ca_ht)}</td>
+                      <td className="p-3 text-right font-mono text-sm tabular-nums text-blue-500">{fmt(d.tva_collected)}</td>
+                      <td className="p-3 text-right font-mono text-sm tabular-nums text-emerald-500">{fmt(d.tva_deductible)}</td>
+                      <td className="p-3 text-right font-mono text-sm tabular-nums font-semibold">{fmt(d.tva_to_pay)}</td>
                       <td className="p-3 text-center">
-                        <Badge className={`text-[10px] ${d.status === 'validated' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                        <Badge className={`text-[10px] ${d.status === 'validated' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>
                           {d.status === 'validated' ? 'Validé' : 'Brouillon'}
                         </Badge>
                       </td>
                       <td className="p-3 text-right">
                         {d.status === 'draft' && (
-                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleValidate(d.declaration_id)}>
-                            <CheckCircle className="w-3 h-3 text-emerald-500" />
+                          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => handleValidate(d.declaration_id)}>
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
                           </Button>
                         )}
                       </td>
@@ -187,36 +212,53 @@ export default function TVAModule() {
         </CardContent>
       </Card>
 
+      {pages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <Button size="icon" variant="outline" className="h-8 w-8" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <span className="text-xs text-muted-foreground tabular-nums">Page {page}/{pages}</span>
+          <Button size="icon" variant="outline" className="h-8 w-8" disabled={page >= pages} onClick={() => setPage(p => p + 1)}>
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+
       {/* Result dialog */}
       <Dialog open={!!showResult} onOpenChange={() => setShowResult(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Résultat déclaration TVA</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calculator className="w-5 h-5 text-emerald-500" />
+              Résultat déclaration TVA
+            </DialogTitle>
+          </DialogHeader>
           {showResult && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <Card className="bg-muted/20"><CardContent className="p-3 text-center">
-                  <div className="text-xs text-muted-foreground">CA HT</div>
-                  <div className="font-bold">{fmt(showResult.ca_ht)}</div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <Card className="bg-muted/20"><CardContent className="p-4 text-center">
+                  <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">CA HT</div>
+                  <div className="text-lg font-bold">{fmt(showResult.ca_ht)}</div>
                 </CardContent></Card>
-                <Card className="bg-muted/20"><CardContent className="p-3 text-center">
-                  <div className="text-xs text-muted-foreground">Charges HT</div>
-                  <div className="font-bold">{fmt(showResult.charges_ht)}</div>
+                <Card className="bg-muted/20"><CardContent className="p-4 text-center">
+                  <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Charges HT</div>
+                  <div className="text-lg font-bold">{fmt(showResult.charges_ht)}</div>
                 </CardContent></Card>
-                <Card className="bg-blue-500/5 border-blue-500/20"><CardContent className="p-3 text-center">
-                  <div className="text-xs text-muted-foreground">TVA collectée</div>
-                  <div className="font-bold">{fmt(showResult.tva_collected)}</div>
+                <Card className="bg-blue-500/5 border-blue-500/20"><CardContent className="p-4 text-center">
+                  <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">TVA collectée</div>
+                  <div className="text-lg font-bold text-blue-500">{fmt(showResult.tva_collected)}</div>
                 </CardContent></Card>
-                <Card className="bg-emerald-500/5 border-emerald-500/20"><CardContent className="p-3 text-center">
-                  <div className="text-xs text-muted-foreground">TVA déductible</div>
-                  <div className="font-bold">{fmt(showResult.tva_deductible)}</div>
+                <Card className="bg-emerald-500/5 border-emerald-500/20"><CardContent className="p-4 text-center">
+                  <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">TVA déductible</div>
+                  <div className="text-lg font-bold text-emerald-500">{fmt(showResult.tva_deductible)}</div>
                 </CardContent></Card>
               </div>
               <Card className={`${showResult.tva_to_pay > 0 ? 'bg-red-500/5 border-red-500/20' : 'bg-emerald-500/5 border-emerald-500/20'}`}>
-                <CardContent className="p-4 text-center">
-                  <div className="text-xs text-muted-foreground mb-1">
-                    {showResult.tva_to_pay > 0 ? 'TVA à payer' : 'Crédit de TVA'}
+                <CardContent className="p-5 text-center">
+                  <div className="text-xs text-muted-foreground mb-2">
+                    {showResult.tva_to_pay > 0 ? '💳 TVA à payer' : '💰 Crédit de TVA'}
                   </div>
-                  <div className="text-2xl font-bold">
+                  <div className="text-3xl font-bold">
                     {fmt(showResult.tva_to_pay > 0 ? showResult.tva_to_pay : showResult.credit_tva)}
                   </div>
                 </CardContent>

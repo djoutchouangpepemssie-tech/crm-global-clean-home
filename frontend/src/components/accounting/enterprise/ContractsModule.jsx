@@ -12,15 +12,19 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
 } from '../../ui/dialog';
-import { Plus, FileText, Eye, AlertTriangle, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, FileText, Eye, AlertTriangle, RefreshCw, ChevronLeft, ChevronRight, Calendar, Clock } from 'lucide-react';
 
 const CONTRACT_TYPES = [
-  { value: 'service', label: 'Service' },
-  { value: 'prestation', label: 'Prestation' },
-  { value: 'maintenance', label: 'Maintenance' },
-  { value: 'location', label: 'Location' },
-  { value: 'autre', label: 'Autre' },
+  { value: 'cdi', label: 'CDI' }, { value: 'cdd', label: 'CDD' },
+  { value: 'prestataire', label: 'Prestataire' }, { value: 'service', label: 'Service' },
+  { value: 'maintenance', label: 'Maintenance' }, { value: 'location', label: 'Location' },
 ];
+
+const STATUS_MAP = {
+  active: { label: 'Actif', class: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
+  expired: { label: 'Expiré', class: 'bg-red-500/10 text-red-500 border-red-500/20' },
+  pending: { label: 'En attente', class: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
+};
 
 export default function ContractsModule() {
   const [contracts, setContracts] = useState([]);
@@ -32,7 +36,8 @@ export default function ContractsModule() {
   const [showCreate, setShowCreate] = useState(false);
   const [showDetail, setShowDetail] = useState(null);
   const [form, setForm] = useState({
-    title: '', contract_type: 'service', start_date: new Date().toISOString().slice(0, 10),
+    title: '', contract_type: 'service', party_name: '', party_type: 'fournisseur',
+    start_date: new Date().toISOString().slice(0, 10),
     end_date: '', amount: 0, payment_terms: '', auto_renew: false, terms: '',
   });
 
@@ -55,9 +60,7 @@ export default function ContractsModule() {
 
   const handleCreate = async () => {
     try {
-      await axios.post(`${BACKEND_URL}/api/enterprise/contracts`, {
-        ...form, amount: parseFloat(form.amount) || 0,
-      });
+      await axios.post(`${BACKEND_URL}/api/enterprise/contracts`, { ...form, amount: parseFloat(form.amount) || 0 });
       setShowCreate(false);
       loadData();
     } catch (err) { alert(err.response?.data?.detail || 'Erreur'); }
@@ -65,124 +68,176 @@ export default function ContractsModule() {
 
   const fmt = (n) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n || 0);
 
+  const daysUntil = (dateStr) => {
+    if (!dateStr) return null;
+    const diff = Math.ceil((new Date(dateStr) - new Date()) / (1000 * 60 * 60 * 24));
+    return diff;
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <FileText className="w-5 h-5 text-violet-500" />
-          Contrats
-        </h3>
+        <div>
+          <h3 className="text-xl font-bold flex items-center gap-2.5 tracking-tight">
+            <div className="p-2 rounded-xl bg-indigo-500/10">
+              <FileText className="w-5 h-5 text-indigo-500" />
+            </div>
+            Contrats & Documents
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1">{total} contrat(s)</p>
+        </div>
         <Dialog open={showCreate} onOpenChange={setShowCreate}>
           <DialogTrigger asChild>
-            <Button size="sm" className="gap-1"><Plus className="w-3 h-3" />Nouveau contrat</Button>
+            <Button size="sm" className="gap-1.5 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 shadow-md shadow-indigo-500/20">
+              <Plus className="w-3.5 h-3.5" />Nouveau contrat
+            </Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Nouveau contrat</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-medium mb-1 block">Titre</label>
-                <Input value={form.title} onChange={e => setForm(p => ({...p, title: e.target.value}))} placeholder="Contrat de maintenance annuel" />
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-indigo-500" />
+                Nouveau contrat
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Titre</label>
+                <Input className="h-10" value={form.title} onChange={e => setForm(p => ({...p, title: e.target.value}))} placeholder="Contrat de maintenance annuel" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium mb-1 block">Type</label>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Type</label>
                   <Select value={form.contract_type} onValueChange={v => setForm(p => ({...p, contract_type: v}))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
                     <SelectContent>{CONTRACT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <label className="text-xs font-medium mb-1 block">Montant</label>
-                  <Input type="number" step="0.01" value={form.amount} onChange={e => setForm(p => ({...p, amount: e.target.value}))} />
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Partie</label>
+                  <Select value={form.party_type} onValueChange={v => setForm(p => ({...p, party_type: v}))}>
+                    <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="salarie">Salarié</SelectItem>
+                      <SelectItem value="fournisseur">Fournisseur</SelectItem>
+                      <SelectItem value="client">Client</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div>
-                  <label className="text-xs font-medium mb-1 block">Début</label>
-                  <Input type="date" value={form.start_date} onChange={e => setForm(p => ({...p, start_date: e.target.value}))} />
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Nom partie</label>
+                  <Input className="h-10" value={form.party_name} onChange={e => setForm(p => ({...p, party_name: e.target.value}))} placeholder="Nom..." />
                 </div>
-                <div>
-                  <label className="text-xs font-medium mb-1 block">Fin</label>
-                  <Input type="date" value={form.end_date} onChange={e => setForm(p => ({...p, end_date: e.target.value}))} />
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Montant annuel</label>
+                  <Input type="number" step="0.01" className="h-10 font-mono" value={form.amount} onChange={e => setForm(p => ({...p, amount: e.target.value}))} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Début</label>
+                  <Input type="date" className="h-10" value={form.start_date} onChange={e => setForm(p => ({...p, start_date: e.target.value}))} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fin</label>
+                  <Input type="date" className="h-10" value={form.end_date} onChange={e => setForm(p => ({...p, end_date: e.target.value}))} />
                 </div>
               </div>
-              <div>
-                <label className="text-xs font-medium mb-1 block">Conditions de paiement</label>
-                <Input value={form.payment_terms} onChange={e => setForm(p => ({...p, payment_terms: e.target.value}))} placeholder="30 jours fin de mois" />
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Conditions de paiement</label>
+                <Input className="h-10" value={form.payment_terms} onChange={e => setForm(p => ({...p, payment_terms: e.target.value}))} placeholder="30 jours fin de mois" />
               </div>
-              <div>
-                <label className="text-xs font-medium mb-1 block">Termes & conditions</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Termes (optionnel)</label>
                 <Textarea value={form.terms} onChange={e => setForm(p => ({...p, terms: e.target.value}))} rows={3} />
               </div>
-              <Button className="w-full" onClick={handleCreate}>Créer le contrat</Button>
+              <Button className="w-full h-10 bg-gradient-to-r from-indigo-500 to-indigo-600" onClick={handleCreate}>
+                <FileText className="w-4 h-4 mr-2" />Créer le contrat
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Expiring Alert */}
+      {/* Expiring alert */}
       {expiring.length > 0 && (
         <Card className="border-amber-500/30 bg-amber-500/5">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2 text-amber-500">
-              <AlertTriangle className="w-4 h-4" />
-              {expiring.length} contrat(s) expire(nt) dans 30 jours
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-1">
-              {expiring.map(c => (
-                <div key={c.contract_id} className="flex items-center justify-between text-xs">
-                  <span>{c.title}</span>
-                  <Badge variant="outline" className="text-amber-500">{c.end_date}</Badge>
-                </div>
-              ))}
+          <CardContent className="p-4 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-amber-600">{expiring.length} contrat(s) expire(nt) dans 30 jours</p>
+              <div className="mt-2 space-y-1">
+                {expiring.map(c => (
+                  <div key={c.contract_id} className="flex items-center justify-between text-xs">
+                    <span>{c.title}</span>
+                    <Badge variant="outline" className="text-amber-600">{c.end_date}</Badge>
+                  </div>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>
       )}
 
       {/* Table */}
-      <Card>
+      <Card className="border-0 shadow-sm overflow-hidden">
         <CardContent className="p-0">
           {loading ? (
-            <div className="flex items-center justify-center py-12"><RefreshCw className="w-5 h-5 animate-spin" /></div>
+            <div className="flex items-center justify-center py-16">
+              <div className="w-10 h-10 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin" />
+            </div>
           ) : contracts.length === 0 ? (
-            <div className="text-center py-12 text-sm text-muted-foreground">Aucun contrat</div>
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <FileText className="w-10 h-10 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">Aucun contrat</p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-muted/50">
+              <table className="w-full">
+                <thead className="bg-muted/40">
                   <tr>
-                    <th className="text-left p-3">N°</th>
-                    <th className="text-left p-3">Titre</th>
-                    <th className="text-center p-3">Type</th>
-                    <th className="text-right p-3">Montant</th>
-                    <th className="text-center p-3">Début</th>
-                    <th className="text-center p-3">Fin</th>
-                    <th className="text-center p-3">Statut</th>
-                    <th className="text-right p-3">Actions</th>
+                    <th className="text-left p-3 pl-5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Titre</th>
+                    <th className="text-center p-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Type</th>
+                    <th className="text-right p-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Montant/an</th>
+                    <th className="text-center p-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Début</th>
+                    <th className="text-center p-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Fin</th>
+                    <th className="text-center p-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Expire dans</th>
+                    <th className="text-center p-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Statut</th>
+                    <th className="text-right p-3 pr-5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {contracts.map(c => (
-                    <tr key={c.contract_id} className="border-t hover:bg-muted/20">
-                      <td className="p-3 font-mono text-[10px]">{c.contract_id}</td>
-                      <td className="p-3">{c.title}</td>
-                      <td className="p-3 text-center"><Badge variant="outline" className="text-[10px]">{c.contract_type}</Badge></td>
-                      <td className="p-3 text-right font-mono">{fmt(c.amount)}</td>
-                      <td className="p-3 text-center">{c.start_date}</td>
-                      <td className="p-3 text-center">{c.end_date || '∞'}</td>
-                      <td className="p-3 text-center">
-                        <Badge className={`text-[10px] ${c.status === 'active' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-muted text-muted-foreground'}`}>
-                          {c.status}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-right">
-                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setShowDetail(c)}>
-                          <Eye className="w-3 h-3" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
+                  {contracts.map((c, idx) => {
+                    const days = daysUntil(c.end_date);
+                    return (
+                      <tr key={c.contract_id} className={`border-t border-border/50 hover:bg-muted/30 transition-colors ${idx % 2 === 0 ? '' : 'bg-muted/10'}`}>
+                        <td className="p-3 pl-5 text-sm font-medium">{c.title}</td>
+                        <td className="p-3 text-center"><Badge variant="outline" className="text-[10px]">{c.contract_type?.toUpperCase()}</Badge></td>
+                        <td className="p-3 text-right font-mono text-sm tabular-nums">{fmt(c.amount)}</td>
+                        <td className="p-3 text-center text-sm">{c.start_date}</td>
+                        <td className="p-3 text-center text-sm">{c.end_date || '∞'}</td>
+                        <td className="p-3 text-center">
+                          {days !== null ? (
+                            <Badge className={`text-[10px] ${
+                              days < 0 ? 'bg-red-500/10 text-red-500' :
+                              days < 30 ? 'bg-amber-500/10 text-amber-500' :
+                              'bg-emerald-500/10 text-emerald-500'
+                            }`}>
+                              <Clock className="w-2.5 h-2.5 mr-1" />
+                              {days < 0 ? `Expiré (${Math.abs(days)}j)` : `${days}j`}
+                            </Badge>
+                          ) : '—'}
+                        </td>
+                        <td className="p-3 text-center">
+                          <Badge className={`text-[10px] ${STATUS_MAP[c.status]?.class || 'bg-muted'}`}>
+                            {STATUS_MAP[c.status]?.label || c.status}
+                          </Badge>
+                        </td>
+                        <td className="p-3 pr-5 text-right">
+                          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => setShowDetail(c)}>
+                            <Eye className="w-3.5 h-3.5" />
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -192,38 +247,56 @@ export default function ContractsModule() {
 
       {pages > 1 && (
         <div className="flex items-center justify-center gap-2">
-          <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(p => p - 1)}><ChevronLeft className="w-4 h-4" /></Button>
-          <span className="text-xs text-muted-foreground">Page {page}/{pages}</span>
-          <Button size="sm" variant="outline" disabled={page >= pages} onClick={() => setPage(p => p + 1)}><ChevronRight className="w-4 h-4" /></Button>
+          <Button size="icon" variant="outline" className="h-8 w-8" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <span className="text-xs text-muted-foreground tabular-nums">Page {page}/{pages}</span>
+          <Button size="icon" variant="outline" className="h-8 w-8" disabled={page >= pages} onClick={() => setPage(p => p + 1)}>
+            <ChevronRight className="w-4 h-4" />
+          </Button>
         </div>
       )}
 
       {/* Detail */}
       <Dialog open={!!showDetail} onOpenChange={() => setShowDetail(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>{showDetail?.title}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-indigo-500" />
+              {showDetail?.title}
+            </DialogTitle>
+          </DialogHeader>
           {showDetail && (
-            <div className="space-y-3 text-sm">
-              <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-muted-foreground">Type:</span> {showDetail.contract_type}</div>
-                <div><span className="text-muted-foreground">Montant:</span> {fmt(showDetail.amount)}</div>
-                <div><span className="text-muted-foreground">Début:</span> {showDetail.start_date}</div>
-                <div><span className="text-muted-foreground">Fin:</span> {showDetail.end_date || 'Indéfini'}</div>
-                <div><span className="text-muted-foreground">Paiement:</span> {showDetail.payment_terms || '—'}</div>
-                <div><span className="text-muted-foreground">Renouvellement auto:</span> {showDetail.auto_renew ? 'Oui' : 'Non'}</div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { label: 'Type', value: showDetail.contract_type?.toUpperCase() },
+                  { label: 'Montant', value: fmt(showDetail.amount) },
+                  { label: 'Début', value: showDetail.start_date },
+                  { label: 'Fin', value: showDetail.end_date || 'Indéfini' },
+                  { label: 'Paiement', value: showDetail.payment_terms || '—' },
+                  { label: 'Renouvellement auto', value: showDetail.auto_renew ? '✅ Oui' : '❌ Non' },
+                ].map((f, i) => (
+                  <div key={i} className="space-y-1">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{f.label}</p>
+                    <p className="text-sm font-medium">{f.value}</p>
+                  </div>
+                ))}
               </div>
               {showDetail.terms && (
-                <div>
-                  <span className="text-muted-foreground">Conditions:</span>
-                  <p className="mt-1 text-xs bg-muted/20 p-2 rounded">{showDetail.terms}</p>
+                <div className="space-y-1.5">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Conditions</p>
+                  <p className="text-sm bg-muted/20 p-3 rounded-xl">{showDetail.terms}</p>
                 </div>
               )}
-              {showDetail.versions && (
-                <div>
-                  <span className="text-xs font-medium">Versions ({showDetail.versions.length})</span>
-                  <div className="mt-1 space-y-1">
+              {showDetail.versions && showDetail.versions.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Historique versions ({showDetail.versions.length})</p>
+                  <div className="space-y-1">
                     {showDetail.versions.map((v, i) => (
-                      <div key={i} className="text-xs text-muted-foreground">v{v.version} — {v.date?.slice(0, 10)}</div>
+                      <div key={i} className="text-xs text-muted-foreground p-2 rounded-lg bg-muted/10">
+                        v{v.version} — {v.date?.slice(0, 10)}
+                      </div>
                     ))}
                   </div>
                 </div>

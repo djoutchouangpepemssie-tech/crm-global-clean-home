@@ -3,7 +3,6 @@ import axios from 'axios';
 import BACKEND_URL from '../../../config';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { Button } from '../../ui/button';
-import { Input } from '../../ui/input';
 import { Badge } from '../../ui/badge';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
@@ -11,17 +10,17 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle
 } from '../../ui/dialog';
-import { Shield, Search, RefreshCw, ChevronLeft, ChevronRight, CheckCircle, AlertTriangle, Eye } from 'lucide-react';
+import { Shield, RefreshCw, ChevronLeft, ChevronRight, CheckCircle, AlertTriangle, Eye, Lock } from 'lucide-react';
 
 const ACTION_COLORS = {
-  create: 'bg-emerald-500/10 text-emerald-500',
-  update: 'bg-blue-500/10 text-blue-500',
-  delete: 'bg-red-500/10 text-red-500',
-  validate: 'bg-violet-500/10 text-violet-500',
-  reverse: 'bg-amber-500/10 text-amber-500',
-  lettrage: 'bg-cyan-500/10 text-cyan-500',
-  close_period: 'bg-purple-500/10 text-purple-500',
-  bank_match: 'bg-blue-500/10 text-blue-500',
+  create: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+  update: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+  delete: 'bg-red-500/10 text-red-500 border-red-500/20',
+  validate: 'bg-violet-500/10 text-violet-500 border-violet-500/20',
+  reverse: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+  lettrage: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
+  close_period: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
+  bank_match: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
 };
 
 export default function AuditTrail() {
@@ -68,31 +67,45 @@ export default function AuditTrail() {
   const actionTypes = [...new Set((stats?.stats || []).map(s => s.action))];
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Shield className="w-5 h-5 text-violet-500" />
-            Journal d'Audit
-          </h3>
-          <p className="text-xs text-muted-foreground">{total} entrée(s) — Logs immuables, non modifiables</p>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-xl font-bold flex items-center gap-2.5 tracking-tight">
+          <div className="p-2 rounded-xl bg-slate-500/10">
+            <Shield className="w-5 h-5 text-slate-500" />
+          </div>
+          Journal d'Audit
+        </h3>
+        <p className="text-sm text-muted-foreground mt-1">{total} entrée(s) — Logs immuables, chaînés cryptographiquement</p>
       </div>
+
+      {/* Info banner */}
+      <Card className="bg-slate-500/5 border-slate-500/20">
+        <CardContent className="p-4 flex items-start gap-3">
+          <Lock className="w-5 h-5 text-slate-500 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium">Piste d'audit immuable</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Chaque action est enregistrée avec un checksum cryptographique.
+              Les logs ne peuvent être ni modifiés ni supprimés, garantissant la conformité réglementaire.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stats */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="bg-violet-500/5 border-violet-500/20">
-            <CardContent className="p-3 text-center">
-              <div className="text-xs text-muted-foreground">Total entrées</div>
-              <div className="text-xl font-bold">{stats.total_entries}</div>
+            <CardContent className="p-4 text-center">
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Total entrées</div>
+              <div className="text-2xl font-bold">{stats.total_entries}</div>
             </CardContent>
           </Card>
           {(stats.stats || []).slice(0, 3).map((s, i) => (
             <Card key={i} className="bg-muted/20">
-              <CardContent className="p-3 text-center">
-                <div className="text-xs text-muted-foreground">{s.entity_type} / {s.action}</div>
-                <div className="text-xl font-bold">{s.count}</div>
+              <CardContent className="p-4 text-center">
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 truncate">{s.entity_type} / {s.action}</div>
+                <div className="text-2xl font-bold">{s.count}</div>
               </CardContent>
             </Card>
           ))}
@@ -100,16 +113,16 @@ export default function AuditTrail() {
       )}
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-3">
         <Select value={entityFilter} onValueChange={v => { setEntityFilter(v); setPage(1); }}>
-          <SelectTrigger className="w-44 h-9"><SelectValue placeholder="Type entité" /></SelectTrigger>
+          <SelectTrigger className="w-48 h-10"><SelectValue placeholder="Type entité" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Toutes entités</SelectItem>
             {entityTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={actionFilter} onValueChange={v => { setActionFilter(v); setPage(1); }}>
-          <SelectTrigger className="w-40 h-9"><SelectValue placeholder="Action" /></SelectTrigger>
+          <SelectTrigger className="w-44 h-10"><SelectValue placeholder="Action" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Toutes actions</SelectItem>
             {actionTypes.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
@@ -118,42 +131,47 @@ export default function AuditTrail() {
       </div>
 
       {/* Table */}
-      <Card>
+      <Card className="border-0 shadow-sm overflow-hidden">
         <CardContent className="p-0">
           {loading ? (
-            <div className="flex items-center justify-center py-12"><RefreshCw className="w-5 h-5 animate-spin" /></div>
+            <div className="flex items-center justify-center py-16">
+              <div className="w-10 h-10 rounded-full border-2 border-slate-500/20 border-t-slate-500 animate-spin" />
+            </div>
           ) : entries.length === 0 ? (
-            <div className="text-center py-12 text-sm text-muted-foreground">Aucune entrée d'audit</div>
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <Shield className="w-10 h-10 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">Aucune entrée d'audit</p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-muted/50">
+              <table className="w-full">
+                <thead className="bg-muted/40">
                   <tr>
-                    <th className="text-left p-3">Horodatage</th>
-                    <th className="text-left p-3">Utilisateur</th>
-                    <th className="text-center p-3">Action</th>
-                    <th className="text-left p-3">Entité</th>
-                    <th className="text-left p-3">ID Entité</th>
-                    <th className="text-right p-3">Intégrité</th>
+                    <th className="text-left p-3 pl-5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Horodatage</th>
+                    <th className="text-left p-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Utilisateur</th>
+                    <th className="text-center p-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Action</th>
+                    <th className="text-left p-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Entité</th>
+                    <th className="text-left p-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">ID Entité</th>
+                    <th className="text-right p-3 pr-5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Intégrité</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {entries.map(e => (
-                    <tr key={e.audit_id} className="border-t hover:bg-muted/20">
-                      <td className="p-3 text-muted-foreground">{e.timestamp?.replace('T', ' ').slice(0, 19)}</td>
-                      <td className="p-3">{e.user_id}</td>
+                  {entries.map((e, idx) => (
+                    <tr key={e.audit_id} className={`border-t border-border/50 hover:bg-muted/30 transition-colors ${idx % 2 === 0 ? '' : 'bg-muted/10'}`}>
+                      <td className="p-3 pl-5 text-sm text-muted-foreground tabular-nums">{e.timestamp?.replace('T', ' ').slice(0, 19)}</td>
+                      <td className="p-3 text-sm">{e.user_id}</td>
                       <td className="p-3 text-center">
                         <Badge className={`text-[10px] ${ACTION_COLORS[e.action] || 'bg-muted'}`}>{e.action}</Badge>
                       </td>
-                      <td className="p-3">{e.entity_type}</td>
-                      <td className="p-3 font-mono text-[10px] max-w-[150px] truncate">{e.entity_id}</td>
-                      <td className="p-3 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setShowDetail(e)} title="Détail">
-                            <Eye className="w-3 h-3" />
+                      <td className="p-3 text-sm">{e.entity_type}</td>
+                      <td className="p-3 font-mono text-[10px] max-w-[150px] truncate text-muted-foreground">{e.entity_id}</td>
+                      <td className="p-3 pr-5 text-right">
+                        <div className="flex items-center justify-end gap-0.5">
+                          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => setShowDetail(e)} title="Détail">
+                            <Eye className="w-3.5 h-3.5" />
                           </Button>
-                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => verifyEntry(e.audit_id)} title="Vérifier intégrité">
-                            <Shield className="w-3 h-3 text-violet-500" />
+                          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => verifyEntry(e.audit_id)} title="Vérifier intégrité">
+                            <Shield className="w-3.5 h-3.5 text-violet-500" />
                           </Button>
                         </div>
                       </td>
@@ -166,43 +184,58 @@ export default function AuditTrail() {
         </CardContent>
       </Card>
 
-      {/* Pagination */}
       {pages > 1 && (
         <div className="flex items-center justify-center gap-2">
-          <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(p => p - 1)}><ChevronLeft className="w-4 h-4" /></Button>
-          <span className="text-xs text-muted-foreground">Page {page}/{pages}</span>
-          <Button size="sm" variant="outline" disabled={page >= pages} onClick={() => setPage(p => p + 1)}><ChevronRight className="w-4 h-4" /></Button>
+          <Button size="icon" variant="outline" className="h-8 w-8" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <span className="text-xs text-muted-foreground tabular-nums">Page {page}/{pages}</span>
+          <Button size="icon" variant="outline" className="h-8 w-8" disabled={page >= pages} onClick={() => setPage(p => p + 1)}>
+            <ChevronRight className="w-4 h-4" />
+          </Button>
         </div>
       )}
 
-      {/* Detail Dialog */}
+      {/* Detail */}
       <Dialog open={!!showDetail} onOpenChange={() => setShowDetail(null)}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Détail audit</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-slate-500" />Détail audit
+            </DialogTitle>
+          </DialogHeader>
           {showDetail && (
-            <div className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-2">
-                <div><span className="text-muted-foreground">ID:</span> <span className="font-mono">{showDetail.audit_id}</span></div>
-                <div><span className="text-muted-foreground">Date:</span> {showDetail.timestamp}</div>
-                <div><span className="text-muted-foreground">Utilisateur:</span> {showDetail.user_id}</div>
-                <div><span className="text-muted-foreground">Action:</span> <Badge className={ACTION_COLORS[showDetail.action]}>{showDetail.action}</Badge></div>
-                <div><span className="text-muted-foreground">Entité:</span> {showDetail.entity_type}</div>
-                <div><span className="text-muted-foreground">ID Entité:</span> <span className="font-mono">{showDetail.entity_id}</span></div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: 'ID', value: showDetail.audit_id?.slice(-12) },
+                  { label: 'Date', value: showDetail.timestamp?.replace('T', ' ').slice(0, 19) },
+                  { label: 'Utilisateur', value: showDetail.user_id },
+                  { label: 'Action', value: showDetail.action },
+                  { label: 'Entité', value: showDetail.entity_type },
+                  { label: 'ID Entité', value: showDetail.entity_id?.slice(-12) },
+                ].map((f, i) => (
+                  <div key={i} className="space-y-1">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{f.label}</p>
+                    <p className="text-sm font-mono">{f.value}</p>
+                  </div>
+                ))}
               </div>
               {showDetail.before && (
-                <div>
-                  <span className="text-muted-foreground font-medium">Avant:</span>
-                  <pre className="mt-1 p-2 rounded bg-muted/30 overflow-auto text-[10px]">{JSON.stringify(showDetail.before, null, 2)}</pre>
+                <div className="space-y-1.5">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">État avant</p>
+                  <pre className="p-3 rounded-xl bg-muted/30 overflow-auto text-[10px] font-mono max-h-[150px]">{JSON.stringify(showDetail.before, null, 2)}</pre>
                 </div>
               )}
               {showDetail.after && (
-                <div>
-                  <span className="text-muted-foreground font-medium">Après:</span>
-                  <pre className="mt-1 p-2 rounded bg-muted/30 overflow-auto text-[10px]">{JSON.stringify(showDetail.after, null, 2)}</pre>
+                <div className="space-y-1.5">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">État après</p>
+                  <pre className="p-3 rounded-xl bg-muted/30 overflow-auto text-[10px] font-mono max-h-[150px]">{JSON.stringify(showDetail.after, null, 2)}</pre>
                 </div>
               )}
-              <div className="text-[10px] text-muted-foreground font-mono">
-                Checksum: {showDetail.checksum}
+              <div className="text-[10px] text-muted-foreground font-mono p-2 rounded-lg bg-muted/20 flex items-center gap-2">
+                <Lock className="w-3 h-3" />
+                Checksum: {showDetail.checksum?.slice(0, 40)}...
               </div>
             </div>
           )}
@@ -212,18 +245,28 @@ export default function AuditTrail() {
       {/* Verify Result */}
       <Dialog open={!!verifyResult} onOpenChange={() => setVerifyResult(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Vérification d'intégrité</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="w-5 h-5" />Vérification d'intégrité
+            </DialogTitle>
+          </DialogHeader>
           {verifyResult && (
-            <div className="text-center space-y-3">
+            <div className="text-center space-y-4 py-4">
               {verifyResult.is_valid ? (
-                <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto" />
+                <div className="w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
+                  <CheckCircle className="w-10 h-10 text-emerald-500" />
+                </div>
               ) : (
-                <AlertTriangle className="w-16 h-16 text-red-500 mx-auto" />
+                <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto">
+                  <AlertTriangle className="w-10 h-10 text-red-500" />
+                </div>
               )}
-              <p className="text-lg font-bold">{verifyResult.message}</p>
+              <p className={`text-lg font-bold ${verifyResult.is_valid ? 'text-emerald-500' : 'text-red-500'}`}>
+                {verifyResult.message}
+              </p>
               <div className="text-xs text-muted-foreground space-y-1">
-                <div>Checksum stocké: <span className="font-mono">{verifyResult.stored_checksum?.slice(0, 20)}...</span></div>
-                <div>Checksum calculé: <span className="font-mono">{verifyResult.computed_checksum?.slice(0, 20)}...</span></div>
+                <div>Stocké: <span className="font-mono">{verifyResult.stored_checksum?.slice(0, 24)}...</span></div>
+                <div>Calculé: <span className="font-mono">{verifyResult.computed_checksum?.slice(0, 24)}...</span></div>
               </div>
             </div>
           )}
