@@ -110,6 +110,7 @@ const QuoteFormPremium = lazy(() => import('./components/quotes/QuoteFormPremium
 const InvoiceFormPremium = lazy(() => import('./components/invoices/InvoiceFormPremium'));
 const StockTable = lazy(() => import('./components/stock/StockTable'));
 const AccountingDashboard = lazy(() => import('./components/accounting/AccountingDashboard'));
+const AccountingEnterprise = lazy(() => import('./components/accounting/AccountingEnterprise'));
 const GlobalSearchFull = lazy(() =>
   import('./components/shared/GlobalSearch').then(m => ({ default: m.GlobalSearch || m.default }))
 );
@@ -133,6 +134,7 @@ const menuCategories = [
       { to: '/invoices', icon: CreditCard,   label: 'Factures' },
       { to: '/finance',  icon: BarChart3,    label: 'Finance' },
       { to: '/accounting', icon: BarChart3,  label: 'Comptabilité' },
+      { to: '/accounting-enterprise', icon: BookOpen, label: 'Compta Enterprise' },
       { to: '/stock',    icon: Briefcase,    label: 'Stocks' },
       { to: '/kanban',   icon: Trello,       label: 'Kanban' },
     ]
@@ -425,6 +427,7 @@ function AppRouter() {
                     <Route path="/invoices/premium" element={<InvoiceFormPremium />} />
                     <Route path="/finance" element={<FinancialDashboard />} />
                     <Route path="/accounting" element={<AccountingDashboard />} />
+                    <Route path="/accounting-enterprise" element={<AccountingEnterprise />} />
                     <Route path="/stock" element={<StockTable />} />
                     <Route path="/planning" element={<PlanningCalendar />} />
                     <Route path="/intervenants" element={<IntervenantsManager />} />

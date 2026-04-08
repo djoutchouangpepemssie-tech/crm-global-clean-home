@@ -2883,6 +2883,9 @@ app.include_router(settings_router)
 from accounting import accounting_router
 app.include_router(accounting_router)
 
+from accounting_enterprise import enterprise_router, create_enterprise_indexes
+app.include_router(enterprise_router)
+
 # ── PURGE ALL TEST DATA ──
 class PurgeRequest(BaseModel):
     confirm: str = Field(..., description="Must be 'SUPPRIMER' to confirm")
@@ -3083,6 +3086,12 @@ async def startup_db_indexes():
     await db.accounting_entries.create_index("category")
     # _id is already unique by default, no need to create index
     logger.info("MongoDB indexes created successfully")
+    
+    # Enterprise accounting indexes
+    try:
+        await create_enterprise_indexes()
+    except Exception as e:
+        logger.error(f"Enterprise indexes error: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
