@@ -167,8 +167,31 @@ const Login = () => {
             </button>
           </div>
 
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-700"></div>
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="px-2 bg-dark-1 text-slate-600">Ou</span>
+            </div>
+          </div>
+
+          {/* Invitation link */}
+          <div className="p-4 bg-violet-500/5 border border-violet-500/30 rounded-xl text-center">
+            <p className="text-xs text-slate-500 mb-3">
+              Vous avez reçu une invitation par email ?
+            </p>
+            <a
+              href="/auth/join"
+              className="inline-block text-sm font-semibold text-violet-400 hover:text-violet-300 transition-colors"
+            >
+              Rejoindre via invitation →
+            </a>
+          </div>
+
           {/* Security badges */}
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-4 mt-8">
             {['Chiffrement SSL', 'Données sécurisées', 'Accès restreint'].map((item, i) => (
               <div key={i} className="flex items-center gap-1">
                 <CheckCircle className="w-3 h-3 text-green-500" />
