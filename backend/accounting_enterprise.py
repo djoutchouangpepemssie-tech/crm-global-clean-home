@@ -2653,52 +2653,50 @@ async def export_journal_centralisateur(request: Request, from_date: Optional[st
 async def create_enterprise_indexes():
     """Créer les index MongoDB pour les collections enterprise."""
     try:
-        await _db.chart_of_accounts.create_index("code", unique=True)
-        await _db.chart_of_accounts.create_index("class_num")
-        await _db.chart_of_accounts.create_index("type")
+        # Index creation avec try/except pour chaque pour éviter les erreurs de duplication
+        indexes_to_create = [
+            (_db.chart_of_accounts, [("code", 1)], {"unique": True}),
+            (_db.chart_of_accounts, [("class_num", 1)], {}),
+            (_db.chart_of_accounts, [("type", 1)], {}),
+            (_db.journal_entries, [("entry_id", 1)], {"unique": True}),
+            (_db.journal_entries, [("entry_date", 1)], {}),
+            (_db.journal_entries, [("journal_type", 1)], {}),
+            (_db.journal_entries, [("status", 1)], {}),
+            (_db.journal_entries, [("lines.account_code", 1)], {}),
+            (_db.journal_entries, [("lines.lettering_code", 1)], {}),
+            (_db.lettrages, [("letter_code", 1)], {"unique": True}),
+            (_db.lettrages, [("account_code", 1)], {}),
+            (_db.closed_periods, [("period", 1)], {"unique": True}),
+            (_db.bank_reconciliation, [("line_id", 1)], {"unique": True}),
+            (_db.bank_reconciliation, [("account_code", 1)], {}),
+            (_db.bank_reconciliation, [("status", 1)], {}),
+            (_db.tva_declarations, [("declaration_id", 1)], {"unique": True}),
+            (_db.expense_reports, [("report_id", 1)], {"unique": True}),
+            (_db.expense_reports, [("employee_id", 1)], {}),
+            (_db.expense_reports, [("status", 1)], {}),
+            (_db.payslips, [("payslip_id", 1)], {"unique": True}),
+            (_db.payslips, [("period_year", -1), ("period_month", -1)], {}),
+            (_db.payslips, [("employee_id", 1)], {}),
+            (_db.contracts_enterprise, [("contract_id", 1)], {"unique": True}),
+            (_db.credit_notes, [("credit_note_id", 1)], {"unique": True}),
+            (_db.credit_notes, [("invoice_id", 1)], {}),
+            (_db.audit_trail, [("audit_id", 1)], {"unique": True}),
+            (_db.audit_trail, [("entity_type", 1)], {}),
+            (_db.audit_trail, [("entity_id", 1)], {}),
+            (_db.audit_trail, [("timestamp", 1)], {}),
+            (_db.audit_trail, [("user_id", 1)], {}),
+            (_db.leave_requests, [("leave_id", 1)], {"unique": True}),
+            (_db.leave_requests, [("employee_id", 1)], {}),
+        ]
         
-        await _db.journal_entries.create_index("entry_id", unique=True)
-        await _db.journal_entries.create_index("entry_date")
-        await _db.journal_entries.create_index("journal_type")
-        await _db.journal_entries.create_index("status")
-        await _db.journal_entries.create_index("lines.account_code")
-        await _db.journal_entries.create_index("lines.lettering_code")
+        for collection, keys, options in indexes_to_create:
+            try:
+                await collection.create_index(keys, **options)
+            except Exception as idx_err:
+                # Ignore index already exists or invalid spec errors
+                if "already exists" not in str(idx_err) and "_id" not in str(idx_err):
+                    logger.warning(f"Index creation warning: {idx_err}")
         
-        await _db.lettrages.create_index("letter_code", unique=True)
-        await _db.lettrages.create_index("account_code")
-        
-        await _db.closed_periods.create_index("period", unique=True)
-        
-        await _db.bank_reconciliation.create_index("line_id", unique=True)
-        await _db.bank_reconciliation.create_index("account_code")
-        await _db.bank_reconciliation.create_index("status")
-        
-        await _db.tva_declarations.create_index("declaration_id", unique=True)
-        
-        await _db.expense_reports.create_index("report_id", unique=True)
-        await _db.expense_reports.create_index("employee_id")
-        await _db.expense_reports.create_index("status")
-        
-        await _db.payslips.create_index("payslip_id", unique=True)
-        await _db.payslips.create_index([("period_year", -1), ("period_month", -1)])
-        await _db.payslips.create_index("employee_id")
-        
-        await _db.contracts_enterprise.create_index("contract_id", unique=True)
-        
-        await _db.credit_notes.create_index("credit_note_id", unique=True)
-        await _db.credit_notes.create_index("invoice_id")
-        
-        await _db.audit_trail.create_index("audit_id", unique=True)
-        await _db.audit_trail.create_index("entity_type")
-        await _db.audit_trail.create_index("entity_id")
-        await _db.audit_trail.create_index("timestamp")
-        await _db.audit_trail.create_index("user_id")
-        
-        await _db.leave_requests.create_index("leave_id", unique=True)
-        await _db.leave_requests.create_index("employee_id")
-        
-        # _id is already unique by default, no need to create index
-        
-        logger.info("✅ Enterprise accounting indexes created")
+        logger.info("✅ Enterprise accounting indexes created (with error handling)")
     except Exception as e:
         logger.error(f"Error creating enterprise indexes: {e}")
