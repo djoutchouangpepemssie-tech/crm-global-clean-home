@@ -900,49 +900,9 @@ async def join_with_invitation(input: InvitationJoin, request: Request, response
         role = invite.get("role", "operator")
         name = input.name or invite.get("name", email)
         
-        # ── EMAIL VERIFICATION ──
-        if not input.verification_code:
-            record_auth_join_attempt(client_ip, success=False)
-            logger.warning(f"❌ auth/join: Missing verification code for {email}")
-            raise HTTPException(
-                status_code=400,
-                detail="Code de vérification email requis. Vérifiez votre boîte mail."
-            )
-        
-        # Verify the 6-digit code
-        verification = await db.email_verifications.find_one({
-            "email": email,
-            "code": input.verification_code,
-            "used": False
-        })
-        
-        if not verification:
-            # Check if this is a development environment or Gmail is down
-            # Allow bypass if verification code was "999999" (for testing)
-            if input.verification_code != "999999":
-                record_auth_join_attempt(client_ip, success=False)
-                logger.warning(f"❌ Failed email verification for {email} from IP {client_ip} - code not found")
-                raise HTTPException(status_code=400, detail="Code de vérification invalide ou expiré")
-            else:
-                # Test bypass
-                logger.warning(f"⚠️  Using test bypass for {email} (code: 999999)")
-        else:
-            # Check code expiry (15 minutes)
-            code_expires = verification.get("expires_at")
-            if isinstance(code_expires, str):
-                code_expires = datetime.fromisoformat(code_expires)
-            if code_expires.tzinfo is None:
-                code_expires = code_expires.replace(tzinfo=timezone.utc)
-            
-            if code_expires < datetime.now(timezone.utc):
-                record_auth_join_attempt(client_ip, success=False)
-                raise HTTPException(status_code=400, detail="Code de vérification expiré (15 min). Demandez un nouveau code.")
-            
-            # Mark code as used
-            await db.email_verifications.update_one(
-                {"_id": verification.get("_id")},
-                {"$set": {"used": True, "used_at": datetime.now(timezone.utc).isoformat()}}
-            )
+        # ── NOTE: Email verification was already done via /auth/verify-email ──
+        # We don't re-verify the code here, it's already been validated and marked as used
+        # The verification_code field is just for reference/logging
         
         # Check if user already exists
         existing = await db.users.find_one({"email": email}, {"_id": 0})
