@@ -2879,6 +2879,10 @@ app.include_router(documents_router)
 from settings import settings_router, init_settings_db
 app.include_router(settings_router)
 
+# ── Module PREMIUM Comptabilité + Stocks ──
+from accounting import accounting_router
+app.include_router(accounting_router)
+
 # ── PURGE ALL TEST DATA ──
 class PurgeRequest(BaseModel):
     confirm: str = Field(..., description="Must be 'SUPPRIMER' to confirm")
@@ -3064,6 +3068,20 @@ async def startup_db_indexes():
     await db.documents.create_index("id", unique=True)
     await db.documents.create_index([("entity_type", 1), ("entity_id", 1)])
     await db.documents.create_index("deleted")
+    # ── Module PREMIUM: Stock + Comptabilité ──
+    await db.stock_items.create_index("item_id", unique=True)
+    await db.stock_items.create_index("sku", unique=True)
+    await db.stock_items.create_index("category")
+    await db.stock_items.create_index("name")
+    await db.stock_movements.create_index("movement_id", unique=True)
+    await db.stock_movements.create_index("item_id")
+    await db.stock_movements.create_index("created_at")
+    await db.accounting_entries.create_index("entry_id", unique=True)
+    await db.accounting_entries.create_index("entry_type")
+    await db.accounting_entries.create_index("entry_date")
+    await db.accounting_entries.create_index("reference_id")
+    await db.accounting_entries.create_index("category")
+    await db.counters.create_index("_id", unique=True)
     logger.info("MongoDB indexes created successfully")
 
 @app.on_event("shutdown")
