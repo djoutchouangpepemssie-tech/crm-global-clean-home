@@ -48,6 +48,86 @@ def _is_user_section(section: str) -> bool:
     return section in USER_SECTIONS
 
 
+# ─── ROLE-BASED PERMISSIONS ──────────────────────────────────────────────────
+ROLE_PERMISSIONS = {
+    "admin": {
+        "profile": ["read", "write"],
+        "notifications": ["read", "write"],
+        "appearance": ["read", "write"],
+        "security": ["read", "write"],
+        "company": ["read", "write"],
+        "scheduling": ["read", "write"],
+        "zones": ["read", "write"],
+        "documents": ["read", "write"],
+        "email": ["read", "write"],
+        "billing": ["read", "write"],
+        "integrations": ["read", "write"],
+        "api": ["read", "write"],
+        "data": ["read", "write"],
+        "advanced": ["read", "write"],
+        "team": ["read", "write"],
+    },
+    "manager": {
+        "profile": ["read", "write"],
+        "notifications": ["read", "write"],
+        "appearance": ["read", "write"],
+        "security": ["read", "write"],
+        "scheduling": ["read", "write"],
+        "zones": ["read"],
+        "documents": ["read"],
+        "email": ["read"],
+        "billing": ["read"],
+        "integrations": ["read"],
+        "api": ["read"],
+        "data": ["read"],
+        "advanced": ["read"],
+        "team": ["read"],
+    },
+    "commercial": {
+        "profile": ["read", "write"],
+        "notifications": ["read", "write"],
+        "appearance": ["read", "write"],
+        "security": ["read", "write"],
+        "scheduling": ["read"],
+    },
+    "operator": {
+        "profile": ["read", "write"],
+        "notifications": ["read", "write"],
+        "appearance": ["read", "write"],
+        "security": ["read", "write"],
+        "scheduling": ["read"],
+    },
+    "accountant": {
+        "profile": ["read", "write"],
+        "notifications": ["read", "write"],
+        "appearance": ["read", "write"],
+        "security": ["read", "write"],
+        "billing": ["read"],
+        "data": ["read"],
+    },
+}
+
+
+async def _check_permission(user_id: str, section: str, action: str) -> bool:
+    """Vérifier si l'utilisateur a les permissions pour une section."""
+    try:
+        user = await _db.users.find_one({"user_id": user_id}, {"_id": 0})
+        if not user:
+            return False
+        
+        role = user.get("role", "operator").lower()
+        permissions = ROLE_PERMISSIONS.get(role, {})
+        section_perms = permissions.get(section, [])
+        
+        has_permission = action in section_perms
+        if not has_permission:
+            logger.warning(f"❌ Permission denied: {user_id} ({role}) → {section}:{action}")
+        return has_permission
+    except Exception as e:
+        logger.error(f"Permission check error: {e}")
+        return False
+
+
 # ─── Valeurs par défaut ────────────────────────────────────────────────────────
 DEFAULT_SETTINGS: Dict[str, Any] = {
     "profile": {
@@ -1130,9 +1210,13 @@ async def get_settings(section: str, request: Request):
     all_sections = USER_SECTIONS | GLOBAL_SECTIONS
     if section not in all_sections:
         raise HTTPException(status_code=404, detail=f"Section '{section}' inconnue")
+    
+    # ✅ Vérifier les permissions
+    if not await _check_permission(user.user_id, section, "read"):
+        raise HTTPException(status_code=403, detail=f"Accès refusé à {section}")
 
     data = await _get_setting(section, user.user_id)
-    return {"section": section, "data": data}
+    return {"section": section, "data": data, "permissions": ROLE_PERMISSIONS.get(user.get("role", "operator"), {}).get(section, [])}
 
 
 @settings_router.put("/{section}")
@@ -1143,6 +1227,10 @@ async def save_settings(section: str, request: Request):
     all_sections = USER_SECTIONS | GLOBAL_SECTIONS
     if section not in all_sections:
         raise HTTPException(status_code=404, detail=f"Section '{section}' inconnue")
+    
+    # ✅ Vérifier les permissions
+    if not await _check_permission(user.user_id, section, "write"):
+        raise HTTPException(status_code=403, detail=f"Modification refusée pour {section}")
 
     body = await request.json()
     data = body if isinstance(body, dict) else {}

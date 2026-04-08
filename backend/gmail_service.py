@@ -99,7 +99,12 @@ async def google_auth_start(request: Request):
         "access_type": "offline",
         "prompt": "consent",
         "state": state,
+        # ⚠️ Remove organization restriction - allow external users
+        # "hd": os.environ.get("GOOGLE_WORKSPACE_DOMAIN", ""),  # Commented out to allow external users
     }
+    # Remove empty hd parameter if not set
+    params = {k: v for k, v in params.items() if v}
+    
     query = "&".join(f"{k}={httpx.URL('', params={k: v}).params[k]}" for k, v in params.items())
     auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?{query}"
 
