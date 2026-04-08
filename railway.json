@@ -1,10 +1,10 @@
 {
-  "deploymentTrigger": "Wed Apr 8 2026 21:05 UTC",
-  "status": "Force redeploy - all fixes ready",
-  "fixes": [
-    "Premium endpoints (accounting_premium_endpoints.py)",
-    "HTTPS production config (.env)",
-    "Service Worker error handling",
-    "MongoDB index creation"
-  ]
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "dockerfile"
+  },
+  "deploy": {
+    "numReplicas": 1,
+    "startCommand": "npm run build --prefix frontend && npm start --prefix frontend"
+  }
 }
