@@ -28,7 +28,7 @@ import JournalEntries from './enterprise/JournalEntries';
 import ChartOfAccounts from './enterprise/ChartOfAccounts';
 import BankReconciliation from './enterprise/BankReconciliation';
 import ExpenseReports from './enterprise/ExpenseReports';
-import PayrollModule from './enterprise/PayrollModule';
+// PayrollModule moved to AccountingERP/payroll-rh/PayrollRHModule
 import TVAModule from './enterprise/TVAModule';
 import ContractsModule from './enterprise/ContractsModule';
 import CreditNotes from './enterprise/CreditNotes';
@@ -674,7 +674,7 @@ export default function AccountingEnterprise() {
             <TabsContent value="lettrage"><LettrageModule /></TabsContent>
             <TabsContent value="tva"><TVAModule /></TabsContent>
             <TabsContent value="expenses"><ExpenseReports /></TabsContent>
-            <TabsContent value="payroll"><PayrollModule /></TabsContent>
+            {/* PayrollModule moved to AccountingERP */}
             <TabsContent value="contracts"><ContractsModule /></TabsContent>
             <TabsContent value="credits"><CreditNotes /></TabsContent>
             <TabsContent value="stock"><StockAdvanced /></TabsContent>
