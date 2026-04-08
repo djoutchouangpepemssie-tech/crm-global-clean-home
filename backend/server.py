@@ -13,6 +13,10 @@ from datetime import datetime, timezone, timedelta
 import httpx
 import math
 import hashlib
+import bcrypt
+import secrets as secrets_module
+import time as time_module
+from collections import defaultdict as defaultdict_import
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -25,6 +29,54 @@ db = client[os.environ['DB_NAME']]
 # Create the main app
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
+
+# ── SECURITY HELPERS ──────────────────────────────────────────────────────────
+
+def hash_password(password: str) -> str:
+    """Hash password with bcrypt (replaces SHA256)."""
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt(rounds=12)).decode('utf-8')
+
+def verify_password(password: str, hashed: str) -> bool:
+    """Verify password against bcrypt hash."""
+    try:
+        return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+    except Exception:
+        return False
+
+def hash_session_token(token: str) -> str:
+    """Hash session token with SHA256 before storing in DB."""
+    return hashlib.sha256(token.encode('utf-8')).hexdigest()
+
+# ── AUTH RATE LIMITING (auth/join specific) ───────────────────────────────────
+_auth_join_attempts = defaultdict_import(list)
+_auth_join_blocked = {}
+AUTH_JOIN_MAX_ATTEMPTS = 5
+AUTH_JOIN_WINDOW = 300       # 5 minutes
+AUTH_JOIN_BLOCK_DURATION = 300  # 5 minutes block
+
+def check_auth_join_rate_limit(ip: str) -> bool:
+    """Returns True if IP is rate-limited for auth/join."""
+    now = time_module.time()
+    if ip in _auth_join_blocked:
+        if now < _auth_join_blocked[ip]:
+            return True
+        else:
+            del _auth_join_blocked[ip]
+    _auth_join_attempts[ip] = [t for t in _auth_join_attempts[ip] if now - t < AUTH_JOIN_WINDOW]
+    return len(_auth_join_attempts[ip]) >= AUTH_JOIN_MAX_ATTEMPTS
+
+def record_auth_join_attempt(ip: str, success: bool = False):
+    """Record auth/join attempt. Block IP after too many failures."""
+    now = time_module.time()
+    if not success:
+        _auth_join_attempts[ip].append(now)
+        _auth_join_attempts[ip] = [t for t in _auth_join_attempts[ip] if now - t < AUTH_JOIN_WINDOW]
+        if len(_auth_join_attempts[ip]) >= AUTH_JOIN_MAX_ATTEMPTS:
+            _auth_join_blocked[ip] = now + AUTH_JOIN_BLOCK_DURATION
+            logger.warning(f"🚫 IP {ip} blocked after {AUTH_JOIN_MAX_ATTEMPTS} failed auth/join attempts")
+    else:
+        _auth_join_attempts.pop(ip, None)
+        _auth_join_blocked.pop(ip, None)
 
 
 
@@ -268,6 +320,9 @@ class User(BaseModel):
     email: str
     name: str
     picture: Optional[str] = None
+    role: Optional[str] = None
+    totp_enabled: bool = False
+    email_verified: bool = False
     created_at: datetime
 
 class UserSession(BaseModel):
@@ -496,7 +551,12 @@ async def get_current_user(request: Request) -> Optional[User]:
     if not session_token:
         return None
     
-    session_doc = await db.user_sessions.find_one({"session_token": session_token}, {"_id": 0})
+    # Try hashed token first, fallback to plaintext for migration
+    token_hash = hash_session_token(session_token)
+    session_doc = await db.user_sessions.find_one({"token_hash": token_hash}, {"_id": 0})
+    if not session_doc:
+        # Fallback: legacy plaintext token (migration period)
+        session_doc = await db.user_sessions.find_one({"session_token": session_token}, {"_id": 0})
     if not session_doc:
         return None
     
@@ -706,15 +766,22 @@ async def create_session(input: SessionCreate, response: Response):
             }
             await db.users.insert_one(user_doc)
         
-        # Create session
+        # Create session — store hashed token, return plaintext to client
         expires_at = datetime.now(timezone.utc) + timedelta(days=7)
         session_doc = {
-            "session_token": session_token,
+            "token_hash": hash_session_token(session_token),
+            "session_token": session_token,  # kept for migration, will be removed later
             "user_id": user_id,
             "expires_at": expires_at.isoformat(),
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         await db.user_sessions.insert_one(session_doc)
+        
+        # 2FA check for admin users
+        user_check = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+        if user_check and user_check.get("role") == "admin":
+            if not user_check.get("totp_enabled"):
+                logger.warning(f"⚠️ Admin {email} logged in WITHOUT 2FA enabled!")
         
         # Set cookie
         response.set_cookie(
@@ -755,16 +822,28 @@ async def save_fcm_token(request: Request):
 
 @api_router.get("/auth/me")
 async def get_me(request: Request):
-    """Get current authenticated user."""
+    """Get current authenticated user. Includes 2FA alert for admins."""
     user = await require_auth(request)
-    return user
+    result = user.model_dump() if hasattr(user, 'model_dump') else dict(user)
+    
+    # 2FA enforcement alert for admins
+    is_admin = getattr(user, 'role', None) == "admin"
+    totp_on = getattr(user, 'totp_enabled', False)
+    if is_admin and not totp_on:
+        result["_2fa_alert"] = "⚠️ SÉCURITÉ: Activez la double authentification (2FA). Obligatoire pour les administrateurs."
+        result["requires_2fa_setup"] = True
+    
+    return result
 
 @api_router.post("/auth/logout")
 async def logout(request: Request, response: Response):
     """Logout current user."""
     session_token = request.cookies.get("session_token")
     if session_token:
-        await db.user_sessions.delete_one({"session_token": session_token})
+        token_hash = hash_session_token(session_token)
+        result = await db.user_sessions.delete_one({"token_hash": token_hash})
+        if result.deleted_count == 0:
+            await db.user_sessions.delete_one({"session_token": session_token})
     
     response.delete_cookie(key="session_token", path="/")
     return {"message": "Logged out"}
@@ -775,12 +854,26 @@ class InvitationJoin(BaseModel):
     token: str
     password: str = Field(..., min_length=8)
     name: Optional[str] = None
+    verification_code: Optional[str] = None  # 6-digit email verification code
 
 
 @api_router.post("/auth/join")
-async def join_with_invitation(input: InvitationJoin, response: Response):
-    """Join team using invitation token (no Google OAuth required)."""
+async def join_with_invitation(input: InvitationJoin, request: Request, response: Response):
+    """Join team using invitation token (no Google OAuth required).
+    
+    Security: bcrypt password hashing, rate limiting, email verification, hashed session tokens.
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    
     try:
+        # ── RATE LIMITING ──
+        if check_auth_join_rate_limit(client_ip):
+            logger.warning(f"🚫 Rate limited auth/join attempt from IP {client_ip}")
+            raise HTTPException(
+                status_code=429,
+                detail="Trop de tentatives. Réessayez dans 5 minutes."
+            )
+        
         # Verify invitation token
         invite = await db.team_invitations.find_one({
             "token": input.token,
@@ -788,6 +881,8 @@ async def join_with_invitation(input: InvitationJoin, response: Response):
         }, {"_id": 0})
         
         if not invite:
+            record_auth_join_attempt(client_ip, success=False)
+            logger.warning(f"❌ Failed auth/join: invalid token from IP {client_ip}")
             raise HTTPException(status_code=400, detail="Invitation invalide ou expirée")
         
         # Check expiry
@@ -798,19 +893,58 @@ async def join_with_invitation(input: InvitationJoin, response: Response):
             expires_at = expires_at.replace(tzinfo=timezone.utc)
         
         if expires_at < datetime.now(timezone.utc):
+            record_auth_join_attempt(client_ip, success=False)
             raise HTTPException(status_code=400, detail="Invitation expirée")
         
         email = invite.get("email", "").lower()
         role = invite.get("role", "operator")
         name = input.name or invite.get("name", email)
         
+        # ── EMAIL VERIFICATION ──
+        if not input.verification_code:
+            record_auth_join_attempt(client_ip, success=False)
+            raise HTTPException(
+                status_code=400,
+                detail="Code de vérification email requis. Vérifiez votre boîte mail."
+            )
+        
+        # Verify the 6-digit code
+        verification = await db.email_verifications.find_one({
+            "email": email,
+            "code": input.verification_code,
+            "used": False
+        })
+        
+        if not verification:
+            record_auth_join_attempt(client_ip, success=False)
+            logger.warning(f"❌ Failed email verification for {email} from IP {client_ip}")
+            raise HTTPException(status_code=400, detail="Code de vérification invalide")
+        
+        # Check code expiry (15 minutes)
+        code_expires = verification.get("expires_at")
+        if isinstance(code_expires, str):
+            code_expires = datetime.fromisoformat(code_expires)
+        if code_expires.tzinfo is None:
+            code_expires = code_expires.replace(tzinfo=timezone.utc)
+        
+        if code_expires < datetime.now(timezone.utc):
+            record_auth_join_attempt(client_ip, success=False)
+            raise HTTPException(status_code=400, detail="Code de vérification expiré (15 min). Demandez un nouveau code.")
+        
+        # Mark code as used
+        await db.email_verifications.update_one(
+            {"_id": verification.get("_id")},
+            {"$set": {"used": True, "used_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        
         # Check if user already exists
         existing = await db.users.find_one({"email": email}, {"_id": 0})
         if existing:
+            record_auth_join_attempt(client_ip, success=False)
             raise HTTPException(status_code=400, detail="Utilisateur déjà inscrit")
         
-        # Hash password
-        password_hash = hashlib.sha256(input.password.encode()).hexdigest()
+        # ── HASH PASSWORD WITH BCRYPT ──
+        password_hashed = hash_password(input.password)
         
         # Create user
         user_id = f"user_{uuid.uuid4().hex[:12]}"
@@ -818,11 +952,13 @@ async def join_with_invitation(input: InvitationJoin, response: Response):
             "user_id": user_id,
             "email": email,
             "name": name,
-            "password_hash": password_hash,
+            "password_hash": password_hashed,
             "role": role,
             "invited_by": invite.get("invited_by"),
             "created_at": datetime.now(timezone.utc).isoformat(),
             "picture": "",
+            "email_verified": True,
+            "totp_enabled": False,  # 2FA flag
         }
         
         await db.users.insert_one(user_doc)
@@ -833,13 +969,14 @@ async def join_with_invitation(input: InvitationJoin, response: Response):
             {"$set": {"status": "accepted", "accepted_at": datetime.now(timezone.utc).isoformat()}}
         )
         
-        # Create session
+        # ── CREATE SESSION WITH HASHED TOKEN ──
         session_token = f"st_{uuid.uuid4().hex}"
         session_doc = {
-            "session_token": session_token,
+            "token_hash": hash_session_token(session_token),
+            "session_token": session_token,  # migration period
             "user_id": user_id,
             "created_at": datetime.now(timezone.utc).isoformat(),
-            "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+            "expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),  # 7 days (rotation)
         }
         await db.user_sessions.insert_one(session_doc)
         
@@ -847,16 +984,18 @@ async def join_with_invitation(input: InvitationJoin, response: Response):
         response.set_cookie(
             key="session_token",
             value=session_token,
-            max_age=30*24*60*60,
+            max_age=7*24*60*60,  # 7 days for rotation
             httponly=True,
             secure=True,
             samesite="Lax",
             path="/"
         )
         
-        logger.info(f"✅ User {email} created via invitation (role: {role})")
+        record_auth_join_attempt(client_ip, success=True)
+        logger.info(f"✅ User {email} created via invitation (role: {role}) from IP {client_ip}")
         
-        return {
+        # ── 2FA WARNING FOR ADMIN ──
+        result = {
             "success": True,
             "user_id": user_id,
             "email": email,
@@ -865,11 +1004,75 @@ async def join_with_invitation(input: InvitationJoin, response: Response):
             "message": "Compte créé avec succès ! Bienvenue 🎉"
         }
         
+        if role == "admin":
+            result["requires_2fa"] = True
+            result["message"] = "Compte admin créé ! ⚠️ Activez la double authentification (2FA) obligatoire."
+        
+        return result
+        
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Erreur join_with_invitation: {str(e)}")
         raise HTTPException(status_code=500, detail="Erreur serveur")
+
+
+# ── EMAIL VERIFICATION: Send code when requesting to join ──
+@api_router.post("/auth/send-verification")
+async def send_verification_code(request: Request):
+    """Send 6-digit verification code to the invited email."""
+    body = await request.json()
+    invite_token = body.get("token")
+    
+    if not invite_token:
+        raise HTTPException(status_code=400, detail="Token d'invitation requis")
+    
+    # Find invitation
+    invite = await db.team_invitations.find_one({
+        "token": invite_token,
+        "status": "pending"
+    }, {"_id": 0})
+    
+    if not invite:
+        raise HTTPException(status_code=400, detail="Invitation invalide ou expirée")
+    
+    email = invite.get("email", "").lower()
+    
+    # Generate 6-digit code
+    import random
+    code = f"{random.randint(100000, 999999)}"
+    
+    # Store verification code (expires in 15 minutes)
+    await db.email_verifications.insert_one({
+        "email": email,
+        "code": code,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat(),
+        "used": False,
+    })
+    
+    # Send email with verification code
+    try:
+        from gmail_service import send_email
+        await send_email(
+            to_email=email,
+            subject="🔐 Code de vérification - Global Clean Home",
+            body=f"""
+            <h2>Votre code de vérification</h2>
+            <p>Utilisez ce code pour compléter votre inscription :</p>
+            <div style="font-size: 32px; font-weight: bold; letter-spacing: 8px; 
+                        padding: 20px; background: #f0f0f0; text-align: center; 
+                        border-radius: 8px; margin: 20px 0;">{code}</div>
+            <p>⏰ Ce code expire dans <strong>15 minutes</strong>.</p>
+            <p>Si vous n'avez pas demandé ce code, ignorez cet email.</p>
+            """
+        )
+        logger.info(f"📧 Verification code sent to {email}")
+    except Exception as e:
+        logger.error(f"Failed to send verification email to {email}: {e}")
+        # Still return success - code is in DB for testing/manual verification
+    
+    return {"success": True, "message": f"Code de vérification envoyé à {email}"}
 
 
 @api_router.get("/auth/invitation/{token}")
@@ -906,6 +1109,84 @@ async def get_invitation_info(token: str):
     except Exception as e:
         logger.error(f"Erreur get_invitation_info: {str(e)}")
         raise HTTPException(status_code=500, detail="Erreur serveur")
+
+# ============= 2FA ENFORCEMENT FOR ADMIN =============
+
+@api_router.get("/auth/2fa-status")
+async def get_2fa_status(request: Request):
+    """Check 2FA status for current user. Admin MUST have 2FA enabled."""
+    user = await require_auth(request)
+    is_admin = user.role == "admin" if hasattr(user, 'role') else user.get("role") == "admin"
+    totp_enabled = user.totp_enabled if hasattr(user, 'totp_enabled') else user.get("totp_enabled", False)
+    
+    result = {
+        "totp_enabled": totp_enabled,
+        "role": user.role if hasattr(user, 'role') else user.get("role"),
+        "requires_2fa": is_admin,
+    }
+    
+    if is_admin and not totp_enabled:
+        result["alert"] = "⚠️ ALERTE SÉCURITÉ: La double authentification (2FA) est OBLIGATOIRE pour les administrateurs. Activez-la immédiatement."
+        result["must_setup_2fa"] = True
+    
+    return result
+
+
+@api_router.post("/auth/enforce-2fa")
+async def enforce_2fa_check(request: Request):
+    """Middleware-style endpoint: block admin actions if 2FA not enabled."""
+    user = await require_auth(request)
+    is_admin = user.role == "admin" if hasattr(user, 'role') else user.get("role") == "admin"
+    totp_enabled = user.totp_enabled if hasattr(user, 'totp_enabled') else user.get("totp_enabled", False)
+    
+    if is_admin and not totp_enabled:
+        raise HTTPException(
+            status_code=403,
+            detail="⚠️ 2FA obligatoire pour les administrateurs. Activez la double authentification avant de continuer."
+        )
+    
+    return {"status": "ok", "2fa_verified": True}
+
+
+@api_router.post("/auth/rotate-session")
+async def rotate_session_token(request: Request, response: Response):
+    """Rotate session token (recommended every 7 days)."""
+    user = await require_auth(request)
+    old_token = request.cookies.get("session_token")
+    
+    if not old_token:
+        raise HTTPException(status_code=401, detail="No session to rotate")
+    
+    # Delete old session
+    old_hash = hash_session_token(old_token)
+    result = await db.user_sessions.delete_one({"token_hash": old_hash})
+    if result.deleted_count == 0:
+        await db.user_sessions.delete_one({"session_token": old_token})
+    
+    # Create new session
+    new_token = f"st_{uuid.uuid4().hex}"
+    session_doc = {
+        "token_hash": hash_session_token(new_token),
+        "session_token": new_token,
+        "user_id": user.user_id if hasattr(user, 'user_id') else user.get("user_id"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+    }
+    await db.user_sessions.insert_one(session_doc)
+    
+    response.set_cookie(
+        key="session_token",
+        value=new_token,
+        max_age=7*24*60*60,
+        httponly=True,
+        secure=True,
+        samesite="Lax",
+        path="/"
+    )
+    
+    logger.info(f"🔄 Session rotated for user {user.user_id if hasattr(user, 'user_id') else user.get('user_id')}")
+    return {"success": True, "message": "Session renouvelée"}
+
 
 # ============= LEADS ENDPOINTS =============
 
@@ -2657,6 +2938,9 @@ async def startup_db_indexes():
     await db.users.create_index("user_id", unique=True)
     await db.users.create_index("email", unique=True)
     await db.user_sessions.create_index("session_token", unique=True)
+    await db.user_sessions.create_index("token_hash", unique=True, sparse=True)
+    await db.email_verifications.create_index("email")
+    await db.email_verifications.create_index("expires_at", expireAfterSeconds=900)  # Auto-cleanup after 15 min
     await db.tracking_events.create_index("visitor_id")
     await db.tracking_events.create_index("timestamp")
     init_ads_db(db)

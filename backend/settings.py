@@ -438,20 +438,32 @@ async def change_password(data: PasswordChange, request: Request):
     if len(data.newPassword) < 8:
         raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 8 caractères")
 
-    # Hasher le nouveau mot de passe
-    hashed = hashlib.sha256(data.newPassword.encode()).hexdigest()
-    current_hashed = hashlib.sha256(data.currentPassword.encode()).hexdigest()
-
+    # ── BCRYPT password hashing (replaces SHA256) ──
+    import bcrypt as _bcrypt
+    
     # Vérifier le mot de passe actuel si enregistré
     if _db is not None:
         user_doc = await _db.users.find_one({"user_id": user.user_id})
         if user_doc and user_doc.get("password_hash"):
-            if user_doc["password_hash"] != current_hashed:
-                raise HTTPException(status_code=400, detail="Mot de passe actuel incorrect")
+            stored_hash = user_doc["password_hash"]
+            # Support both bcrypt and legacy SHA256 hashes
+            if stored_hash.startswith("$2"):
+                # bcrypt hash
+                if not _bcrypt.checkpw(data.currentPassword.encode('utf-8'), stored_hash.encode('utf-8')):
+                    raise HTTPException(status_code=400, detail="Mot de passe actuel incorrect")
+            else:
+                # Legacy SHA256 hash (migration)
+                current_sha = hashlib.sha256(data.currentPassword.encode()).hexdigest()
+                if stored_hash != current_sha:
+                    raise HTTPException(status_code=400, detail="Mot de passe actuel incorrect")
+        
+        # Hash new password with bcrypt
+        new_hashed = _bcrypt.hashpw(data.newPassword.encode('utf-8'), _bcrypt.gensalt(rounds=12)).decode('utf-8')
+        
         # Mettre à jour le mot de passe
         await _db.users.update_one(
             {"user_id": user.user_id},
-            {"$set": {"password_hash": hashed, "password_updated_at": datetime.now(timezone.utc).isoformat()}}
+            {"$set": {"password_hash": new_hashed, "password_updated_at": datetime.now(timezone.utc).isoformat()}}
         )
 
     await _log(user.user_id, "change_password", "user", user.user_id)
@@ -494,7 +506,18 @@ async def invite_team_member(data: TeamInvite, request: Request):
         }
         await _db.team_invitations.insert_one(invite)
         
-        # Envoyer l'email d'invitation via Gmail
+        # ── Generate 6-digit email verification code ──
+        import random
+        verification_code = f"{random.randint(100000, 999999)}"
+        await _db.email_verifications.insert_one({
+            "email": data.email.lower(),
+            "code": verification_code,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat(),
+            "used": False,
+        })
+        
+        # Envoyer l'email d'invitation via Gmail (avec code de vérification)
         try:
             from gmail_service import send_invitation_email
             invite_link = f"https://crm.globalcleanhome.com/auth/join?token={invite_token}"
@@ -506,6 +529,25 @@ async def invite_team_member(data: TeamInvite, request: Request):
                 company_name="Global Clean Home",
                 invite_link=invite_link
             )
+            
+            # Also send verification code in a separate email
+            try:
+                from gmail_service import send_email
+                await send_email(
+                    to_email=data.email.lower(),
+                    subject="🔐 Code de vérification - Global Clean Home",
+                    body=f"""
+                    <h2>Votre code de vérification</h2>
+                    <p>Utilisez ce code pour compléter votre inscription :</p>
+                    <div style="font-size: 32px; font-weight: bold; letter-spacing: 8px; 
+                                padding: 20px; background: #f0f0f0; text-align: center; 
+                                border-radius: 8px; margin: 20px 0;">{verification_code}</div>
+                    <p>⏰ Ce code expire dans <strong>15 minutes</strong>.</p>
+                    <p>Si vous n'avez pas demandé ce code, ignorez cet email.</p>
+                    """
+                )
+            except Exception as ve:
+                logger.warning(f"Verification email send failed: {ve}")
             
             if email_sent:
                 logger.info(f"✅ Email d'invitation envoyé à {data.email}")
