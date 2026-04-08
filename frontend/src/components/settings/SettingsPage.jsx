@@ -254,27 +254,55 @@ const PurgePanel = ({ apiUrl }) => {
   const totalSelected = [...selected].reduce((sum, key) => sum + (categories[key]?.count || 0), 0);
 
   const handlePurge = async () => {
-    if (selected.size === 0) { toast.error('Sélectionnez au moins une catégorie'); return; }
-    const userConfirm = window.prompt(`Vous allez supprimer ${totalSelected} éléments. Tapez SUPPRIMER pour confirmer :`);
-    if (userConfirm !== 'SUPPRIMER') { toast.error('Suppression annulée.'); return; }
+    if (selected.size === 0) { 
+      toast.error('Sélectionnez au moins une catégorie'); 
+      return; 
+    }
+    
+    const userConfirm = window.prompt(
+      `ATTENTION !\n\nVous allez supprimer définitivement ${totalSelected} élément${totalSelected !== 1 ? 's' : ''}.\n\nCette action est IRRÉVERSIBLE.\n\nTapez "SUPPRIMER" pour confirmer :`
+    );
+    
+    if (userConfirm !== 'SUPPRIMER') { 
+      toast.error('Suppression annulée.'); 
+      return; 
+    }
+    
     setPurging(true);
     try {
       const isAll = selected.size === Object.keys(categories).length;
-      const res = await axios.post(`${apiUrl}/data/purge`, {
+      const payload = {
         confirm: 'SUPPRIMER',
-        collections: isAll ? null : [...selected],
+        collections: isAll ? null : Array.from(selected),
+      };
+      
+      console.log('Payload envoyé:', payload);
+      
+      const res = await axios.post(`${apiUrl}/data/purge`, payload, {
+        headers: { 'Content-Type': 'application/json' }
       });
-      toast.success(`✅ ${res.data.total_deleted} éléments supprimés !`);
+      
+      const deleted = res.data?.total_deleted || res.data?.deleted || 0;
+      toast.success(`✅ ${deleted} élément${deleted !== 1 ? 's' : ''} supprimé${deleted !== 1 ? 's' : ''} !`);
+      
       // Mettre à jour les compteurs
       setCategories(prev => {
         const updated = { ...prev };
-        for (const key of selected) { if (updated[key]) updated[key] = { ...updated[key], count: 0 }; }
+        for (const key of selected) { 
+          if (updated[key]) {
+            updated[key] = { ...updated[key], count: 0 }; 
+          }
+        }
         return updated;
       });
       setSelected(new Set());
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Erreur lors de la suppression');
-    } finally { setPurging(false); }
+      console.error('Erreur purge:', err);
+      const msg = err.response?.data?.detail || err.response?.data?.message || err.message || 'Erreur lors de la suppression';
+      toast.error(msg);
+    } finally { 
+      setPurging(false); 
+    }
   };
 
   if (loadingInfo) return <div className="flex justify-center py-6"><RefreshCw className="w-5 h-5 text-slate-500 animate-spin" /></div>;
@@ -744,16 +772,42 @@ const SettingsPage = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const data = sectionToGetter[activeTab];
-      // Exclure les champs password du profile avant de sauvegarder
-      const cleanData = { ...data };
-      delete cleanData.inviteEmail;
-      delete cleanData.inviteRole;
+      const rawData = sectionToGetter[activeTab];
+      if (!rawData) {
+        toast.error('Pas de données à sauvegarder');
+        setSaving(false);
+        return;
+      }
 
-      await axios.put(`${API_URL}/settings/${activeTab}`, cleanData);
+      // Clone et nettoie les données selon la section
+      const cleanData = { ...rawData };
+
+      // Exclure les champs temporaires/formulaires
+      const fieldsToExclude = {
+        team: ['inviteEmail', 'inviteRole', 'members', 'roles', 'maxMembers'],
+        billing: ['usage'],
+        email: ['testingSmtp'],
+        api: ['apiKeys', 'newKeyName', 'creatingKey', 'showNewKey'],
+        data: ['backingUp', 'exporting'],
+        integrations: ['connectingService'],
+      };
+
+      const excludeList = fieldsToExclude[activeTab] || [];
+      excludeList.forEach(field => delete cleanData[field]);
+
+      // Validation basique
+      if (Object.keys(cleanData).length === 0) {
+        toast.error('Aucune donnée valide à sauvegarder');
+        setSaving(false);
+        return;
+      }
+
+      // Envoyer au backend
+      const response = await axios.put(`${API_URL}/settings/${activeTab}`, cleanData);
       toast.success('Paramètres enregistrés avec succès !');
     } catch (err) {
-      const msg = err.response?.data?.detail || 'Erreur lors de la sauvegarde';
+      console.error('Erreur sauvegarde:', err);
+      const msg = err.response?.data?.detail || err.message || 'Erreur lors de la sauvegarde';
       toast.error(msg);
     } finally {
       setSaving(false);
