@@ -75,6 +75,17 @@ const navGroups = [
     ]
   },
   {
+    label: '💸 Paie & RH',
+    color: '#10b981',
+    defaultOpen: false,
+    items: [
+      { to: '/payroll',      icon: Receipt,     label: 'Fiches de Paie' },
+      { to: '/expenses',     icon: DollarSign,  label: 'Notes de Frais' },
+      { to: '/contracts-rh', icon: FileText,    label: 'Contrats' },
+      { to: '/employees',    icon: Users,       label: 'Intervenants RH' },
+    ]
+  },
+  {
     label: '⚙️ Outils',
     color: '#60a5fa',
     defaultOpen: false,

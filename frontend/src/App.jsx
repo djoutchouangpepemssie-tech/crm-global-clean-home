@@ -111,6 +111,7 @@ const InvoiceFormPremium = lazy(() => import('./components/invoices/InvoiceFormP
 const StockTable = lazy(() => import('./components/stock/StockTable'));
 const AccountingDashboard = lazy(() => import('./components/accounting/AccountingDashboard'));
 const AccountingEnterprise = lazy(() => import('./components/accounting/AccountingEnterprise'));
+const PayrollModule = lazy(() => import('./components/payroll/PayrollModule'));
 const GlobalSearchFull = lazy(() =>
   import('./components/shared/GlobalSearch').then(m => ({ default: m.GlobalSearch || m.default }))
 );
@@ -428,6 +429,7 @@ function AppRouter() {
                     <Route path="/finance" element={<FinancialDashboard />} />
                     <Route path="/accounting" element={<AccountingDashboard />} />
                     <Route path="/accounting-enterprise" element={<AccountingEnterprise />} />
+                    <Route path="/payroll" element={<PayrollModule />} />
                     <Route path="/stock" element={<StockTable />} />
                     <Route path="/planning" element={<PlanningCalendar />} />
                     <Route path="/intervenants" element={<IntervenantsManager />} />

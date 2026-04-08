@@ -2886,6 +2886,9 @@ app.include_router(accounting_router)
 from accounting_enterprise import enterprise_router, create_enterprise_indexes
 app.include_router(enterprise_router)
 
+from payroll import payroll_router
+app.include_router(payroll_router)
+
 # ── PURGE ALL TEST DATA ──
 class PurgeRequest(BaseModel):
     confirm: str = Field(..., description="Must be 'SUPPRIMER' to confirm")
@@ -2937,6 +2940,13 @@ async def startup_db_indexes():
     await db.intervenant_sessions.create_index("expires_at", expireAfterSeconds=0)
     await db.intervenant_codes.create_index("expires_at", expireAfterSeconds=0)
     
+    # Payroll
+    await db.payslips.create_index("payslip_id", unique=True)
+    await db.payslips.create_index("employee_name")
+    await db.payslips.create_index([("period_year", -1), ("period_month", -1)])
+    await db.payslips.create_index("status")
+    await db.payslips.create_index("created_at")
+
     logger.info("MongoDB indexes created successfully")
     await db.leads.create_index("created_at")
     await db.leads.create_index("source")
