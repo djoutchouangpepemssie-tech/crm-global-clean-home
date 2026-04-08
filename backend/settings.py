@@ -530,24 +530,10 @@ async def invite_team_member(data: TeamInvite, request: Request):
                 invite_link=invite_link
             )
             
-            # Also send verification code in a separate email
-            try:
-                from gmail_service import send_email
-                await send_email(
-                    to_email=data.email.lower(),
-                    subject="🔐 Code de vérification - Global Clean Home",
-                    body=f"""
-                    <h2>Votre code de vérification</h2>
-                    <p>Utilisez ce code pour compléter votre inscription :</p>
-                    <div style="font-size: 32px; font-weight: bold; letter-spacing: 8px; 
-                                padding: 20px; background: #f0f0f0; text-align: center; 
-                                border-radius: 8px; margin: 20px 0;">{verification_code}</div>
-                    <p>⏰ Ce code expire dans <strong>15 minutes</strong>.</p>
-                    <p>Si vous n'avez pas demandé ce code, ignorez cet email.</p>
-                    """
-                )
-            except Exception as ve:
-                logger.warning(f"Verification email send failed: {ve}")
+            # Verification code is sent via /auth/send-verification endpoint, not here
+            # The endpoint is called when user accesses /auth/join and needs the code
+            # So we don't send it here - it's sent on-demand
+            # logger.info(f"Verification code will be sent when user accesses invitation link")
             
             if email_sent:
                 logger.info(f"✅ Email d'invitation envoyé à {data.email}")
