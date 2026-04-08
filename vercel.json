@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd frontend && npm install --legacy-peer-deps --force && npm run build",
+  "buildCommand": "rm -rf frontend/node_modules frontend/.next 2>/dev/null; cd frontend && npm cache clean --force && npm install --legacy-peer-deps && npm run build",
   "outputDirectory": "frontend/build",
   "env": {
     "REACT_APP_API_URL": "https://crm-global-clean-home-production.up.railway.app"
@@ -22,5 +22,6 @@
       "dest": "/index.html"
     }
   ],
-  "ignoreCommand": "git log --oneline -1 --pretty=%B | grep -q '^skip-vercel'; [ $? -eq 0 ]"
+  "ignoreCommand": "git log --oneline -1 --pretty=%B | grep -q '^skip-vercel'; [ $? -eq 0 ]",
+  "cleanUrls": true
 }
