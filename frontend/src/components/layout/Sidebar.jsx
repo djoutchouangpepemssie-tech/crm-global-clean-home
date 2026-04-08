@@ -6,7 +6,7 @@ import {
   Sparkles, ChevronLeft, ChevronRight, Bell, Search, MessageSquare,
   Ticket, UserCheck, Globe, Star, BarChart2, Home, ChevronDown,
   RefreshCw, MapPin, CalendarCheck, Heart, FolderOpen, Settings,
-  AlertCircle, Clock
+  AlertCircle, Clock, Package, DollarSign, Receipt
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import axios from 'axios';
@@ -34,7 +34,9 @@ const navGroups = [
     defaultOpen: false,
     items: [
       { to: '/quotes',       icon: FileText,     label: 'Devis',         badge: 'devis' },
+      { to: '/quotes/premium',   icon: Receipt,     label: 'Devis Premium' },
       { to: '/invoices',     icon: CreditCard,   label: 'Factures',      badge: 'factures' },
+      { to: '/invoices/premium', icon: CreditCard,   label: 'Factures Premium' },
       { to: '/finance',      icon: BarChart3,    label: 'Finance' },
       { to: '/bookings',     icon: CalendarCheck,label: 'Réservations' },
     ]
@@ -61,6 +63,15 @@ const navGroups = [
       { to: '/rentabilite', icon: BarChart2,  label: 'Rentabilité' },
       { to: '/ads',         icon: Globe,      label: 'Publicités' },
       { to: '/seo',         icon: Search,     label: 'SEO' },
+    ]
+  },
+  {
+    label: '💰 Comptabilité & Stocks',
+    color: '#8b5cf6',
+    defaultOpen: false,
+    items: [
+      { to: '/accounting',   icon: DollarSign,  label: 'Comptabilité' },
+      { to: '/stock',        icon: Package,     label: 'Gestion Stock' },
     ]
   },
   {
