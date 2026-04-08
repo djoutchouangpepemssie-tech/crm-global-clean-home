@@ -2889,6 +2889,9 @@ app.include_router(enterprise_router)
 from payroll import payroll_router
 app.include_router(payroll_router)
 
+from accounting_erp import erp_router, init_erp_indexes
+app.include_router(erp_router)
+
 # ── PURGE ALL TEST DATA ──
 class PurgeRequest(BaseModel):
     confirm: str = Field(..., description="Must be 'SUPPRIMER' to confirm")
@@ -2999,6 +3002,7 @@ async def startup_db_indexes():
     init_notifications_db(db)
     init_chat_db(db)
     init_intervenant_db(db)
+    await init_erp_indexes()
     init_settings_db(db)
     try:
         from portal import init_portal_db

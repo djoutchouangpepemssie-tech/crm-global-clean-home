@@ -111,6 +111,7 @@ const InvoiceFormPremium = lazy(() => import('./components/invoices/InvoiceFormP
 const StockTable = lazy(() => import('./components/stock/StockTable'));
 const AccountingDashboard = lazy(() => import('./components/accounting/AccountingDashboard'));
 const AccountingEnterprise = lazy(() => import('./components/accounting/AccountingEnterprise'));
+const AccountingERP = lazy(() => import('./components/accounting/AccountingERP'));
 const PayrollModule = lazy(() => import('./components/payroll/PayrollModule'));
 const GlobalSearchFull = lazy(() =>
   import('./components/shared/GlobalSearch').then(m => ({ default: m.GlobalSearch || m.default }))
@@ -134,6 +135,7 @@ const menuCategories = [
       { to: '/quotes',   icon: FileText,     label: 'Devis' },
       { to: '/invoices', icon: CreditCard,   label: 'Factures' },
       { to: '/finance',  icon: BarChart3,    label: 'Finance' },
+      { to: '/accounting-erp', icon: BookOpen,  label: '💎 Comptabilité ERP' },
       { to: '/accounting', icon: BarChart3,  label: 'Comptabilité' },
       { to: '/accounting-enterprise', icon: BookOpen, label: 'Compta Enterprise' },
       { to: '/stock',    icon: Briefcase,    label: 'Stocks' },
@@ -427,6 +429,7 @@ function AppRouter() {
                     <Route path="/invoices/:invoiceId/success" element={<PaymentSuccess />} />
                     <Route path="/invoices/premium" element={<InvoiceFormPremium />} />
                     <Route path="/finance" element={<FinancialDashboard />} />
+                    <Route path="/accounting-erp" element={<AccountingERP />} />
                     <Route path="/accounting" element={<AccountingDashboard />} />
                     <Route path="/accounting-enterprise" element={<AccountingEnterprise />} />
                     <Route path="/payroll" element={<PayrollModule />} />
