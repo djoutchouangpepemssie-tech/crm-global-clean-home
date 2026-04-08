@@ -432,7 +432,7 @@ function AppRouter() {
                     <Route path="/accounting-erp" element={<AccountingERP />} />
                     <Route path="/accounting" element={<AccountingDashboard />} />
                     <Route path="/accounting-enterprise" element={<AccountingEnterprise />} />
-                    <Route path="/payroll" element={<PayrollModule />} />
+                    {/* PayrollModule moved to AccountingERP/payroll-rh */}
                     <Route path="/stock" element={<StockTable />} />
                     <Route path="/planning" element={<PlanningCalendar />} />
                     <Route path="/intervenants" element={<IntervenantsManager />} />
