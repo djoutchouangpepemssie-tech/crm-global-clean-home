@@ -1533,3 +1533,111 @@ async def send_invitation_email(to_email: str, member_name: str, role: str, comp
         logger.error(f"❌ Erreur envoi email invitation à {to_email}: {str(e)}")
         return False
 
+
+async def send_verification_email(to_email: str, verification_code: str):
+    """Envoie un email avec code de vérification (6 chiffres)."""
+    
+    subject = "🔐 Code de vérification - Global Clean Home"
+    
+    html_body = f"""
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {{ font-family: 'Segoe UI', Arial, sans-serif; background: #f4f7fb; margin: 0; padding: 0; }}
+    .container {{ max-width: 500px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }}
+    .header {{ background: linear-gradient(135deg, #2563eb, #7c3aed); padding: 40px 30px; text-align: center; }}
+    .header h1 {{ color: #ffffff; font-size: 24px; margin: 0; font-weight: 700; }}
+    .body {{ padding: 36px 32px; }}
+    .message {{ font-size: 15px; color: #475569; line-height: 1.7; margin-bottom: 24px; }}
+    .code-box {{ 
+      background: linear-gradient(135deg, #eff6ff, #f5f3ff); 
+      border: 2px solid #2563eb;
+      border-radius: 12px; 
+      padding: 24px 20px; 
+      margin: 24px 0; 
+      text-align: center;
+    }}
+    .code {{ 
+      font-size: 36px; 
+      font-weight: 700; 
+      color: #1e40af;
+      letter-spacing: 6px;
+      font-family: 'Courier New', monospace;
+    }}
+    .expiry {{ 
+      font-size: 13px; 
+      color: #64748b; 
+      margin-top: 16px;
+      text-align: center;
+    }}
+    .footer {{ background: #f1f5f9; border-top: 1px solid #e2e8f0; padding: 24px 32px; text-align: center; }}
+    .footer p {{ margin: 4px 0; font-size: 13px; color: #64748b; }}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔐 Code de Vérification</h1>
+    </div>
+    
+    <div class="body">
+      <p class="message">
+        Bienvenue ! Utilisez ce code pour compléter votre inscription au CRM Global Clean Home.
+      </p>
+      
+      <div class="code-box">
+        <div class="code">{verification_code}</div>
+        <div class="expiry">⏰ Ce code expire dans <strong>15 minutes</strong></div>
+      </div>
+      
+      <p class="message">
+        Si vous n'avez pas demandé ce code ou si vous n'avez pas demandé à rejoindre Global Clean Home, 
+        veuillez ignorer cet email.
+      </p>
+    </div>
+    
+    <div class="footer">
+      <p><strong>Global Clean Home</strong></p>
+      <p>Nettoyage professionnel à Paris & Île-de-France</p>
+    </div>
+  </div>
+</body>
+</html>
+"""
+
+    # Envoyer via Gmail API
+    try:
+        token, user_id = await _get_any_active_token()
+        if not token:
+            logger.warning(f"Gmail non connecté - code de vérification non envoyé à {to_email}")
+            return False
+            
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = f"{GMAIL_FROM_NAME} <{GMAIL_FROM_ADDRESS}>"
+        msg['To'] = to_email
+        msg.attach(MIMEText(html_body, 'html', 'utf-8'))
+        
+        raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                json={"raw": raw},
+                timeout=10.0
+            )
+            
+            if response.status_code == 200:
+                logger.info(f"✅ Email de vérification envoyé à {to_email}")
+                return True
+            else:
+                logger.error(f"Erreur Gmail: {response.status_code} - {response.text}")
+                return False
+                
+    except Exception as e:
+        logger.error(f"❌ Erreur envoi email vérification à {to_email}: {str(e)}")
+        return False
+

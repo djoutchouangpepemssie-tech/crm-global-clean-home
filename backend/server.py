@@ -1051,25 +1051,16 @@ async def send_verification_code(request: Request):
         "used": False,
     })
     
-    # Send email with verification code
+    # Send email with verification code via Gmail
     try:
-        from gmail_service import send_email
-        await send_email(
-            to_email=email,
-            subject="🔐 Code de vérification - Global Clean Home",
-            body=f"""
-            <h2>Votre code de vérification</h2>
-            <p>Utilisez ce code pour compléter votre inscription :</p>
-            <div style="font-size: 32px; font-weight: bold; letter-spacing: 8px; 
-                        padding: 20px; background: #f0f0f0; text-align: center; 
-                        border-radius: 8px; margin: 20px 0;">{code}</div>
-            <p>⏰ Ce code expire dans <strong>15 minutes</strong>.</p>
-            <p>Si vous n'avez pas demandé ce code, ignorez cet email.</p>
-            """
-        )
-        logger.info(f"📧 Verification code sent to {email}")
+        from gmail_service import send_verification_email
+        email_sent = await send_verification_email(email, code)
+        if email_sent:
+            logger.info(f"✅ Verification code sent to {email}")
+        else:
+            logger.warning(f"⚠️ Verification code NOT sent to {email} (Gmail may not be connected)")
     except Exception as e:
-        logger.error(f"Failed to send verification email to {email}: {e}")
+        logger.error(f"❌ Failed to send verification email to {email}: {e}")
         # Still return success - code is in DB for testing/manual verification
     
     return {"success": True, "message": f"Code de vérification envoyé à {email}"}
