@@ -1,5 +1,5 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -59,6 +59,12 @@ async def global_exception_handler(request: Request, exc: Exception):
 # ── SECURITY HEADERS ──
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
+    # Force HTTPS in production (handle Railway X-Forwarded-Proto header)
+    if os.environ.get("ENVIRONMENT") == "production":
+        proto = request.headers.get("X-Forwarded-Proto", "http")
+        if proto == "http" and "localhost" not in request.url.hostname:
+            return RedirectResponse(url=request.url.replace(scheme="https"), status_code=301)
+    
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
@@ -2287,51 +2293,58 @@ async def get_purge_info(request: Request):
 @api_router.post("/data/purge")
 async def purge_data(body: PurgeRequest, request: Request):
     """Purge selected or all business data. Keeps users & settings."""
-    user = await get_current_user(request)
-    if not user:
-        raise HTTPException(status_code=401, detail="Non autorisé")
+    try:
+        user = await get_current_user(request)
+        if not user:
+            raise HTTPException(status_code=401, detail="Non autorisé")
 
-    if body.confirm != "SUPPRIMER":
-        raise HTTPException(status_code=400, detail="Confirmation invalide.")
+        if body.confirm != "SUPPRIMER":
+            raise HTTPException(status_code=400, detail="Confirmation invalide.")
 
-    # Déterminer les collections à purger
-    if body.collections and len(body.collections) > 0:
-        # Purge sélective
-        colls_to_purge = set()
-        for cat_key in body.collections:
-            if cat_key in PURGE_CATEGORIES:
-                for c in PURGE_CATEGORIES[cat_key]["collections"]:
+        # Déterminer les collections à purger
+        if body.collections and len(body.collections) > 0:
+            # Purge sélective
+            colls_to_purge = set()
+            for cat_key in body.collections:
+                if cat_key in PURGE_CATEGORIES:
+                    for c in PURGE_CATEGORIES[cat_key]["collections"]:
+                        colls_to_purge.add(c)
+                else:
+                    raise HTTPException(status_code=400, detail=f"Catégorie inconnue: {cat_key}")
+        else:
+            # Purge totale
+            colls_to_purge = set()
+            for info in PURGE_CATEGORIES.values():
+                for c in info["collections"]:
                     colls_to_purge.add(c)
-            else:
-                raise HTTPException(status_code=400, detail=f"Catégorie inconnue: {cat_key}")
-    else:
-        # Purge totale
-        colls_to_purge = set()
-        for info in PURGE_CATEGORIES.values():
-            for c in info["collections"]:
-                colls_to_purge.add(c)
 
-    results = {}
-    total_deleted = 0
-    for coll_name in colls_to_purge:
-        try:
-            coll = db[coll_name]
-            count = await coll.count_documents({})
-            if count > 0:
-                await coll.delete_many({})
-                results[coll_name] = count
-                total_deleted += count
-        except Exception as e:
-            results[coll_name] = f"erreur: {str(e)}"
+        results = {}
+        total_deleted = 0
+        for coll_name in colls_to_purge:
+            try:
+                coll = db[coll_name]
+                count = await coll.count_documents({})
+                if count > 0:
+                    await coll.delete_many({})
+                    results[coll_name] = count
+                    total_deleted += count
+            except Exception as e:
+                logger.error(f"Erreur purge collection {coll_name}: {str(e)}")
+                results[coll_name] = f"erreur: {str(e)}"
 
-    logger.warning(f"PURGE: User {user.get('email')} purged {total_deleted} docs from collections: {list(colls_to_purge)}")
+        logger.warning(f"PURGE: User {user.get('email')} purged {total_deleted} docs from collections: {list(colls_to_purge)}")
 
-    return {
-        "status": "purged",
-        "total_deleted": total_deleted,
-        "details": results,
-        "message": f"{total_deleted} éléments supprimés."
-    }
+        return {
+            "status": "purged",
+            "total_deleted": total_deleted,
+            "details": results,
+            "message": f"{total_deleted} éléments supprimés."
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erreur purge_data: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erreur serveur: {str(e)}")
 
 @api_router.post("/data/purge-all")
 async def purge_all_data(body: PurgeRequest, request: Request):
