@@ -1,11 +1,15 @@
 import axios from 'axios';
 
 // Backend URL configuration
-// Production: Use Railway domain with HTTPS
+// Production: Use Railway domain with HTTPS (FORCE HTTPS)
 // Local: Use localhost:8000 with HTTP
-const BACKEND_URL = window.location.hostname === 'localhost' 
-  ? 'http://localhost:8000'
-  : 'https://crm-global-clean-home-production.up.railway.app';
+const BACKEND_URL = (() => {
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:8000';
+  }
+  // FORCE HTTPS for all production domains
+  return 'https://crm-global-clean-home-production.up.railway.app';
+})();
 
 console.log('[Config] BACKEND_URL:', BACKEND_URL);
 
