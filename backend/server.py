@@ -965,6 +965,7 @@ async def join_with_invitation(input: InvitationJoin, request: Request, response
         result = {
             "success": True,
             "user_id": user_id,
+            "session_token": session_token,  # Return the actual token for frontend!
             "email": email,
             "name": name,
             "role": role,

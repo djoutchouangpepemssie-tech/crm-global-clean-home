@@ -133,8 +133,8 @@ export default function InvitationJoin() {
         verification_code: verificationCode,
       });
       
-      // Store session
-      localStorage.setItem('session_token', response.data.user_id);
+      // Store session token (not user_id!)
+      localStorage.setItem('session_token', response.data.session_token);
       
       setStep('success');
       toast.success('Compte créé ! Bienvenue 🎉');
