@@ -1,0 +1,23 @@
+{
+  "name": "crm-global-clean-home",
+  "version": "1.0.0",
+  "description": "CRM Global Clean Home - Comptabilité ERP + Paie & RH",
+  "main": "backend/server.py",
+  "scripts": {
+    "install": "cd frontend && npm install --legacy-peer-deps && cd ..",
+    "build": "cd frontend && npm run build && cd ..",
+    "start": "cd backend && python server.py",
+    "test": "cd backend && pytest tests/"
+  },
+  "keywords": [
+    "crm",
+    "accounting",
+    "payroll",
+    "erp"
+  ],
+  "author": "Global Clean Home",
+  "license": "MIT",
+  "engines": {
+    "node": "20.x"
+  }
+}
