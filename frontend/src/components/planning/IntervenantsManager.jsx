@@ -620,7 +620,7 @@ const IntervenantsManager = () => {
         </div>
 
         {/* Filter Panel with slide transition */}
-        <div className={`overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${showFilters ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className={`overflow-hidden transition-all duration-500 ${showFilters ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`} style={{ transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)' }}>
           <div className="p-5 rounded-2xl border border-white/[0.06] space-y-4" style={{ background: 'rgba(255,255,255,0.02)' }}>
             {/* Skills Filter */}
             <div>

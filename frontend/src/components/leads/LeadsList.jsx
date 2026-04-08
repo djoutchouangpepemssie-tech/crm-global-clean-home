@@ -543,7 +543,7 @@ const LeadsList = () => {
         </div>
 
         {/* Expandable filter panel */}
-        <div className={`transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden ${showFilters ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className={`transition-all duration-500 overflow-hidden ${showFilters ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`} style={{ transitionTimingFunction: 'cubic-bezier(0.4,0,0.2,1)' }}>
           <div className="px-4 pb-4 pt-1 border-t border-white/[0.05]">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
               {[
