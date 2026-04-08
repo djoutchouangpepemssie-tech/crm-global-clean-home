@@ -112,7 +112,7 @@ const StockTable = lazy(() => import('./components/stock/StockTable'));
 const AccountingDashboard = lazy(() => import('./components/accounting/AccountingDashboard'));
 const AccountingEnterprise = lazy(() => import('./components/accounting/AccountingEnterprise'));
 const AccountingERP = lazy(() => import('./components/accounting/AccountingERP'));
-const PayrollModule = lazy(() => import('./components/payroll/PayrollModule'));
+// PayrollModule moved to payroll-rh/PayrollRHModule inside AccountingERP
 const GlobalSearchFull = lazy(() =>
   import('./components/shared/GlobalSearch').then(m => ({ default: m.GlobalSearch || m.default }))
 );
