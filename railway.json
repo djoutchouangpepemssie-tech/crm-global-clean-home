@@ -1,0 +1,10 @@
+{
+  "deploymentTrigger": "Wed Apr 8 2026 21:05 UTC",
+  "status": "Force redeploy - all fixes ready",
+  "fixes": [
+    "Premium endpoints (accounting_premium_endpoints.py)",
+    "HTTPS production config (.env)",
+    "Service Worker error handling",
+    "MongoDB index creation"
+  ]
+}

@@ -656,7 +656,15 @@ export default function PayrollModule() {
       if (filterYear) params.set('period_year', filterYear);
       
       const res = await fetch(`${API}/api/payroll?${params}`, { headers });
-      if (!res.ok) throw new Error('Erreur chargement');
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error(`[PayrollModule] HTTP ${res.status}:`, errText);
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      }
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Réponse invalide du serveur (non-JSON)');
+      }
       const data = await res.json();
       setPayslips(data.items || []);
       setTotal(data.total || 0);
@@ -670,8 +678,17 @@ export default function PayrollModule() {
   const fetchStats = useCallback(async () => {
     try {
       const res = await fetch(`${API}/api/payroll/stats?year=${filterYear || new Date().getFullYear()}`, { headers });
-      if (res.ok) setStats(await res.json());
-    } catch (e) { console.error(e); }
+      if (res.ok) {
+        const contentType = res.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          setStats(await res.json());
+        } else {
+          console.warn('[PayrollModule] Stats response not JSON');
+        }
+      }
+    } catch (e) { 
+      console.error('[PayrollModule] Stats fetch error:', e);
+    }
   }, [headers, filterYear]);
 
   useEffect(() => { fetchPayslips(); }, [fetchPayslips]);
