@@ -3081,7 +3081,7 @@ async def startup_db_indexes():
     await db.accounting_entries.create_index("entry_date")
     await db.accounting_entries.create_index("reference_id")
     await db.accounting_entries.create_index("category")
-    await db.counters.create_index("_id", unique=True)
+    # _id is already unique by default, no need to create index
     logger.info("MongoDB indexes created successfully")
 
 @app.on_event("shutdown")
