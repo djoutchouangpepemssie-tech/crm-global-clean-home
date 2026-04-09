@@ -29,9 +29,11 @@ load_dotenv(ROOT_DIR / '.env')
 
 logger = logging.getLogger(__name__)
 
-mongo_url = os.environ['MONGO_URL']
-_client = AsyncIOMotorClient(mongo_url)
-_db = _client[os.environ['DB_NAME']]
+_db = None
+
+def init_erp_db(database):
+    global _db
+    _db = database
 
 erp_router = APIRouter(prefix="/api/accounting")
 
@@ -41,13 +43,16 @@ erp_router = APIRouter(prefix="/api/accounting")
 # ═══════════════════════════════════════════════════════════════════
 
 async def _require_auth(request: Request):
-    from server import require_auth
-    return await require_auth(request)
+    from server import _require_auth as server_require_auth
+    return await server_require_auth(request)
 
 
 async def _log_activity(user_id, action, entity_type, entity_id, details=None):
-    from server import log_activity
-    await log_activity(user_id, action, entity_type, entity_id, details)
+    try:
+        from server import _log_activity as server_log
+        await server_log(user_id, action, entity_type, entity_id, details)
+    except Exception:
+        pass
 
 
 # Plan comptable simplifié

@@ -35,9 +35,11 @@ load_dotenv(ROOT_DIR / '.env')
 
 logger = logging.getLogger(__name__)
 
-mongo_url = os.environ['MONGO_URL']
-_client = AsyncIOMotorClient(mongo_url)
-_db = _client[os.environ['DB_NAME']]
+_db = None
+
+def init_db(database):
+    global _db
+    _db = database
 
 enterprise_router = APIRouter(prefix="/api/enterprise")
 
@@ -159,10 +161,8 @@ EXPENSE_CATEGORIES = [
 # ═══════════════════════════════════════════════════════════════════
 
 async def _require_auth(request: Request):
-    user = getattr(request.state, "user", None)
-    if not user:
-        raise HTTPException(401, "Non autorisé")
-    return user
+    from server import _require_auth as _srv_auth
+    return await _srv_auth(request)
 
 async def _audit_log(user_id: str, action: str, entity_type: str, entity_id: str, 
                      before: Dict = None, after: Dict = None, ip: str = None):

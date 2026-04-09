@@ -2889,7 +2889,7 @@ app.include_router(enterprise_router)
 from payroll import payroll_router
 app.include_router(payroll_router)
 
-from accounting_erp import erp_router, init_erp_indexes
+from accounting_erp import erp_router, init_erp_indexes, init_erp_db
 app.include_router(erp_router)
 
 from payroll_rh import payroll_rh_router, init_payroll_rh_indexes
@@ -3018,6 +3018,11 @@ async def startup_db_indexes():
         logger.warning(f"Portal init: {e}")
     init_analytics_db(db)
     init_ads_connect_db(db)
+    try:
+        init_erp_db(db)
+        logger.info("✅ ERP DB initialized")
+    except Exception as e:
+        logger.warning(f"ERP DB init: {e}")
     init_ai_assistant_db(db)
     
     # Scheduler pour traiter les workflows toutes les 30 minutes

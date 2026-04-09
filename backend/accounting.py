@@ -20,9 +20,11 @@ load_dotenv(ROOT_DIR / '.env')
 
 logger = logging.getLogger(__name__)
 
-mongo_url = os.environ['MONGO_URL']
-_client = AsyncIOMotorClient(mongo_url)
-_db = _client[os.environ['DB_NAME']]
+_db = None
+
+def init_db(database):
+    global _db
+    _db = database
 
 accounting_router = APIRouter(prefix="/api")
 
@@ -112,13 +114,13 @@ async def get_next_counter(collection_name: str) -> int:
 
 
 async def _require_auth(request: Request):
-    from server import require_auth
-    return await require_auth(request)
+    from server import _require_auth as _srv_auth
+    return await _srv_auth(request)
 
 
 async def _log_activity(user_id: str, action: str, entity_type: str, entity_id: str, details=None):
-    from server import log_activity
-    await log_activity(user_id, action, entity_type, entity_id, details)
+    from server import _log_activity as _srv_log
+    await _srv_log(user_id, action, entity_type, entity_id, details)
 
 
 async def _write_audit(entity_type: str, entity_id: str, action: str, user_id: str, data=None):
