@@ -467,7 +467,7 @@ function ContractsTabPro() {
 // ═══════════════════════════════════════════════════════════════════════
 
 function PayslipsTabPro() {
-  const { data: response, loading, error, refetch } = useApiData('/payroll', { items: [] });
+  const { data: response, loading, error, refetch } = useApiData('/payslips', { items: [] });
   const payslips = useMemo(() => response.items || [], [response]);
 
   if (loading) return <LoadingState />;
