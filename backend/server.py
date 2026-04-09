@@ -2792,7 +2792,7 @@ from integrations import integrations_router
 app.include_router(integrations_router)
 
 # Include invoices/payments router
-from invoices import invoices_router
+from invoices import invoices_router, init_invoices_db
 app.include_router(invoices_router)
 
 # Include client portal router
@@ -3009,6 +3009,7 @@ async def startup_db_indexes():
     init_chat_db(db)
     init_intervenant_db(db)
     init_erp_db(db)
+    init_invoices_db(db)
     await init_erp_indexes()
     await init_payroll_rh_indexes()
     init_settings_db(db)
@@ -3021,6 +3022,7 @@ async def startup_db_indexes():
     init_ads_connect_db(db)
     try:
         init_erp_db(db)
+    init_invoices_db(db)
         logger.info("✅ ERP DB initialized")
     except Exception as e:
         logger.warning(f"ERP DB init: {e}")
