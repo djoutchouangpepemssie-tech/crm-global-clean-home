@@ -210,13 +210,13 @@ def calc_item(item: dict) -> dict:
 
 
 def calc_totals(items: list) -> dict:
-    total_ht = sum(i.get("amount_ht", 0) for i in items)
+    amount_ht = sum(i.get("amount_ht", 0) for i in items)
     total_tva = sum(i.get("amount_tva", 0) for i in items)
-    total_ttc = sum(i.get("amount_ttc", 0) for i in items)
+    amount_ttc = sum(i.get("amount_ttc", 0) for i in items)
     return {
-        "total_ht": round(total_ht, 2),
+        "amount_ht": round(amount_ht, 2),
         "total_tva": round(total_tva, 2),
-        "total_ttc": round(total_ttc, 2),
+        "amount_ttc": round(amount_ttc, 2),
     }
 
 
@@ -277,14 +277,14 @@ async def create_sale_journal_entry(invoice: dict, user_id: str = None):
         {
             "account_number": "411",
             "account_label": "Créances clients",
-            "debit": invoice["total_ttc"],
+            "debit": invoice["amount_ttc"],
             "credit": 0,
         },
         {
             "account_number": "701",
             "account_label": "Ventes de services",
             "debit": 0,
-            "credit": invoice["total_ht"],
+            "credit": invoice["amount_ht"],
         },
         {
             "account_number": "441",
@@ -298,7 +298,7 @@ async def create_sale_journal_entry(invoice: dict, user_id: str = None):
         reference_type="invoice",
         reference_id=invoice["invoice_id"],
         entries=entries,
-        description=f"Facture {invoice['invoice_number']} - {invoice.get('client_name', 'N/A')}",
+        description=f"Facture {invoice.get("invoice_number", invoice.get("invoice_id",""))} - {invoice.get('lead_name', 'N/A')}",
         entry_date=invoice.get("created_at"),
         user_id=user_id,
     )
@@ -325,7 +325,7 @@ async def create_payment_journal_entry(invoice: dict, amount: float, payment_dat
         reference_type="payment",
         reference_id=invoice["invoice_id"],
         entries=entries,
-        description=f"Paiement {invoice['invoice_number']} - {invoice.get('client_name', 'N/A')}",
+        description=f"Paiement {invoice.get("invoice_number", invoice.get("invoice_id",""))} - {invoice.get('lead_name', 'N/A')}",
         entry_date=payment_date,
         user_id=user_id,
     )
@@ -420,7 +420,7 @@ async def get_dashboard_kpis(request: Request):
     # CA TTC (factures envoyées ou payées)
     pipeline_ca = [
         {"$match": {"status": {"$in": ["en_attente", "payée", "envoyee", "payee"]}}},
-        {"$group": {"_id": None, "total": {"$sum": "$total_ttc"}}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount_ttc"}}},
     ]
     ca_all = await _db.invoices.aggregate(pipeline_ca).to_list(1)
     ca_total = ca_all[0]["total"] if ca_all else 0
@@ -428,28 +428,28 @@ async def get_dashboard_kpis(request: Request):
     # CA jour
     ca_day_agg = await _db.invoices.aggregate([
         {"$match": {"status": {"$in": ["en_attente", "payée", "envoyee", "payee"]}, "created_at": {"$gte": today_start}}},
-        {"$group": {"_id": None, "total": {"$sum": "$total_ttc"}}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount_ttc"}}},
     ]).to_list(1)
     ca_day = ca_day_agg[0]["total"] if ca_day_agg else 0
     
     # CA mois
     ca_month_agg = await _db.invoices.aggregate([
         {"$match": {"status": {"$in": ["en_attente", "payée", "envoyee", "payee"]}, "created_at": {"$gte": month_start}}},
-        {"$group": {"_id": None, "total": {"$sum": "$total_ttc"}}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount_ttc"}}},
     ]).to_list(1)
     ca_month = ca_month_agg[0]["total"] if ca_month_agg else 0
     
     # CA année
     ca_year_agg = await _db.invoices.aggregate([
         {"$match": {"status": {"$in": ["en_attente", "payée", "envoyee", "payee"]}, "created_at": {"$gte": year_start}}},
-        {"$group": {"_id": None, "total": {"$sum": "$total_ttc"}}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount_ttc"}}},
     ]).to_list(1)
     ca_year = ca_year_agg[0]["total"] if ca_year_agg else 0
     
     # CA mois dernier (pour variation %)
     ca_last_month_agg = await _db.invoices.aggregate([
         {"$match": {"status": {"$in": ["en_attente", "payée", "envoyee", "payee"]}, "created_at": {"$gte": last_month_start, "$lt": month_start}}},
-        {"$group": {"_id": None, "total": {"$sum": "$total_ttc"}}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount_ttc"}}},
     ]).to_list(1)
     ca_last_month = ca_last_month_agg[0]["total"] if ca_last_month_agg else 0
     
@@ -471,7 +471,7 @@ async def get_dashboard_kpis(request: Request):
     # Bénéfice brut mois = CA HT mois - Dépenses HT mois
     ca_ht_month_agg = await _db.invoices.aggregate([
         {"$match": {"status": {"$in": ["en_attente", "payée", "envoyee", "payee"]}, "created_at": {"$gte": month_start}}},
-        {"$group": {"_id": None, "total": {"$sum": "$total_ht"}}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount_ht"}}},
     ]).to_list(1)
     ca_ht_month = ca_ht_month_agg[0]["total"] if ca_ht_month_agg else 0
     
@@ -486,7 +486,7 @@ async def get_dashboard_kpis(request: Request):
     # Variation % bénéfice
     ca_ht_last_agg = await _db.invoices.aggregate([
         {"$match": {"status": {"$in": ["en_attente", "payée", "envoyee", "payee"]}, "created_at": {"$gte": last_month_start, "$lt": month_start}}},
-        {"$group": {"_id": None, "total": {"$sum": "$total_ht"}}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount_ht"}}},
     ]).to_list(1)
     ca_ht_last = ca_ht_last_agg[0]["total"] if ca_ht_last_agg else 0
     dep_ht_last_agg = await _db.expenses.aggregate([
@@ -508,7 +508,7 @@ async def get_dashboard_kpis(request: Request):
     # Entrées = paiements factures reçus
     entries_in = await _db.invoices.aggregate([
         {"$match": {"status": "payée"}},
-        {"$group": {"_id": None, "total": {"$sum": "$total_ttc"}}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount_ttc"}}},
     ]).to_list(1)
     total_in = entries_in[0]["total"] if entries_in else 0
     
@@ -524,7 +524,7 @@ async def get_dashboard_kpis(request: Request):
     # Prévision 30j (factures en attente de paiement)
     pending_invoices = await _db.invoices.aggregate([
         {"$match": {"status": "en_attente"}},
-        {"$group": {"_id": None, "total": {"$sum": "$total_ttc"}}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount_ttc"}}},
     ]).to_list(1)
     pending_in = pending_invoices[0]["total"] if pending_invoices else 0
     
@@ -540,7 +540,7 @@ async def get_dashboard_kpis(request: Request):
     unpaid = await _db.invoices.count_documents({"status": "en_attente"})
     unpaid_amount_agg = await _db.invoices.aggregate([
         {"$match": {"status": "en_attente"}},
-        {"$group": {"_id": None, "total": {"$sum": "$total_ttc"}}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount_ttc"}}},
     ]).to_list(1)
     unpaid_amount = unpaid_amount_agg[0]["total"] if unpaid_amount_agg else 0
     
@@ -583,7 +583,7 @@ async def get_dashboard_charts(request: Request):
         
         agg = await _db.invoices.aggregate([
             {"$match": {"status": {"$in": ["en_attente", "payée", "envoyee", "payee"]}, "created_at": {"$gte": m_start, "$lt": m_end}}},
-            {"$group": {"_id": None, "total": {"$sum": "$total_ttc"}}},
+            {"$group": {"_id": None, "total": {"$sum": "$amount_ttc"}}},
         ]).to_list(1)
         ca_monthly.append({
             "month": f"{y}-{str(m).zfill(2)}",
@@ -594,7 +594,7 @@ async def get_dashboard_charts(request: Request):
     # Répartition CA par type prestation
     prestation_agg = await _db.invoices.aggregate([
         {"$match": {"status": {"$in": ["en_attente", "payée", "envoyee", "payee"]}}},
-        {"$group": {"_id": {"$ifNull": ["$prestation_type", "autre"]}, "total": {"$sum": "$total_ttc"}}},
+        {"$group": {"_id": {"$ifNull": ["$prestation_type", "autre"]}, "total": {"$sum": "$amount_ttc"}}},
     ]).to_list(20)
     prestation_breakdown = [{"type": p["_id"], "ca": round(p["total"], 2)} for p in prestation_agg]
     
@@ -602,7 +602,7 @@ async def get_dashboard_charts(request: Request):
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
     ca_ht = await _db.invoices.aggregate([
         {"$match": {"status": {"$in": ["en_attente", "payée", "envoyee", "payee"]}, "created_at": {"$gte": month_start}}},
-        {"$group": {"_id": None, "total": {"$sum": "$total_ht"}}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount_ht"}}},
     ]).to_list(1)
     charges_ht = await _db.expenses.aggregate([
         {"$match": {"date": {"$gte": month_start}}},
@@ -637,7 +637,7 @@ async def get_dashboard_charts(request: Request):
         
         in_agg = await _db.invoices.aggregate([
             {"$match": {"status": "payée", "payment_date": {"$gte": m_start, "$lt": m_end}}},
-            {"$group": {"_id": None, "total": {"$sum": "$total_ttc"}}},
+            {"$group": {"_id": None, "total": {"$sum": "$amount_ttc"}}},
         ]).to_list(1)
         out_agg = await _db.expenses.aggregate([
             {"$match": {"status": "payée", "date": {"$gte": m_start, "$lt": m_end}}},
@@ -688,7 +688,7 @@ async def list_invoices(
     if search:
         query["$or"] = [
             {"invoice_number": {"$regex": search, "$options": "i"}},
-            {"client_name": {"$regex": search, "$options": "i"}},
+            {"lead_name": {"$regex": search, "$options": "i"}},
         ]
     
     total = await _db.invoices.count_documents(query)
@@ -748,7 +748,7 @@ async def create_invoice(inp: InvoiceCreate, request: Request):
         "invoice_id": f"inv_{uuid.uuid4().hex[:12]}",
         "invoice_number": invoice_number,
         "client_id": inp.client_id,
-        "client_name": inp.client_name or "",
+        "lead_name": inp.client_name or "",
         "client_email": inp.client_email or "",
         "client_phone": inp.client_phone or "",
         "client_address": inp.client_address or "",
@@ -857,7 +857,7 @@ async def record_payment(invoice_id: str, inp: PaymentRecord, request: Request):
     
     now = datetime.now(timezone.utc).isoformat()
     payment_date = inp.payment_date or now
-    amount = inp.amount or inv["total_ttc"]
+    amount = inp.amount or inv["amount_ttc"]
     
     # 1. Update invoice
     await _db.invoices.update_one(
@@ -1053,7 +1053,7 @@ async def get_treasury(request: Request, month: Optional[str] = None):
     # Calculate running balance up to month start
     in_before = await _db.invoices.aggregate([
         {"$match": {"status": "payée", "payment_date": {"$lt": m_start}}},
-        {"$group": {"_id": None, "total": {"$sum": "$total_ttc"}}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount_ttc"}}},
     ]).to_list(1)
     out_before = await _db.expenses.aggregate([
         {"$match": {"status": "payée", "date": {"$lt": m_start}}},
@@ -1065,7 +1065,7 @@ async def get_treasury(request: Request, month: Optional[str] = None):
     # Entries for this month
     entries_in = await _db.invoices.find(
         {"status": "payée", "payment_date": {"$gte": m_start, "$lt": m_end}},
-        {"_id": 0, "invoice_id": 1, "invoice_number": 1, "client_name": 1, "total_ttc": 1, "payment_date": 1}
+        {"_id": 0, "invoice_id": 1, "invoice_number": 1, "lead_name": 1, "amount_ttc": 1, "payment_date": 1}
     ).sort("payment_date", 1).to_list(500)
     
     entries_out = await _db.expenses.find(
@@ -1073,14 +1073,14 @@ async def get_treasury(request: Request, month: Optional[str] = None):
         {"_id": 0, "expense_id": 1, "description": 1, "category": 1, "amount_ttc": 1, "date": 1}
     ).sort("date", 1).to_list(500)
     
-    total_in = sum(e["total_ttc"] for e in entries_in)
+    total_in = sum(e["amount_ttc"] for e in entries_in)
     total_out = sum(e["amount_ttc"] for e in entries_out)
     solde_courant = round(balance_before + total_in - total_out, 2)
     
     # Prévision 30j
     pending_in_agg = await _db.invoices.aggregate([
         {"$match": {"status": "en_attente"}},
-        {"$group": {"_id": None, "total": {"$sum": "$total_ttc"}}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount_ttc"}}},
     ]).to_list(1)
     pending_out_agg = await _db.expenses.aggregate([
         {"$match": {"status": "en_attente"}},
@@ -1283,7 +1283,7 @@ async def income_statement(request: Request, month: Optional[str] = None):
     # CA HT
     ca_agg = await _db.invoices.aggregate([
         {"$match": {"status": {"$in": ["en_attente", "payée", "envoyee", "payee"]}, **date_filter_inv}},
-        {"$group": {"_id": None, "ht": {"$sum": "$total_ht"}, "tva": {"$sum": "$total_tva"}, "ttc": {"$sum": "$total_ttc"}}},
+        {"$group": {"_id": None, "ht": {"$sum": "$amount_ht"}, "tva": {"$sum": "$total_tva"}, "ttc": {"$sum": "$amount_ttc"}}},
     ]).to_list(1)
     ca_ht = ca_agg[0]["ht"] if ca_agg else 0
     ca_tva = ca_agg[0]["tva"] if ca_agg else 0
@@ -1293,10 +1293,10 @@ async def income_statement(request: Request, month: Optional[str] = None):
         {"$match": {"deleted_at": {"$exists": False}, **date_filter_exp}},
         {"$group": {"_id": "$category", "ht": {"$sum": "$amount_ht"}, "tva": {"$sum": "$amount_tva"}, "ttc": {"$sum": "$amount_ttc"}}},
     ]).to_list(20)
-    charges_total_ht = sum(c["ht"] for c in charges_agg)
+    charges_amount_ht = sum(c["ht"] for c in charges_agg)
     charges_total_tva = sum(c["tva"] for c in charges_agg)
     
-    resultat_brut = round(ca_ht - charges_total_ht, 2)
+    resultat_brut = round(ca_ht - charges_amount_ht, 2)
     tva_nette = round(ca_tva - charges_total_tva, 2)
     resultat_net = round(resultat_brut - max(tva_nette, 0), 2)
     
@@ -1304,7 +1304,7 @@ async def income_statement(request: Request, month: Optional[str] = None):
         "period": month or "all",
         "ca_ht": round(ca_ht, 2),
         "ca_tva": round(ca_tva, 2),
-        "charges_ht": round(charges_total_ht, 2),
+        "charges_ht": round(charges_amount_ht, 2),
         "charges_detail": [{"category": c["_id"], "ht": round(c["ht"], 2), "tva": round(c["tva"], 2)} for c in charges_agg],
         "resultat_brut": resultat_brut,
         "tva_a_verser": max(round(tva_nette, 2), 0),
@@ -1322,8 +1322,8 @@ async def top_clients(request: Request, limit: int = Query(default=10, ge=1, le=
         {"$group": {
             "_id": {"$ifNull": ["$client_name", "Inconnu"]},
             "client_id": {"$first": "$client_id"},
-            "ca_ttc": {"$sum": "$total_ttc"},
-            "ca_ht": {"$sum": "$total_ht"},
+            "ca_ttc": {"$sum": "$amount_ttc"},
+            "ca_ht": {"$sum": "$amount_ht"},
             "count": {"$sum": 1},
         }},
         {"$sort": {"ca_ttc": -1}},
@@ -1337,7 +1337,7 @@ async def top_clients(request: Request, limit: int = Query(default=10, ge=1, le=
     for c in clients:
         pct = round((c["ca_ttc"] / total_ca * 100) if total_ca else 0, 1)
         result.append({
-            "client_name": c["_id"],
+            "lead_name": c["_id"],
             "client_id": c.get("client_id"),
             "ca_ttc": round(c["ca_ttc"], 2),
             "ca_ht": round(c["ca_ht"], 2),
@@ -1357,8 +1357,8 @@ async def services_analysis(request: Request):
         {"$match": {"status": {"$in": ["en_attente", "payée", "envoyee", "payee"]}, "deleted_at": {"$exists": False}}},
         {"$group": {
             "_id": {"$ifNull": ["$prestation_type", "autre"]},
-            "ca_ttc": {"$sum": "$total_ttc"},
-            "ca_ht": {"$sum": "$total_ht"},
+            "ca_ttc": {"$sum": "$amount_ttc"},
+            "ca_ht": {"$sum": "$amount_ht"},
             "count": {"$sum": 1},
         }},
         {"$sort": {"ca_ttc": -1}},
@@ -1415,7 +1415,7 @@ async def period_comparison(request: Request, month1: str = None, month2: str = 
         
         ca = await _db.invoices.aggregate([
             {"$match": {"status": {"$in": ["en_attente", "payée", "envoyee", "payee"]}, "created_at": {"$gte": m_start, "$lt": m_end}}},
-            {"$group": {"_id": None, "ht": {"$sum": "$total_ht"}, "ttc": {"$sum": "$total_ttc"}}},
+            {"$group": {"_id": None, "ht": {"$sum": "$amount_ht"}, "ttc": {"$sum": "$amount_ttc"}}},
         ]).to_list(1)
         dep = await _db.expenses.aggregate([
             {"$match": {"date": {"$gte": m_start, "$lt": m_end}, "deleted_at": {"$exists": False}}},
@@ -1460,7 +1460,7 @@ async def init_erp_indexes():
     await _db.invoices.create_index("status")
     await _db.invoices.create_index("created_at")
     await _db.invoices.create_index("client_id")
-    await _db.invoices.create_index("client_name")
+    await _db.invoices.create_index("lead_name")
     
     await _db.expenses.create_index("expense_id", unique=True)
     await _db.expenses.create_index("category")
