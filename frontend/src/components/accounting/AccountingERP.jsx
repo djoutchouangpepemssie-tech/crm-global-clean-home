@@ -66,15 +66,15 @@ export default function AccountingERP() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-8 h-12">
-          <TabsTrigger value="dashboard" className="text-xs md:text-sm">📊 Dashboard</TabsTrigger>
-          <TabsTrigger value="invoices" className="text-xs md:text-sm">📄 Factures</TabsTrigger>
-          <TabsTrigger value="expenses" className="text-xs md:text-sm">💸 Dépenses</TabsTrigger>
-          <TabsTrigger value="treasury" className="text-xs md:text-sm">🏦 Trésorerie</TabsTrigger>
-          <TabsTrigger value="journals" className="text-xs md:text-sm">📒 Journaux</TabsTrigger>
-          <TabsTrigger value="tva" className="text-xs md:text-sm">🧾 TVA</TabsTrigger>
-          <TabsTrigger value="reports" className="text-xs md:text-sm">📈 Rapports</TabsTrigger>
-          <TabsTrigger value="payroll-rh" className="text-xs md:text-sm">💼 Paie & RH</TabsTrigger>
+        <TabsList className="flex gap-1 bg-white/5 rounded-2xl p-1.5 overflow-x-auto w-fit mb-2">
+          <TabsTrigger value="dashboard" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-500">📊 Dashboard</TabsTrigger>
+          <TabsTrigger value="invoices" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-500">📄 Factures</TabsTrigger>
+          <TabsTrigger value="expenses" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-500">💸 Dépenses</TabsTrigger>
+          <TabsTrigger value="treasury" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-500">🏦 Trésorerie</TabsTrigger>
+          <TabsTrigger value="journals" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-500">📒 Journaux</TabsTrigger>
+          <TabsTrigger value="tva" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-500">🧾 TVA</TabsTrigger>
+          <TabsTrigger value="reports" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-500">📈 Rapports</TabsTrigger>
+          <TabsTrigger value="payroll-rh" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-500">💼 Paie & RH</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard"><DashboardSection onNavigate={setActiveTab} /></TabsContent>
@@ -128,6 +128,7 @@ function DashboardSection({ onNavigate }) {
           icon={<DollarSign className="h-5 w-5" />}
           color="text-green-400"
           bgColor="bg-green-500/10"
+          hexColor="#10b981"
         />
         <KPICard
           title="Bénéfice (mois)"
@@ -136,6 +137,7 @@ function DashboardSection({ onNavigate }) {
           icon={<TrendingUp className="h-5 w-5" />}
           color={kpis.benefice?.month >= 0 ? "text-emerald-400" : "text-red-400"}
           bgColor="bg-emerald-500/10"
+          hexColor={kpis.benefice?.month >= 0 ? "#10b981" : "#f43f5e"}
           trend={kpis.benefice?.variation_pct}
         />
         <KPICard
@@ -145,6 +147,7 @@ function DashboardSection({ onNavigate }) {
           icon={<CreditCard className="h-5 w-5" />}
           color="text-orange-400"
           bgColor="bg-orange-500/10"
+          hexColor="#f97316"
         />
         <KPICard
           title="Trésorerie"
@@ -153,6 +156,7 @@ function DashboardSection({ onNavigate }) {
           icon={<Wallet className="h-5 w-5" />}
           color={kpis.treasury?.solde < kpis.treasury?.alert_threshold ? "text-red-400" : "text-blue-400"}
           bgColor="bg-blue-500/10"
+          hexColor={kpis.treasury?.solde < kpis.treasury?.alert_threshold ? "#f43f5e" : "#3b82f6"}
         />
         <KPICard
           title="Impayées"
@@ -161,6 +165,7 @@ function DashboardSection({ onNavigate }) {
           icon={<AlertTriangle className="h-5 w-5" />}
           color={kpis.unpaid_invoices?.count > 0 ? "text-red-400" : "text-gray-400"}
           bgColor={kpis.unpaid_invoices?.count > 0 ? "bg-red-500/10" : "bg-gray-500/10"}
+          hexColor={kpis.unpaid_invoices?.count > 0 ? "#f43f5e" : "#64748b"}
           alert={kpis.unpaid_invoices?.overdue > 0}
         />
         <KPICard
@@ -170,13 +175,14 @@ function DashboardSection({ onNavigate }) {
           icon={<Receipt className="h-5 w-5" />}
           color="text-amber-400"
           bgColor="bg-amber-500/10"
+          hexColor="#f59e0b"
         />
       </div>
 
       {/* Alerts */}
       {kpis.unpaid_invoices?.overdue > 0 && (
         <Card className="border-red-500/50 bg-red-500/5">
-          <CardContent className="py-3 flex items-center gap-3">
+          <div className="py-3 px-5 flex items-center gap-3">
             <AlertTriangle className="h-5 w-5 text-red-500" />
             <span className="text-red-400 font-medium">
               ⚠️ {kpis.unpaid_invoices.overdue} facture(s) en retard (&gt;30j) — {fmt(kpis.unpaid_invoices.amount)} impayés
@@ -184,8 +190,8 @@ function DashboardSection({ onNavigate }) {
             <Button size="sm" variant="outline" className="ml-auto border-red-500/30 text-red-400" onClick={() => onNavigate('invoices')}>
               Voir les factures
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Quick Actions */}
@@ -208,9 +214,9 @@ function DashboardSection({ onNavigate }) {
       {charts && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* CA 12 mois */}
-          <Card>
-            <CardHeader><CardTitle className="text-sm flex items-center gap-2"><BarChart3 className="h-4 w-4 text-violet-400" />CA TTC (12 derniers mois)</CardTitle></CardHeader>
-            <CardContent>
+          <div className="section-card overflow-hidden">
+            <div className="px-5 pt-5 pb-3"><h3 className="text-sm font-black text-slate-200 flex items-center gap-2"><BarChart3 className="h-4 w-4 text-violet-400" />CA TTC (12 derniers mois)</h3></div>
+            <div className="px-5 pb-5">
               <ResponsiveContainer width="100%" height={250}>
                 <AreaChart data={charts.ca_monthly}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#333" />
@@ -220,13 +226,13 @@ function DashboardSection({ onNavigate }) {
                   <Area type="monotone" dataKey="ca" stroke="#7c3aed" fill="#7c3aed" fillOpacity={0.2} />
                 </AreaChart>
               </ResponsiveContainer>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Répartition prestations */}
-          <Card>
-            <CardHeader><CardTitle className="text-sm flex items-center gap-2"><PieIcon className="h-4 w-4 text-emerald-400" />Répartition CA par prestation</CardTitle></CardHeader>
-            <CardContent>
+          <div className="section-card overflow-hidden">
+            <div className="px-5 pt-5 pb-3"><h3 className="text-sm font-black text-slate-200 flex items-center gap-2"><PieIcon className="h-4 w-4 text-emerald-400" />Répartition CA par prestation</h3></div>
+            <div className="px-5 pb-5">
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
                   <Pie data={charts.prestation_breakdown} dataKey="ca" nameKey="type" cx="50%" cy="50%" outerRadius={80} label={({ type, ca }) => `${type}: ${fmt(ca)}`}>
@@ -235,13 +241,13 @@ function DashboardSection({ onNavigate }) {
                   <Tooltip formatter={(v) => fmt(v)} contentStyle={{ background: '#1e1e2e', border: '1px solid #333' }} />
                 </PieChart>
               </ResponsiveContainer>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Waterfall */}
-          <Card>
-            <CardHeader><CardTitle className="text-sm flex items-center gap-2"><BarChart3 className="h-4 w-4 text-amber-400" />Résultat du mois</CardTitle></CardHeader>
-            <CardContent>
+          <div className="section-card overflow-hidden">
+            <div className="px-5 pt-5 pb-3"><h3 className="text-sm font-black text-slate-200 flex items-center gap-2"><BarChart3 className="h-4 w-4 text-amber-400" />Résultat du mois</h3></div>
+            <div className="px-5 pb-5">
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={charts.waterfall}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#333" />
@@ -255,13 +261,13 @@ function DashboardSection({ onNavigate }) {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Solde bancaire */}
-          <Card>
-            <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Wallet className="h-4 w-4 text-blue-400" />Solde bancaire (6 mois)</CardTitle></CardHeader>
-            <CardContent>
+          <div className="section-card overflow-hidden">
+            <div className="px-5 pt-5 pb-3"><h3 className="text-sm font-black text-slate-200 flex items-center gap-2"><Wallet className="h-4 w-4 text-blue-400" />Solde bancaire (6 mois)</h3></div>
+            <div className="px-5 pb-5">
               <ResponsiveContainer width="100%" height={250}>
                 <AreaChart data={charts.solde_monthly}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#333" />
@@ -271,35 +277,33 @@ function DashboardSection({ onNavigate }) {
                   <Area type="monotone" dataKey="solde" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.15} />
                 </AreaChart>
               </ResponsiveContainer>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function KPICard({ title, value, sub, icon, color, bgColor, trend, alert }) {
+function KPICard({ title, value, sub, icon, color, bgColor, trend, alert, hexColor }) {
   return (
-    <Card className={`${alert ? 'border-red-500/50 animate-pulse' : ''}`}>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs text-muted-foreground">{title}</span>
-          <div className={`p-1.5 rounded-lg ${bgColor}`}>
-            <span className={color}>{icon}</span>
+    <div className={`section-card p-5 hover:border-white/10 transition-all ${alert ? 'border-red-500/30 animate-pulse' : ''}`}>
+      <div className="flex items-start justify-between mb-3">
+        <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+          style={{background: hexColor ? `${hexColor}20` : 'rgba(124,58,237,0.15)', border: hexColor ? `1px solid ${hexColor}30` : '1px solid rgba(124,58,237,0.3)'}}>
+          <span className={color}>{icon}</span>
+        </div>
+        {trend !== undefined && trend !== 0 && (
+          <div className={`flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${trend > 0 ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10'}`}>
+            {trend > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+            {Math.abs(trend)}%
           </div>
-        </div>
-        <div className="text-xl font-bold">{value}</div>
-        <div className="flex items-center gap-1 mt-1">
-          {trend !== undefined && trend !== 0 && (
-            trend > 0
-              ? <ArrowUpRight className="h-3 w-3 text-green-400" />
-              : <ArrowDownRight className="h-3 w-3 text-red-400" />
-          )}
-          <span className="text-xs text-muted-foreground">{sub}</span>
-        </div>
-      </CardContent>
-    </Card>
+        )}
+      </div>
+      <div className="text-2xl font-black text-slate-100 mb-1" style={{fontFamily:'Manrope,sans-serif'}}>{value}</div>
+      <p className="text-xs font-semibold text-slate-500">{title}</p>
+      {sub && <p className="text-[10px] text-slate-600 mt-0.5">{sub}</p>}
+    </div>
   );
 }
 
@@ -591,8 +595,8 @@ function InvoiceCreateDialog({ open, onClose, onCreated }) {
               <div><div className="text-xs text-muted-foreground">Total HT</div><div className="text-lg font-bold">{fmt(totals.ht)}</div></div>
               <div><div className="text-xs text-muted-foreground">TVA</div><div className="text-lg font-bold text-amber-400">{fmt(totals.tva)}</div></div>
               <div><div className="text-xs text-muted-foreground">Total TTC</div><div className="text-lg font-bold text-green-400">{fmt(totals.ttc)}</div></div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           <Textarea placeholder="Notes / conditions..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} />
 
@@ -675,8 +679,8 @@ function InvoiceDetail({ invoice }) {
                     <span>{e.debit > 0 ? `D: ${fmt(e.debit)}` : `C: ${fmt(e.credit)}`}</span>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -940,38 +944,38 @@ function TreasuryModule() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
+        <div className="section-card overflow-hidden">
           <CardContent className="p-4 text-center">
             <div className="text-xs text-muted-foreground">Solde initial</div>
             <div className="text-xl font-bold">{fmt(data.solde_initial)}</div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
         <Card className="border-green-500/30">
           <CardContent className="p-4 text-center">
             <div className="text-xs text-muted-foreground">Entrées</div>
             <div className="text-xl font-bold text-green-400">+{fmt(data.total_in)}</div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
         <Card className="border-red-500/30">
           <CardContent className="p-4 text-center">
             <div className="text-xs text-muted-foreground">Sorties</div>
             <div className="text-xl font-bold text-red-400">-{fmt(data.total_out)}</div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
         <Card className="border-blue-500/30">
           <CardContent className="p-4 text-center">
             <div className="text-xs text-muted-foreground">Solde courant</div>
             <div className={`text-xl font-bold ${data.solde_courant >= 0 ? 'text-blue-400' : 'text-red-400'}`}>{fmt(data.solde_courant)}</div>
             <div className="text-xs text-muted-foreground mt-1">Prévision 30j: {fmt(data.prevision_30j)}</div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Entrées */}
-        <Card>
-          <CardHeader><CardTitle className="text-sm text-green-400">📥 Entrées (Factures payées)</CardTitle></CardHeader>
-          <CardContent>
+        <div className="section-card overflow-hidden">
+          <div className="px-5 pt-5 pb-3"><CardTitle className="text-sm text-green-400">📥 Entrées (Factures payées)</h3></div>
+          <div className="px-5 pb-5">
             {data.entries_in.length === 0 ? <p className="text-sm text-muted-foreground">Aucune entrée</p> : (
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {data.entries_in.map((e, i) => (
@@ -985,13 +989,13 @@ function TreasuryModule() {
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Sorties */}
-        <Card>
-          <CardHeader><CardTitle className="text-sm text-red-400">📤 Sorties (Dépenses payées)</CardTitle></CardHeader>
-          <CardContent>
+        <div className="section-card overflow-hidden">
+          <div className="px-5 pt-5 pb-3"><CardTitle className="text-sm text-red-400">📤 Sorties (Dépenses payées)</h3></div>
+          <div className="px-5 pb-5">
             {data.entries_out.length === 0 ? <p className="text-sm text-muted-foreground">Aucune sortie</p> : (
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {data.entries_out.map((e, i) => (
@@ -1005,8 +1009,8 @@ function TreasuryModule() {
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1065,7 +1069,7 @@ function JournalModule() {
         <div className="space-y-3">
           {entries.map(entry => (
             <Card key={entry.entry_id} className="hover:border-violet-500/30 transition-colors">
-              <CardContent className="p-4">
+              <div className="p-4">
                 <div className="flex justify-between items-start mb-3">
                   <div>
                     <span className="font-medium">{entry.description}</span>
@@ -1100,8 +1104,8 @@ function JournalModule() {
                   <span>Total Crédit: <strong className="text-red-400">{fmt(entry.total_credit)}</strong></span>
                   {entry.is_balanced && <Badge className="bg-green-500/20 text-green-400 text-xs">✓ Équilibré</Badge>}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
           {entries.length === 0 && <EmptyState text="Aucune écriture comptable" />}
         </div>
@@ -1159,15 +1163,15 @@ function TVAModule() {
                 <div className="text-sm text-muted-foreground mb-2">TVA Collectée</div>
                 <div className="text-3xl font-bold text-green-400">{fmt(data.tva_collectee)}</div>
                 <div className="text-xs text-muted-foreground mt-1">Sur ventes</div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
             <Card className="border-blue-500/30">
               <CardContent className="p-6 text-center">
                 <div className="text-sm text-muted-foreground mb-2">TVA Déductible</div>
                 <div className="text-3xl font-bold text-blue-400">{fmt(data.tva_deductible)}</div>
                 <div className="text-xs text-muted-foreground mt-1">Sur achats</div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
             <Card className={`border-2 ${data.tva_a_verser >= 0 ? 'border-amber-500/50' : 'border-green-500/50'}`}>
               <CardContent className="p-6 text-center">
                 <div className="text-sm text-muted-foreground mb-2">TVA à verser</div>
@@ -1177,15 +1181,15 @@ function TVAModule() {
                 <div className="text-xs text-muted-foreground mt-1">
                   {data.tva_a_verser >= 0 ? 'À payer au Trésor Public' : 'Crédit de TVA'}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
 
           {/* Detail tables */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader><CardTitle className="text-sm">📈 Détail TVA Collectée</CardTitle></CardHeader>
-              <CardContent>
+            <div className="section-card overflow-hidden">
+              <div className="px-5 pt-5 pb-3"><CardTitle className="text-sm">📈 Détail TVA Collectée</h3></div>
+              <div className="px-5 pb-5">
                 {data.detail_collectee?.length > 0 ? (
                   <table className="w-full text-sm">
                     <thead><tr className="border-b"><th className="text-left p-2">Taux</th><th className="text-right p-2">Base HT</th><th className="text-right p-2">TVA</th></tr></thead>
@@ -1196,11 +1200,11 @@ function TVAModule() {
                     </tbody>
                   </table>
                 ) : <p className="text-sm text-muted-foreground">Aucune vente ce mois</p>}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader><CardTitle className="text-sm">📉 Détail TVA Déductible</CardTitle></CardHeader>
-              <CardContent>
+              </div>
+            </div>
+            <div className="section-card overflow-hidden">
+              <div className="px-5 pt-5 pb-3"><CardTitle className="text-sm">📉 Détail TVA Déductible</h3></div>
+              <div className="px-5 pb-5">
                 {data.detail_deductible?.length > 0 ? (
                   <table className="w-full text-sm">
                     <thead><tr className="border-b"><th className="text-left p-2">Taux</th><th className="text-right p-2">Base HT</th><th className="text-right p-2">TVA</th></tr></thead>
@@ -1211,8 +1215,8 @@ function TVAModule() {
                     </tbody>
                   </table>
                 ) : <p className="text-sm text-muted-foreground">Aucun achat ce mois</p>}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </>
       ) : <EmptyState text="Erreur chargement TVA" />}
@@ -1275,7 +1279,7 @@ function IncomeStatement() {
       </div>
 
       <Card className="max-w-lg">
-        <CardHeader><CardTitle>📊 Compte de Résultat {month || '(global)'}</CardTitle></CardHeader>
+        <div className="px-5 pt-5 pb-3"><CardTitle>📊 Compte de Résultat {month || '(global)'}</h3></div>
         <CardContent className="space-y-3">
           <div className="flex justify-between py-2"><span>CA HT</span><span className="font-bold text-green-400">{fmt(data.ca_ht)}</span></div>
           <Separator />
@@ -1297,8 +1301,8 @@ function IncomeStatement() {
             <span className="font-bold">Résultat Net</span>
             <span className={`font-bold ${data.resultat_net >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fmt(data.resultat_net)}</span>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1317,9 +1321,9 @@ function TopClients() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader><CardTitle className="text-sm">👥 Top Clients par CA</CardTitle></CardHeader>
-          <CardContent>
+        <div className="section-card overflow-hidden">
+          <div className="px-5 pt-5 pb-3"><CardTitle className="text-sm">👥 Top Clients par CA</h3></div>
+          <div className="px-5 pb-5">
             <div className="rounded-lg border overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50">
@@ -1337,12 +1341,12 @@ function TopClients() {
                 </tbody>
               </table>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader><CardTitle className="text-sm">📊 Répartition CA par client</CardTitle></CardHeader>
-          <CardContent>
+        <div className="section-card overflow-hidden">
+          <div className="px-5 pt-5 pb-3"><CardTitle className="text-sm">📊 Répartition CA par client</h3></div>
+          <div className="px-5 pb-5">
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie data={data.clients} dataKey="ca_ttc" nameKey="client_name" cx="50%" cy="50%" outerRadius={100} label={({ client_name, pct_ca }) => `${client_name} (${pct_ca}%)`}>
@@ -1351,8 +1355,8 @@ function TopClients() {
                 <Tooltip formatter={(v) => fmt(v)} contentStyle={{ background: '#1e1e2e', border: '1px solid #333' }} />
               </PieChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1371,9 +1375,9 @@ function ServicesAnalysis() {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader><CardTitle className="text-sm">🧹 Rentabilité par type de prestation</CardTitle></CardHeader>
-        <CardContent>
+      <div className="section-card overflow-hidden">
+        <div className="px-5 pt-5 pb-3"><CardTitle className="text-sm">🧹 Rentabilité par type de prestation</h3></div>
+        <div className="px-5 pb-5">
           <div className="rounded-lg border overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-muted/50">
@@ -1404,12 +1408,12 @@ function ServicesAnalysis() {
               </tbody>
             </table>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader><CardTitle className="text-sm">📊 CA par type de service</CardTitle></CardHeader>
-        <CardContent>
+      <div className="section-card overflow-hidden">
+        <div className="px-5 pt-5 pb-3"><CardTitle className="text-sm">📊 CA par type de service</h3></div>
+        <div className="px-5 pb-5">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={data.services}>
               <CartesianGrid strokeDasharray="3 3" stroke="#333" />
@@ -1421,8 +1425,8 @@ function ServicesAnalysis() {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1459,9 +1463,9 @@ function PeriodComparison() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader><CardTitle className="text-sm">📅 Comparaison</CardTitle></CardHeader>
-          <CardContent>
+        <div className="section-card overflow-hidden">
+          <div className="px-5 pt-5 pb-3"><CardTitle className="text-sm">📅 Comparaison</h3></div>
+          <div className="px-5 pb-5">
             <div className="rounded-lg border overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50">
@@ -1493,12 +1497,12 @@ function PeriodComparison() {
                 </tbody>
               </table>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader><CardTitle className="text-sm">📊 Graphique comparatif</CardTitle></CardHeader>
-          <CardContent>
+        <div className="section-card overflow-hidden">
+          <div className="px-5 pt-5 pb-3"><CardTitle className="text-sm">📊 Graphique comparatif</h3></div>
+          <div className="px-5 pb-5">
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#333" />
@@ -1510,8 +1514,8 @@ function PeriodComparison() {
                 <Bar dataKey={data.period2.month} fill="#3b82f6" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
