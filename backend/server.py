@@ -3008,6 +3008,7 @@ async def startup_db_indexes():
     init_notifications_db(db)
     init_chat_db(db)
     init_intervenant_db(db)
+    init_erp_db(db)
     await init_erp_indexes()
     await init_payroll_rh_indexes()
     init_settings_db(db)
