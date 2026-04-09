@@ -2880,7 +2880,7 @@ from settings import settings_router, init_settings_db
 app.include_router(settings_router)
 
 # ── Module PREMIUM Comptabilité + Stocks ──
-from accounting import accounting_router
+from accounting import accounting_router, init_db as init_accounting_db
 app.include_router(accounting_router)
 
 from accounting_enterprise import enterprise_router, create_enterprise_indexes
@@ -3023,6 +3023,7 @@ async def startup_db_indexes():
     try:
         init_erp_db(db)
         init_invoices_db(db)
+        init_accounting_db(db)
         logger.info("✅ ERP DB initialized")
     except Exception as e:
         logger.warning(f"ERP DB init: {e}")
