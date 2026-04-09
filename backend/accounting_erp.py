@@ -325,7 +325,7 @@ async def create_payment_journal_entry(invoice: dict, amount: float, payment_dat
         reference_type="payment",
         reference_id=invoice["invoice_id"],
         entries=entries,
-        description=f"Paiement {invoice.get("invoice_number", invoice.get("invoice_id",""))} - {invoice.get('lead_name', 'N/A')}",
+        description=f"Paiement {invoice.get('invoice_number', invoice.get('invoice_id',''))} - {invoice.get('lead_name', 'N/A')}",
         entry_date=payment_date,
         user_id=user_id,
     )
