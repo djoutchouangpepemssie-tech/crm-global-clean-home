@@ -181,16 +181,14 @@ function DashboardSection({ onNavigate }) {
 
       {/* Alerts */}
       {kpis.unpaid_invoices?.overdue > 0 && (
-        <Card className="border-red-500/50 bg-red-500/5">
-          <div className="py-3 px-5 flex items-center gap-3">
-            <AlertTriangle className="h-5 w-5 text-red-500" />
-            <span className="text-red-400 font-medium">
-              ⚠️ {kpis.unpaid_invoices.overdue} facture(s) en retard (&gt;30j) — {fmt(kpis.unpaid_invoices.amount)} impayés
-            </span>
-            <Button size="sm" variant="outline" className="ml-auto border-red-500/30 text-red-400" onClick={() => onNavigate('invoices')}>
-              Voir les factures
-            </Button>
-          </div>
+        <div className="rounded-2xl border border-red-500/30 bg-red-500/5 py-3 px-5 flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 text-red-500" />
+          <span className="text-red-400 font-medium text-sm">
+            ⚠️ {kpis.unpaid_invoices.overdue} facture(s) en retard (&gt;30j) — {fmt(kpis.unpaid_invoices.amount)} impayés
+          </span>
+          <Button size="sm" variant="outline" className="ml-auto border-red-500/30 text-red-400" onClick={() => onNavigate('invoices')}>
+            Voir les factures
+          </Button>
         </div>
       )}
 
@@ -590,8 +588,8 @@ function InvoiceCreateDialog({ open, onClose, onCreated }) {
           </div>
 
           {/* Totals */}
-          <Card className="bg-muted/30">
-            <CardContent className="p-4 grid grid-cols-3 gap-4 text-center">
+          <div className="section-card" className="bg-muted/30">
+            <div className="p-4 grid grid-cols-3 gap-4 text-center">
               <div><div className="text-xs text-muted-foreground">Total HT</div><div className="text-lg font-bold">{fmt(totals.ht)}</div></div>
               <div><div className="text-xs text-muted-foreground">TVA</div><div className="text-lg font-bold text-amber-400">{fmt(totals.tva)}</div></div>
               <div><div className="text-xs text-muted-foreground">Total TTC</div><div className="text-lg font-bold text-green-400">{fmt(totals.ttc)}</div></div>
@@ -667,8 +665,8 @@ function InvoiceDetail({ invoice }) {
         <div className="space-y-2">
           <h4 className="text-sm font-medium flex items-center gap-2"><BookOpen className="h-4 w-4" />Écritures comptables</h4>
           {invoice.journal_entries.map(j => (
-            <Card key={j.entry_id} className="bg-muted/20">
-              <CardContent className="p-3 text-xs">
+            <div className="section-card" key={j.entry_id} className="bg-muted/20">
+              <div className="p-3 text-xs">
                 <div className="flex justify-between mb-1">
                   <span className="font-medium">{j.description}</span>
                   <Badge variant="outline" className="text-xs">{j.journal_type}</Badge>
@@ -945,25 +943,25 @@ function TreasuryModule() {
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="section-card overflow-hidden">
-          <CardContent className="p-4 text-center">
+          <div className="p-4 text-center">
             <div className="text-xs text-muted-foreground">Solde initial</div>
             <div className="text-xl font-bold">{fmt(data.solde_initial)}</div>
           </div>
         </div>
-        <Card className="border-green-500/30">
-          <CardContent className="p-4 text-center">
+        <div className="section-card" className="border-green-500/30">
+          <div className="p-4 text-center">
             <div className="text-xs text-muted-foreground">Entrées</div>
             <div className="text-xl font-bold text-green-400">+{fmt(data.total_in)}</div>
           </div>
         </div>
-        <Card className="border-red-500/30">
-          <CardContent className="p-4 text-center">
+        <div className="section-card" className="border-red-500/30">
+          <div className="p-4 text-center">
             <div className="text-xs text-muted-foreground">Sorties</div>
             <div className="text-xl font-bold text-red-400">-{fmt(data.total_out)}</div>
           </div>
         </div>
-        <Card className="border-blue-500/30">
-          <CardContent className="p-4 text-center">
+        <div className="section-card" className="border-blue-500/30">
+          <div className="p-4 text-center">
             <div className="text-xs text-muted-foreground">Solde courant</div>
             <div className={`text-xl font-bold ${data.solde_courant >= 0 ? 'text-blue-400' : 'text-red-400'}`}>{fmt(data.solde_courant)}</div>
             <div className="text-xs text-muted-foreground mt-1">Prévision 30j: {fmt(data.prevision_30j)}</div>
@@ -974,7 +972,7 @@ function TreasuryModule() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Entrées */}
         <div className="section-card overflow-hidden">
-          <div className="px-5 pt-5 pb-3"><CardTitle className="text-sm text-green-400">📥 Entrées (Factures payées)</h3></div>
+          <div className="px-5 pt-5 pb-3"><h3 className="text-sm text-green-400">📥 Entrées (Factures payées)</h3></div>
           <div className="px-5 pb-5">
             {data.entries_in.length === 0 ? <p className="text-sm text-muted-foreground">Aucune entrée</p> : (
               <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -994,7 +992,7 @@ function TreasuryModule() {
 
         {/* Sorties */}
         <div className="section-card overflow-hidden">
-          <div className="px-5 pt-5 pb-3"><CardTitle className="text-sm text-red-400">📤 Sorties (Dépenses payées)</h3></div>
+          <div className="px-5 pt-5 pb-3"><h3 className="text-sm text-red-400">📤 Sorties (Dépenses payées)</h3></div>
           <div className="px-5 pb-5">
             {data.entries_out.length === 0 ? <p className="text-sm text-muted-foreground">Aucune sortie</p> : (
               <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -1068,7 +1066,7 @@ function JournalModule() {
       {loading ? <LoadingState /> : (
         <div className="space-y-3">
           {entries.map(entry => (
-            <Card key={entry.entry_id} className="hover:border-violet-500/30 transition-colors">
+            <div className="section-card" key={entry.entry_id} className="hover:border-violet-500/30 transition-colors">
               <div className="p-4">
                 <div className="flex justify-between items-start mb-3">
                   <div>
@@ -1158,22 +1156,22 @@ function TVAModule() {
         <>
           {/* Summary */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="border-green-500/30">
-              <CardContent className="p-6 text-center">
+            <div className="section-card" className="border-green-500/30">
+              <div className="p-6 text-center">
                 <div className="text-sm text-muted-foreground mb-2">TVA Collectée</div>
                 <div className="text-3xl font-bold text-green-400">{fmt(data.tva_collectee)}</div>
                 <div className="text-xs text-muted-foreground mt-1">Sur ventes</div>
               </div>
             </div>
-            <Card className="border-blue-500/30">
-              <CardContent className="p-6 text-center">
+            <div className="section-card" className="border-blue-500/30">
+              <div className="p-6 text-center">
                 <div className="text-sm text-muted-foreground mb-2">TVA Déductible</div>
                 <div className="text-3xl font-bold text-blue-400">{fmt(data.tva_deductible)}</div>
                 <div className="text-xs text-muted-foreground mt-1">Sur achats</div>
               </div>
             </div>
-            <Card className={`border-2 ${data.tva_a_verser >= 0 ? 'border-amber-500/50' : 'border-green-500/50'}`}>
-              <CardContent className="p-6 text-center">
+            <div className="section-card" className={`border-2 ${data.tva_a_verser >= 0 ? 'border-amber-500/50' : 'border-green-500/50'}`}>
+              <div className="p-6 text-center">
                 <div className="text-sm text-muted-foreground mb-2">TVA à verser</div>
                 <div className={`text-3xl font-bold ${data.tva_a_verser >= 0 ? 'text-amber-400' : 'text-green-400'}`}>
                   {fmt(data.tva_a_verser)}
@@ -1188,7 +1186,7 @@ function TVAModule() {
           {/* Detail tables */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="section-card overflow-hidden">
-              <div className="px-5 pt-5 pb-3"><CardTitle className="text-sm">📈 Détail TVA Collectée</h3></div>
+              <div className="px-5 pt-5 pb-3"><h3 className="text-sm">📈 Détail TVA Collectée</h3></div>
               <div className="px-5 pb-5">
                 {data.detail_collectee?.length > 0 ? (
                   <table className="w-full text-sm">
@@ -1203,7 +1201,7 @@ function TVAModule() {
               </div>
             </div>
             <div className="section-card overflow-hidden">
-              <div className="px-5 pt-5 pb-3"><CardTitle className="text-sm">📉 Détail TVA Déductible</h3></div>
+              <div className="px-5 pt-5 pb-3"><h3 className="text-sm">📉 Détail TVA Déductible</h3></div>
               <div className="px-5 pb-5">
                 {data.detail_deductible?.length > 0 ? (
                   <table className="w-full text-sm">
@@ -1278,9 +1276,9 @@ function IncomeStatement() {
         {month && <Button size="sm" variant="ghost" onClick={() => setMonth('')}>Tout</Button>}
       </div>
 
-      <Card className="max-w-lg">
-        <div className="px-5 pt-5 pb-3"><CardTitle>📊 Compte de Résultat {month || '(global)'}</h3></div>
-        <CardContent className="space-y-3">
+      <div className="section-card" className="max-w-lg">
+        <div className="px-5 pt-5 pb-3"><h3>📊 Compte de Résultat {month || '(global)'}</h3></div>
+        <div className="space-y-3">
           <div className="flex justify-between py-2"><span>CA HT</span><span className="font-bold text-green-400">{fmt(data.ca_ht)}</span></div>
           <Separator />
           {data.charges_detail.map((c, i) => (
@@ -1322,7 +1320,7 @@ function TopClients() {
     <div className="space-y-4">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="section-card overflow-hidden">
-          <div className="px-5 pt-5 pb-3"><CardTitle className="text-sm">👥 Top Clients par CA</h3></div>
+          <div className="px-5 pt-5 pb-3"><h3 className="text-sm">👥 Top Clients par CA</h3></div>
           <div className="px-5 pb-5">
             <div className="rounded-lg border overflow-hidden">
               <table className="w-full text-sm">
@@ -1345,7 +1343,7 @@ function TopClients() {
         </div>
 
         <div className="section-card overflow-hidden">
-          <div className="px-5 pt-5 pb-3"><CardTitle className="text-sm">📊 Répartition CA par client</h3></div>
+          <div className="px-5 pt-5 pb-3"><h3 className="text-sm">📊 Répartition CA par client</h3></div>
           <div className="px-5 pb-5">
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
@@ -1376,7 +1374,7 @@ function ServicesAnalysis() {
   return (
     <div className="space-y-4">
       <div className="section-card overflow-hidden">
-        <div className="px-5 pt-5 pb-3"><CardTitle className="text-sm">🧹 Rentabilité par type de prestation</h3></div>
+        <div className="px-5 pt-5 pb-3"><h3 className="text-sm">🧹 Rentabilité par type de prestation</h3></div>
         <div className="px-5 pb-5">
           <div className="rounded-lg border overflow-hidden">
             <table className="w-full text-sm">
@@ -1412,7 +1410,7 @@ function ServicesAnalysis() {
       </div>
 
       <div className="section-card overflow-hidden">
-        <div className="px-5 pt-5 pb-3"><CardTitle className="text-sm">📊 CA par type de service</h3></div>
+        <div className="px-5 pt-5 pb-3"><h3 className="text-sm">📊 CA par type de service</h3></div>
         <div className="px-5 pb-5">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={data.services}>
@@ -1464,7 +1462,7 @@ function PeriodComparison() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="section-card overflow-hidden">
-          <div className="px-5 pt-5 pb-3"><CardTitle className="text-sm">📅 Comparaison</h3></div>
+          <div className="px-5 pt-5 pb-3"><h3 className="text-sm">📅 Comparaison</h3></div>
           <div className="px-5 pb-5">
             <div className="rounded-lg border overflow-hidden">
               <table className="w-full text-sm">
@@ -1501,7 +1499,7 @@ function PeriodComparison() {
         </div>
 
         <div className="section-card overflow-hidden">
-          <div className="px-5 pt-5 pb-3"><CardTitle className="text-sm">📊 Graphique comparatif</h3></div>
+          <div className="px-5 pt-5 pb-3"><h3 className="text-sm">📊 Graphique comparatif</h3></div>
           <div className="px-5 pb-5">
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={chartData}>
