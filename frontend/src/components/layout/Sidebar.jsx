@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, FileText, CheckSquare, Activity, LogOut,
-  TrendingUp, Trello, CreditCard, Zap, BarChart3, CalendarDays, Plug,
+  TrendingUp, Trello, CreditCard, Zap, BarChart3, CalendarDays, Plug, BookOpen,
   Sparkles, ChevronLeft, ChevronRight, Bell, Search, MessageSquare,
   Ticket, UserCheck, Globe, Star, BarChart2, Home, ChevronDown,
   RefreshCw, MapPin, CalendarCheck, Heart, FolderOpen, Settings,
@@ -70,8 +70,9 @@ const navGroups = [
     color: '#8b5cf6',
     defaultOpen: false,
     items: [
-      { to: '/accounting',   icon: DollarSign,  label: 'Comptabilité' },
-      { to: '/stock',        icon: Package,     label: 'Gestion Stock' },
+      { to: '/accounting-erp', icon: BookOpen,   label: '📊 ERP Financier' },
+      { to: '/accounting',     icon: DollarSign, label: 'Comptabilité' },
+      { to: '/stock',          icon: Package,    label: 'Gestion Stock' },
     ]
   },
   {
