@@ -3022,7 +3022,7 @@ async def startup_db_indexes():
     init_ads_connect_db(db)
     try:
         init_erp_db(db)
-    init_invoices_db(db)
+        init_invoices_db(db)
         logger.info("✅ ERP DB initialized")
     except Exception as e:
         logger.warning(f"ERP DB init: {e}")
