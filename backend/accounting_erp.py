@@ -298,7 +298,7 @@ async def create_sale_journal_entry(invoice: dict, user_id: str = None):
         reference_type="invoice",
         reference_id=invoice["invoice_id"],
         entries=entries,
-        description=f"Facture {invoice.get("invoice_number", invoice.get("invoice_id",""))} - {invoice.get('lead_name', 'N/A')}",
+        description=f"Facture {invoice.get('invoice_number', invoice.get('invoice_id',''))} - {invoice.get('lead_name', 'N/A')}",
         entry_date=invoice.get("created_at"),
         user_id=user_id,
     )
