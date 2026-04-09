@@ -2883,7 +2883,7 @@ app.include_router(settings_router)
 from accounting import accounting_router, init_db as init_accounting_db
 app.include_router(accounting_router)
 
-from accounting_enterprise import enterprise_router, create_enterprise_indexes
+from accounting_enterprise import enterprise_router, create_enterprise_indexes, init_db as init_enterprise_db
 app.include_router(enterprise_router)
 
 from payroll import payroll_router
@@ -2895,7 +2895,7 @@ app.include_router(erp_router)
 from payroll_rh import payroll_rh_router, init_payroll_rh_indexes
 app.include_router(payroll_rh_router)
 
-from accounting_premium_endpoints import premium_router
+from accounting_premium_endpoints import premium_router, init_db as init_premium_db
 app.include_router(premium_router)
 
 # ── PURGE ALL TEST DATA ──
@@ -3024,6 +3024,7 @@ async def startup_db_indexes():
         init_erp_db(db)
         init_invoices_db(db)
         init_accounting_db(db)
+        init_premium_db(db)
         logger.info("✅ ERP DB initialized")
     except Exception as e:
         logger.warning(f"ERP DB init: {e}")
@@ -3119,6 +3120,7 @@ async def startup_db_indexes():
     
     # Enterprise accounting indexes
     try:
+        init_enterprise_db(db)
         await create_enterprise_indexes()
     except Exception as e:
         logger.error(f"Enterprise indexes error: {e}")
