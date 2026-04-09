@@ -19,9 +19,11 @@ load_dotenv(ROOT_DIR / '.env')
 
 logger = logging.getLogger(__name__)
 
-mongo_url = os.environ['MONGO_URL']
-_client = AsyncIOMotorClient(mongo_url)
-_db = _client[os.environ['DB_NAME']]
+_db = None
+
+def init_db(database):
+    global _db
+    _db = database
 
 premium_router = APIRouter(prefix="/api")
 

@@ -43,8 +43,8 @@ erp_router = APIRouter(prefix="/api/accounting")
 # ═══════════════════════════════════════════════════════════════════
 
 async def _require_auth(request: Request):
-    from server import _require_auth as server_require_auth
-    return await server_require_auth(request)
+    from server import require_auth
+    return await require_auth(request)
 
 
 async def _log_activity(user_id, action, entity_type, entity_id, details=None):

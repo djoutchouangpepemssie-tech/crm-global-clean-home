@@ -114,8 +114,8 @@ async def get_next_counter(collection_name: str) -> int:
 
 
 async def _require_auth(request: Request):
-    from server import _require_auth as _srv_auth
-    return await _srv_auth(request)
+    from server import require_auth
+    return await require_auth(request)
 
 
 async def _log_activity(user_id: str, action: str, entity_type: str, entity_id: str, details=None):
