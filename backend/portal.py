@@ -45,7 +45,8 @@ class QuoteResponse(BaseModel):
 # ============= HELPERS =============
 
 def _generate_token():
-    return hashlib.sha256(f"{uuid.uuid4().hex}{datetime.now().isoformat()}".encode()).hexdigest()[:48]
+    import secrets
+    return secrets.token_urlsafe(36)
 
 async def _get_portal_session(request: Request):
     """Validate portal session from cookie or header."""

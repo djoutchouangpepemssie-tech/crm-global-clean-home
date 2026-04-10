@@ -131,7 +131,8 @@ async def send_sms(request: Request, input: SMSMessage):
         return {"status": "sent", "sid": message.sid, "sms_id": sms_record["sms_id"]}
     
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"SMS send failed: {str(e)}")
+        logger.error(f"SMS send failed: {e}")
+        raise HTTPException(status_code=500, detail="SMS send failed")
 
 @integrations_router.get("/sms/history/{lead_id}")
 async def get_sms_history(lead_id: str, request: Request):
@@ -185,7 +186,8 @@ async def send_whatsapp(request: Request, input: WhatsAppMessage):
         return {"status": "sent", "sid": message.sid, "wa_id": wa_record["wa_id"]}
     
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"WhatsApp send failed: {str(e)}")
+        logger.error(f"WhatsApp send failed: {e}")
+        raise HTTPException(status_code=500, detail="WhatsApp send failed")
 
 @integrations_router.get("/whatsapp/templates")
 async def get_whatsapp_templates(request: Request):
@@ -592,7 +594,9 @@ async def stripe_webhook(request: Request):
     payload = await request.body()
     sig_header = request.headers.get('stripe-signature')
     webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
-    
+    if not webhook_secret:
+        raise HTTPException(status_code=500, detail="Webhook not configured")
+
     try:
         event = stripe.Webhook.construct_event(
             payload, sig_header, webhook_secret

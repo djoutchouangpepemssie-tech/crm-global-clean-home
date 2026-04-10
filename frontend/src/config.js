@@ -36,32 +36,21 @@ axios.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor: Handle errors gracefully (JSON parse errors, 401, 503, etc.)
+export const API_BASE_URL = BACKEND_URL;
+
+axios.defaults.timeout = 15000; // 15s timeout
+
+// Response interceptor: gestion erreurs réseau, 401, 503
 axios.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Handle network errors, timeouts, etc.
     if (!error.response) {
-      console.error('[Axios] Network error:', error.message);
       return Promise.reject({
         status: 0,
         statusText: 'Network Error',
-        data: { detail: error.message || 'Erreur réseau. Vérifiez votre connexion.' }
+        data: { detail: 'Erreur réseau. Vérifiez votre connexion.' }
       });
     }
-
-    // Handle JSON parse errors (server returned HTML instead of JSON)
-    if (error.response.status === 401) {
-      console.error('[Axios] Unauthorized (401) - token may be invalid');
-      // Optionally redirect to login
-    }
-    if (error.response.status === 503) {
-      console.error('[Axios] Service Unavailable (503) - server is restarting');
-    }
-    if (error.response.status >= 500) {
-      console.error('[Axios] Server error:', error.response.status, error.response.statusText);
-    }
-
     return Promise.reject(error);
   }
 );

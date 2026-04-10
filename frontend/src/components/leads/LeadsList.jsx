@@ -11,6 +11,7 @@ import {
 import { formatDate } from '../../lib/utils';
 import { toast } from 'sonner';
 import LeadScoreBadge from '../shared/LeadScoreBadge';
+import { getStatusConfig } from '../../constants/statusConfig';
 import BACKEND_URL from '../../config.js';
 
 const API_URL = BACKEND_URL + '/api';
@@ -349,7 +350,7 @@ const LeadsList = () => {
   const handleBulkDelete = async () => {
     try {
       await axios.post(`${API_URL}/leads/bulk`, { lead_ids: selectedLeads, action: 'delete' }, { withCredentials: true });
-      toast.success(`${selectedLeads.length} lead(s) supprimé(s)`, { icon: '🗑️' });
+      toast.success(`${selectedLeads.length} lead(s) supprimé(s)`);
       setSelectedLeads([]);
       setShowDeleteConfirm(false);
       fetchLeads();
@@ -369,13 +370,11 @@ const LeadsList = () => {
     } catch { toast.error('Erreur WhatsApp'); }
   };
 
-  // Status count
   const countByStatus = useCallback((key) => {
     if (!key) return leads.length;
     return leads.filter(l => l.status === key || (key === 'contacté' && l.status === 'contacte') || (key === 'gagné' && l.status === 'gagne')).length;
   }, [leads]);
 
-  // Filtered leads
   const filteredLeads = useMemo(() => leads.filter(lead => {
     const term = searchTerm.toLowerCase();
     const matchSearch =

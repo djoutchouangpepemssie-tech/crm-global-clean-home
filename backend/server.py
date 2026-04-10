@@ -18,6 +18,9 @@ import secrets as secrets_module
 import time as time_module
 from collections import defaultdict as defaultdict_import
 
+def _hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
@@ -124,6 +127,8 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https:;"
     return response
 
 # ── RATE LIMITING ──
@@ -555,7 +560,6 @@ async def get_current_user(request: Request) -> Optional[User]:
     token_hash = hash_session_token(session_token)
     session_doc = await db.user_sessions.find_one({"token_hash": token_hash}, {"_id": 0})
     if not session_doc:
-        # Fallback: legacy plaintext token (migration period)
         session_doc = await db.user_sessions.find_one({"session_token": session_token}, {"_id": 0})
     if not session_doc:
         return None
@@ -2304,7 +2308,7 @@ async def track_event(request: Request):
     
     except Exception as e:
         logger.error(f"Tracking error: {e}")
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": "Tracking failed"}
 
 @api_router.get("/tracking/visitor/{visitor_id}")
 async def get_visitor_journey(visitor_id: str, request: Request):
@@ -2534,19 +2538,17 @@ async def get_integration_status(request: Request):
         "configured": bool(os.environ.get("GOOGLE_CLIENT_ID")),
     }
     
-    stripe_key = os.environ.get("STRIPE_API_KEY", "")
     stripe_status = {
-        "configured": bool(stripe_key),
-        "mode": "test" if stripe_key.startswith("sk_test") else "live" if stripe_key.startswith("sk_live") else "unknown",
+        "configured": bool(os.environ.get("STRIPE_API_KEY", "")),
     }
-    
-    whatsapp_number = os.environ.get("WHATSAPP_NUMBER", "0622665308")
+
+    whatsapp_configured = bool(os.environ.get("WHATSAPP_NUMBER", ""))
     
     return {
         "gmail": gmail_status,
         "google_calendar": {"configured": gcal_configured()},
         "stripe": stripe_status,
-        "whatsapp": {"number": whatsapp_number, "configured": bool(whatsapp_number)},
+        "whatsapp": {"configured": whatsapp_configured},
         "tracking_widget": {"configured": True},
         "zapier_webhooks": {"configured": True},
     }
@@ -2654,7 +2656,8 @@ async def force_cors_middleware(request: StarletteRequest, call_next):
         response = await call_next(request)
     except Exception as e:
         from starlette.responses import JSONResponse
-        response = JSONResponse({"detail": str(e)}, status_code=500)
+        logger.error(f"CORS middleware error: {type(e).__name__}: {str(e)[:200]}")
+        response = JSONResponse({"detail": "Une erreur interne est survenue."}, status_code=500)
     
     if is_allowed and origin:
         response.headers["Access-Control-Allow-Origin"] = origin
@@ -2679,7 +2682,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_credentials=True,
     allow_headers=["*", "X-Portal-Token", "Content-Type", "Authorization", "Accept", "Origin"],
-    expose_headers=["*"],
+    expose_headers=["Content-Length", "Content-Type"],
     max_age=86400,
 )
 

@@ -1,26 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Sparkles, Shield, Zap, BarChart3, Users, CheckCircle } from 'lucide-react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Sparkles, Shield, Zap, BarChart3, Users, CheckCircle, ArrowRight, TrendingUp, Calendar } from 'lucide-react';
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ||
   '839544566336-be9thftofd383siebap23mmpi9pdq6oa.apps.googleusercontent.com';
 
 const features = [
-  { icon: Users, text: 'Gestion leads & prospects' },
-  { icon: BarChart3, text: 'Analytics en temps réel' },
-  { icon: Zap, text: 'Devis & factures automatiques' },
-  { icon: Shield, text: 'Emails & relances auto' },
+  { icon: Users, text: 'Gestion leads & prospects', desc: 'Pipeline intelligent' },
+  { icon: BarChart3, text: 'Analytics en temps réel', desc: 'Tableaux de bord live' },
+  { icon: Zap, text: 'Devis & factures auto', desc: 'Génération en 1 clic' },
+  { icon: Calendar, text: 'Planning intervenants', desc: 'Planification optimisée' },
+  { icon: TrendingUp, text: 'Suivi rentabilité', desc: 'Marges & performance' },
+  { icon: Shield, text: 'Portail client intégré', desc: 'Espace dédié 24/7' },
 ];
 
 const Login = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const authError = searchParams.get('error');
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
 
   const handleLogin = () => {
     setIsLoading(true);
@@ -32,75 +33,81 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex bg-dark-1" data-testid="login-page">
-      
-      {/* Left Panel */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
-        {/* Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-violet-900/40 via-slate-900 to-slate-950" />
-        
-        {/* Animated orbs */}
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-violet-600/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/3 right-1/4 w-48 h-48 bg-blue-600/15 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
-        
-        {/* Grid pattern */}
-        <div className="absolute inset-0 opacity-10" style={{
-          backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.3) 1px, transparent 0)',
-          backgroundSize: '32px 32px'
+
+      {/* Left Panel - Premium */}
+      <div className="hidden lg:flex lg:w-[55%] relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-violet-950/60 via-slate-950 to-slate-950" />
+
+        {/* Animated gradient orbs */}
+        <div className="absolute top-1/4 left-1/3 w-[400px] h-[400px] bg-violet-600/[0.15] rounded-full blur-[150px] animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-[300px] h-[300px] bg-blue-600/[0.1] rounded-full blur-[120px] animate-pulse" style={{animationDelay: '1.5s'}} />
+        <div className="absolute top-2/3 left-1/6 w-[200px] h-[200px] bg-purple-600/[0.08] rounded-full blur-[100px] animate-pulse" style={{animationDelay: '3s'}} />
+
+        {/* Dot grid */}
+        <div className="absolute inset-0 opacity-[0.04]" style={{
+          backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.5) 1px, transparent 0)',
+          backgroundSize: '40px 40px'
         }} />
-        
-        <div className="relative z-10 flex flex-col justify-between p-12 w-full">
+
+        <div className="relative z-10 flex flex-col justify-between p-12 xl:p-16 w-full">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center shadow-lg">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center shadow-lg shadow-violet-500/25">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="text-white font-bold text-lg" style={{fontFamily: 'Manrope, sans-serif'}}>
-              Global Clean Home
+            <span className="text-white font-extrabold text-lg tracking-tight" style={{fontFamily: 'Manrope, sans-serif'}}>
+              <span className="text-violet-400">Global</span> Clean Home
             </span>
           </div>
-          
+
           {/* Main content */}
-          <div className={`transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-violet-500/20 border border-violet-500/30 rounded-full text-violet-300 text-xs font-medium mb-6">
-              <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-pulse" />
+          <div className={`transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
+            <div className="inline-flex items-center gap-2.5 px-4 py-2 bg-violet-500/10 border border-violet-500/20 rounded-full text-violet-300 text-xs font-semibold mb-8">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
+              </span>
               CRM Professionnel
             </div>
-            
-            <h1 className="text-5xl font-bold text-white mb-4 leading-tight" style={{fontFamily: 'Manrope, sans-serif'}}>
+
+            <h1 className="text-5xl xl:text-6xl font-black text-white mb-5 leading-[1.1]" style={{fontFamily: 'Manrope, sans-serif'}}>
               Gérez votre
-              <span className="block bg-gradient-to-r from-violet-400 to-blue-400 bg-clip-text text-transparent">
+              <span className="block bg-gradient-to-r from-violet-400 via-purple-400 to-blue-400 bg-clip-text text-transparent pb-1">
                 activité
               </span>
-              simplement
+              simplement.
             </h1>
-            
-            <p className="text-slate-400 text-lg leading-relaxed mb-10 max-w-sm">
+
+            <p className="text-slate-400 text-lg leading-relaxed mb-10 max-w-md">
               Suivez vos leads, créez des devis et fidélisez vos clients depuis une seule interface.
             </p>
-            
-            {/* Features */}
-            <div className="space-y-3">
+
+            {/* Features grid */}
+            <div className="grid grid-cols-2 gap-3">
               {features.map((f, i) => (
-                <div key={i} className="flex items-center gap-3 text-slate-300">
-                  <div className="w-8 h-8 rounded-lg bg-violet-500/15 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
+                <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.05] hover:border-white/[0.1] transition-all group">
+                  <div className="w-9 h-9 rounded-lg bg-violet-500/10 border border-violet-500/15 flex items-center justify-center flex-shrink-0 group-hover:bg-violet-500/20 transition-colors">
                     <f.icon className="w-4 h-4 text-violet-400" />
                   </div>
-                  <span className="text-sm">{f.text}</span>
+                  <div>
+                    <span className="text-xs font-bold text-slate-300 block">{f.text}</span>
+                    <span className="text-[10px] text-slate-600">{f.desc}</span>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
-          
+
           {/* Stats */}
-          <div className="flex gap-8">
+          <div className="flex gap-10">
             {[
-              { value: '500+', label: 'Leads gérés' },
+              { value: '2 500+', label: 'Clients gérés' },
               { value: '98%', label: 'Satisfaction' },
-              { value: '24h', label: 'Réponse' },
+              { value: '< 2h', label: 'Réponse' },
             ].map((stat, i) => (
               <div key={i}>
-                <p className="text-2xl font-bold text-white" style={{fontFamily: 'Manrope, sans-serif'}}>{stat.value}</p>
-                <p className="text-xs text-slate-500 mt-0.5">{stat.label}</p>
+                <p className="text-2xl xl:text-3xl font-black text-white" style={{fontFamily: 'Manrope, sans-serif'}}>{stat.value}</p>
+                <p className="text-[11px] text-slate-500 mt-0.5 font-semibold uppercase tracking-wider">{stat.label}</p>
               </div>
             ))}
           </div>
@@ -108,22 +115,24 @@ const Login = () => {
       </div>
 
       {/* Right Panel */}
-      <div className="flex-1 flex items-center justify-center p-6 md:p-8 bg-dark-1">
-        <div className={`w-full max-w-sm transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          
+      <div className="flex-1 flex items-center justify-center p-6 md:p-10 bg-dark-1 relative">
+        <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-violet-600/[0.05] rounded-full blur-[100px]" />
+
+        <div className={`w-full max-w-sm relative z-10 transition-all duration-600 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
+
           {/* Mobile logo */}
-          <div className="lg:hidden flex items-center gap-3 mb-10">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
+          <div className="lg:hidden flex items-center gap-3 mb-12">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center shadow-lg shadow-violet-500/25">
+              <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-slate-200" style={{fontFamily: 'Manrope, sans-serif'}}>
-              Global Clean Home
+            <span className="font-extrabold text-slate-200 text-lg" style={{fontFamily: 'Manrope, sans-serif'}}>
+              <span className="text-violet-400">Global</span> Clean Home
             </span>
           </div>
 
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-slate-100 mb-2" style={{fontFamily: 'Manrope, sans-serif'}}>
-              Bienvenue 👋
+          <div className="mb-10">
+            <h1 className="text-3xl font-black text-white mb-2" style={{fontFamily: 'Manrope, sans-serif'}}>
+              Bon retour
             </h1>
             <p className="text-slate-400 text-sm">
               Connectez-vous à votre espace CRM
@@ -131,9 +140,9 @@ const Login = () => {
           </div>
 
           {authError === 'not_authorized' && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-3">
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-3">
               <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-red-400 text-xs">!</span>
+                <span className="text-red-400 text-xs font-bold">!</span>
               </div>
               <p className="text-sm text-red-400">
                 Accès refusé. Ce CRM est réservé à l'équipe Global Clean Home.
@@ -142,14 +151,14 @@ const Login = () => {
           )}
 
           {/* Login card */}
-          <div className="gradient-border p-6 mb-6">
-            <p className="text-xs text-slate-500 text-center mb-4">Connexion sécurisée via Google</p>
-            
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-7 mb-6">
+            <p className="text-xs text-slate-500 text-center mb-5 font-medium">Connexion sécurisée via Google</p>
+
             <button
               data-testid="google-login-button"
               onClick={handleLogin}
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-3 px-5 py-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-violet-500/50 rounded-xl transition-all duration-200 group disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-3 px-5 py-3.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-violet-500/40 rounded-xl transition-all duration-300 group disabled:opacity-50 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-violet-500/10"
             >
               {isLoading ? (
                 <div className="w-5 h-5 border-2 border-violet-400/30 border-t-violet-400 rounded-full animate-spin" />
@@ -161,9 +170,10 @@ const Login = () => {
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                 </svg>
               )}
-              <span className="text-sm font-semibold text-slate-300 group-hover:text-slate-100 transition-colors">
+              <span className="text-sm font-bold text-slate-300 group-hover:text-white transition-colors">
                 {isLoading ? 'Connexion...' : 'Continuer avec Google'}
               </span>
+              {!isLoading && <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-violet-400 group-hover:translate-x-0.5 transition-all" />}
             </button>
           </div>
 
@@ -191,13 +201,20 @@ const Login = () => {
           </div>
 
           {/* Security badges */}
-          <div className="flex items-center justify-center gap-4 mt-8">
+          <div className="flex items-center justify-center gap-5 mt-8">
             {['Chiffrement SSL', 'Données sécurisées', 'Accès restreint'].map((item, i) => (
-              <div key={i} className="flex items-center gap-1">
-                <CheckCircle className="w-3 h-3 text-green-500" />
-                <span className="text-xs text-slate-600">{item}</span>
+              <div key={i} className="flex items-center gap-1.5">
+                <CheckCircle className="w-3 h-3 text-green-500/70" />
+                <span className="text-[11px] text-slate-600 font-medium">{item}</span>
               </div>
             ))}
+          </div>
+
+          {/* Back to landing */}
+          <div className="mt-8 text-center">
+            <button onClick={() => navigate('/')} className="text-xs text-slate-600 hover:text-violet-400 transition-colors font-medium">
+              Retour au site
+            </button>
           </div>
         </div>
       </div>

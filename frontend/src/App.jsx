@@ -112,16 +112,15 @@ const StockTable = lazy(() => import('./components/stock/StockTable'));
 const AccountingDashboard = lazy(() => import('./components/accounting/AccountingDashboard'));
 const AccountingEnterprise = lazy(() => import('./components/accounting/AccountingEnterprise'));
 const AccountingERP = lazy(() => import('./components/accounting/AccountingERP'));
-// PayrollModule moved to payroll-rh/PayrollRHModule inside AccountingERP
 const GlobalSearchFull = lazy(() =>
   import('./components/shared/GlobalSearch').then(m => ({ default: m.GlobalSearch || m.default }))
 );
-// Trigger button: just visual, no shortcut logic
 const GlobalSearchTrigger = () => (
   <React.Suspense fallback={<div style={{width:200,height:32}} />}>
     <GlobalSearchFull triggerOnly />
   </React.Suspense>
 );
+const LandingPage = lazy(() => import('./components/landing/LandingPage'));
 import './App.css';
 import './mobile-responsive.css';
 import { requestNotificationPermission, onMessageListener } from './firebase';
@@ -362,6 +361,7 @@ function AppRouter() {
 
   return (
     <Routes>
+      <Route path="/" element={<Suspense fallback={<div className="min-h-screen bg-dark-1" />}><LandingPage /></Suspense>} />
       <Route path="/login" element={<Login />} />
       <Route path="/auth/join" element={<InvitationJoin />} />
       <Route path="/portal" element={<ClientPortal />} />
@@ -447,7 +447,7 @@ function AppRouter() {
                     <Route path="/documents" element={<DocumentsManager />} />
                     <Route path="/bookings" element={<BookingManager />} />
                     <Route path="/settings" element={<SettingsPage />} />
-                    <Route path="/" element={<Navigate to="/login" replace />} />
+                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
                   </Routes>
         </Suspense>
         </ErrorBoundary>

@@ -348,46 +348,7 @@ async def get_seo_data(request: Request, days: int = 28):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ── DEBUG ──
-@analytics_router.get("/debug")
-async def debug_token():
-    """Debug - vérifier le token et ses scopes (public temporaire)."""
-    from gmail_service import _get_any_active_token
-    token, user_id = await _get_any_active_token()
-    if not token:
-        return {"error": "No token found"}
-    try:
-        async with httpx.AsyncClient() as client:
-            # Test tokeninfo
-            info = await client.get(
-                f"https://www.googleapis.com/oauth2/v1/tokeninfo?access_token={token}",
-                timeout=10
-            )
-            # Test GA4 - lister les properties accessibles
-            ga4_list = await client.get(
-                "https://analyticsadmin.googleapis.com/v1alpha/accountSummaries",
-                headers={"Authorization": f"Bearer {token}"},
-                timeout=10
-            )
-            # Test GA4 direct
-            ga4_test = await client.post(
-                f"https://analyticsdata.googleapis.com/v1beta/properties/{GA4_PROPERTY_ID}:runReport",
-                json={
-                    "dateRanges": [{"startDate": "7daysAgo", "endDate": "today"}],
-                    "metrics": [{"name": "sessions"}]
-                },
-                headers={"Authorization": f"Bearer {token}"},
-                timeout=10
-            )
-            return {
-                "token_info": info.json(),
-                "ga4_status": ga4_test.status_code,
-                "ga4_error": ga4_test.text[:200],
-                "properties_accessible": ga4_list.text[:500],
-                "property_id_used": GA4_PROPERTY_ID,
-            }
-    except Exception as e:
-        return {"error": str(e)}
+# Debug endpoint removed for security
 
 # ── REALTIME ──
 @analytics_router.get("/realtime")
