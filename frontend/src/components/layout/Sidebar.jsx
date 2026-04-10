@@ -12,7 +12,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import axios from 'axios';
 import BACKEND_URL from '../../config.js';
 import { useTheme } from '../../contexts/ThemeContext';
-import { useTheme } from '../../contexts/ThemeContext';
 const API_URL = BACKEND_URL + '/api';
 
 /* ────────────────────────────────────────
@@ -169,10 +168,6 @@ const Sidebar = () => {
   }, [location.pathname]);
 
   /* ── Fetch live counters ── */
-  const { prefs, updateTheme } = useTheme();
-  const isDark = prefs.theme === 'dark';
-  const toggleTheme = () => updateTheme('theme', isDark ? 'light' : 'dark');
-
   const { prefs, updateTheme } = useTheme();
   const isDark = prefs.theme === 'dark';
   const toggleTheme = () => updateTheme('theme', isDark ? 'light' : 'dark');
