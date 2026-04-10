@@ -12,6 +12,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import axios from 'axios';
 import BACKEND_URL from '../../config.js';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../contexts/ThemeContext';
 const API_URL = BACKEND_URL + '/api';
 
 /* ────────────────────────────────────────
@@ -168,6 +169,10 @@ const Sidebar = () => {
   }, [location.pathname]);
 
   /* ── Fetch live counters ── */
+  const { prefs, updateTheme } = useTheme();
+  const isDark = prefs.theme === 'dark';
+  const toggleTheme = () => updateTheme('theme', isDark ? 'light' : 'dark');
+
   const { prefs, updateTheme } = useTheme();
   const isDark = prefs.theme === 'dark';
   const toggleTheme = () => updateTheme('theme', isDark ? 'light' : 'dark');
@@ -504,6 +509,14 @@ const Sidebar = () => {
               <span>Réduire</span>
             </>
           )}
+        </button>
+
+        {/* Theme Switch */}
+        <button onClick={toggleTheme}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all w-full mb-1"
+          style={{background:'rgba(139,92,246,0.1)',border:'1px solid rgba(139,92,246,0.2)',color:'#8b5cf6'}}>
+          <span className="text-base">{isDark ? '☀️' : '🌙'}</span>
+          <span>{isDark ? 'Mode Clair' : 'Mode Sombre'}</span>
         </button>
 
         {/* Theme Switch */}
