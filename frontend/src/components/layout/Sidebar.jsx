@@ -508,17 +508,25 @@ const Sidebar = () => {
 
         {/* Theme Switch */}
         <button onClick={toggleTheme}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all w-full mb-1"
-          style={{background:'rgba(139,92,246,0.1)',border:'1px solid rgba(139,92,246,0.2)',color:'#8b5cf6'}}>
-          <span className="text-base">{isDark ? '☀️' : '🌙'}</span>
+          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all w-full mb-2"
+          style={{
+            background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.12)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            color: '#ffffff'
+          }}>
+          <span style={{fontSize:'14px'}}>{isDark ? '☀️' : '🌙'}</span>
           <span>{isDark ? 'Mode Clair' : 'Mode Sombre'}</span>
         </button>
 
         {/* Theme Switch */}
         <button onClick={toggleTheme}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all w-full mb-1"
-          style={{background:'rgba(139,92,246,0.1)',border:'1px solid rgba(139,92,246,0.2)',color:'#8b5cf6'}}>
-          <span className="text-base">{isDark ? '☀️' : '🌙'}</span>
+          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all w-full mb-2"
+          style={{
+            background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.12)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            color: '#ffffff'
+          }}>
+          <span style={{fontSize:'14px'}}>{isDark ? '☀️' : '🌙'}</span>
           <span>{isDark ? 'Mode Clair' : 'Mode Sombre'}</span>
         </button>
 
