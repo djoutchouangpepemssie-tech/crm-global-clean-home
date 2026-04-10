@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gch-crm-v3';
+const CACHE_NAME = 'gch-crm-v5';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
