@@ -109,8 +109,7 @@ const SatisfactionDashboard = lazy(() => import('./components/satisfaction/Satis
 const DocumentsManager = lazy(() => import('./components/documents/DocumentsManager'));
 const BookingManager = lazy(() => import('./components/booking/BookingManager'));
 const SettingsPage = lazy(() => import('./components/settings/SettingsPage'));
-const QuoteFormPremium = lazy(() => import('./components/quotes/QuoteFormPremium'));
-const InvoiceFormPremium = lazy(() => import('./components/invoices/InvoiceFormPremium'));
+const InvoiceForm = lazy(() => import('./components/invoices/InvoiceForm'));
 const StockTable = lazy(() => import('./components/stock/StockTable'));
 const AccountingDashboard = lazy(() => import('./components/accounting/AccountingDashboard'));
 const AccountingEnterprise = lazy(() => import('./components/accounting/AccountingEnterprise'));
@@ -422,15 +421,18 @@ function AppRouter() {
                     <Route path="/leads/:id" element={<LeadDetail />} />
                     <Route path="/leads" element={<LeadsList />} />
                     <Route path="/quotes/new" element={<QuoteForm />} />
-                    <Route path="/quotes/premium" element={<QuoteFormPremium />} />
+                    {/* Legacy : /quotes/premium redirige vers /quotes/new (même composant unifié) */}
+                    <Route path="/quotes/premium" element={<QuoteForm />} />
                     <Route path="/quotes" element={<QuotesList />} />
                     <Route path="/tasks" element={<TasksList />} />
                     <Route path="/activity" element={<ActivityLog />} />
                     <Route path="/kanban" element={<KanbanBoard />} />
                     <Route path="/analytics" element={<Analytics />} />
                     <Route path="/invoices" element={<InvoicesList />} />
+                    <Route path="/invoices/new" element={<InvoiceForm />} />
                     <Route path="/invoices/:invoiceId/success" element={<PaymentSuccess />} />
-                    <Route path="/invoices/premium" element={<InvoiceFormPremium />} />
+                    {/* Legacy : /invoices/premium redirige vers /invoices/new */}
+                    <Route path="/invoices/premium" element={<InvoiceForm />} />
                     <Route path="/finance" element={<FinancialDashboard />} />
                     <Route path="/accounting-erp" element={<AccountingERP />} />
                     <Route path="/accounting" element={<AccountingDashboard />} />
