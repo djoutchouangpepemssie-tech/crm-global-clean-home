@@ -881,6 +881,9 @@ const SettingsPage = () => {
 
   // Retirer un membre
   const handleRemoveMember = async (memberId) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir retirer ce membre de l\'équipe ? Cette action est irréversible.')) {
+      return;
+    }
     try {
       await axios.delete(`${API_URL}/settings/team/${memberId}`);
       toast.success('Membre retiré');
@@ -983,6 +986,9 @@ const SettingsPage = () => {
 
   // Supprimer une clé API
   const handleDeleteApiKey = async (keyId) => {
+    if (!window.confirm('Supprimer cette clé API ? Toute application qui l\'utilise cessera de fonctionner immédiatement.')) {
+      return;
+    }
     try {
       await axios.delete(`${API_URL}/settings/api-keys/${keyId}`);
       setApiSettings(prev => ({ ...prev, apiKeys: prev.apiKeys.filter(k => k.key_id !== keyId) }));
@@ -1015,6 +1021,15 @@ const SettingsPage = () => {
 
   // Supprimer le compte
   const handleDeleteAccount = async () => {
+    const confirmText = window.prompt(
+      'ATTENTION : Suppression définitive du compte\n\n' +
+      'Toutes vos données seront perdues. Cette action est IRRÉVERSIBLE.\n\n' +
+      'Tapez "SUPPRIMER MON COMPTE" pour confirmer :'
+    );
+    if (confirmText !== 'SUPPRIMER MON COMPTE') {
+      toast.info('Suppression annulée');
+      return;
+    }
     try {
       await axios.delete(`${API_URL}/settings/account`);
       toast.success('Compte supprimé');
@@ -1049,6 +1064,9 @@ const SettingsPage = () => {
 
   // ── Team: Delete role ──
   const handleDeleteRole = async (roleId) => {
+    if (!window.confirm('Supprimer ce rôle ? Les membres qui l\'ont attribué perdront leurs permissions associées.')) {
+      return;
+    }
     try {
       await axios.delete(`${API_URL}/settings/team/roles/${roleId}`);
       setTeam(prev => ({ ...prev, roles: prev.roles.filter(r => r.id !== roleId) }));

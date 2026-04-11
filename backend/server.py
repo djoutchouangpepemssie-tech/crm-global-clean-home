@@ -311,10 +311,52 @@ QUOTE_STATUSES = {"brouillon","envoyé","accepté","refusé","expiré"}
 INVOICE_STATUSES = {"en_attente","payée","en_retard","annulée"}
 INTERVENTION_STATUSES = {"planifiée","en_cours","terminée","annulée"}
 
+# Service types acceptés (validation stricte des leads et devis)
+SERVICE_TYPES = {
+    "Ménage", "Canapé", "Matelas", "Tapis", "Bureaux",
+    "Vitres", "Fin de chantier", "Déménagement", "Autre",
+}
+
+def validate_service_type(value: Optional[str]) -> Optional[str]:
+    """Valide un service_type contre la liste SERVICE_TYPES (insensible à la casse/espaces)."""
+    if value is None or value == "":
+        return value
+    normalized = value.strip()
+    for allowed in SERVICE_TYPES:
+        if allowed.lower() == normalized.lower():
+            return allowed
+    raise ValueError(f"service_type '{value}' invalide. Valeurs acceptées: {sorted(SERVICE_TYPES)}")
+
 def validate_status(value: str, valid_statuses: set, field: str = "status") -> str:
     if value not in valid_statuses:
         raise HTTPException(status_code=400, detail=f"Statut '{value}' invalide pour {field}. Valeurs acceptées: {sorted(valid_statuses)}")
     return value
+
+# ── Helpers de masquage pour logs (éviter de leaker des données sensibles) ──
+def mask_email(email: Optional[str]) -> str:
+    """Masque un email pour les logs: jean.dupont@example.com → j***t@e***e.com"""
+    if not email or "@" not in str(email):
+        return "***"
+    try:
+        local, domain = str(email).split("@", 1)
+        local_masked = local[0] + "***" + local[-1] if len(local) > 2 else "***"
+        if "." in domain:
+            name, tld = domain.rsplit(".", 1)
+            domain_masked = (name[0] + "***" + name[-1] if len(name) > 2 else "***") + "." + tld
+        else:
+            domain_masked = "***"
+        return f"{local_masked}@{domain_masked}"
+    except Exception:
+        return "***"
+
+def mask_phone(phone: Optional[str]) -> str:
+    """Masque un téléphone pour les logs: +33612345678 → +33******678"""
+    if not phone:
+        return "***"
+    s = str(phone)
+    if len(s) <= 4:
+        return "***"
+    return s[:3] + "*" * (len(s) - 6) + s[-3:]
 
 
 # ============= MODELS =============
@@ -407,6 +449,11 @@ class LeadCreate(BaseModel):
             raise ValueError("Le prix estimé doit être >= 0")
         return v
 
+    @field_validator("service_type")
+    @classmethod
+    def validate_service_type_field(cls, v: str) -> str:
+        return validate_service_type(v)
+
 class LeadUpdate(BaseModel):
     status: Optional[str] = None
     probability: Optional[int] = None
@@ -477,6 +524,11 @@ class QuoteCreate(BaseModel):
         if v < 0:
             raise ValueError("Le montant doit être >= 0")
         return v
+
+    @field_validator("service_type")
+    @classmethod
+    def validate_service_type_field(cls, v: str) -> str:
+        return validate_service_type(v)
 
 class Interaction(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -785,7 +837,7 @@ async def create_session(input: SessionCreate, response: Response):
         user_check = await db.users.find_one({"user_id": user_id}, {"_id": 0})
         if user_check and user_check.get("role") == "admin":
             if not user_check.get("totp_enabled"):
-                logger.warning(f"⚠️ Admin {email} logged in WITHOUT 2FA enabled!")
+                logger.warning(f"⚠️ Admin {mask_email(email)} logged in WITHOUT 2FA enabled!")
         
         # Set cookie
         response.set_cookie(
@@ -963,7 +1015,7 @@ async def join_with_invitation(input: InvitationJoin, request: Request, response
         )
         
         record_auth_join_attempt(client_ip, success=True)
-        logger.info(f"✅ User {email} created via invitation (role: {role}) from IP {client_ip}")
+        logger.info(f"✅ User {mask_email(email)} created via invitation (role: {role}) from IP {client_ip}")
         
         # ── 2FA WARNING FOR ADMIN ──
         result = {
@@ -1028,11 +1080,11 @@ async def send_verification_code(request: Request):
         from gmail_service import send_verification_email
         email_sent = await send_verification_email(email, code)
         if email_sent:
-            logger.info(f"✅ Verification code sent to {email}")
+            logger.info(f"✅ Verification code sent to {mask_email(email)}")
         else:
-            logger.warning(f"⚠️ Verification code NOT sent to {email} (Gmail may not be connected)")
+            logger.warning(f"⚠️ Verification code NOT sent to {mask_email(email)} (Gmail may not be connected)")
     except Exception as e:
-        logger.error(f"❌ Failed to send verification email to {email}: {e}")
+        logger.error(f"❌ Failed to send verification email to {mask_email(email)}: {e}")
         # Still return success - code is in DB for testing/manual verification
     
     return {"success": True, "message": f"Code de vérification envoyé à {email}"}
@@ -1098,7 +1150,7 @@ async def verify_email_code(body: VerifyEmailRequest):
         }, {"_id": 0})
         
         if not verification:
-            logger.warning(f"❌ Failed email verification for {email} - invalid code")
+            logger.warning(f"❌ Failed email verification for {mask_email(email)} - invalid code")
             raise HTTPException(status_code=400, detail="Code invalide")
         
         # Check expiry
@@ -1109,7 +1161,7 @@ async def verify_email_code(body: VerifyEmailRequest):
             expires_at = expires_at.replace(tzinfo=timezone.utc)
         
         if expires_at < datetime.now(timezone.utc):
-            logger.warning(f"❌ Email verification expired for {email}")
+            logger.warning(f"❌ Email verification expired for {mask_email(email)}")
             raise HTTPException(status_code=400, detail="Code expiré")
         
         # Mark as used
@@ -1118,7 +1170,7 @@ async def verify_email_code(body: VerifyEmailRequest):
             {"$set": {"used": True, "verified_at": datetime.now(timezone.utc).isoformat()}}
         )
         
-        logger.info(f"✅ Email verified for {email}")
+        logger.info(f"✅ Email verified for {mask_email(email)}")
         return {"success": True, "message": "Email vérifié avec succès"}
         
     except HTTPException:

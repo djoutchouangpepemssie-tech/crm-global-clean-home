@@ -27,6 +27,23 @@ load_dotenv(ROOT_DIR / '.env')
 logger = logging.getLogger(__name__)
 
 
+def _mask_email(email):
+    """Masque un email pour les logs: jean.dupont@example.com → j***t@e***e.com"""
+    if not email or "@" not in str(email):
+        return "***"
+    try:
+        local, domain = str(email).split("@", 1)
+        local_masked = local[0] + "***" + local[-1] if len(local) > 2 else "***"
+        if "." in domain:
+            name, tld = domain.rsplit(".", 1)
+            domain_masked = (name[0] + "***" + name[-1] if len(name) > 2 else "***") + "." + tld
+        else:
+            domain_masked = "***"
+        return f"{local_masked}@{domain_masked}"
+    except Exception:
+        return "***"
+
+
 portal_router = APIRouter(prefix="/api/portal")
 
 # ============= MODELS =============
@@ -101,9 +118,9 @@ async def request_magic_link(body: MagicLinkRequest):
             portal_base_url = "https://www.globalcleanhome.com"
         email_sent = send_magic_link(email, lead.get("name", "Client"), token, portal_base_url)
         if email_sent:
-            logger.info(f"Magic link email sent to {email}")
+            logger.info(f"Magic link email sent to {_mask_email(email)}")
         else:
-            logger.info(f"Magic link generated for {email} (email not sent - SendGrid not configured): token={token}")
+            logger.info(f"Magic link generated for {_mask_email(email)} (email not sent - SendGrid not configured)")
     except Exception as e:
         logger.warning(f"Failed to send magic link email: {e}")
     
@@ -420,7 +437,7 @@ async def auto_send_portal_access(lead: dict, context: str = "quote") -> bool:
         token_gmail, user_id = await _get_any_active_token()
         if token_gmail:
             await _send_gmail_message(token_gmail, email, subject, html)
-            logger.info(f"Portal access email sent to {email} (context: {context})")
+            logger.info(f"Portal access email sent to {_mask_email(email)} (context: {context})")
             return True
         return False
     except Exception as e:
