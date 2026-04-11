@@ -19,7 +19,9 @@ export function useTasksList(filters = {}) {
         if (v !== undefined && v !== null && v !== '') params.append(k, v);
       });
       const { data } = await api.get(`/tasks?${params.toString()}`);
-      return Array.isArray(data) ? data : data.tasks || [];
+      // L'endpoint renvoie {items, total, page, page_size, total_pages}
+      if (Array.isArray(data)) return data;
+      return data.items || data.tasks || [];
     },
   });
 }
@@ -87,12 +89,14 @@ export function useUpdateTask() {
   });
 }
 
-/** Raccourci : marquer une tâche comme complétée */
+/** Raccourci : marquer une tâche comme complétée (endpoint dédié backend) */
 export function useCompleteTask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (taskId) => {
-      const { data } = await api.patch(`/tasks/${taskId}`, { status: 'completed' });
+      // Le backend expose un endpoint dédié /tasks/{id}/complete
+      // qui met le status + completed_at automatiquement
+      const { data } = await api.patch(`/tasks/${taskId}/complete`);
       return data;
     },
     onSuccess: () => {

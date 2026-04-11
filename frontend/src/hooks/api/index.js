@@ -10,3 +10,4 @@ export * from './useInvoices';
 export * from './useTasks';
 export * from './useDashboard';
 export * from './useInteractions';
+export * from './usePlanning';
