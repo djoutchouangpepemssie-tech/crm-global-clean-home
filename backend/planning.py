@@ -589,7 +589,7 @@ async def check_in_out(intervention_id: str, body: CheckInOut, request: Request)
 async def get_calendar(request: Request, month: Optional[str] = None):
     """Get interventions for calendar view. month format: YYYY-MM"""
     await _require_auth(request)
-    
+
     if month:
         year, m = month.split("-")
         date_from = f"{year}-{m}-01"
@@ -604,18 +604,29 @@ async def get_calendar(request: Request, month: Optional[str] = None):
             date_to = f"{now.year+1}-01-01"
         else:
             date_to = f"{now.year}-{now.month+1:02d}-01"
-    
+
+    # Limite haute pour éviter OOM si la base grossit. Si saturation, on coupe explicitement.
+    CALENDAR_HARD_LIMIT = 5000
     interventions = await _db.interventions.find(
         {"scheduled_date": {"$gte": date_from, "$lt": date_to}},
         {"_id": 0}
-    ).sort("scheduled_date", 1).to_list(1000)
-    
+    ).sort("scheduled_date", 1).limit(CALENDAR_HARD_LIMIT).to_list(CALENDAR_HARD_LIMIT)
+
+    truncated = len(interventions) >= CALENDAR_HARD_LIMIT
+    if truncated:
+        import logging
+        logging.getLogger(__name__).warning(
+            f"Calendar view saturated: {CALENDAR_HARD_LIMIT} interventions returned for {date_from}..{date_to}"
+        )
+
     teams = await _db.teams.find({}, {"_id": 0}).to_list(100)
-    
+
     return {
         "month": month or datetime.now(timezone.utc).strftime("%Y-%m"),
         "interventions": interventions,
         "teams": teams,
+        "truncated": truncated,
+        "limit": CALENDAR_HARD_LIMIT,
     }
 
 @planning_router.get("/team-members")
