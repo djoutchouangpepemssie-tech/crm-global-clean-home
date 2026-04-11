@@ -9,3 +9,4 @@ export * from './useQuotes';
 export * from './useInvoices';
 export * from './useTasks';
 export * from './useDashboard';
+export * from './useInteractions';
