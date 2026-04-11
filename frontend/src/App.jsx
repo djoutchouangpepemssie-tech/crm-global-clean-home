@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, NavLink } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { queryClient } from './lib/queryClient';
 import { Toaster } from 'sonner';
 import { LayoutDashboard, Users, FileText, MoreHorizontal, X, LogOut, Trello, CreditCard, BarChart3, CalendarDays, CheckSquare, TrendingUp, Plug, Activity, ChevronRight, Briefcase, Star, Settings, Globe, MessageSquare, Ticket, Workflow, BarChart2, UserCheck, Map, BookOpen, ThumbsUp, FolderOpen, Scroll, Search } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -464,27 +467,32 @@ function AppRouter() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <ThemeProvider>
-      <AuthProvider>
-        <NotificationHandler />
-        <React.Suspense fallback={null}>
-          <GlobalSearchFull />
-        </React.Suspense>
-        <AppRouter />
-        <Toaster
-          position="top-right"
-          richColors
-          closeButton
-          toastOptions={{
-            style: {
-              fontFamily: 'Inter, sans-serif'
-            }
-          }}
-        />
-      </AuthProvider>
-      </ThemeProvider>
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <ThemeProvider>
+          <AuthProvider>
+            <NotificationHandler />
+            <React.Suspense fallback={null}>
+              <GlobalSearchFull />
+            </React.Suspense>
+            <AppRouter />
+            <Toaster
+              position="top-right"
+              richColors
+              closeButton
+              toastOptions={{
+                style: {
+                  fontFamily: 'Inter, sans-serif'
+                }
+              }}
+            />
+          </AuthProvider>
+        </ThemeProvider>
+      </BrowserRouter>
+      {process.env.NODE_ENV === 'development' && (
+        <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
+      )}
+    </QueryClientProvider>
   );
 }
 

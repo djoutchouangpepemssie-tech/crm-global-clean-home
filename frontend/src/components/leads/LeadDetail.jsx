@@ -1,760 +1,668 @@
-import React, { useEffect, useState, useCallback } from 'react';
+/**
+ * LeadDetail — Vague 1.
+ *
+ * Refonte complète, branchée sur React Query.
+ *
+ * Features :
+ *   - PageHeader avec breadcrumbs + actions rapides + onglets
+ *   - Score circulaire + infos contact + tracking UTM
+ *   - 5 onglets : Vue d'ensemble, Timeline, Devis, Tâches, Notes
+ *   - Timeline unifiée (interactions + devis + tâches) triée chrono
+ *   - Changement de statut inline avec state machine
+ *   - Ajout d'interaction rapide (note, appel, email, relance)
+ *   - Envoi de devis en un clic (avec confirmation)
+ *   - Notes persistées via PATCH /leads/{id}
+ *   - Quick actions : Appeler, Email, WhatsApp, Créer devis
+ *
+ * Toutes les mutations utilisent les hooks React Query qui invalident
+ * automatiquement les caches dépendants (dashboard, liste leads, etc.)
+ */
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, FileText, MessageSquare, Plus, Send, ArrowUpRight, ArrowDownLeft, User, Tag, TrendingUp, Clock, CheckCircle, XCircle, Zap, Star, Brain, Activity, Target, AlertTriangle, Sparkles } from 'lucide-react';
-import LeadChat from '../chat/LeadChat';
-import { formatDateTime, formatCurrency } from '../../lib/utils';
+import {
+  Phone, Mail, MessageSquare, FileText, CheckSquare, Activity,
+  MapPin, Calendar, Globe, TrendingUp, Send, Plus, Save,
+  Sparkles, Clock, User, Tag, Hash,
+} from 'lucide-react';
 import { toast } from 'sonner';
+
+import {
+  useLead,
+  useUpdateLead,
+  useQuotesByLead,
+  useTasksByLead,
+  useSendQuote,
+  useInteractionsByLead,
+  useCreateInteraction,
+} from '../../hooks/api';
+import { PageHeader, StatusBadge, EmptyState, useConfirm } from '../shared';
+import { relativeTime, shortDateTime, shortDate } from '../../lib/dates';
+import {
+  getAllowedNextStatuses,
+  LEAD_STATUS_LABELS,
+} from '../../lib/leadStatus';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
 import BACKEND_URL from '../../config.js';
-const API_URL = BACKEND_URL + '/api';
 
-const STATUS_CONFIG = {
-  'nouveau': { label: 'Nouveau', color: '#60a5fa', bg: 'rgba(96,165,250,0.1)', border: 'rgba(96,165,250,0.2)' },
-  'contacté': { label: 'Contacté', color: '#a78bfa', bg: 'rgba(167,139,250,0.1)', border: 'rgba(167,139,250,0.2)' },
-  'contacte': { label: 'Contacté', color: '#a78bfa', bg: 'rgba(167,139,250,0.1)', border: 'rgba(167,139,250,0.2)' },
-  'en_attente': { label: 'En attente', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.2)' },
-  'devis_envoyé': { label: 'Devis envoyé', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.2)' },
-  'gagné': { label: 'Gagné', color: '#34d399', bg: 'rgba(52,211,153,0.1)', border: 'rgba(52,211,153,0.2)' },
-  'gagne': { label: 'Gagné', color: '#34d399', bg: 'rgba(52,211,153,0.1)', border: 'rgba(52,211,153,0.2)' },
-  'perdu': { label: 'Perdu', color: '#f43f5e', bg: 'rgba(244,63,94,0.1)', border: 'rgba(244,63,94,0.2)' },
-};
+// ── Score circulaire SVG ─────────────────────────────────────────
+function ScoreCircle({ score = 0, size = 120 }) {
+  const s = Math.min(100, Math.max(0, score));
+  const radius = (size - 16) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (s / 100) * circumference;
+  const color = s < 30 ? '#f43f5e' : s < 60 ? '#f59e0b' : s < 80 ? '#34d399' : '#22d3ee';
+  const label = s < 30 ? 'Froid' : s < 60 ? 'Tiède' : s < 80 ? 'Chaud' : 'Brûlant';
 
-const INTERACTION_ICONS = {
-  'note': '📝',
-  'appel': '📞',
-  'email': '📧',
-  'relance': '🔔',
-  'email_sent': '📤',
-  'email_received': '📩',
-  'auto_followup': '🤖',
-};
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="currentColor"
+          strokeWidth="8"
+          fill="none"
+          className="text-slate-200 dark:text-slate-800"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={color}
+          strokeWidth="8"
+          fill="none"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.22, 0.61, 0.36, 1)' }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-3xl font-bold text-slate-900 dark:text-slate-100">{s}</span>
+        <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color }}>
+          {label}
+        </span>
+      </div>
+    </div>
+  );
+}
 
-const LeadDetail = () => {
+// ── Bloc d'info contact ──────────────────────────────────────────
+function InfoRow({ icon: Icon, label, value, href }) {
+  if (!value) return null;
+  const content = (
+    <div className="flex items-start gap-3 py-2.5 text-sm">
+      <Icon className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+      <div className="min-w-0 flex-1">
+        <div className="text-xs text-slate-500 dark:text-slate-400">{label}</div>
+        <div className="text-slate-900 dark:text-slate-100 truncate">{value}</div>
+      </div>
+    </div>
+  );
+  return href ? (
+    <a href={href} className="block hover:bg-slate-50 dark:hover:bg-slate-900/40 rounded-lg -mx-2 px-2 transition-colors">
+      {content}
+    </a>
+  ) : (
+    content
+  );
+}
+
+// ── Item de timeline ─────────────────────────────────────────────
+function TimelineItem({ item }) {
+  const icons = {
+    note: { Icon: FileText, color: 'text-slate-500 bg-slate-100 dark:bg-slate-800' },
+    appel: { Icon: Phone, color: 'text-blue-600 bg-blue-50 dark:bg-blue-950/40 dark:text-blue-400' },
+    email: { Icon: Mail, color: 'text-violet-600 bg-violet-50 dark:bg-violet-950/40 dark:text-violet-400' },
+    sms: { Icon: MessageSquare, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400' },
+    relance: { Icon: Sparkles, color: 'text-amber-600 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-400' },
+    quote: { Icon: FileText, color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 dark:text-indigo-400' },
+    task: { Icon: CheckSquare, color: 'text-teal-600 bg-teal-50 dark:bg-teal-950/40 dark:text-teal-400' },
+  };
+  const { Icon, color } = icons[item.type] || icons.note;
+
+  return (
+    <div className="relative flex gap-4 group">
+      <div className="flex flex-col items-center flex-shrink-0">
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center ring-4 ring-white dark:ring-slate-950 ${color}`}>
+          <Icon className="w-4 h-4" />
+        </div>
+        <div className="flex-1 w-px bg-slate-200 dark:bg-slate-800 mt-1" />
+      </div>
+      <div className="flex-1 min-w-0 pb-6">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+            {item.title}
+          </span>
+          {item.badge && (
+            <span className="text-xs px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+              {item.badge}
+            </span>
+          )}
+        </div>
+        {item.description && (
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 leading-relaxed whitespace-pre-wrap">
+            {item.description}
+          </p>
+        )}
+        <div className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">
+          {relativeTime(item.date)} · {shortDateTime(item.date)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Composant principal ──────────────────────────────────────────
+export default function LeadDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [lead, setLead] = useState(null);
-  const [interactions, setInteractions] = useState([]);
-  const [quotes, setQuotes] = useState([]);
-  const [emails, setEmails] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [newInteraction, setNewInteraction] = useState({ type: 'note', content: '' });
-  const [updatingStatus, setUpdatingStatus] = useState(false);
-  const [sendingQuote, setSendingQuote] = useState(null);
-  const [activeTab, setActiveTab] = useState('interactions');
-  const [tasks, setTasks] = useState([]);
-  const [aiScore, setAiScore] = useState(null);
-  const [scoringLoading, setScoringLoading] = useState(false);
+  const { confirm, ConfirmElement } = useConfirm();
+
+  const [activeTab, setActiveTab] = useState('overview');
   const [notes, setNotes] = useState('');
-  const [savingNotes, setSavingNotes] = useState(false);
+  const [notesDirty, setNotesDirty] = useState(false);
+  const [newInteraction, setNewInteraction] = useState({ type: 'note', content: '' });
 
-  const fetchLeadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [leadRes, interactionsRes, quotesRes, emailsRes, tasksRes] = await Promise.all([
-        axios.get(`${API_URL}/leads/${id}`, { withCredentials: true }),
-        axios.get(`${API_URL}/interactions?lead_id=${id}`, { withCredentials: true }),
-        axios.get(`${API_URL}/quotes?lead_id=${id}`, { withCredentials: true }),
-        axios.get(`${API_URL}/emails/lead/${id}`, { withCredentials: true }).catch(() => ({ data: { emails: [] } })),
-        axios.get(`${API_URL}/tasks?lead_id=${id}`, { withCredentials: true }).catch(() => ({ data: [] })),
-      ]);
-      setLead(leadRes.data);
-      setNotes(leadRes.data.notes || '');
-      setInteractions(interactionsRes.data);
-      setQuotes(quotesRes.data);
-      setEmails(emailsRes.data.emails || []);
-      setTasks(Array.isArray(tasksRes.data) ? tasksRes.data.filter(t => t.lead_id === id) : []);
-    } catch {
-      toast.error('Erreur lors du chargement du lead');
-    } finally {
-      setLoading(false);
+  // Queries
+  const { data: lead, isLoading, error } = useLead(id);
+  const { data: interactions = [] } = useInteractionsByLead(id);
+  const { data: quotes = [] } = useQuotesByLead(id);
+  const { data: tasks = [] } = useTasksByLead(id);
+
+  // Mutations
+  const updateLead = useUpdateLead();
+  const createInteraction = useCreateInteraction();
+  const sendQuote = useSendQuote();
+
+  // Sync notes quand le lead charge (et pas pendant qu'on édite)
+  useEffect(() => {
+    if (lead?.notes !== undefined && !notesDirty) {
+      setNotes(lead.notes || '');
     }
-  }, [id]);
+  }, [lead?.notes, notesDirty]);
 
-  useEffect(() => { fetchLeadData(); }, [fetchLeadData]);
+  // Timeline unifiée (interactions + devis + tâches triés chrono)
+  const timeline = useMemo(() => {
+    const items = [];
+    interactions.forEach((i) => {
+      items.push({
+        id: `i-${i.interaction_id || i.id}`,
+        type: i.type || 'note',
+        title: ({
+          note: 'Note ajoutée',
+          appel: 'Appel enregistré',
+          email: 'Email envoyé',
+          sms: 'SMS envoyé',
+          relance: 'Relance effectuée',
+        })[i.type] || 'Interaction',
+        description: i.content,
+        date: i.created_at,
+      });
+    });
+    quotes.forEach((q) => {
+      items.push({
+        id: `q-${q.quote_id}`,
+        type: 'quote',
+        title: `Devis ${q.quote_number || (q.quote_id ? q.quote_id.slice(0, 8) : '')}`,
+        badge: q.status,
+        description: q.amount ? `${Number(q.amount).toLocaleString('fr-FR')} € HT` : null,
+        date: q.created_at,
+      });
+    });
+    tasks.forEach((t) => {
+      items.push({
+        id: `t-${t.task_id || t.id}`,
+        type: 'task',
+        title: t.title || 'Tâche',
+        badge: t.status,
+        description: t.description,
+        date: t.created_at || t.due_date,
+      });
+    });
+    return items.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  }, [interactions, quotes, tasks]);
 
-  const handleStatusChange = async (newStatus) => {
-    setUpdatingStatus(true);
-    try {
-      await axios.patch(`${API_URL}/leads/${id}`, { status: newStatus }, { withCredentials: true });
-      setLead({ ...lead, status: newStatus });
-      toast.success('Statut mis à jour');
-    } catch { toast.error('Erreur lors de la mise à jour'); } 
-    finally { setUpdatingStatus(false); }
+  // ── Handlers ──────────────────────────────────────────────────
+
+  const handleStatusChange = async (nextStatus) => {
+    await updateLead.mutateAsync({ leadId: id, payload: { status: nextStatus } });
+    toast.success(`Statut changé en "${LEAD_STATUS_LABELS[nextStatus]}"`);
+  };
+
+  const handleSaveNotes = async () => {
+    await updateLead.mutateAsync({ leadId: id, payload: { notes } });
+    setNotesDirty(false);
+    toast.success('Notes sauvegardées');
   };
 
   const handleAddInteraction = async (e) => {
     e.preventDefault();
     if (!newInteraction.content.trim()) return;
-    try {
-      await axios.post(`${API_URL}/interactions`, { lead_id: id, ...newInteraction }, { withCredentials: true });
-      toast.success('Interaction ajoutée');
-      setNewInteraction({ type: 'note', content: '' });
-      fetchLeadData();
-    } catch { toast.error('Erreur lors de l\'ajout'); }
+    await createInteraction.mutateAsync({
+      lead_id: id,
+      type: newInteraction.type,
+      content: newInteraction.content.trim(),
+    });
+    setNewInteraction({ type: 'note', content: '' });
+  };
+
+  const handleCreateQuote = () => {
+    navigate('/quotes/new', { state: { lead } });
   };
 
   const handleSendQuote = async (quoteId) => {
-    setSendingQuote(quoteId);
-    try {
-      const res = await axios.post(`${API_URL}/quotes/${quoteId}/send`, {}, { withCredentials: true });
-      toast.success(res.data.email_sent ? 'Devis envoyé par email ✓' : 'Devis marqué comme envoyé');
-      fetchLeadData();
-    } catch { toast.error('Erreur lors de l\'envoi'); }
-    finally { setSendingQuote(null); }
+    const ok = await confirm({
+      title: 'Envoyer ce devis par email ?',
+      description: `Le devis sera envoyé à ${lead?.email || "l'adresse du client"}.`,
+      confirmText: 'Envoyer',
+      variant: 'info',
+    });
+    if (ok) await sendQuote.mutateAsync(quoteId);
   };
 
-  const handleSaveNotes = async () => {
-    setSavingNotes(true);
+  const handleWhatsApp = async () => {
+    if (!lead?.phone) {
+      toast.error('Aucun numéro de téléphone enregistré');
+      return;
+    }
     try {
-      await axios.patch(`${API_URL}/leads/${id}`, { notes }, { withCredentials: true });
-      toast.success('Notes sauvegardées');
-    } catch { toast.error('Erreur sauvegarde notes'); }
-    finally { setSavingNotes(false); }
+      const res = await axios.post(
+        `${BACKEND_URL}/api/whatsapp/send`,
+        { lead_id: id, message: `Bonjour ${lead.name}, Global Clean Home vous contacte.` },
+        { withCredentials: true }
+      );
+      if (res.data?.link) window.open(res.data.link, '_blank');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erreur WhatsApp');
+    }
   };
 
-  if (loading) {
+  // ── Render ────────────────────────────────────────────────────
+
+  if (isLoading) {
     return (
-      <div className="p-6 animate-fade-in">
-        <div className="skeleton h-8 w-32 mb-6 rounded-lg" />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 space-y-4">
-            <div className="skeleton h-48 rounded-xl" />
-            <div className="skeleton h-64 rounded-xl" />
-          </div>
-          <div className="space-y-4">
-            <div className="skeleton h-48 rounded-xl" />
-            <div className="skeleton h-32 rounded-xl" />
-          </div>
+      <div className="p-6 max-w-6xl mx-auto animate-pulse">
+        <div className="h-8 w-40 bg-slate-200 dark:bg-slate-800 rounded mb-6" />
+        <div className="grid lg:grid-cols-3 gap-6">
+          <div className="h-64 bg-slate-100 dark:bg-slate-900/40 rounded-xl lg:col-span-2" />
+          <div className="h-64 bg-slate-100 dark:bg-slate-900/40 rounded-xl" />
         </div>
       </div>
     );
   }
 
-  if (!lead) return (
-    <div className="p-8 text-center text-slate-500">
-      <p>Lead introuvable</p>
-      <button onClick={() => navigate('/leads')} className="mt-4 text-violet-400 hover:text-violet-300 text-sm">← Retour aux leads</button>
-    </div>
-  );
+  if (error || !lead) {
+    return (
+      <div className="p-6 max-w-6xl mx-auto">
+        <EmptyState
+          icon={Activity}
+          title="Lead introuvable"
+          description="Ce lead a peut-être été supprimé ou vous n'avez pas les droits nécessaires."
+          action={{ label: 'Retour aux leads', onClick: () => navigate('/leads') }}
+        />
+      </div>
+    );
+  }
 
-  const statusStyle = STATUS_CONFIG[lead.status] || STATUS_CONFIG['nouveau'];
-  const statusOptions = ['nouveau','contacté','en_attente','devis_envoyé','gagné','perdu'];
+  const allowedNext = getAllowedNextStatuses(lead.status);
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 pb-24 md:pb-8 animate-fade-in" data-testid="lead-detail-page">
-      
-      {/* Header */}
-      <div className="mb-6">
-        <button onClick={() => navigate('/leads')} data-testid="back-button"
-          className="flex items-center gap-2 text-slate-500 hover:text-slate-300 mb-4 transition-colors text-sm group">
-          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-          Retour aux leads
-        </button>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
+      <PageHeader
+        breadcrumbs={[
+          { label: 'Leads', to: '/leads' },
+          { label: lead.name || 'Détail' },
+        ]}
+        title={lead.name || 'Sans nom'}
+        subtitle={
+          <div className="flex items-center gap-2 flex-wrap mt-2">
+            <StatusBadge domain="lead" status={lead.status} />
+            {allowedNext.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="ghost" className="h-6 px-2 text-xs">
+                    Changer…
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  <DropdownMenuLabel className="text-xs">
+                    Transitions autorisées
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {allowedNext.map((s) => (
+                    <DropdownMenuItem
+                      key={s}
+                      onClick={() => handleStatusChange(s)}
+                      className="gap-2"
+                    >
+                      <StatusBadge domain="lead" status={s} size="xs" />
+                      {LEAD_STATUS_LABELS[s]}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            <span className="text-xs text-slate-500">·</span>
+            <span className="text-xs text-slate-500">
+              Créé {relativeTime(lead.created_at)}
+            </span>
+          </div>
+        }
+        actions={[
+          ...(lead.phone ? [{ label: 'Appeler', icon: Phone, onClick: () => (window.location.href = `tel:${lead.phone}`) }] : []),
+          ...(lead.email ? [{ label: 'Email', icon: Mail, onClick: () => (window.location.href = `mailto:${lead.email}`) }] : []),
+          ...(lead.phone ? [{ label: 'WhatsApp', icon: MessageSquare, onClick: handleWhatsApp }] : []),
+          { label: 'Créer un devis', icon: Plus, onClick: handleCreateQuote, variant: 'primary' },
+        ]}
+        tabs={[
+          { id: 'overview', label: "Vue d'ensemble", icon: User, active: activeTab === 'overview' },
+          { id: 'timeline', label: 'Timeline', icon: Activity, active: activeTab === 'timeline', badge: timeline.length },
+          { id: 'quotes', label: 'Devis', icon: FileText, active: activeTab === 'quotes', badge: quotes.length },
+          { id: 'tasks', label: 'Tâches', icon: CheckSquare, active: activeTab === 'tasks', badge: tasks.length },
+          { id: 'notes', label: 'Notes', icon: FileText, active: activeTab === 'notes' },
+        ]}
+        onTabChange={setActiveTab}
+      />
 
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-violet-500/15 border border-violet-500/20 flex items-center justify-center text-violet-400 font-bold text-xl flex-shrink-0"
-              style={{boxShadow:'0 0 20px rgba(139,92,246,0.15)'}}>
-              {(lead.name || '?').charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-100" style={{fontFamily:'Manrope,sans-serif'}}>{lead.name}</h1>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-sm text-slate-500">{lead.service_type}</span>
-                <span className="text-slate-700">·</span>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
-                  style={{color: statusStyle.color, background: statusStyle.bg, border: `1px solid ${statusStyle.border}`}}>
-                  {statusStyle.label}
-                </span>
+      {/* ── Onglet Vue d'ensemble ──────────────────────────────── */}
+      {activeTab === 'overview' && (
+        <div className="grid lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">
+                Informations de contact
+              </h3>
+              <div className="grid sm:grid-cols-2 gap-x-6">
+                <InfoRow icon={Mail} label="Email" value={lead.email} href={lead.email ? `mailto:${lead.email}` : null} />
+                <InfoRow icon={Phone} label="Téléphone" value={lead.phone} href={lead.phone ? `tel:${lead.phone}` : null} />
+                <InfoRow icon={MapPin} label="Adresse" value={lead.address} />
+                <InfoRow icon={Tag} label="Service" value={lead.service_type} />
+                {lead.surface && <InfoRow icon={Hash} label="Surface" value={`${lead.surface} m²`} />}
+                <InfoRow icon={Calendar} label="Créé le" value={shortDate(lead.created_at)} />
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Status selector */}
-            <select value={lead.status} onChange={(e) => handleStatusChange(e.target.value)}
-              disabled={updatingStatus} data-testid="status-select"
-              className="px-3 py-2 bg-white/5 border border-white/10 text-slate-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-violet-500 cursor-pointer">
-              {statusOptions.map(s => (
-                <option key={s} value={s} className="bg-slate-800">{STATUS_CONFIG[s]?.label || s}</option>
-              ))}
-            </select>
-
-            <button onClick={async () => {
-              try {
-                const res = await axios.post(`${API_URL}/whatsapp/send`, {
-                  lead_id: lead.lead_id,
-                  message: `Bonjour ${lead.name}, merci pour votre demande. Notre équipe vous contactera rapidement. - Global Clean Home`,
-                }, { withCredentials: true });
-                window.open(res.data.whatsapp_link, '_blank');
-                toast.success('WhatsApp ouvert');
-              } catch { toast.error('Erreur WhatsApp'); }
-            }}
-              data-testid="whatsapp-button"
-              className="flex items-center gap-1.5 px-3 py-2 bg-green-500/15 hover:bg-green-500/25 border border-green-500/20 text-green-400 rounded-lg transition-all text-sm font-medium">
-              <MessageSquare className="w-4 h-4" />
-              WhatsApp
-            </button>
-
-            <button onClick={() => navigate('/quotes/new', { state: { lead } })}
-              data-testid="create-quote-button"
-              className="flex items-center gap-1.5 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-all text-sm font-medium"
-              style={{boxShadow:'0 0 15px rgba(139,92,246,0.25)'}}>
-              <FileText className="w-4 h-4" />
-              Créer un devis
-            </button>
-          </div>
-        </div>
-
-        {/* Score bar */}
-        <div className="mt-4 flex items-center gap-4">
-          {/* Big score circle */}
-          {(() => {
-            const score = lead.score || 50;
-            const scoreColor = score >= 70 ? '#34d399' : score >= 40 ? '#f59e0b' : '#f43f5e';
-            const radius = 18; const circ = 2 * Math.PI * radius;
-            const filled = (score / 100) * circ;
-            return (
-              <div className="relative flex-shrink-0 w-14 h-14 flex items-center justify-center">
-                <svg width="56" height="56" viewBox="0 0 56 56" className="absolute inset-0 -rotate-90">
-                  <circle cx="28" cy="28" r={radius} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="4" />
-                  <circle cx="28" cy="28" r={radius} fill="none" stroke={scoreColor} strokeWidth="4"
-                    strokeDasharray={`${filled} ${circ - filled}`} strokeLinecap="round"
-                    style={{ transition: 'stroke-dasharray 0.7s ease' }} />
-                </svg>
-                <span className="text-sm font-black" style={{ color: scoreColor }}>{score}</span>
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">
+                Tracking & acquisition
+              </h3>
+              <div className="grid sm:grid-cols-2 gap-x-6">
+                <InfoRow icon={Globe} label="Source" value={lead.source} />
+                <InfoRow icon={TrendingUp} label="Campagne" value={lead.campaign || lead.utm_campaign} />
+                <InfoRow icon={Tag} label="UTM source" value={lead.utm_source} />
+                <InfoRow icon={Tag} label="UTM medium" value={lead.utm_medium} />
               </div>
-            );
-          })()}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-semibold" style={{ color: lead.score >= 70 ? '#34d399' : lead.score >= 40 ? '#f59e0b' : '#f43f5e' }}>
-                {lead.score >= 70 ? '🔥 Lead chaud' : lead.score >= 40 ? '♨️ Lead tiède' : '❄️ Lead froid'}
-              </span>
-              <span className="text-xs text-slate-600">·</span>
-              <span className="text-xs text-slate-500">{lead.probability || 50}% probabilité</span>
-            </div>
-            <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all duration-700"
-                style={{
-                  width: `${lead.score || 50}%`,
-                  background: lead.score >= 70 ? 'linear-gradient(90deg,#059669,#34d399)' : lead.score >= 40 ? 'linear-gradient(90deg,#d97706,#f59e0b)' : 'linear-gradient(90deg,#be123c,#f43f5e)'
-                }} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        
-        {/* Left - Main content */}
-        <div className="lg:col-span-2 space-y-4">
-          
-          {/* Contact info */}
-          <div className="section-card p-5">
-            <h2 className="text-sm font-semibold text-slate-200 mb-4 flex items-center gap-2">
-              <User className="w-4 h-4 text-violet-400" /> Informations de contact
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[
-                { icon: Mail, label: 'Email', value: lead.email, href: `mailto:${lead.email}` },
-                { icon: Phone, label: 'Téléphone', value: lead.phone, href: `tel:${lead.phone}` },
-                lead.address && { icon: MapPin, label: 'Adresse', value: lead.address },
-                { icon: Calendar, label: 'Créé le', value: formatDateTime(lead.created_at) },
-              ].filter(Boolean).map((item, i) => (
-                <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-white/3 hover:bg-white/5 transition-all">
-                  <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
-                    <item.icon className="w-4 h-4 text-slate-500" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs text-slate-500 mb-0.5">{item.label}</p>
-                    {item.href ? (
-                      <a href={item.href} className="text-sm text-violet-400 hover:text-violet-300 truncate block transition-colors">{item.value}</a>
-                    ) : (
-                      <p className="text-sm text-slate-300 truncate">{item.value}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
+              {!lead.source && !lead.utm_source && (
+                <p className="text-xs text-slate-400 italic">Aucune donnée de tracking enregistrée</p>
+              )}
             </div>
 
             {lead.message && (
-              <div className="mt-4 p-4 bg-white/3 rounded-lg border border-white/5">
-                <p className="text-xs text-slate-500 mb-2 font-medium">💬 Message / Détails</p>
-                <p className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">{lead.message}</p>
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                  Message initial
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed">
+                  {lead.message}
+                </p>
               </div>
             )}
           </div>
 
-          {/* Tabs */}
-          <div className="section-card">
-            <div className="flex border-b border-white/5 overflow-x-auto scrollbar-none" style={{WebkitOverflowScrolling:"touch"}}>
-              {[
-                { key: 'interactions', label: '📝 Interactions', count: interactions.length },
-                { key: 'quotes', label: '📄 Devis', count: quotes.length },
-                { key: 'emails', label: '📧 Emails', count: emails.length },
-                { key: 'tasks', label: '✅ Tâches', count: tasks.length },
-                { key: 'timeline', label: '📅 Timeline', count: interactions.length + quotes.length },
-                { key: 'notes', label: '🗒️ Notes', count: null },
-                { key: 'ai', label: '🤖 IA', count: null },
-                { key: 'chat', label: '💬 Chat', count: null },
-              ].map(tab => (
-                <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                  className={"flex items-center gap-1 px-3 py-3 text-xs font-medium transition-all border-b-2 -mb-px whitespace-nowrap flex-shrink-0 " + (activeTab === tab.key ? "text-violet-300 border-violet-500" : "text-slate-500 border-transparent hover:text-slate-300")}>
-                  {tab.label}
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                    activeTab === tab.key ? 'bg-violet-500/20 text-violet-400' : 'bg-white/5 text-slate-500'
-                  }`}>{tab.count}</span>
+          <div className="space-y-6">
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6 flex flex-col items-center">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4">
+                Score de prospection
+              </h3>
+              <ScoreCircle score={lead.score || 0} />
+              {lead.probability !== undefined && (
+                <div className="w-full mt-6">
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <span className="text-slate-500 dark:text-slate-400">Probabilité de closing</span>
+                    <span className="font-semibold text-slate-900 dark:text-slate-100">
+                      {lead.probability}%
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-violet-500 to-pink-500 rounded-full transition-all duration-700 ease-standard"
+                      style={{ width: `${lead.probability}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
+                Dernière activité
+              </h3>
+              <div className="flex items-center gap-2 text-sm text-slate-900 dark:text-slate-100">
+                <Clock className="w-4 h-4 text-slate-400" />
+                {relativeTime(lead.updated_at || lead.created_at)}
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                {shortDateTime(lead.updated_at || lead.created_at)}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Onglet Timeline ─────────────────────────────────────── */}
+      {activeTab === 'timeline' && (
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
+          <form onSubmit={handleAddInteraction} className="mb-6 pb-6 border-b border-slate-200 dark:border-slate-800">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+              Ajouter une interaction
+            </label>
+            <div className="flex gap-2 mb-2 flex-wrap">
+              {['note', 'appel', 'email', 'relance'].map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setNewInteraction((s) => ({ ...s, type: t }))}
+                  className={`
+                    px-3 py-1.5 rounded-full text-xs font-medium transition-colors capitalize
+                    ${newInteraction.type === t
+                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}
+                  `}
+                >
+                  {t}
                 </button>
               ))}
             </div>
+            <div className="flex gap-2">
+              <Input
+                value={newInteraction.content}
+                onChange={(e) => setNewInteraction((s) => ({ ...s, content: e.target.value }))}
+                placeholder="Décrivez l'interaction…"
+                className="flex-1"
+              />
+              <Button
+                type="submit"
+                size="sm"
+                disabled={!newInteraction.content.trim() || createInteraction.isPending}
+                className="bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700 text-white"
+              >
+                <Send className="w-3.5 h-3.5 mr-1" />
+                Ajouter
+              </Button>
+            </div>
+          </form>
 
-            <div className="p-4">
-              {/* Interactions tab */}
-              {activeTab === 'interactions' && (
-                <div>
-                  <form onSubmit={handleAddInteraction} className="mb-4">
-                    <div className="flex gap-2">
-                      <select value={newInteraction.type} onChange={(e) => setNewInteraction({...newInteraction, type: e.target.value})}
-                        data-testid="interaction-type-select"
-                        className="px-3 py-2 bg-white/5 border border-white/10 text-slate-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-violet-500 flex-shrink-0">
-                        <option value="note" className="bg-slate-800">📝 Note</option>
-                        <option value="appel" className="bg-slate-800">📞 Appel</option>
-                        <option value="email" className="bg-slate-800">📧 Email</option>
-                        <option value="relance" className="bg-slate-800">🔔 Relance</option>
-                      </select>
-                      <input type="text" placeholder="Ajouter une note ou interaction..."
-                        value={newInteraction.content} data-testid="interaction-content-input"
-                        onChange={(e) => setNewInteraction({...newInteraction, content: e.target.value})}
-                        className="flex-1 px-3 py-2 bg-white/5 border border-white/10 text-slate-200 placeholder-slate-600 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-violet-500" />
-                      <button type="submit" data-testid="add-interaction-button"
-                        className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-all flex-shrink-0">
-                        <Plus className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </form>
-                  <div className="space-y-3">
-                    {interactions.length === 0 ? (
-                      <div className="text-center py-8 text-slate-600">
-                        <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                        <p className="text-sm">Aucune interaction</p>
-                      </div>
-                    ) : interactions.map((interaction) => (
-                      <div key={interaction.interaction_id || Math.random()} className="flex gap-3 p-3 rounded-lg bg-white/3 hover:bg-white/5 transition-all">
-                        <span className="text-lg flex-shrink-0">{INTERACTION_ICONS[interaction.type] || '💬'}</span>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-semibold text-slate-300 capitalize">{interaction.type}</span>
-                            <span className="text-xs text-slate-600">{formatDateTime(interaction.created_at)}</span>
-                          </div>
-                          <p className="text-sm text-slate-400 break-words">{interaction.content}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+          {timeline.length === 0 ? (
+            <EmptyState
+              icon={Activity}
+              title="Aucune interaction pour l'instant"
+              description="Les interactions, devis et tâches apparaîtront ici au fur et à mesure."
+              className="py-10"
+            />
+          ) : (
+            <div className="space-y-0">
+              {timeline.map((item) => (
+                <TimelineItem key={item.id} item={item} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
-              {/* Quotes tab */}
-              {activeTab === 'quotes' && (
-                <div data-testid="quotes-section">
-                  {quotes.length === 0 ? (
-                    <div className="text-center py-8 text-slate-600">
-                      <FileText className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                      <p className="text-sm mb-3">Aucun devis créé</p>
-                      <button onClick={() => navigate('/quotes/new', { state: { lead } })}
-                        className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-all">
-                        + Créer un devis
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {quotes.map((quote) => (
-                        <div key={quote.quote_id} data-testid={`quote-item-${quote.quote_id}`}
-                          className="p-4 rounded-xl bg-white/3 border border-white/5 hover:bg-white/5 transition-all">
-                          <div className="flex items-center justify-between gap-3 mb-2">
-                            <div>
-                              <p className="font-semibold text-slate-200 text-sm">{quote.service_type}</p>
-                              <p className="text-xs text-slate-500">{formatDateTime(quote.created_at)}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-bold text-violet-400 text-lg">{formatCurrency(quote.amount)}</p>
-                              <span className="text-xs text-slate-500">{quote.status}</span>
-                            </div>
-                          </div>
-                          {quote.status === 'brouillon' && (
-                            <button disabled={sendingQuote === quote.quote_id}
-                              onClick={() => handleSendQuote(quote.quote_id)}
-                              data-testid={`send-quote-lead-${quote.quote_id}`}
-                              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/20 text-violet-300 rounded-lg text-sm font-medium transition-all disabled:opacity-50">
-                              <Send className="w-3.5 h-3.5" />
-                              {sendingQuote === quote.quote_id ? 'Envoi...' : 'Envoyer par email'}
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Emails tab */}
-              {activeTab === 'emails' && (
-                <div data-testid="emails-section" className="space-y-3">
-                  {emails.length === 0 ? (
-                    <div className="text-center py-8 text-slate-600">
-                      <Mail className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                      <p className="text-sm">Aucun email échangé</p>
-                    </div>
-                  ) : emails.map((email) => (
-                    <div key={email.email_id}
-                      className={`rounded-xl p-4 border transition-all ${
-                        email.direction === 'received'
-                          ? 'bg-blue-500/5 border-blue-500/15'
-                          : 'bg-white/3 border-white/5'
-                      }`}>
-                      <div className="flex items-start gap-3">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                          email.direction === 'sent' ? 'bg-violet-500/15' : 'bg-blue-500/15'
-                        }`}>
-                          {email.direction === 'sent'
-                            ? <ArrowUpRight className="w-4 h-4 text-violet-400" />
-                            : <ArrowDownLeft className="w-4 h-4 text-blue-400" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2 mb-1">
-                            <p className="text-sm font-semibold text-slate-200 truncate">{email.subject}</p>
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 ${
-                              email.direction === 'received' ? 'bg-blue-500/15 text-blue-400'
-                              : email.type === 'quote' ? 'bg-violet-500/15 text-violet-400'
-                              : email.type === 'followup' ? 'bg-amber-500/15 text-amber-400'
-                              : 'bg-white/10 text-slate-400'
-                            }`}>
-                              {email.direction === 'received' ? '📩 Réponse' 
-                                : email.type === 'quote' ? '📄 Devis'
-                                : email.type === 'followup' ? '🔔 Relance'
-                                : email.type}
-                            </span>
-                          </div>
-                          <p className="text-xs text-slate-500">
-                            {email.direction === 'sent' ? `→ ${email.to_email}` : `← ${email.from_email}`}
-                            {' · '}{formatDateTime(email.sent_at || email.received_at || email.created_at)}
-                          </p>
-                          {email.direction === 'received' && (email.body || email.snippet) && (
-                            <div className="mt-2 p-3 bg-blue-500/5 rounded-lg border border-blue-500/10">
-                              <p className="text-xs font-semibold text-blue-400 mb-1">Message :</p>
-                              <p className="text-sm text-slate-300 whitespace-pre-wrap">{email.body || email.snippet}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {/* Tasks tab */}
-              {activeTab === 'tasks' && (
-                <div className="space-y-3 p-4">
-                  {tasks.length > 0 ? tasks.map((task, i) => (
-                    <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/3 border border-white/5">
-                      <div className={"w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 " + (task.status === "completed" ? "bg-emerald-500/15" : "bg-amber-500/15")}>
-                        <CheckCircle className={"w-4 h-4 " + (task.status === "completed" ? "text-emerald-400" : "text-amber-400")} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-200 truncate">{task.title}</p>
-                        <p className="text-xs text-slate-500">{task.due_date ? new Date(task.due_date).toLocaleDateString("fr-FR") : "Sans date"}</p>
-                      </div>
-                      <span className={"px-2 py-0.5 rounded-full text-[10px] font-bold " + (task.status === "completed" ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400")}>
-                        {task.status === "completed" ? "Termine" : "En attente"}
+      {/* ── Onglet Devis ────────────────────────────────────────── */}
+      {activeTab === 'quotes' && (
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              Devis liés ({quotes.length})
+            </h3>
+            <Button
+              size="sm"
+              onClick={handleCreateQuote}
+              className="bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700 text-white"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1" />
+              Nouveau devis
+            </Button>
+          </div>
+          {quotes.length === 0 ? (
+            <EmptyState
+              icon={FileText}
+              title="Aucun devis"
+              description="Créez un devis pour ce lead en un clic."
+              action={{ label: 'Créer un devis', icon: Plus, onClick: handleCreateQuote }}
+              className="py-10"
+            />
+          ) : (
+            <div className="space-y-2">
+              {quotes.map((q) => (
+                <div
+                  key={q.quote_id}
+                  className="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-slate-900 dark:text-slate-100">
+                        {q.service_type || 'Devis'}
                       </span>
+                      <StatusBadge domain="quote" status={q.status} size="xs" />
                     </div>
-                  )) : (
-                    <div className="text-center py-8 text-slate-600 text-sm">Aucune tache pour ce lead</div>
+                    <div className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                      {q.amount ? `${Number(q.amount).toLocaleString('fr-FR')} € HT` : 'Montant non défini'}
+                      {' · '}
+                      {relativeTime(q.created_at)}
+                    </div>
+                  </div>
+                  {q.status === 'brouillon' && (
+                    <Button size="sm" variant="outline" onClick={() => handleSendQuote(q.quote_id)}>
+                      <Send className="w-3.5 h-3.5 mr-1" />
+                      Envoyer
+                    </Button>
                   )}
                 </div>
-              )}
-              {/* Timeline tab */}
-              {activeTab === 'timeline' && (
-                <div className="p-4">
-                  <div className="relative">
-                    <div className="absolute left-4 top-0 bottom-0 w-px bg-white/5" />
-                    <div className="space-y-4">
-                      {[...interactions.map(i => ({...i, _type: "interaction", _date: i.created_at})),
-                        ...quotes.map(q => ({...q, _type: "quote", _date: q.created_at})),
-                        ...emails.map(e => ({...e, _type: "email", _date: e.date}))
-                      ].sort((a,b) => new Date(b._date) - new Date(a._date)).map((item, i) => (
-                        <div key={i} className="flex gap-4 pl-2">
-                          <div className={"w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 z-10 text-xs " + 
-                            (item._type === "quote" ? "bg-amber-500/20 text-amber-400" : 
-                             item._type === "email" ? "bg-blue-500/20 text-blue-400" : 
-                             "bg-violet-500/20 text-violet-400")}>
-                            {item._type === "quote" ? "📄" : item._type === "email" ? "📧" : 
-                             (INTERACTION_ICONS[item.type] || "📝")}
-                          </div>
-                          <div className="flex-1 pb-4 border-b border-white/3">
-                            <div className="flex items-center justify-between mb-1">
-                              <p className="text-xs font-semibold text-slate-300">
-                                {item._type === "quote" ? "Devis " + (item.quote_number || "") : 
-                                 item._type === "email" ? "Email: " + (item.subject || "") :
-                                 item.type || "Interaction"}
-                              </p>
-                              <span className="text-[10px] text-slate-600">
-                                {item._date ? new Date(item._date).toLocaleDateString("fr-FR", {day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}) : ""}
-                              </span>
-                            </div>
-                            <p className="text-xs text-slate-500 line-clamp-2">
-                              {item.content || item.message || item.subject || ""}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                      {interactions.length + quotes.length + emails.length === 0 && (
-                        <div className="text-center py-8 text-slate-600 text-sm pl-8">Aucun evenement</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-              {/* Chat tab */}
-              {activeTab === 'chat' && (
-                <div className="p-4">
-                  <LeadChat leadId={lead?.lead_id} leadName={lead?.name} />
-                </div>
-              )}
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
-              {/* AI Scoring tab */}
-              {/* Notes tab */}
-              {activeTab === 'notes' && (
-                <div className="p-4 space-y-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-sm font-semibold text-slate-200">Notes privées</span>
-                    <span className="text-xs text-slate-600">· Visibles uniquement par l'équipe</span>
-                  </div>
-                  <textarea
-                    value={notes}
-                    onChange={e => setNotes(e.target.value)}
-                    placeholder="Ajouter des notes, observations, informations importantes sur ce lead..."
-                    rows={8}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 text-slate-200 placeholder-slate-600 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-violet-500 resize-none leading-relaxed"
+      {/* ── Onglet Tâches ───────────────────────────────────────── */}
+      {activeTab === 'tasks' && (
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">
+            Tâches ({tasks.length})
+          </h3>
+          {tasks.length === 0 ? (
+            <EmptyState
+              icon={CheckSquare}
+              title="Aucune tâche"
+              description="Ajoutez des tâches de suivi pour ne rien oublier."
+              className="py-10"
+            />
+          ) : (
+            <div className="space-y-2">
+              {tasks.map((t) => (
+                <div
+                  key={t.task_id || t.id}
+                  className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-800"
+                >
+                  <CheckSquare
+                    className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                      t.status === 'completed' ? 'text-emerald-500' : 'text-slate-400'
+                    }`}
                   />
-                  <div className="flex justify-end">
-                    <button onClick={handleSaveNotes} disabled={savingNotes}
-                      className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
-                      style={{ boxShadow: '0 0 15px rgba(139,92,246,0.2)' }}>
-                      {savingNotes ? (
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      ) : '💾'}
-                      {savingNotes ? 'Sauvegarde...' : 'Sauvegarder les notes'}
-                    </button>
+                  <div className="min-w-0 flex-1">
+                    <div className={`text-sm font-medium ${
+                      t.status === 'completed' ? 'line-through text-slate-400' : 'text-slate-900 dark:text-slate-100'
+                    }`}>
+                      {t.title}
+                    </div>
+                    {t.description && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.description}</p>
+                    )}
+                    {t.due_date && (
+                      <p className="text-xs text-slate-400 mt-1">
+                        Échéance {relativeTime(t.due_date)}
+                      </p>
+                    )}
                   </div>
-                </div>
-              )}
-
-              {activeTab === 'ai' && (
-                <div className="p-4 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-violet-400" />
-                      <h4 className="text-sm font-semibold text-slate-200">Analyse IA du lead</h4>
-                    </div>
-                    <button onClick={async () => {
-                      setScoringLoading(true);
-                      try {
-                        const res = await axios.post(`${API_URL}/ai/score/${id}`, {}, {withCredentials: true});
-                        setAiScore(res.data);
-                      } catch(e) {}
-                      finally { setScoringLoading(false); }
-                    }} disabled={scoringLoading}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 border border-violet-500/20 rounded-xl text-xs font-semibold">
-                      {scoringLoading ? <div className="w-3 h-3 border border-violet-400/30 border-t-violet-400 rounded-full animate-spin" /> : <Brain className="w-3.5 h-3.5" />}
-                      Analyser
-                    </button>
-                  </div>
-
-                  {lead && (
-                    <div className="grid grid-cols-2 gap-3">
-                      {[
-                        {label:"Score actuel", value:(lead.score||0)+"/100", color: lead.score>=75?"#f43f5e":lead.score>=55?"#f59e0b":"#60a5fa"},
-                        {label:"Segment", value: lead.score>=75?"🔥 Chaud":lead.score>=55?"♨️ Tiede":"❄️ Froid", color:"#a78bfa"},
-                        {label:"Source", value: lead.utm_source||lead.source||"Direct", color:"#60a5fa"},
-                        {label:"Probabilite", value: Math.round((lead.score||0)*0.8)+"%", color:"#34d399"},
-                      ].map((m,i) => (
-                        <div key={i} className="p-3 rounded-xl bg-white/3 border border-white/5">
-                          <p className="text-xs text-slate-500 mb-1">{m.label}</p>
-                          <p className="text-sm font-black" style={{color:m.color}}>{m.value}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {aiScore && (
-                    <div className="space-y-3">
-                      <div className="p-4 rounded-xl bg-violet-500/5 border border-violet-500/15">
-                        <p className="text-xs font-semibold text-violet-300 mb-2">Recommandation IA</p>
-                        <p className="text-sm text-slate-300 leading-relaxed">{aiScore.recommendation}</p>
-                      </div>
-                      {(aiScore.top_factors||[]).length > 0 && (
-                        <div>
-                          <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Facteurs de score</p>
-                          <div className="space-y-2">
-                            {aiScore.top_factors.map((f,i) => (
-                              <div key={i} className="flex items-center gap-2">
-                                <span className={"text-xs font-bold " + (f.impact==="+"?"text-emerald-400":"text-rose-400")}>
-                                  {f.impact}{f.points}pts
-                                </span>
-                                <span className="text-xs text-slate-400">{f.label}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {!aiScore && !scoringLoading && (
-                    <div className="text-center py-6 text-slate-600">
-                      <Brain className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                      <p className="text-sm">Cliquez sur Analyser pour obtenir une analyse IA complete</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Right - Details */}
-        <div className="space-y-4">
-          
-          {/* Service details */}
-          <div className="section-card p-5">
-            <h2 className="text-sm font-semibold text-slate-200 mb-4 flex items-center gap-2">
-              <Zap className="w-4 h-4 text-violet-400" /> Détails du service
-            </h2>
-            <div className="space-y-3">
-              {[
-                { label: 'Service', value: lead.service_type },
-                lead.surface && { label: 'Surface', value: `${lead.surface} m²` },
-                { label: 'Probabilité', value: null, isBar: true },
-              ].filter(Boolean).map((item, i) => (
-                <div key={i}>
-                  <p className="text-xs text-slate-500 mb-1">{item.label}</p>
-                  {item.isBar ? (
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full transition-all duration-700"
-                          style={{width:`${lead.probability}%`, background:'linear-gradient(90deg, #7c3aed, #a78bfa)'}} />
-                      </div>
-                      <span className="text-xs font-bold text-violet-400">{lead.probability}%</span>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-slate-300 font-medium">{item.value}</p>
-                  )}
+                  <StatusBadge domain="task" status={t.status} size="xs" />
                 </div>
               ))}
             </div>
-          </div>
-
-          {/* Tracking */}
-          <div className="section-card p-5">
-            <h2 className="text-sm font-semibold text-slate-200 mb-4 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-violet-400" /> Tracking
-            </h2>
-            <div className="space-y-3">
-              {[
-                { label: 'Source', value: lead.source || 'Direct' },
-                lead.utm_source && { label: 'UTM Source', value: lead.utm_source },
-                lead.utm_medium && { label: 'UTM Medium', value: lead.utm_medium },
-                lead.utm_campaign && { label: 'Campagne', value: lead.utm_campaign },
-                lead.page_origine && { label: 'Page origine', value: lead.page_origine },
-              ].filter(Boolean).map((item, i) => (
-                <div key={i} className="flex items-center justify-between gap-2">
-                  <p className="text-xs text-slate-500">{item.label}</p>
-                  <p className="text-xs font-medium text-slate-300 truncate max-w-[60%] text-right">{item.value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Quick actions bar — big buttons */}
-          <div className="section-card p-4">
-            <h2 className="text-sm font-semibold text-slate-200 mb-3">Actions rapides</h2>
-            <div className="grid grid-cols-2 gap-2">
-              <a href={`tel:${lead.phone}`}
-                className="flex flex-col items-center gap-1.5 p-3 bg-green-500/10 hover:bg-green-500/20 border border-green-500/15 hover:border-green-500/30 rounded-xl transition-all text-green-400 hover:text-green-300">
-                <Phone className="w-5 h-5" />
-                <span className="text-xs font-semibold">Appeler</span>
-              </a>
-              <button onClick={async () => {
-                try {
-                  const res = await axios.post(`${API_URL}/whatsapp/send`, {
-                    lead_id: lead.lead_id,
-                    message: `Bonjour ${lead.name}, merci pour votre demande. - Global Clean Home`,
-                  }, { withCredentials: true });
-                  window.open(res.data.whatsapp_link, '_blank');
-                } catch { toast.error('Erreur WhatsApp'); }
-              }}
-                className="flex flex-col items-center gap-1.5 p-3 bg-green-500/10 hover:bg-green-500/20 border border-green-500/15 hover:border-green-500/30 rounded-xl transition-all text-green-400 hover:text-green-300">
-                <MessageSquare className="w-5 h-5" />
-                <span className="text-xs font-semibold">WhatsApp</span>
-              </button>
-              <a href={`mailto:${lead.email}`}
-                className="flex flex-col items-center gap-1.5 p-3 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/15 hover:border-blue-500/30 rounded-xl transition-all text-blue-400 hover:text-blue-300">
-                <Mail className="w-5 h-5" />
-                <span className="text-xs font-semibold">Email</span>
-              </a>
-              <button onClick={() => navigate('/quotes/new', { state: { lead } })}
-                className="flex flex-col items-center gap-1.5 p-3 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/15 hover:border-violet-500/30 rounded-xl transition-all text-violet-400 hover:text-violet-300">
-                <FileText className="w-5 h-5" />
-                <span className="text-xs font-semibold">Devis</span>
-              </button>
-            </div>
-          </div>
+          )}
         </div>
-      </div>
+      )}
 
-      {/* Mobile sticky contact quick actions bar */}
-      <div className="fixed bottom-14 left-0 right-0 z-30 p-3 sm:hidden"
-        style={{
-          background: 'rgba(10,12,28,0.92)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          borderTop: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '0 -4px 24px rgba(0,0,0,0.4)',
-        }}
-        data-testid="mobile-lead-actions">
-        <div className="flex gap-2">
-          <a href={`tel:${lead.phone}`} data-testid="mobile-call-btn"
-            className="flex-1 flex flex-col items-center gap-1 py-2.5 bg-green-500/10 border border-green-500/20 text-green-400 rounded-xl text-xs font-semibold transition-all active:scale-95">
-            <Phone className="w-4 h-4" />
-            Appel
-          </a>
-          <button data-testid="mobile-whatsapp-btn"
-            onClick={async () => {
-              try {
-                const res = await axios.post(`${API_URL}/whatsapp/send`, { lead_id: lead.lead_id, message: `Bonjour ${lead.name}, merci pour votre demande. - Global Clean Home` }, { withCredentials: true });
-                window.open(res.data.whatsapp_link, '_blank');
-              } catch { toast.error('Erreur WhatsApp'); }
+      {/* ── Onglet Notes ────────────────────────────────────────── */}
+      {activeTab === 'notes' && (
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              Notes privées
+            </h3>
+            {notesDirty && (
+              <Button
+                size="sm"
+                onClick={handleSaveNotes}
+                disabled={updateLead.isPending}
+                className="bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700 text-white"
+              >
+                <Save className="w-3.5 h-3.5 mr-1" />
+                Enregistrer
+              </Button>
+            )}
+          </div>
+          <Textarea
+            value={notes}
+            onChange={(e) => {
+              setNotes(e.target.value);
+              setNotesDirty(true);
             }}
-            className="flex-1 flex flex-col items-center gap-1 py-2.5 bg-green-500/15 border border-green-500/20 text-green-400 rounded-xl text-xs font-semibold transition-all active:scale-95">
-            <MessageSquare className="w-4 h-4" />
-            WhatsApp
-          </button>
-          <a href={`mailto:${lead.email}`} data-testid="mobile-email-btn"
-            className="flex-1 flex flex-col items-center gap-1 py-2.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-xl text-xs font-semibold transition-all active:scale-95">
-            <Mail className="w-4 h-4" />
-            Email
-          </a>
-          <button data-testid="mobile-quote-btn" onClick={() => navigate('/quotes/new', { state: { lead } })}
-            className="flex-1 flex flex-col items-center gap-1 py-2.5 bg-violet-600 text-white rounded-xl text-xs font-semibold transition-all active:scale-95"
-            style={{ boxShadow: '0 0 12px rgba(139,92,246,0.3)' }}>
-            <FileText className="w-4 h-4" />
-            Devis
-          </button>
+            placeholder="Ajoutez vos notes sur ce lead…"
+            rows={10}
+            className="resize-none"
+          />
+          <p className="text-xs text-slate-400 mt-2">
+            Ces notes sont visibles uniquement par votre équipe.
+          </p>
         </div>
-      </div>
+      )}
+
+      <ConfirmElement />
     </div>
   );
-};
-
-export default LeadDetail;
+}
