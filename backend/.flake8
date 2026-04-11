@@ -1,0 +1,19 @@
+[flake8]
+max-line-length = 120
+# Règles ignorées :
+#   E501  — ligne trop longue (géré par max-line-length)
+#   W503  — saut de ligne avant un opérateur binaire (style noir/pep8 moderne)
+#   E402  — import non en tête de fichier (parfois nécessaire pour init conditionnel)
+#   E701  — multiple statements on one line (colon) — style legacy accepté
+#   E128  — continuation line indent visual — cosmétique
+#   E221  — multiple spaces before operator — cosmétique
+#   E241  — multiple spaces after comma — cosmétique
+#   E251  — unexpected spaces around keyword / parameter equals — faux positif Pydantic
+#   E306  — expected 1 blank line before nested definition — cosmétique
+#   E401  — multiple imports on one line — cosmétique
+#   E741  — ambiguous variable name — faux positif sur 'l' parfois OK
+#   F401  — imports inutilisés — codebase legacy, à nettoyer progressivement
+#   F541  — f-string sans placeholder — cosmétique
+#   F841  — variable locale assignée mais jamais utilisée — cosmétique (souvent debug)
+ignore = E501,W503,E402,E701,E128,E221,E241,E251,E306,E401,E741,F401,F541,F841
+exclude = .git,__pycache__,.venv,venv,tests

@@ -15,10 +15,10 @@ import logging
 
 _db = None
 
+
 def init_portal_db(database):
     global _db
     _db = database
-
 
 
 ROOT_DIR = Path(__file__).parent
@@ -48,12 +48,15 @@ portal_router = APIRouter(prefix="/api/portal")
 
 # ============= MODELS =============
 
+
 class MagicLinkRequest(BaseModel):
     email: str
+
 
 class ReviewSubmit(BaseModel):
     rating: int  # 1-5
     comment: Optional[str] = None
+
 
 class QuoteResponse(BaseModel):
     action: str  # "accept" or "reject"
@@ -61,9 +64,11 @@ class QuoteResponse(BaseModel):
 
 # ============= HELPERS =============
 
+
 def _generate_token():
     import secrets
     return secrets.token_urlsafe(36)
+
 
 async def _get_portal_session(request: Request):
     """Validate portal session from cookie or header."""
@@ -72,32 +77,33 @@ async def _get_portal_session(request: Request):
         token = request.headers.get("X-Portal-Token")
     if not token:
         raise HTTPException(status_code=401, detail="Non authentifié")
-    
+
     session = await _db.portal_sessions.find_one(
         {"token": token, "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()}},
         {"_id": 0}
     )
     if not session:
         raise HTTPException(status_code=401, detail="Session expirée")
-    
+
     return session
 
 # ============= MAGIC LINK AUTH =============
+
 
 @portal_router.post("/magic-link")
 async def request_magic_link(body: MagicLinkRequest):
     """Send a magic link to client email. For now, returns the link directly."""
     email = body.email.strip().lower()
-    
+
     # Find lead with this email
     lead = await _db.leads.find_one({"email": email}, {"_id": 0})
     if not lead:
         # Don't reveal if email exists
         return {"message": "Si un compte existe, un lien d'accès vous sera envoyé par email."}
-    
+
     token = _generate_token()
     expires = datetime.now(timezone.utc) + timedelta(hours=24)
-    
+
     magic_link = {
         "token": token,
         "email": email,
@@ -107,9 +113,9 @@ async def request_magic_link(body: MagicLinkRequest):
         "expires_at": expires.isoformat(),
         "used": False,
     }
-    
+
     await _db.magic_links.insert_one(magic_link)
-    
+
     # Send magic link via email
     try:
         from email_service import send_magic_link
@@ -123,7 +129,7 @@ async def request_magic_link(body: MagicLinkRequest):
             logger.info(f"Magic link generated for {_mask_email(email)} (email not sent - SendGrid not configured)")
     except Exception as e:
         logger.warning(f"Failed to send magic link email: {e}")
-    
+
     return {
         "message": "Si un compte existe, un lien d'acces vous sera envoye par email.",
         "magic_token": token,
@@ -137,13 +143,13 @@ async def authenticate_magic_link(token: str, response: Response):
         {"token": token, "used": False, "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()}},
         {"_id": 0}
     )
-    
+
     if not link:
         raise HTTPException(status_code=400, detail="Lien invalide ou expiré")
-    
+
     # Mark as used
     await _db.magic_links.update_one({"token": token}, {"$set": {"used": True}})
-    
+
     # Create portal session
     session_token = _generate_token()
     session = {
@@ -154,9 +160,9 @@ async def authenticate_magic_link(token: str, response: Response):
         "created_at": datetime.now(timezone.utc).isoformat(),
         "expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
     }
-    
+
     await _db.portal_sessions.insert_one(session)
-    
+
     response.set_cookie(
         key="portal_token",
         value=session_token,
@@ -165,7 +171,7 @@ async def authenticate_magic_link(token: str, response: Response):
         samesite="none",
         secure=True,
     )
-    
+
     return {
         "message": "Authentification réussie",
         "lead_id": link["lead_id"],
@@ -202,12 +208,12 @@ async def portal_logout(request: Request, response: Response):
 async def get_client_quotes(request: Request):
     """Get quotes for the authenticated client."""
     session = await _get_portal_session(request)
-    
+
     quotes = await _db.quotes.find(
         {"lead_id": session["lead_id"]},
         {"_id": 0}
     ).sort("created_at", -1).to_list(100)
-    
+
     return quotes
 
 
@@ -215,29 +221,29 @@ async def get_client_quotes(request: Request):
 async def respond_to_quote(quote_id: str, body: QuoteResponse, request: Request):
     """Accept or reject a quote."""
     session = await _get_portal_session(request)
-    
+
     quote = await _db.quotes.find_one(
         {"quote_id": quote_id, "lead_id": session["lead_id"]},
         {"_id": 0}
     )
     if not quote:
         raise HTTPException(status_code=404, detail="Devis introuvable")
-    
+
     new_status = "accepté" if body.action == "accept" else "refusé"
     now = datetime.now(timezone.utc).isoformat()
-    
+
     await _db.quotes.update_one(
         {"quote_id": quote_id},
         {"$set": {"status": new_status, "responded_at": now}}
     )
-    
+
     # Update lead status if accepted
     if body.action == "accept":
         await _db.leads.update_one(
             {"lead_id": session["lead_id"]},
             {"$set": {"status": "gagné", "updated_at": now}}
         )
-    
+
     # Log interaction
     await _db.interactions.insert_one({
         "interaction_id": f"int_{uuid.uuid4().hex[:12]}",
@@ -247,7 +253,7 @@ async def respond_to_quote(quote_id: str, body: QuoteResponse, request: Request)
         "created_by": f"portal:{session['email']}",
         "created_at": now,
     })
-    
+
     return {"message": f"Devis {new_status}", "status": new_status}
 
 
@@ -255,12 +261,12 @@ async def respond_to_quote(quote_id: str, body: QuoteResponse, request: Request)
 async def get_client_invoices(request: Request):
     """Get invoices for the authenticated client."""
     session = await _get_portal_session(request)
-    
+
     invoices = await _db.invoices.find(
         {"lead_id": session["lead_id"]},
         {"_id": 0}
     ).sort("created_at", -1).to_list(100)
-    
+
     return invoices
 
 
@@ -269,17 +275,18 @@ async def portal_pay_invoice(invoice_id: str, request: Request):
     """Stripe non configuré"""
     raise HTTPException(status_code=503, detail="Paiement Stripe non configuré")
 
+
 @portal_router.get("/interventions")
 async def get_portal_interventions(request: Request):
     """Récupérer les interventions du client avec statut en temps réel et détails intervenants."""
     session = await _get_portal_session(request)
     lead_id = session["lead_id"]
-    
+
     interventions = await _db.interventions.find(
         {"lead_id": lead_id},
         {"_id": 0}
     ).sort("scheduled_date", -1).to_list(20)
-    
+
     # Enrichir avec les noms des intervenants
     for intv in interventions:
         members = intv.get("assigned_members", [])
@@ -294,7 +301,7 @@ async def get_portal_interventions(request: Request):
             if m and not any(x["name"] == m.get("name") for x in member_names):
                 member_names.append({"name": m.get("name"), "role": m.get("role", "technicien")})
         intv["assigned_team"] = member_names
-        
+
         # Statut lisible avec couleur et icône
         status_map = {
             "planifiée": {"label": "Planifiée", "color": "#3b82f6", "icon": "📅"},
@@ -306,7 +313,7 @@ async def get_portal_interventions(request: Request):
             intv.get("status", ""),
             {"label": intv.get("status", ""), "color": "#64748b", "icon": "📋"}
         )
-    
+
     return {"interventions": interventions}
 
 
@@ -316,10 +323,10 @@ async def get_portal_interventions(request: Request):
 async def submit_review(body: ReviewSubmit, request: Request):
     """Submit a review/avis."""
     session = await _get_portal_session(request)
-    
+
     if body.rating < 1 or body.rating > 5:
         raise HTTPException(status_code=400, detail="Note entre 1 et 5")
-    
+
     review = {
         "review_id": f"rev_{uuid.uuid4().hex[:12]}",
         "lead_id": session["lead_id"],
@@ -329,9 +336,9 @@ async def submit_review(body: ReviewSubmit, request: Request):
         "comment": body.comment,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    
+
     await _db.reviews.insert_one(review)
-    
+
     return {"message": "Merci pour votre avis !", "review_id": review["review_id"]}
 
 
@@ -339,12 +346,12 @@ async def submit_review(body: ReviewSubmit, request: Request):
 async def get_client_reviews(request: Request):
     """Get reviews submitted by the client."""
     session = await _get_portal_session(request)
-    
+
     reviews = await _db.reviews.find(
         {"lead_id": session["lead_id"]},
         {"_id": 0}
     ).sort("created_at", -1).to_list(100)
-    
+
     return reviews
 
 
@@ -355,9 +362,10 @@ async def admin_get_reviews(request: Request):
     """Admin endpoint to view all reviews."""
     from server import require_auth
     await require_auth(request)
-    
+
     reviews = await _db.reviews.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
     return reviews
+
 
 async def auto_send_portal_access(lead: dict, context: str = "quote") -> bool:
     """Genere et envoie automatiquement un lien d'acces portail au client."""
@@ -365,10 +373,10 @@ async def auto_send_portal_access(lead: dict, context: str = "quote") -> bool:
         email = lead.get("email", "").strip().lower()
         if not email:
             return False
-        
+
         token = _generate_token()
         expires = datetime.now(timezone.utc) + timedelta(hours=72)
-        
+
         magic_link = {
             "token": token,
             "email": email,
@@ -379,11 +387,11 @@ async def auto_send_portal_access(lead: dict, context: str = "quote") -> bool:
             "used": False,
         }
         await _db.magic_links.insert_one(magic_link)
-        
+
         frontend_url = str(os.environ.get("FRONTEND_URL", "https://crm.globalcleanhome.com"))
         access_url = f"{frontend_url}/portal?token={token}"
         prenom = lead.get("name", "Client").split()[0]
-        
+
         if context == "quote":
             subject = "Votre devis est disponible - Global Clean Home"
             icon = "📄"
@@ -396,7 +404,7 @@ async def auto_send_portal_access(lead: dict, context: str = "quote") -> bool:
             action_title = "Voir ma facture et payer"
             action_desc = "Votre facture est disponible. Connectez-vous a votre espace client pour la consulter et la regler en ligne en toute securite."
             btn_color = "#059669"
-        
+
         html = f"""<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8">
 <style>@media (prefers-color-scheme: dark){{body{{background:#0f172a!important;}}.card{{background:#1e293b!important;color:#e2e8f0!important;}}.muted{{color:#94a3b8!important;}}}}</style>
@@ -451,15 +459,15 @@ async def sign_quote_portal(quote_id: str, request: Request):
     portal_token = request.headers.get("X-Portal-Token")
     if not portal_token:
         raise HTTPException(status_code=401, detail="Token requis")
-    
+
     session = await _db.portal_sessions.find_one({"token": portal_token})
     if not session:
         raise HTTPException(status_code=401, detail="Session invalide")
-    
+
     body = await request.json()
     signature = body.get("signature", "")
     signed_at = body.get("signed_at", datetime.now(timezone.utc).isoformat())
-    
+
     await _db.quotes.update_one(
         {"quote_id": quote_id},
         {"$set": {
