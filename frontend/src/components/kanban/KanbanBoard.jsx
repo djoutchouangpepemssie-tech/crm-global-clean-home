@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import axios from 'axios';
+import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Mail, Phone, GripVertical, Trello, RefreshCw, TrendingUp, Sparkles, Zap, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import LeadScoreBadge from '../shared/LeadScoreBadge';
-import BACKEND_URL from '../../config.js';
-const API_URL = BACKEND_URL + '/api';
+import { useLeadsList, useUpdateLead } from '../../hooks/api';
+import { queryKeys } from '../../lib/api';
 
 const COLUMNS = [
   { id: 'nouveau',      title: 'Nouveau',      color: '#60a5fa', gradient: 'linear-gradient(135deg, #60a5fa, #3b82f6)', icon: '🆕' },
@@ -526,27 +526,20 @@ function TotalBar({ leads }) {
 // ── Main component ────────────────────────────
 const KanbanBoard = () => {
   const navigate = useNavigate();
-  const [leads, setLeads] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const qc = useQueryClient();
+
+  // React Query gère le fetching + le cache. L'invalidation depuis d'autres
+  // pages (création de lead, update depuis la liste...) met à jour ce kanban
+  // automatiquement sans reload.
+  const kanbanFilters = { period: '90d', page: 1, page_size: 500 };
+  const { data: leads = [], isLoading: loading, isRefetching: isRefreshing, refetch } = useLeadsList(kanbanFilters);
+  const updateLead = useUpdateLead();
+
   const [draggedLead, setDraggedLead] = useState(null);
   const [dragOverColumn, setDragOverColumn] = useState(null);
   const [justDroppedId, setJustDroppedId] = useState(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => { fetchLeads(); }, []);
-
-  const fetchLeads = async () => {
-    setLoading(true);
-    setIsRefreshing(true);
-    try {
-      const res = await axios.get(`${API_URL}/leads?period=90d`, { withCredentials: true });
-      setLeads(Array.isArray(res.data) ? res.data : res.data.leads || []);
-    } catch { toast.error('Erreur lors du chargement'); }
-    finally {
-      setLoading(false);
-      setTimeout(() => setIsRefreshing(false), 600);
-    }
-  };
+  const fetchLeads = () => refetch();
 
   const handleDrop = async (e, targetColumnId) => {
     e.preventDefault();
@@ -554,27 +547,37 @@ const KanbanBoard = () => {
     if (!draggedLead || draggedLead.status === targetColumnId) { setDraggedLead(null); return; }
 
     const droppedLeadId = draggedLead.lead_id;
-    const previousLeads = leads;
     const previousStatus = draggedLead.status;
+    const queryKey = queryKeys.leads.list(kanbanFilters);
+    // Snapshot pour rollback si le PATCH échoue
+    const previousCache = qc.getQueryData(queryKey);
 
-    // Optimistic update
-    setLeads(prev => prev.map(l => l.lead_id === droppedLeadId ? { ...l, status: targetColumnId } : l));
+    // Optimistic update directement dans le cache React Query.
+    // Le composant re-render automatiquement car il lit le cache.
+    qc.setQueryData(queryKey, (old) => {
+      const list = Array.isArray(old) ? old : old?.leads || [];
+      return list.map((l) =>
+        l.lead_id === droppedLeadId ? { ...l, status: targetColumnId } : l
+      );
+    });
     setDraggedLead(null);
 
-    // Trigger drop animation
+    // Animation drop
     setJustDroppedId(droppedLeadId);
     setTimeout(() => setJustDroppedId(null), 600);
 
     try {
-      await axios.patch(`${API_URL}/leads/${droppedLeadId}`, { status: targetColumnId }, { withCredentials: true });
+      // mutate (pas mutateAsync) pour ne pas attendre : l'UI est déjà à jour
+      await updateLead.mutateAsync({ leadId: droppedLeadId, payload: { status: targetColumnId } });
       const col = COLUMNS.find(c => c.id === targetColumnId);
       toast.success(`✨ Déplacé vers "${col?.title}"`, {
         duration: 2000,
         style: { background: '#1e293b', border: `1px solid ${col?.color}40`, color: '#e2e8f0' },
       });
     } catch {
+      // Rollback : on restaure le snapshot du cache
       toast.error(`❌ Erreur - retour à "${COLUMNS.find(c => c.id === previousStatus)?.title}"`, { duration: 3000 });
-      setTimeout(() => setLeads(previousLeads), 300);
+      qc.setQueryData(queryKey, previousCache);
     }
   };
 
