@@ -1,33 +1,32 @@
 /**
- * QuoteForm — Vague 2 (fusion de l'ancien QuoteForm simple + QuoteFormPremium).
+ * InvoiceForm — Vague 2 (remplace InvoiceFormPremium).
  *
- * Formulaire complet de création/édition de devis avec lignes de prestations,
+ * Formulaire complet de création de facture avec lignes de prestations,
  * calcul automatique HT/TVA/TTC, sélection du lead associé.
  *
  * Features :
- *   - react-hook-form + validation à la volée sur le client
  *   - Sélection d'un lead existant → auto-remplit les infos client
- *   - Lignes multi-prestations avec ajout/suppression dynamique
- *   - Calcul automatique : total HT par ligne (avec remise), TVA, TTC
- *   - Récapitulatif temps réel sur le côté
- *   - Branchement sur useCreateQuote → invalidation dashboard + leads
- *   - Mode création uniquement (édition à venir dans une vague future)
- *   - Pré-remplissage depuis location.state.lead (navigation depuis LeadDetail)
+ *   - Lignes multi-prestations (ajout/suppression dynamique)
+ *   - Calcul automatique HT / TVA / TTC
+ *   - Récapitulatif temps réel
+ *   - Date d'échéance (+30 jours par défaut)
+ *   - Branchement sur useCreateInvoice → invalidation dashboard + leads
+ *   - Pré-remplissage depuis location.state.lead
+ *   - Conversion depuis devis via query param ?from_quote={id}
  *
- * Note : pour l'instant on utilise l'endpoint POST /api/quotes standard
- * (et non /api/quotes/premium qui est partiellement stub côté backend).
- * Le payload reste compatible : {lead_id, service_type, surface, amount, details}.
- * Les lignes détaillées sont sérialisées dans le champ `details`.
+ * Note : utilise l'endpoint POST /api/invoices standard (pas /premium
+ * qui est partiellement stub côté backend).
  */
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import {
-  ArrowLeft, Plus, Trash2, Save, Send, User, FileText, Tag, Calculator,
+  ArrowLeft, Plus, Trash2, Save, User, FileText, Tag, Calculator, Calendar,
+  ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import api from '../../lib/api';
-import { useCreateQuote, useSendQuote, useLeadsList } from '../../hooks/api';
+import { useCreateInvoice, useLeadsList } from '../../hooks/api';
 import { PageHeader } from '../shared';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -38,18 +37,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
-import { ChevronDown } from 'lucide-react';
 
 const SERVICE_TYPES = [
-  'Ménage',
-  'Canapé',
-  'Matelas',
-  'Tapis',
-  'Bureaux',
-  'Vitres',
-  'Fin de chantier',
-  'Déménagement',
-  'Autre',
+  'Ménage', 'Canapé', 'Matelas', 'Tapis', 'Bureaux',
+  'Vitres', 'Fin de chantier', 'Déménagement', 'Autre',
 ];
 
 const UNITS = ['unité', 'heure', 'm²', 'forfait'];
@@ -73,7 +64,13 @@ function newLine(overrides = {}) {
   };
 }
 
-// Format de ligne prêt à écrire dans le champ "details" du backend
+// Date par défaut (échéance à 30 jours)
+function defaultDueDate() {
+  const d = new Date();
+  d.setDate(d.getDate() + 30);
+  return d.toISOString().slice(0, 10);
+}
+
 function serializeDetails(client, serviceType, lines, totals, notes, paymentTerms) {
   const lineText = lines
     .map(
@@ -106,11 +103,12 @@ function serializeDetails(client, serviceType, lines, totals, notes, paymentTerm
     .join('\n');
 }
 
-export default function QuoteForm() {
+export default function InvoiceForm() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const fromQuoteId = searchParams.get('from_quote');
 
-  // Lead éventuellement passé depuis LeadDetail ou LeadForm
   const seedLead = location.state?.lead || null;
 
   const [client, setClient] = useState({
@@ -122,25 +120,51 @@ export default function QuoteForm() {
   });
   const [serviceType, setServiceType] = useState(seedLead?.service_type || 'Ménage');
   const [surface, setSurface] = useState(seedLead?.surface || '');
-  const [validityDays, setValidityDays] = useState(30);
+  const [dueDate, setDueDate] = useState(defaultDueDate());
   const [tvaRate, setTvaRate] = useState(0);
   const [globalDiscountPercent, setGlobalDiscountPercent] = useState(0);
   const [notes, setNotes] = useState('');
-  const [paymentTerms, setPaymentTerms] = useState('Paiement à réception');
+  const [paymentTerms, setPaymentTerms] = useState('Paiement sous 30 jours');
   const [lines, setLines] = useState([
     newLine({
       description: seedLead ? `Prestation ${seedLead.service_type || 'Ménage'}` : '',
-      unit_price: seedLead?.estimated_price || 0,
+      unit_price: 0,
     }),
   ]);
 
-  const createQuote = useCreateQuote();
-  const sendQuote = useSendQuote();
-
-  // Liste des leads pour le sélecteur
+  const createInvoice = useCreateInvoice();
   const { data: allLeads = [] } = useLeadsList({ period: '90d', page: 1, page_size: 200 });
 
-  // ── Calculs automatiques ───────────────────────────────────────
+  // Si arrivé via ?from_quote={id}, on pré-remplit depuis le devis
+  useEffect(() => {
+    if (!fromQuoteId) return;
+    (async () => {
+      try {
+        const { data } = await api.get(`/quotes/${fromQuoteId}`);
+        if (data) {
+          setClient((prev) => ({
+            ...prev,
+            name: data.client_name || data.lead_name || prev.name,
+            lead_id: data.lead_id || prev.lead_id,
+          }));
+          if (data.service_type) setServiceType(data.service_type);
+          if (data.surface) setSurface(data.surface);
+          if (data.amount) {
+            setLines([
+              newLine({
+                description: `Prestation ${data.service_type || ''}`,
+                unit_price: Number(data.amount) || 0,
+              }),
+            ]);
+          }
+        }
+      } catch {
+        toast.error('Impossible de charger le devis source');
+      }
+    })();
+  }, [fromQuoteId]);
+
+  // Calculs automatiques
   const totals = useMemo(() => {
     const lineHTs = lines.map((l) => {
       const qty = Number(l.quantity) || 0;
@@ -152,30 +176,12 @@ export default function QuoteForm() {
     const afterGlobalDiscount = subTotalHT * (1 - (Number(globalDiscountPercent) || 0) / 100);
     const tva = afterGlobalDiscount * ((Number(tvaRate) || 0) / 100);
     const ttc = afterGlobalDiscount + tva;
-    return {
-      subTotalHT,
-      ht: afterGlobalDiscount,
-      tva,
-      ttc,
-    };
+    return { subTotalHT, ht: afterGlobalDiscount, tva, ttc };
   }, [lines, globalDiscountPercent, tvaRate]);
 
-  // Sync depuis seedLead si l'utilisateur navigue avec state
-  useEffect(() => {
-    if (seedLead) {
-      setClient({
-        name: seedLead.name || '',
-        email: seedLead.email || '',
-        phone: seedLead.phone || '',
-        address: seedLead.address || '',
-        lead_id: seedLead.lead_id || '',
-      });
-    }
-  }, [seedLead]);
-
-  // ── Handlers ───────────────────────────────────────────────────
   const addLine = () => setLines((prev) => [...prev, newLine()]);
-  const removeLine = (id) => setLines((prev) => (prev.length > 1 ? prev.filter((l) => l.id !== id) : prev));
+  const removeLine = (id) =>
+    setLines((prev) => (prev.length > 1 ? prev.filter((l) => l.id !== id) : prev));
   const updateLine = (id, patch) =>
     setLines((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
 
@@ -212,41 +218,53 @@ export default function QuoteForm() {
     return true;
   };
 
-  const handleSave = async (sendAfter = false) => {
+  const handleSave = async () => {
     if (!validate()) return;
 
     const payload = {
       lead_id: client.lead_id || undefined,
+      client_name: client.name,
+      client_email: client.email,
+      client_phone: client.phone,
+      client_address: client.address,
       service_type: serviceType,
       surface: surface ? Number(surface) : undefined,
-      amount: Number(totals.ttc.toFixed(2)),
+      amount: Number(totals.ht.toFixed(2)),
+      amount_ttc: Number(totals.ttc.toFixed(2)),
+      total_ttc: Number(totals.ttc.toFixed(2)),
+      tva_amount: Number(totals.tva.toFixed(2)),
+      tva_rate: Number(tvaRate),
+      due_date: dueDate,
       details: serializeDetails(client, serviceType, lines, totals, notes, paymentTerms),
+      payment_terms: paymentTerms,
+      notes,
     };
 
     try {
-      const created = await createQuote.mutateAsync(payload);
-      if (sendAfter && created?.quote_id) {
-        await sendQuote.mutateAsync(created.quote_id);
-      }
-      toast.success(sendAfter ? 'Devis créé et envoyé' : 'Devis créé');
-      // Retour vers la liste (ou vers le lead si présent)
+      await createInvoice.mutateAsync(payload);
+      toast.success('Facture créée');
       if (client.lead_id) navigate(`/leads/${client.lead_id}`);
-      else navigate('/quotes');
+      else navigate('/invoices');
     } catch {
-      /* erreur affichée par useCreateQuote */
+      /* erreur affichée par useCreateInvoice */
     }
   };
 
-  // ── Render ─────────────────────────────────────────────────────
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
       <PageHeader
         breadcrumbs={[
-          { label: 'Devis', to: '/quotes' },
-          { label: 'Nouveau devis' },
+          { label: 'Factures', to: '/invoices' },
+          { label: 'Nouvelle facture' },
         ]}
-        title="Créer un devis"
-        subtitle={seedLead ? `Pour ${seedLead.name}` : 'Création manuelle'}
+        title="Créer une facture"
+        subtitle={
+          fromQuoteId
+            ? `Depuis le devis ${fromQuoteId.slice(0, 8)}`
+            : seedLead
+              ? `Pour ${seedLead.name}`
+              : 'Création manuelle'
+        }
         actions={[
           {
             label: 'Annuler',
@@ -254,23 +272,16 @@ export default function QuoteForm() {
             onClick: () => navigate(-1),
           },
           {
-            label: 'Brouillon',
+            label: 'Créer la facture',
             icon: Save,
-            onClick: () => handleSave(false),
-            loading: createQuote.isPending,
-          },
-          {
-            label: 'Créer & envoyer',
-            icon: Send,
-            onClick: () => handleSave(true),
-            loading: createQuote.isPending || sendQuote.isPending,
+            onClick: handleSave,
+            loading: createInvoice.isPending,
             variant: 'primary',
           },
         ]}
       />
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Colonne gauche — formulaire */}
         <div className="lg:col-span-2 space-y-6">
           {/* Bloc Client */}
           <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
@@ -279,7 +290,6 @@ export default function QuoteForm() {
               Client
             </h3>
 
-            {/* Sélecteur de lead existant */}
             <div className="mb-4">
               <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
                 Lead associé (optionnel)
@@ -295,7 +305,9 @@ export default function QuoteForm() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-72 overflow-y-auto">
                   <DropdownMenuItem
-                    onClick={() => setClient({ name: '', email: '', phone: '', address: '', lead_id: '' })}
+                    onClick={() =>
+                      setClient({ name: '', email: '', phone: '', address: '', lead_id: '' })
+                    }
                   >
                     Aucun (saisie manuelle)
                   </DropdownMenuItem>
@@ -357,11 +369,11 @@ export default function QuoteForm() {
             </div>
           </div>
 
-          {/* Bloc Service */}
+          {/* Bloc Service + Échéance */}
           <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
               <Tag className="w-4 h-4 text-violet-600" />
-              Prestation
+              Prestation & échéance
             </h3>
             <div className="grid sm:grid-cols-3 gap-4">
               <div>
@@ -397,19 +409,19 @@ export default function QuoteForm() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
-                  Validité (jours)
+                  <Calendar className="w-3 h-3 inline mr-1" />
+                  Échéance
                 </label>
                 <Input
-                  type="number"
-                  value={validityDays}
-                  onChange={(e) => setValidityDays(e.target.value)}
-                  placeholder="30"
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
                 />
               </div>
             </div>
           </div>
 
-          {/* Bloc Lignes de prestations */}
+          {/* Bloc Lignes */}
           <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -424,7 +436,10 @@ export default function QuoteForm() {
 
             <div className="space-y-3">
               {lines.map((line) => {
-                const lineHT = (Number(line.quantity) || 0) * (Number(line.unit_price) || 0) * (1 - (Number(line.discount_percent) || 0) / 100);
+                const lineHT =
+                  (Number(line.quantity) || 0) *
+                  (Number(line.unit_price) || 0) *
+                  (1 - (Number(line.discount_percent) || 0) / 100);
                 return (
                   <div
                     key={line.id}
@@ -449,14 +464,21 @@ export default function QuoteForm() {
                     <div className="col-span-4 sm:col-span-2">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm" className="w-full justify-between font-normal h-9">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full justify-between font-normal h-9"
+                          >
                             {line.unit}
                             <ChevronDown className="w-3 h-3 opacity-50" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
                           {UNITS.map((u) => (
-                            <DropdownMenuItem key={u} onClick={() => updateLine(line.id, { unit: u })}>
+                            <DropdownMenuItem
+                              key={u}
+                              onClick={() => updateLine(line.id, { unit: u })}
+                            >
                               {u}
                             </DropdownMenuItem>
                           ))}
@@ -479,7 +501,9 @@ export default function QuoteForm() {
                         min="0"
                         max="100"
                         value={line.discount_percent}
-                        onChange={(e) => updateLine(line.id, { discount_percent: e.target.value })}
+                        onChange={(e) =>
+                          updateLine(line.id, { discount_percent: e.target.value })
+                        }
                         placeholder="-%"
                       />
                     </div>
@@ -517,7 +541,7 @@ export default function QuoteForm() {
                 <Input
                   value={paymentTerms}
                   onChange={(e) => setPaymentTerms(e.target.value)}
-                  placeholder="Paiement à réception"
+                  placeholder="Paiement sous 30 jours"
                 />
               </div>
               <div>
@@ -536,7 +560,7 @@ export default function QuoteForm() {
           </div>
         </div>
 
-        {/* Colonne droite — récapitulatif */}
+        {/* Colonne droite : récapitulatif */}
         <div>
           <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6 sticky top-6">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
@@ -612,7 +636,9 @@ export default function QuoteForm() {
                 </div>
               )}
               <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800">
-                <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">Total TTC</span>
+                <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  Total TTC
+                </span>
                 <span className="text-xl font-bold text-slate-900 dark:text-slate-100">
                   {totals.ttc.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                 </span>
