@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import axios from 'axios';
+import { useDocumentsList, useDeleteDocument } from '../../hooks/api';
+import api from '../../lib/api';
 import {
   Upload, Image, FileText, X, Download, Eye, Grid, RefreshCw,
   Filter, ChevronLeft, ChevronRight, ArrowLeftRight, File, FileImage,
@@ -934,8 +936,6 @@ const UploadBeforeAfterModal = ({ onClose, onUpload, uploading }) => {
    ██  MAIN COMPONENT
    ═══════════════════════════════════════════ */
 const DocumentsManager = () => {
-  const [docs, setDocs] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
   const [entityType, setEntityType] = useState('');
   const [dragging, setDragging] = useState(false);
@@ -949,22 +949,13 @@ const DocumentsManager = () => {
   const fileInputRef = useRef();
   const dragCounter = useRef(0);
 
-  useEffect(() => { fetchDocs(); }, [activeTab, entityType]);
-
-  const fetchDocs = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (entityType) params.append('entity_type', entityType);
-      if (activeTab !== 'all') params.append('type', activeTab);
-      const res = await axios.get(`${API_URL}/documents?${params}`, { withCredentials: true });
-      setDocs(Array.isArray(res.data) ? res.data : res.data.documents || []);
-    } catch {
-      toast.error('Erreur chargement documents');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // ── Vague 6 : React Query ────────────────────────────────────
+  const docFilters = useMemo(() => ({
+    entity_type: entityType || undefined,
+    type: activeTab !== 'all' ? activeTab : undefined,
+  }), [activeTab, entityType]);
+  const { data: docs = [], isLoading: loading, refetch: fetchDocs } = useDocumentsList(docFilters);
+  const deleteDocMut = useDeleteDocument();
 
   const uploadFile = async (file, type = 'document') => {
     const fileId = `${file.name}-${Date.now()}`;
@@ -1070,13 +1061,9 @@ const DocumentsManager = () => {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`${API_URL}/documents/${id}`, { withCredentials: true });
-      toast.success('Document supprimé');
+      await deleteDocMut.mutateAsync(id);
       setDeleteConfirm(null);
-      fetchDocs();
-    } catch {
-      toast.error('Erreur suppression');
-    }
+    } catch {}
   };
 
   // Filter docs by search

@@ -12,3 +12,6 @@ export * from './useDashboard';
 export * from './useInteractions';
 export * from './usePlanning';
 export * from './useAnalytics';
+export * from './useTickets';
+export * from './useContracts';
+export * from './useDocuments';

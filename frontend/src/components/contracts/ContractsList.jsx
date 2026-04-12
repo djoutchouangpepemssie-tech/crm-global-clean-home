@@ -1,6 +1,12 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import axios from 'axios';
 import {
+  useContractsList,
+  useCreateContract,
+  useContractAction,
+  useGenerateInterventions,
+} from '../../hooks/api';
+import {
   Plus, Search, FileText, Play, Pause, X, Edit2, Calendar,
   Euro, Users, Clock, RefreshCw, ChevronDown, CheckCircle,
   TrendingUp, ArrowUpRight, ArrowDownRight, Sparkles, Shield,
@@ -903,9 +909,30 @@ function ContractModal({ isOpen, editingId, form, setForm, onSave, onClose }) {
 const ContractsList = () => {
   injectStyles();
 
-  const [contracts, setContracts] = useState([]);
-  const [stats, setStats] = useState({ active: 0, paused: 0, cancelled: 0, monthly_revenue: 0, annual_revenue: 0 });
-  const [loading, setLoading] = useState(true);
+  // ── Vague 6 : React Query ────────────────────────────────────
+  const filters = useMemo(() => ({ status: statusFilter || undefined }), [statusFilter]);
+  const { data: contracts = [], isLoading: loading, refetch: fetchContracts } = useContractsList(filters);
+  const createContractMut = useCreateContract();
+  const contractActionMut = useContractAction();
+  const generateIntMut = useGenerateInterventions();
+
+  const stats = useMemo(() => {
+    const active = contracts.filter(c => c.status === 'active').length;
+    const paused = contracts.filter(c => c.status === 'paused').length;
+    const cancelled = contracts.filter(c => c.status === 'cancelled').length;
+    const monthly_revenue = contracts
+      .filter(c => c.status === 'active')
+      .reduce((sum, c) => {
+        const freq = FREQUENCY_LABELS[c.frequency] || { factor: 1 };
+        return sum + (parseFloat(c.price_per_intervention) || 0) * freq.factor;
+      }, 0);
+    return {
+      active, paused, cancelled,
+      monthly_revenue: Math.round(monthly_revenue),
+      annual_revenue: Math.round(monthly_revenue * 12),
+    };
+  }, [contracts]);
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -913,39 +940,7 @@ const ContractsList = () => {
   const [form, setForm] = useState(defaultForm);
   const [generating, setGenerating] = useState(false);
   const [confirmModal, setConfirmModal] = useState({ open: false, contract: null, action: null });
-  const [viewMode, setViewMode] = useState('cards'); // cards | table
-
-  useEffect(() => { fetchContracts(); }, [statusFilter]);
-
-  const fetchContracts = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (statusFilter) params.append('status', statusFilter);
-      const res = await axios.get(`${API_URL}/contracts?${params}`, { withCredentials: true });
-      const data = Array.isArray(res.data) ? res.data : res.data.contracts || [];
-      setContracts(data);
-
-      const active = data.filter(c => c.status === 'active').length;
-      const paused = data.filter(c => c.status === 'paused').length;
-      const cancelled = data.filter(c => c.status === 'cancelled').length;
-      const monthly_revenue = data
-        .filter(c => c.status === 'active')
-        .reduce((sum, c) => {
-          const freq = FREQUENCY_LABELS[c.frequency] || { factor: 1 };
-          return sum + (parseFloat(c.price_per_intervention) || 0) * freq.factor;
-        }, 0);
-      setStats({
-        active, paused, cancelled,
-        monthly_revenue: Math.round(monthly_revenue),
-        annual_revenue: Math.round(monthly_revenue * 12),
-      });
-    } catch (e) {
-      toast.error('Erreur chargement contrats');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [viewMode, setViewMode] = useState('cards');
 
   const openCreate = () => { setEditingId(null); setForm(defaultForm); setShowModal(true); };
   const openEdit = (c) => { setEditingId(c.id); setForm({ ...defaultForm, ...c }); setShowModal(true); };
@@ -955,12 +950,11 @@ const ContractsList = () => {
       if (editingId) {
         await axios.put(`${API_URL}/contracts/${editingId}`, form, { withCredentials: true });
         toast.success('✅ Contrat mis à jour avec succès');
+        fetchContracts();
       } else {
-        await axios.post(`${API_URL}/contracts`, form, { withCredentials: true });
-        toast.success('🎉 Nouveau contrat créé !');
+        await createContractMut.mutateAsync(form);
       }
       setShowModal(false);
-      fetchContracts();
     } catch {
       toast.error('Erreur lors de la sauvegarde');
     }
@@ -974,31 +968,17 @@ const ContractsList = () => {
     const { contract, action } = confirmModal;
     if (!contract || !action) return;
     try {
-      await axios.post(`${API_URL}/contracts/${contract.id}/${action}`, {}, { withCredentials: true });
-      const msgs = {
-        pause: '⏸️ Contrat mis en pause',
-        resume: '▶️ Contrat repris avec succès',
-        cancel: '❌ Contrat annulé',
-      };
-      toast.success(msgs[action] || 'Action effectuée');
+      await contractActionMut.mutateAsync({ contractId: contract.id, action });
       setConfirmModal({ open: false, contract: null, action: null });
-      fetchContracts();
-    } catch {
-      toast.error("Erreur lors de l'action");
-    }
+    } catch {}
   };
 
   const handleGenerateInterventions = async () => {
     setGenerating(true);
     try {
-      const res = await axios.post(`${API_URL}/contracts/generate-interventions`, {}, { withCredentials: true });
-      const count = res.data?.count || res.data?.generated || 0;
-      toast.success(`✅ ${count} interventions générées avec succès`);
-    } catch {
-      toast.error('Erreur génération des interventions');
-    } finally {
-      setGenerating(false);
-    }
+      await generateIntMut.mutateAsync();
+    } catch {}
+    finally { setGenerating(false); }
   };
 
   const filtered = useMemo(() => {
