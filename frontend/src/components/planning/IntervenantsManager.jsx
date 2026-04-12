@@ -21,6 +21,7 @@ import {
   Sparkles, ArrowUpRight, ChevronDown, UserCheck, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { PageHeader } from '../shared';
 import BACKEND_URL from '../../config.js';
 const API = BACKEND_URL + '/api';
 
@@ -525,35 +526,10 @@ const IntervenantsManager = () => {
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto" style={{ animation: 'iv-fadeIn 0.5s ease' }}>
 
-      {/* ════════════════ HEADER ════════════════ */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center iv-glow"
-              style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.1))', border: '1px solid rgba(16,185,129,0.3)' }}>
-              <Users className="w-5 h-5 text-emerald-400" />
-            </div>
-            {globalStats.enCours > 0 && (
-              <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 flex items-center justify-center">
-                <span className="text-[9px] font-black text-white">{globalStats.enCours}</span>
-              </div>
-            )}
-          </div>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-black text-slate-100 tracking-tight" style={{ fontFamily: 'Manrope, sans-serif' }}>
-              Intervenants
-            </h1>
-            <p className="text-slate-500 text-sm flex items-center gap-2">
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> {members.length} agent{members.length > 1 ? 's' : ''}
-              </span>
-              <span className="text-slate-700">·</span>
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" /> {globalStats.enCours} en mission
-              </span>
-            </p>
-          </div>
-        </div>
+      <PageHeader title="Intervenants" subtitle="Gestion de vos équipes" />
+
+      {/* ════════════════ HEADER ACTIONS ════════════════ */}
+      <div className="flex justify-end -mt-4">
         <div className="flex items-center gap-2 flex-wrap">
           <button onClick={copyPortalLink}
             className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10 transition-all duration-300 hover:border-emerald-500/40">

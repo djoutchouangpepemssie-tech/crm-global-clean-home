@@ -23,6 +23,7 @@ import {
 } from 'recharts';
 import PayrollRHModule from './payroll-rh/PayrollRHModule';
 import { useConfirm } from '../shared/ConfirmDialog';
+import { PageHeader } from '../shared';
 
 const API = `${BACKEND_URL}/api/accounting/erp`;
 const COLORS = ['#7c3aed', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#8b5cf6', '#14b8a6'];
@@ -58,13 +59,7 @@ export default function AccountingERP() {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-6 space-y-4">
-      <div className="flex items-center gap-3 mb-2">
-        <BookOpen className="h-7 w-7 text-violet-500" />
-        <h1 className="text-2xl font-bold">Comptabilité ERP</h1>
-        <Badge variant="outline" className="bg-violet-500/10 text-violet-400 border-violet-500/30">
-          Système intégré
-        </Badge>
-      </div>
+      <PageHeader title="ERP Comptable" subtitle="Journaux, TVA, clôtures" />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="flex gap-1 bg-white/5 rounded-2xl p-1.5 overflow-x-auto w-fit mb-2">

@@ -16,6 +16,7 @@ import {
   ChevronDown, Eye, Edit3, Trash2, ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { PageHeader } from '../shared';
 import BACKEND_URL from '../../config.js';
 const API_URL = BACKEND_URL + '/api';
 
@@ -707,34 +708,11 @@ const PlanningCalendar = () => {
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-5 max-w-[1600px] mx-auto">
 
-      {/* ── HEADER ── */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+      <PageHeader title="Planning" subtitle="Calendrier des interventions" />
+
+      {/* ── HEADER ACTIONS ── */}
+      <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-4 -mt-4"
         style={{ animation: 'fadeIn 0.5s ease forwards' }}>
-        <div>
-          <div className="flex items-center gap-3 mb-1.5">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center relative overflow-hidden"
-              style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.25), rgba(79,70,229,0.15))', border: '1px solid rgba(124,58,237,0.3)' }}>
-              <CalendarDays className="w-5 h-5 text-violet-400 relative z-10"/>
-              <div className="absolute inset-0 bg-gradient-to-tr from-violet-600/10 to-transparent" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-black text-slate-100 tracking-tight" style={{fontFamily:'Manrope,Inter,sans-serif'}}>Planning</h1>
-              <p className="text-slate-500 text-xs flex items-center gap-2">
-                <AnimatedNumber value={stats.total} className="font-bold text-slate-400" /> intervention{stats.total !== 1 ? 's' : ''}
-                <span className="w-1 h-1 rounded-full bg-slate-700" />
-                <span className="text-amber-400/80"><AnimatedNumber value={stats.en_cours} className="font-bold" /> en cours</span>
-                {stats.conflits > 0 && (
-                  <>
-                    <span className="w-1 h-1 rounded-full bg-slate-700" />
-                    <span className="text-rose-400 font-bold flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3" /> {stats.conflits} conflit{stats.conflits > 1 ? 's' : ''}
-                    </span>
-                  </>
-                )}
-              </p>
-            </div>
-          </div>
-        </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           <button onClick={exportWeekPDF}

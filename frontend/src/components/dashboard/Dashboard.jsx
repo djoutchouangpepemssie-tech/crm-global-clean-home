@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { getStatusColor, getStatusLabel, formatDateTime } from '../../lib/utils';
 import LeadScoreBadge from '../shared/LeadScoreBadge';
+import { PageHeader } from '../shared';
 import AIInsights from './AIInsights';
 import { toast } from 'sonner';
 import BACKEND_URL from '../../config.js';
@@ -610,24 +611,10 @@ const Dashboard = () => {
   return (
     <div className="dashboard-premium p-4 md:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto">
 
-      {/* ═══ HEADER ═══ */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-slide-down">
-        <div>
-          <div className="flex items-center gap-3 mb-1.5">
-            <div className="header-icon-premium">
-              <Sparkles className="w-5 h-5 text-violet-400" />
-            </div>
-            <div>
-              <h1 className="dashboard-title">
-                {greeting.emoji} {greeting.text}
-              </h1>
-              <p className="text-slate-500 text-sm font-medium">
-                {now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-              </p>
-            </div>
-          </div>
-        </div>
+      <PageHeader title="Dashboard" subtitle="Vue d'ensemble de votre activité" />
 
+      {/* ═══ HEADER ACTIONS ═══ */}
+      <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-4 animate-slide-down -mt-4">
         <div className="flex items-center gap-2.5 flex-wrap">
           {urgentTasks.length > 0 && (
             <button

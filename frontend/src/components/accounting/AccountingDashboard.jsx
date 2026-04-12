@@ -15,6 +15,7 @@ import {
 } from '../ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { useConfirm } from '../shared/ConfirmDialog';
+import { PageHeader } from '../shared';
 import {
   TrendingUp, TrendingDown, DollarSign, CreditCard, PieChart,
   Plus, BarChart3, FileText, Wallet, ArrowUpRight, ArrowDownRight,
@@ -133,11 +134,10 @@ export default function AccountingDashboard() {
 
   return (
     <div className="space-y-6 p-4">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <BarChart3 className="h-6 w-6 text-emerald-600" /> Comptabilité
-        </h1>
+      <PageHeader title="Comptabilité" subtitle="Vue simple" />
+
+      {/* Actions */}
+      <div className="flex items-center justify-end flex-wrap gap-3 -mt-4">
         <div className="flex gap-2 items-center">
           <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-36"><Calendar className="h-4 w-4 mr-1" /><SelectValue /></SelectTrigger>

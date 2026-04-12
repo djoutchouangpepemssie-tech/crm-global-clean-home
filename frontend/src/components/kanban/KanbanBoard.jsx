@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Mail, Phone, GripVertical, Trello, RefreshCw, TrendingUp, Sparkles, Zap, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import LeadScoreBadge from '../shared/LeadScoreBadge';
+import { PageHeader } from '../shared';
 import { useLeadsList, useUpdateLead } from '../../hooks/api';
 import { queryKeys } from '../../lib/api';
 
@@ -621,32 +622,13 @@ const KanbanBoard = () => {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 animate-fade-in" data-testid="kanban-board">
-      {/* Header */}
+      <PageHeader title="Pipeline" subtitle="Vue Kanban des leads" />
+
+      {/* Actions */}
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        marginBottom: 20, flexWrap: 'wrap', gap: 12,
+        display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+        marginBottom: 20, marginTop: -8,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{
-            width: 40, height: 40, borderRadius: 12,
-            background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 16px rgba(139,92,246,0.3)',
-          }}>
-            <Trello style={{ width: 20, height: 20, color: '#fff' }} />
-          </div>
-          <div>
-            <h1 style={{
-              fontSize: 24, fontWeight: 900, color: '#f1f5f9',
-              fontFamily: 'Manrope, sans-serif',
-              letterSpacing: '-0.02em',
-              lineHeight: 1.2,
-            }}>Pipeline</h1>
-            <p style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>
-              Glissez-déposez pour changer le statut
-            </p>
-          </div>
-        </div>
         <button
           onClick={fetchLeads}
           style={{
