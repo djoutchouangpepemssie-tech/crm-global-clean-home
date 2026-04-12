@@ -9,10 +9,8 @@ import {
   AlertCircle, Clock, Package, DollarSign, Receipt
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import axios from 'axios';
-import BACKEND_URL from '../../config.js';
+import api from '../../lib/api';
 import { useTheme } from '../../contexts/ThemeContext';
-const API_URL = BACKEND_URL + '/api';
 
 /* ────────────────────────────────────────
    Nav structure
@@ -175,10 +173,10 @@ const Sidebar = () => {
   const fetchBadges = useCallback(async () => {
     try {
       const [leadsRes, devisRes, facturesRes, ticketsRes] = await Promise.allSettled([
-        axios.get(`${API_URL}/leads?status=nouveau&limit=1`, { withCredentials: true }),
-        axios.get(`${API_URL}/quotes?status=pending&limit=1`, { withCredentials: true }),
-        axios.get(`${API_URL}/invoices?status=overdue&limit=1`, { withCredentials: true }),
-        axios.get(`${API_URL}/tickets?status=open&limit=1`, { withCredentials: true }),
+        api.get('/leads?status=nouveau&limit=1'),
+        api.get('/quotes?status=pending&limit=1'),
+        api.get('/invoices?status=overdue&limit=1'),
+        api.get('/tickets?status=open&limit=1'),
       ]);
 
       const getCount = (res, paths) => {
