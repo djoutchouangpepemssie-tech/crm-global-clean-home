@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { PageHeader } from '../shared';
 import axios from 'axios';
 import { useDocumentsList, useDeleteDocument } from '../../hooks/api';
 import api from '../../lib/api';

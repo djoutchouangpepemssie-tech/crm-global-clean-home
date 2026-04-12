@@ -23,6 +23,7 @@ import {
 } from 'recharts';
 import { toast } from 'sonner';
 import { useConfirm } from '../shared/ConfirmDialog';
+import { PageHeader } from '../shared';
 import BACKEND_URL from '../../config.js';
 const API = BACKEND_URL + '/api';
 
@@ -202,17 +203,10 @@ const AdsDashboard = () => {
   return (
     <div className="p-4 md:p-6 space-y-6 animate-fade-in max-w-[1600px] mx-auto">
 
-      {/* HEADER */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <div className="flex items-center gap-2.5 mb-1">
-            <div className="w-8 h-8 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center">
-              <Target className="w-4 h-4 text-blue-400"/>
-            </div>
-            <h1 className="text-2xl font-black text-slate-100" style={{fontFamily:'Manrope,sans-serif'}}>Publicités</h1>
-          </div>
-          <p className="text-slate-500 text-sm ml-10">Google Ads · Facebook Ads · Suivi & création campagnes</p>
-        </div>
+      <PageHeader title="Publicité" subtitle="Google Ads & Meta Ads" />
+
+      {/* ACTIONS */}
+      <div className="flex justify-end -mt-4">
         <div className="flex items-center gap-2">
           <button onClick={fetchData} className="p-2 rounded-xl bg-white/5 border border-white/5 text-slate-400">
             <RefreshCw className={`w-4 h-4 ${loading?'animate-spin':''}`}/>

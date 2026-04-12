@@ -14,6 +14,7 @@ import {
   ChevronRight, Star, Target, Activity, DollarSign, Hash, Eye
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { PageHeader } from '../shared';
 import BACKEND_URL from '../../config.js';
 const API_URL = BACKEND_URL + '/api';
 
@@ -998,33 +999,13 @@ const ContractsList = () => {
 
   return (
     <div className="crm-p-mobile" style={{ padding: '24px', maxWidth: 1400, margin: '0 auto', animation: 'ct-fade-in 0.4s ease-out' }}>
-      {/* ═══ Header ═══ */}
+      <PageHeader title="Contrats" subtitle="Gestion des contrats récurrents" />
+
+      {/* ═══ Header Actions ═══ */}
       <div className="ct-header-row" style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28,
+        display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 28, marginTop: -16,
         animation: 'ct-slide-up 0.5s ease-out',
       }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(139,92,246,0.05))',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <FileText style={{ width: 18, height: 18, color: '#a78bfa' }} />
-            </div>
-            <h1 style={{
-              fontFamily: 'Manrope, sans-serif', fontSize: 26, fontWeight: 800,
-              color: '#f1f5f9', margin: 0,
-              background: 'linear-gradient(135deg, #f1f5f9, #a78bfa)',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            }}>
-              Contrats Récurrents
-            </h1>
-          </div>
-          <p style={{ color: '#64748b', fontSize: 13, marginTop: 4 }}>
-            Gérez vos contrats de ménage régulier · <span style={{ color: '#a78bfa' }}>{contracts.length} contrats</span>
-          </p>
-        </div>
         <div className="ct-header-actions" style={{ display: 'flex', gap: 10 }}>
           <button
             onClick={handleGenerateInterventions}

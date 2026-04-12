@@ -7,6 +7,7 @@ import {
 } from 'recharts';
 import { DollarSign, CreditCard, Clock, AlertTriangle, TrendingUp, TrendingDown, FileText, Download, BarChart3, Minus } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
+import { PageHeader } from '../shared';
 import { toast } from 'sonner';
 import BACKEND_URL from '../../config.js';
 const API_URL = BACKEND_URL + '/api';
@@ -171,15 +172,10 @@ const FinancialDashboard = () => {
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-6 animate-fade-in" data-testid="financial-dashboard">
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <BarChart3 className="w-5 h-5 text-violet-400" />
-            <h1 className="text-2xl font-bold text-slate-100" style={{fontFamily:'Manrope,sans-serif'}}>Finance</h1>
-          </div>
-          <p className="text-slate-500 text-sm">Vue d'ensemble de vos revenus et paiements</p>
-        </div>
+      <PageHeader title="Finance" subtitle="Tableau de bord financier" />
+
+      {/* Actions */}
+      <div className="flex justify-end -mt-4 mb-4">
         <div className="flex items-center gap-2">
           <a href={`${API_URL}/exports/financial/pdf?period=${period}`} data-testid="export-financial-pdf"
             className="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-slate-200 rounded-lg transition-all text-sm font-medium">
