@@ -1,5 +1,13 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import axios from "axios";
+import {
+  useTicketsList,
+  useTicketStats,
+  useCreateTicket,
+  useReplyTicket,
+  useUpdateTicketStatus,
+} from "../../hooks/api";
+import { useLeadsList } from "../../hooks/api";
 import {
   Ticket, Plus, RefreshCw, AlertTriangle, Clock, CheckCircle, Send,
   Search, Filter, X, ChevronDown, MessageSquare, Calendar, User,
@@ -392,10 +400,22 @@ function TicketCard({ ticket, index, onClick }) {
 
 /* ─── Main Component ─── */
 export default function TicketsList() {
-  const [tickets, setTickets] = useState([]);
-  const [stats, setStats] = useState({ open: 0, in_progress: 0, resolved: 0, sla_breaches: 0 });
-  const [leads, setLeads] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // ── Vague 6 : React Query ────────────────────────────────────
+  const queryStr = useMemo(() => {
+    const params = [];
+    if (filterStatus) params.push("status=" + filterStatus);
+    return params.length ? "?" + params.join("&") : "";
+  }, [filterStatus]);
+  const { data: tickets = [], isLoading: ticketsLoading, isRefetching: refreshing, refetch } = useTicketsList(queryStr);
+  const { data: stats = { open: 0, in_progress: 0, resolved: 0, sla_breaches: 0 } } = useTicketStats();
+  const { data: leads = [] } = useLeadsList({ limit: 50 });
+  const createTicketMut = useCreateTicket();
+  const replyTicketMut = useReplyTicket();
+  const updateStatusMut = useUpdateTicketStatus();
+
+  const loading = ticketsLoading;
+  const load = useCallback(async () => { await refetch(); }, [refetch]);
+
   const [showNew, setShowNew] = useState(false);
   const [selected, setSelected] = useState(null);
   const [filterStatus, setFilterStatus] = useState("");
@@ -407,33 +427,9 @@ export default function TicketsList() {
   const [reply, setReply] = useState("");
   const [isInternal, setIsInternal] = useState(false);
   const [sending, setSending] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [confirmAction, setConfirmAction] = useState(null); // {type, status, label, color}
+  const [confirmAction, setConfirmAction] = useState(null);
   const [modalClosing, setModalClosing] = useState(false);
   const searchRef = useRef(null);
-
-  const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    else setRefreshing(true);
-    try {
-      const params = [];
-      if (filterStatus) params.push("status=" + filterStatus);
-      const q = params.length ? "?" + params.join("&") : "";
-      const [t, s, l] = await Promise.all([
-        axios.get(API + "/tickets/" + q, { withCredentials: true }),
-        axios.get(API + "/tickets/stats", { withCredentials: true }),
-        axios.get(API + "/leads?limit=50", { withCredentials: true }),
-      ]);
-      const tData = t.data;
-      setTickets(Array.isArray(tData) ? tData : (tData?.items || tData?.tickets || []));
-      setStats(s.data || {});
-      const lData = l.data;
-      setLeads(Array.isArray(lData) ? lData : (lData?.items || lData?.leads || []));
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); setRefreshing(false); }
-  }, [filterStatus]);
-
-  useEffect(() => { load(); }, [load]);
 
   /* Filter tickets client-side for priority & search */
   const filteredTickets = tickets.filter(t => {
@@ -453,12 +449,10 @@ export default function TicketsList() {
     if (!form.subject || !form.description) { toast.error("Remplissez l'objet et la description"); return; }
     setSaving(true);
     try {
-      await axios.post(API + "/tickets/", form, { withCredentials: true });
-      toast.success("🎉 Ticket créé avec succès !");
+      await createTicketMut.mutateAsync(form);
       closeModal("new");
       setForm({ subject: "", description: "", priority: "normal", category: "general", lead_id: "", client_name: "", client_email: "" });
-      load();
-    } catch (e) { toast.error("Erreur lors de la création"); }
+    } catch {}
     finally { setSaving(false); }
   };
 
@@ -466,20 +460,18 @@ export default function TicketsList() {
     try {
       const res = await axios.get(API + "/tickets/" + t.ticket_id, { withCredentials: true });
       setSelected(res.data);
-    } catch (e) { setSelected(t); }
+    } catch { setSelected(t); }
   };
 
   const sendReply = async () => {
     if (!reply.trim() || !selected) return;
     setSending(true);
     try {
-      await axios.post(API + "/tickets/" + selected.ticket_id + "/reply", { message: reply, is_internal: isInternal }, { withCredentials: true });
-      toast.success(isInternal ? "📝 Note interne ajoutée" : "✉️ Réponse envoyée !");
+      await replyTicketMut.mutateAsync({ ticketId: selected.ticket_id, message: reply, is_internal: isInternal });
       setReply("");
       const res = await axios.get(API + "/tickets/" + selected.ticket_id, { withCredentials: true });
       setSelected(res.data);
-      load(true);
-    } catch (e) { toast.error("Erreur d'envoi"); }
+    } catch {}
     finally { setSending(false); }
   };
 
@@ -487,12 +479,10 @@ export default function TicketsList() {
     if (!selected) return;
     setConfirmAction(null);
     try {
-      await axios.patch(API + "/tickets/" + selected.ticket_id, { status }, { withCredentials: true });
-      toast.success("✅ Statut mis à jour !");
+      await updateStatusMut.mutateAsync({ ticketId: selected.ticket_id, status });
       const res = await axios.get(API + "/tickets/" + selected.ticket_id, { withCredentials: true });
       setSelected(res.data);
-      load(true);
-    } catch (e) { toast.error("Erreur de mise à jour"); }
+    } catch {}
   };
 
   const closeModal = (type) => {
