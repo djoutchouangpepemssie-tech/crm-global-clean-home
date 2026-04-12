@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
+import api from '../../lib/api';
 import {
   Home, Calendar, Clock, MapPin, User, LogOut, Play,
   CheckCircle, Phone, MessageSquare, ChevronRight,

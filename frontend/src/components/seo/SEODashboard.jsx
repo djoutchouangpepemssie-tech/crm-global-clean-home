@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import api from '../../lib/api';
 import {
   Search, TrendingUp, TrendingDown, Eye, MousePointer,
   RefreshCw, AlertCircle, ArrowUp, ArrowDown, Globe,

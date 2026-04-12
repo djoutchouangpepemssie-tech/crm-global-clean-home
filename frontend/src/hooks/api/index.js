@@ -16,3 +16,4 @@ export * from './useTickets';
 export * from './useContracts';
 export * from './useDocuments';
 export * from './useAds';
+export * from './useRemainingModules';
