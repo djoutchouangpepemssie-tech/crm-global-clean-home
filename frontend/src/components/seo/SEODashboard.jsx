@@ -28,24 +28,14 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 const SEODashboard = () => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // Vague 16 : React Query pour les données SEO
+  const { useSeoStats } = require('../../hooks/api');
   const [days, setDays] = useState(28);
+  const { data, isLoading: loading, error: rqError, refetch: fetchData } = useSeoStats(days);
+  const error = rqError?.message || null;
   const [sortKey, setSortKey] = useState('clicks');
   const [sortDir, setSortDir] = useState('desc');
   const [kwSearch, setKwSearch] = useState('');
-
-  const fetchData = useCallback(async () => {
-    setLoading(true); setError(null);
-    try {
-      const res = await axios.get(`${API}/seo?days=${days}`, {withCredentials:true});
-      setData(res.data);
-    } catch(e) { setError(e.response?.data?.detail||'Erreur Search Console'); }
-    finally { setLoading(false); }
-  }, [days]);
-
-  useEffect(()=>{ fetchData(); },[fetchData]);
 
   const handleSort = (key) => {
     if (sortKey===key) setSortDir(p=>p==='desc'?'asc':'desc');

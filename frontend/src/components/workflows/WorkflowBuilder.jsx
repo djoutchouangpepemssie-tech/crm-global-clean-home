@@ -81,7 +81,10 @@ const WorkflowCard = ({ workflow, onToggle, onTest, leads }) => {
 };
 
 const WorkflowBuilder = () => {
-  const [workflows, setWorkflows] = useState([]);
+  // Vague 16 : React Query pour les workflows
+  const { useWorkflowsList } = require('../../hooks/api');
+  const { data: workflows = [], isLoading: wfLoading, refetch } = useWorkflowsList();
+
   const [stats, setStats] = useState(null);
   const [executions, setExecutions] = useState([]);
   const [leads, setLeads] = useState([]);
@@ -89,20 +92,16 @@ const WorkflowBuilder = () => {
   const [activeTab, setActiveTab] = useState('workflows');
   const [processing, setProcessing] = useState(false);
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { fetchSideData(); }, []);
 
-  const fetchAll = async () => {
+  const fetchSideData = async () => {
     setLoading(true);
     try {
-      const [wfRes, statsRes, execRes, leadsRes] = await Promise.all([
-        axios.get(API_URL + '/workflows/', { withCredentials: true }),
-        axios.get(API_URL + '/workflows/stats', { withCredentials: true }),
-        axios.get(API_URL + '/workflows/executions', { withCredentials: true }),
-        axios.get(API_URL + '/leads?limit=30', { withCredentials: true }),
+      const [statsRes, execRes, leadsRes] = await Promise.all([
+        api.get('/workflows/stats'),
+        api.get('/workflows/executions'),
+        api.get('/leads?limit=30'),
       ]);
-      // Handle paginated response formats
-      const wfData = wfRes.data;
-      setWorkflows(Array.isArray(wfData) ? wfData : (wfData?.items || wfData?.workflows || []));
       setStats(statsRes.data);
       const execData = execRes.data;
       setExecutions(Array.isArray(execData) ? execData : (execData?.items || execData?.executions || []));
@@ -111,6 +110,7 @@ const WorkflowBuilder = () => {
     } catch(e) { toast.error('Erreur chargement'); }
     finally { setLoading(false); }
   };
+  const fetchAll = () => { refetch(); fetchSideData(); };
 
   const handleToggle = async (wfId) => {
     try {

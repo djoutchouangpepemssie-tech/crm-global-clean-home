@@ -402,13 +402,10 @@ function PrevisionsTab() {
 
 export default function RentabiliteModule() {
   const [activeTab, setActiveTab] = useState("overview");
-  const [financial, setFinancial] = useState(null);
 
-  useEffect(() => {
-    axios.get(API+"/stats/financial?period=30d", {withCredentials:true})
-      .then(r => setFinancial(r.data))
-      .catch(() => {});
-  }, []);
+  // Vague 16 : React Query pour les données financières
+  const { useFinancialStats } = require('../../hooks/api');
+  const { data: financial = null } = useFinancialStats('30d');
 
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-5 animate-fade-in">

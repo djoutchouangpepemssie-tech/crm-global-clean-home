@@ -36,14 +36,15 @@ const InterventionsMap = () => {
   const [mapsLink, setMapsLink] = useState(null);
   const [selectedZone, setSelectedZone] = useState(null);
 
+  // Vague 16 : migration vers api centralisé
   useEffect(() => { fetchData(); }, [selectedDate]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const [mapRes, zonesRes] = await Promise.allSettled([
-        axios.get(`${API_URL}/geo/interventions-map?date=${selectedDate}`, { withCredentials: true }),
-        axios.get(`${API_URL}/geo/zones-stats`, { withCredentials: true }),
+        api.get(`/geo/interventions-map?date=${selectedDate}`),
+        api.get('/geo/zones-stats'),
       ]);
 
       const mapData = mapRes.status === 'fulfilled' ? (mapRes.value.data?.interventions || mapRes.value.data || []) : [];
@@ -52,7 +53,6 @@ const InterventionsMap = () => {
       setInterventions(Array.isArray(mapData) ? mapData : []);
       setZonesStats(Array.isArray(zonesData) ? zonesData : []);
 
-      // Compute stats
       const arr = Array.isArray(mapData) ? mapData : [];
       const completed = arr.filter(i => i.status === 'completed').length;
       const durations = arr.filter(i => i.duration_minutes).map(i => i.duration_minutes);
@@ -68,7 +68,7 @@ const InterventionsMap = () => {
   const handleOptimizeRoute = async () => {
     setOptimizing(true);
     try {
-      const res = await axios.post(`${API_URL}/geo/optimize-route`, { date: selectedDate }, { withCredentials: true });
+      const res = await api.post('/geo/optimize-route', { date: selectedDate });
       const link = res.data?.google_maps_url || res.data?.url || res.data?.link;
       if (link) {
         setMapsLink(link);
