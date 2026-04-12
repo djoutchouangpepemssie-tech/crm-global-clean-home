@@ -4,6 +4,7 @@ import { MessageSquare, RefreshCw, Send, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import api from "../../lib/api";
+import { PageHeader } from "../shared";
 import LeadChat from "./LeadChat";
 
 export default function ChatCenter() {
@@ -25,17 +26,11 @@ export default function ChatCenter() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 animate-fade-in">
-      <div className="flex items-center gap-2 mb-5">
-        <MessageSquare className="w-5 h-5 text-violet-400" />
-        <h1 className="text-2xl font-bold text-slate-100" style={{fontFamily:"Manrope,sans-serif"}}>
-          Messages clients
-        </h1>
-        {totalUnread > 0 && (
-          <span className="px-2 py-0.5 rounded-full text-xs font-black bg-rose-500/20 text-rose-400 border border-rose-500/25">
-            {totalUnread} non lu{totalUnread > 1 ? "s" : ""}
-          </span>
-        )}
-      </div>
+      <PageHeader
+        title="Messages"
+        subtitle={`${conversations.length} conversation${conversations.length > 1 ? 's' : ''}${totalUnread > 0 ? ` · ${totalUnread} non lu${totalUnread > 1 ? 's' : ''}` : ''}`}
+        actions={[{ label: 'Actualiser', icon: RefreshCw, onClick: () => refetch(), loading: false }]}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4" style={{height: "calc(100vh - 200px)"}}>
         {/* Liste conversations */}
