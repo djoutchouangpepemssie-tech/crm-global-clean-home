@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import React, { useState } from 'react';
+import { useFinancialStats } from '../../hooks/api';
 import {
   ComposedChart, AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -102,20 +102,12 @@ function CashFlowBar({ income, expenses }) {
 
 // ── Main component ────────────────────────────
 const FinancialDashboard = () => {
-  const [stats, setStats] = useState({});
   const [period, setPeriod] = useState('30d');
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => { fetchStats(); }, [period]);
-
-  const fetchStats = async () => {
-    setLoading(true);
-    try {
-      const res = await axios.get(`${API_URL}/stats/financial?period=${period}`, { withCredentials: true });
-      setStats(res.data || {});
-    } catch { toast.error('Erreur lors du chargement'); }
-    finally { setLoading(false); }
-  };
+  // Vague 4 : React Query — le dashboard financier se met à jour automatiquement
+  // quand un paiement est enregistré, une facture est créée/modifiée, etc.
+  // grâce à l'invalidation croisée de useRecordPayment, useCreateInvoice, etc.
+  const { data: stats = {}, isLoading: loading, refetch } = useFinancialStats(period);
 
   // Build cumulative revenue data
   const revenueByDay = stats.revenue_by_day || [];

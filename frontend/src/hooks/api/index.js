@@ -11,3 +11,4 @@ export * from './useTasks';
 export * from './useDashboard';
 export * from './useInteractions';
 export * from './usePlanning';
+export * from './useAnalytics';
