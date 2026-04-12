@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import api from '../../lib/api';
 import { Sparkles, Brain, Mail, Target, Zap, Send, Copy, Check, AlertTriangle, Users, ArrowUpRight, Phone, BarChart3, TrendingUp, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import api from '../../lib/api';
 import { Calendar, MapPin, Navigation, CheckCircle, Clock, RefreshCw, ExternalLink, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import BACKEND_URL from '../../config.js';

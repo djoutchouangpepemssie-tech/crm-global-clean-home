@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
+import api from '../../lib/api';
 import {
   FileText, CreditCard, CheckCircle, XCircle, Star, LogOut,
   Clock, Send, MessageSquare, Sparkles, Mail, ArrowRight,

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import api from '../../lib/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line, PieChart, Pie } from "recharts";
 import { DollarSign, TrendingUp, TrendingDown, Target, Zap, MapPin, RefreshCw, Sparkles, ArrowUpRight, ArrowDownRight, Clock, Users } from "lucide-react";
 import { toast } from "sonner";

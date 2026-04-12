@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
+import api from '../../lib/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, BarChart, Bar } from "recharts";
 import { TrendingUp, TrendingDown, DollarSign, Users, Target, Zap, Star, CheckCircle, RefreshCw, Sparkles, Trophy, MapPin, Filter } from "lucide-react";
 import { useNavigate } from "react-router-dom";
