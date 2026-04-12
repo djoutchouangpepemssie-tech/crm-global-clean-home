@@ -90,7 +90,6 @@ const KanbanBoard = lazy(() => import('./components/kanban/KanbanBoard'));
 const Analytics = lazy(() => import('./components/analytics/Analytics'));
 const InvoicesList = lazy(() => import('./components/invoices/InvoicesList'));
 const PaymentSuccess = lazy(() => import('./components/invoices/PaymentSuccess'));
-const FinancialDashboard = lazy(() => import('./components/invoices/FinancialDashboard'));
 const ClientPortal = lazy(() => import('./components/portal/ClientPortal'));
 const IntervenantPortal = lazy(() => import('./components/portal/IntervenantPortal'));
 const IntervenantsManager = lazy(() => import('./components/planning/IntervenantsManager'));
@@ -106,11 +105,7 @@ const SatisfactionDashboard = lazy(() => import('./components/satisfaction/Satis
 const DocumentsManager = lazy(() => import('./components/documents/DocumentsManager'));
 const BookingManager = lazy(() => import('./components/booking/BookingManager'));
 const SettingsPage = lazy(() => import('./components/settings/SettingsPage'));
-const QuoteFormPremium = lazy(() => import('./components/quotes/QuoteFormPremium'));
-const InvoiceFormPremium = lazy(() => import('./components/invoices/InvoiceFormPremium'));
 const StockTable = lazy(() => import('./components/stock/StockTable'));
-const AccountingDashboard = lazy(() => import('./components/accounting/AccountingDashboard'));
-const AccountingEnterprise = lazy(() => import('./components/accounting/AccountingEnterprise'));
 const AccountingERP = lazy(() => import('./components/accounting/AccountingERP'));
 const GlobalSearchFull = lazy(() =>
   import('./components/shared/GlobalSearch').then(m => ({ default: m.GlobalSearch || m.default }))
@@ -419,7 +414,6 @@ function AppRouter() {
                     <Route path="/leads/:id" element={<LeadDetail />} />
                     <Route path="/leads" element={<LeadsList />} />
                     <Route path="/quotes/new" element={<QuoteForm />} />
-                    <Route path="/quotes/premium" element={<QuoteFormPremium />} />
                     <Route path="/quotes" element={<QuotesList />} />
                     <Route path="/tasks" element={<TasksList />} />
                     <Route path="/activity" element={<ActivityLog />} />
@@ -427,11 +421,7 @@ function AppRouter() {
                     <Route path="/analytics" element={<Analytics />} />
                     <Route path="/invoices" element={<InvoicesList />} />
                     <Route path="/invoices/:invoiceId/success" element={<PaymentSuccess />} />
-                    <Route path="/invoices/premium" element={<InvoiceFormPremium />} />
-                    <Route path="/finance" element={<FinancialDashboard />} />
                     <Route path="/accounting-erp" element={<AccountingERP />} />
-                    <Route path="/accounting" element={<AccountingDashboard />} />
-                    <Route path="/accounting-enterprise" element={<AccountingEnterprise />} />
                     {/* PayrollModule moved to AccountingERP/payroll-rh */}
                     <Route path="/stock" element={<StockTable />} />
                     <Route path="/planning" element={<PlanningCalendar />} />
