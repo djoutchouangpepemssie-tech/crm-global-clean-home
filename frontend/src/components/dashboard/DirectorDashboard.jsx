@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
+import api from '../../lib/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, BarChart, Bar } from "recharts";
 import { TrendingUp, TrendingDown, DollarSign, Users, Target, Zap, Star, CheckCircle, RefreshCw, Sparkles, Trophy, MapPin, Filter } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { PageHeader } from '../shared';
 import BACKEND_URL from "../../config.js";
 
 const API = BACKEND_URL + "/api";
@@ -313,16 +315,9 @@ export default function DirectorDashboard() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-5 animate-fade-in">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <h1 className="text-2xl font-black text-slate-100" style={{fontFamily:"Manrope,sans-serif"}}>Vue Directeur</h1>
-          </div>
-          <p className="text-slate-500 text-sm">Pilotage Global Clean Home en temps reel</p>
-        </div>
+      <PageHeader title="Direction" subtitle="Vue exécutive" />
+
+      <div className="flex justify-end -mt-4">
         <div className="flex items-center gap-2">
           <button onClick={load} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 border border-white/5">
             <RefreshCw className="w-4 h-4" />

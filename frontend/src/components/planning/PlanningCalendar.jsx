@@ -1,4 +1,11 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import {
+  useCalendar,
+  useAllTeamMembers,
+  useCreateIntervention,
+  useUpdateIntervention,
+} from '../../hooks/api';
+import api from '../../lib/api';
 import axios from 'axios';
 import {
   ChevronLeft, ChevronRight, Plus, Clock, MapPin, Users,
@@ -9,6 +16,7 @@ import {
   ChevronDown, Eye, Edit3, Trash2, ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { PageHeader } from '../shared';
 import BACKEND_URL from '../../config.js';
 const API_URL = BACKEND_URL + '/api';
 
@@ -379,10 +387,23 @@ const PlanningCalendar = () => {
     return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
   });
   const [currentWeek, setCurrentWeek] = useState(() => new Date());
-  const [interventions, setInterventions] = useState([]);
-  const [teams, setTeams] = useState([]);
-  const [members, setMembers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // ── Vague 3b : React Query ────────────────────────────────
+  // fetchCalendar + fetchMembers remplacés par deux hooks qui gèrent
+  // cache, refetch et invalidation croisée avec le Dashboard + autres pages.
+  const { data: calendarData, isLoading: calendarLoading, refetch: refetchCalendar } = useCalendar(currentMonth);
+  const { data: fetchedMembers, isLoading: membersLoading, refetch: refetchMembers } = useAllTeamMembers();
+  const createIntervention = useCreateIntervention();
+  const updateIntervention = useUpdateIntervention();
+
+  const interventions = useMemo(() => calendarData?.interventions || [], [calendarData]);
+  const teams = useMemo(() => calendarData?.teams || [], [calendarData]);
+  const members = useMemo(() => {
+    if (Array.isArray(fetchedMembers) && fetchedMembers.length > 0) return fetchedMembers;
+    // Fallback : dériver depuis les teams embarquées dans le calendrier
+    return (calendarData?.teams || []).flatMap(t => (t.members || []).map(mb => ({ ...mb, team_name: t.name })));
+  }, [fetchedMembers, calendarData]);
+
+  const loading = calendarLoading || membersLoading;
   const [showForm, setShowForm] = useState(false);
   const [selected, setSelected] = useState(null);
   const [filterMember, setFilterMember] = useState('');
@@ -405,13 +426,13 @@ const PlanningCalendar = () => {
   const [quickCreateDate, setQuickCreateDate] = useState(null);
   const [editMode, setEditMode] = useState(false);
 
-  // Auto-fetch lead quand ID renseigné
+  // Auto-fetch lead quand ID renseigné (reste en axios direct : utilisé par
+  // l'autocomplete du formulaire, pas nécessaire de mettre en cache)
   const fetchLead = useCallback(async (leadId) => {
     if (!leadId || leadId.length < 5) return;
     setLoadingLead(true);
     try {
-      const res = await axios.get(`${API_URL}/leads/${leadId}`, {withCredentials:true});
-      const lead = res.data;
+      const { data: lead } = await api.get(`/leads/${leadId}`);
       if (lead) {
         setForm(p=>({
           ...p,
@@ -431,12 +452,12 @@ const PlanningCalendar = () => {
     setLoadingLead(false);
   }, []);
 
-  // Recherche lead par nom/email
+  // Recherche lead par nom/email (autocomplete temps réel)
   const searchLeads = useCallback(async (query) => {
     if (!query || query.length < 2) { setLeadSuggestions([]); return; }
     try {
-      const res = await axios.get(`${API_URL}/leads?search=${encodeURIComponent(query)}&limit=5`, {withCredentials:true});
-      const leads = res.data.leads || res.data || [];
+      const { data } = await api.get(`/leads?search=${encodeURIComponent(query)}&limit=5`);
+      const leads = data.leads || data || [];
       setLeadSuggestions(Array.isArray(leads) ? leads.slice(0,5) : []);
     } catch { setLeadSuggestions([]); }
   }, []);
@@ -457,33 +478,18 @@ const PlanningCalendar = () => {
     toast.success(`✅ ${lead.name} — champs remplis automatiquement`);
   };
 
+  // fetchData n'existe plus : le chargement est géré par useCalendar + useAllTeamMembers
+  // au-dessus. On garde fetchData comme alias pour ne pas casser les handlers existants
+  // qui l'appellent après création/update/delete d'intervention.
   const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [calRes, membersRes] = await Promise.allSettled([
-        axios.get(`${API_URL}/calendar?month=${currentMonth}`, {withCredentials:true}),
-        axios.get(`${API_URL}/team-members`, {withCredentials:true}),
-      ]);
-      const cal = calRes.status==='fulfilled' ? calRes.value.data : {};
-      const m = membersRes.status==='fulfilled' ? (membersRes.value.data||[]) : [];
-      setInterventions(cal.interventions||[]);
-      setTeams(cal.teams||[]);
-      if (Array.isArray(m) && m.length>0) setMembers(m);
-      else {
-        const allTeams = cal.teams||[];
-        setMembers(allTeams.flatMap(t=>(t.members||[]).map(mb=>({...mb,team_name:t.name}))));
-      }
-    } catch { toast.error('Erreur chargement'); }
-    finally { setLoading(false); }
-  }, [currentMonth]);
+    await Promise.all([refetchCalendar(), refetchMembers()]);
+  }, [refetchCalendar, refetchMembers]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchData();
     setTimeout(() => setRefreshing(false), 600);
   }, [fetchData]);
-
-  useEffect(()=>{ fetchData(); },[fetchData]);
 
   // Vérif dispo agent en temps réel
   useEffect(()=>{
@@ -551,17 +557,22 @@ const PlanningCalendar = () => {
 
   const handleCheckInOut = async (id, action) => {
     try {
-      await axios.post(`${API_URL}/interventions/${id}/${action}`, {}, {withCredentials:true});
+      // Endpoint backend réel : POST /api/interventions/{id}/check-in-out
+      // L'ancien code appelait /{action} qui n'existe pas côté backend.
+      // On conserve la sémantique d'origine en envoyant le type dans le body.
+      await api.post(`/interventions/${id}/check-in-out`, { type: action });
       toast.success(action==='check_in'?'⚡ Intervention démarrée':'✅ Intervention terminée');
-      fetchData(); setSelected(null);
+      await fetchData();
+      setSelected(null);
     } catch { toast.error('Erreur'); }
   };
 
   const handleStatusChange = async (id, status) => {
     try {
-      await axios.patch(`${API_URL}/interventions/${id}`, {status}, {withCredentials:true});
-      toast.success('Statut mis à jour'); fetchData(); setSelected(null);
-    } catch { toast.error('Erreur'); }
+      await updateIntervention.mutateAsync({ interventionId: id, payload: { status } });
+      toast.success('Statut mis à jour');
+      setSelected(null);
+    } catch { /* erreur déjà affichée par le hook */ }
   };
 
   const handleCreate = async (e) => {
@@ -572,10 +583,15 @@ const PlanningCalendar = () => {
     }
     try {
       if (editMode && selected) {
-        await axios.patch(`${API_URL}/interventions/${selected.intervention_id||selected.id}`, form, {withCredentials:true});
+        await updateIntervention.mutateAsync({
+          interventionId: selected.intervention_id || selected.id,
+          payload: form,
+        });
         toast.success('✅ Intervention modifiée');
       } else {
-        await axios.post(`${API_URL}/interventions`, form, {withCredentials:true});
+        // Création principale via React Query (invalide dashboard + planning automatiquement)
+        await createIntervention.mutateAsync(form);
+        // Récurrence : on crée les occurrences suivantes via le même hook
         if (form.recurrence !== 'none' && form.recurrence_end) {
           const intervals = { hebdo:7, 'bi-hebdo':14, mensuel:30 };
           const step = intervals[form.recurrence];
@@ -585,26 +601,27 @@ const PlanningCalendar = () => {
             d.setDate(d.getDate()+step);
             if (d > end) break;
             const newForm = {...form, scheduled_date: d.toISOString().slice(0,10)};
-            await axios.post(`${API_URL}/interventions`, newForm, {withCredentials:true});
+            await createIntervention.mutateAsync(newForm);
           }
           toast.success(`✅ Récurrence ${form.recurrence} créée`);
         } else {
           toast.success('✅ Intervention planifiée');
         }
+        // Rappel client : endpoint best-effort, ne bloque pas la création principale
         if (form.client_email && form.scheduled_date) {
           try {
-            await axios.post(`${API_URL}/interventions/schedule-reminder`, {
+            await api.post('/interventions/schedule-reminder', {
               email: form.client_email, date: form.scheduled_date,
               time: form.scheduled_time, service: form.service_type||form.title,
               address: form.address,
-            }, {withCredentials:true});
+            });
           } catch {}
         }
       }
       setShowForm(false); setEditMode(false);
       setForm({lead_id:'',title:'',description:'',address:'',scheduled_date:'',scheduled_time:'09:00',duration_hours:2,team_id:'',service_type:'',client_phone:'',client_email:'',assigned_agent_id:'',assigned_agent_name:'',recurrence:'none',recurrence_end:''});
-      fetchData();
-    } catch(err) { toast.error(err.response?.data?.detail||'Erreur'); }
+      // Plus besoin de fetchData() : les mutations invalident automatiquement le cache
+    } catch(err) { toast.error(err.response?.data?.detail||err.message||'Erreur'); }
   };
 
   const openEditForm = (intv) => {
@@ -641,9 +658,8 @@ const PlanningCalendar = () => {
       ? `${year}-${String(month).padStart(2,'0')}-${String(newDate).padStart(2,'0')}`
       : newDate.toISOString().slice(0,10);
     try {
-      await axios.patch(`${API_URL}/interventions/${id}`, {scheduled_date: ds}, {withCredentials:true});
+      await updateIntervention.mutateAsync({ interventionId: id, payload: { scheduled_date: ds } });
       toast.success(`📅 Déplacé au ${ds}`);
-      fetchData();
     } catch { toast.error('Erreur déplacement'); }
     setDragOver(null);
   };
@@ -692,34 +708,11 @@ const PlanningCalendar = () => {
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-5 max-w-[1600px] mx-auto">
 
-      {/* ── HEADER ── */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+      <PageHeader title="Planning" subtitle="Calendrier des interventions" />
+
+      {/* ── HEADER ACTIONS ── */}
+      <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-4 -mt-4"
         style={{ animation: 'fadeIn 0.5s ease forwards' }}>
-        <div>
-          <div className="flex items-center gap-3 mb-1.5">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center relative overflow-hidden"
-              style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.25), rgba(79,70,229,0.15))', border: '1px solid rgba(124,58,237,0.3)' }}>
-              <CalendarDays className="w-5 h-5 text-violet-400 relative z-10"/>
-              <div className="absolute inset-0 bg-gradient-to-tr from-violet-600/10 to-transparent" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-black text-slate-100 tracking-tight" style={{fontFamily:'Manrope,Inter,sans-serif'}}>Planning</h1>
-              <p className="text-slate-500 text-xs flex items-center gap-2">
-                <AnimatedNumber value={stats.total} className="font-bold text-slate-400" /> intervention{stats.total !== 1 ? 's' : ''}
-                <span className="w-1 h-1 rounded-full bg-slate-700" />
-                <span className="text-amber-400/80"><AnimatedNumber value={stats.en_cours} className="font-bold" /> en cours</span>
-                {stats.conflits > 0 && (
-                  <>
-                    <span className="w-1 h-1 rounded-full bg-slate-700" />
-                    <span className="text-rose-400 font-bold flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3" /> {stats.conflits} conflit{stats.conflits > 1 ? 's' : ''}
-                    </span>
-                  </>
-                )}
-              </p>
-            </div>
-          </div>
-        </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           <button onClick={exportWeekPDF}

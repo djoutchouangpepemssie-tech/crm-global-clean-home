@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { PageHeader } from '../../shared';
 import axios from 'axios';
+import api from '../../../lib/api';
 import BACKEND_URL from '../../../config';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { Button } from '../../ui/button';
@@ -16,6 +18,7 @@ import {
   ChevronRight, BookOpen, RefreshCw, Eye, Download, FileSpreadsheet,
   FileText, ArrowUpDown, Filter, Link2, Unlink
 } from 'lucide-react';
+import { useConfirm } from '../../shared/ConfirmDialog';
 
 const JOURNAL_TYPES = [
   { value: 'ACH', label: 'Achats', color: 'bg-amber-500/10 text-amber-600' },
@@ -35,6 +38,7 @@ const STATUS_MAP = {
 const PAGE_SIZES = [20, 50, 100];
 
 export default function JournalEntries() {
+  const { confirm, ConfirmElement } = useConfirm();
   const [entries, setEntries] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -168,7 +172,13 @@ export default function JournalEntries() {
   };
 
   const handleReverse = async (entryId) => {
-    if (!window.confirm('Contrepasser cette écriture ? Cette action est irréversible.')) return;
+    const ok = await confirm({
+      title: 'Contrepasser cette écriture ?',
+      description: 'Cette action est irréversible.',
+      variant: 'danger',
+      confirmText: 'Contrepasser',
+    });
+    if (!ok) return;
     try {
       await axios.post(`${BACKEND_URL}/api/enterprise/journal/entries/${entryId}/reverse`);
       loadEntries();
@@ -178,7 +188,13 @@ export default function JournalEntries() {
   };
 
   const handleDelete = async (entryId) => {
-    if (!window.confirm('Supprimer ce brouillon définitivement ?')) return;
+    const ok = await confirm({
+      title: 'Supprimer ce brouillon ?',
+      description: 'Cette action est irréversible.',
+      variant: 'danger',
+      confirmText: 'Supprimer',
+    });
+    if (!ok) return;
     try {
       await axios.delete(`${BACKEND_URL}/api/enterprise/journal/entries/${entryId}`);
       loadEntries();
@@ -608,6 +624,7 @@ export default function JournalEntries() {
           )}
         </DialogContent>
       </Dialog>
+      <ConfirmElement />
     </div>
   );
 }

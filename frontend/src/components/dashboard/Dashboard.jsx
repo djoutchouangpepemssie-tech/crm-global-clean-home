@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import axios from 'axios';
 import { apiCache } from '../../lib/apiCache.js';
 import { useNavigate } from 'react-router-dom';
+import { useDashboardStats, useFinancialStats } from '../../hooks/api';
 import {
   AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react';
 import { getStatusColor, getStatusLabel, formatDateTime } from '../../lib/utils';
 import LeadScoreBadge from '../shared/LeadScoreBadge';
+import { PageHeader } from '../shared';
 import AIInsights from './AIInsights';
 import { toast } from 'sonner';
 import BACKEND_URL from '../../config.js';
@@ -525,54 +527,59 @@ function getGreeting(date) {
 ═══════════════════════════════════════════════ */
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [stats, setStats] = useState({});
-  const [financial, setFinancial] = useState({});
-  const [interventions, setInterventions] = useState([]);
-  const [tasks, setTasks] = useState([]);
   const [period, setPeriod] = useState('30d');
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [now] = useState(new Date());
 
   const greeting = useMemo(() => getGreeting(now), [now]);
 
-  const fetchData = useCallback(async (force = false) => {
-    const cacheKey = `dashboard_v2_${period}`;
-    if (!force) {
-      const cached = apiCache.get(cacheKey);
-      if (cached) {
-        setStats(cached.stats);
-        setFinancial(cached.financial || {});
-        setLoading(false);
-        return;
-      }
-    }
-    if (force) setRefreshing(true); else setLoading(true);
+  // ── React Query : stats + financial (hooks centralisés) ────
+  // Ces deux hooks sont AUTOMATIQUEMENT invalidés par les mutations des
+  // autres pages (création de lead, update de facture, paiement, etc.).
+  // Le dashboard se met à jour en temps réel sans refresh manuel.
+  const { data: stats = {}, isLoading: statsLoading, refetch: refetchStats } = useDashboardStats(period);
+  const { data: financial = {}, isLoading: financialLoading, refetch: refetchFinancial } = useFinancialStats(period);
+
+  // ── Données annexes (interventions + tâches) : axios direct pour l'instant
+  //    (pas de hook dédié encore — à ajouter en Vague 3 quand on refera le
+  //    module Planning).
+  const [interventions, setInterventions] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [sideLoading, setSideLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchSideData = useCallback(async () => {
+    setSideLoading(true);
     try {
-      const [statsRes, financialRes, interventionsRes, tasksRes] = await Promise.allSettled([
-        axios.get(`${API_URL}/stats/dashboard?period=${period}`, { withCredentials: true }),
-        axios.get(`${API_URL}/stats/financial?period=${period}`,  { withCredentials: true }),
-        axios.get(`${API_URL}/interventions?limit=10`,            { withCredentials: true }),
-        axios.get(`${API_URL}/tasks?status=pending&limit=5`,      { withCredentials: true }),
+      const [interventionsRes, tasksRes] = await Promise.allSettled([
+        axios.get(`${API_URL}/interventions?limit=10`, { withCredentials: true }),
+        axios.get(`${API_URL}/tasks?status=pending&limit=5`, { withCredentials: true }),
       ]);
-      const s = statsRes.status       === 'fulfilled' ? statsRes.value.data                                : {};
-      const f = financialRes.status   === 'fulfilled' ? financialRes.value.data                            : {};
       const iRaw = interventionsRes.status === 'fulfilled' ? interventionsRes.value.data : [];
       const i = Array.isArray(iRaw) ? iRaw : (iRaw?.items || iRaw?.interventions || []);
       const tRaw = tasksRes.status === 'fulfilled' ? tasksRes.value.data : [];
       const t = Array.isArray(tRaw) ? tRaw : (tRaw?.items || tRaw?.tasks || []);
-      setStats(s); setFinancial(f); setInterventions(i); setTasks(t);
-      apiCache.set(cacheKey, { stats: s, financial: f });
-      if (force) toast.success('Données actualisées');
+      setInterventions(i);
+      setTasks(t);
     } catch {
-      toast.error('Erreur lors du chargement');
+      // silent — les hooks React Query gèrent les erreurs stats + financial
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      setSideLoading(false);
     }
-  }, [period]);
+  }, []);
 
-  useEffect(() => { fetchData(); }, [period]);
+  useEffect(() => { fetchSideData(); }, [fetchSideData]);
+
+  const loading = statsLoading || financialLoading || sideLoading;
+
+  const fetchData = useCallback(async (force = false) => {
+    if (force) {
+      setRefreshing(true);
+      apiCache.invalidate?.(`dashboard_v2_${period}`);
+      await Promise.all([refetchStats(), refetchFinancial(), fetchSideData()]);
+      setRefreshing(false);
+      toast.success('Données actualisées');
+    }
+  }, [period, refetchStats, refetchFinancial, fetchSideData]);
 
   const todayStr = now.toISOString().slice(0, 10);
   const todayInterventions = interventions.filter(i => (i.scheduled_date || '').slice(0, 10) === todayStr);
@@ -604,24 +611,10 @@ const Dashboard = () => {
   return (
     <div className="dashboard-premium p-4 md:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto">
 
-      {/* ═══ HEADER ═══ */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-slide-down">
-        <div>
-          <div className="flex items-center gap-3 mb-1.5">
-            <div className="header-icon-premium">
-              <Sparkles className="w-5 h-5 text-violet-400" />
-            </div>
-            <div>
-              <h1 className="dashboard-title">
-                {greeting.emoji} {greeting.text}
-              </h1>
-              <p className="text-slate-500 text-sm font-medium">
-                {now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-              </p>
-            </div>
-          </div>
-        </div>
+      <PageHeader title="Dashboard" subtitle="Vue d'ensemble de votre activité" />
 
+      {/* ═══ HEADER ACTIONS ═══ */}
+      <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-4 animate-slide-down -mt-4">
         <div className="flex items-center gap-2.5 flex-wrap">
           {urgentTasks.length > 0 && (
             <button

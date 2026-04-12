@@ -1,44 +1,36 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
+import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { MessageSquare, RefreshCw, Send, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import BACKEND_URL from "../../config.js";
+import api from "../../lib/api";
+import { PageHeader } from "../shared";
 import LeadChat from "./LeadChat";
-
-const API = BACKEND_URL + "/api/chat";
 
 export default function ChatCenter() {
   const navigate = useNavigate();
-  const [conversations, setConversations] = useState([]);
   const [selected, setSelected] = useState(null);
-  const [loading, setLoading] = useState(true);
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      const res = await axios.get(API + "/conversations", { withCredentials: true });
-      setConversations(res.data || []);
-    } catch(e) {} finally { setLoading(false); }
-  };
+  const { data: conversations = [], isLoading: loading, refetch } = useQuery({
+    queryKey: ['chat', 'conversations'],
+    queryFn: async () => {
+      const { data } = await api.get('/chat/conversations');
+      return data || [];
+    },
+    refetchInterval: 10_000,
+  });
 
-  useEffect(() => { load(); }, []);
+  const load = refetch;
 
   const totalUnread = conversations.reduce((s, c) => s + (c.unread_crm || 0), 0);
 
   return (
     <div className="p-4 md:p-6 lg:p-8 animate-fade-in">
-      <div className="flex items-center gap-2 mb-5">
-        <MessageSquare className="w-5 h-5 text-violet-400" />
-        <h1 className="text-2xl font-bold text-slate-100" style={{fontFamily:"Manrope,sans-serif"}}>
-          Messages clients
-        </h1>
-        {totalUnread > 0 && (
-          <span className="px-2 py-0.5 rounded-full text-xs font-black bg-rose-500/20 text-rose-400 border border-rose-500/25">
-            {totalUnread} non lu{totalUnread > 1 ? "s" : ""}
-          </span>
-        )}
-      </div>
+      <PageHeader
+        title="Messages"
+        subtitle={`${conversations.length} conversation${conversations.length > 1 ? 's' : ''}${totalUnread > 0 ? ` · ${totalUnread} non lu${totalUnread > 1 ? 's' : ''}` : ''}`}
+        actions={[{ label: 'Actualiser', icon: RefreshCw, onClick: () => refetch(), loading: false }]}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4" style={{height: "calc(100vh - 200px)"}}>
         {/* Liste conversations */}

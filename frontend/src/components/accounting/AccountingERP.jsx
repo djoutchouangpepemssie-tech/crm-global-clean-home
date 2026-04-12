@@ -22,6 +22,8 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import PayrollRHModule from './payroll-rh/PayrollRHModule';
+import { useConfirm } from '../shared/ConfirmDialog';
+import { PageHeader } from '../shared';
 
 const API = `${BACKEND_URL}/api/accounting/erp`;
 const COLORS = ['#7c3aed', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#8b5cf6', '#14b8a6'];
@@ -57,13 +59,7 @@ export default function AccountingERP() {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-6 space-y-4">
-      <div className="flex items-center gap-3 mb-2">
-        <BookOpen className="h-7 w-7 text-violet-500" />
-        <h1 className="text-2xl font-bold">Comptabilité ERP</h1>
-        <Badge variant="outline" className="bg-violet-500/10 text-violet-400 border-violet-500/30">
-          Système intégré
-        </Badge>
-      </div>
+      <PageHeader title="ERP Comptable" subtitle="Journaux, TVA, clôtures" />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="flex gap-1 bg-white/5 rounded-2xl p-1.5 overflow-x-auto w-fit mb-2">
@@ -310,6 +306,7 @@ function KPICard({ title, value, sub, icon, color, bgColor, trend, alert, hexCol
 // ═══════════════════════════════════════════════════════════
 
 function InvoiceModule() {
+  const { confirm, ConfirmElement } = useConfirm();
   const [invoices, setInvoices] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -336,7 +333,13 @@ function InvoiceModule() {
   useEffect(() => { loadInvoices(); }, [loadInvoices]);
 
   const handleSend = async (id) => {
-    if (!window.confirm('Envoyer cette facture ? Une écriture comptable sera générée.')) return;
+    const ok = await confirm({
+      title: 'Envoyer cette facture ?',
+      description: 'Une écriture comptable sera générée.',
+      variant: 'warning',
+      confirmText: 'Envoyer',
+    });
+    if (!ok) return;
     try {
       await axios.post(`${API}/invoices/${id}/send`);
       loadInvoices();
@@ -344,7 +347,13 @@ function InvoiceModule() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Archiver cette facture ?')) return;
+    const ok = await confirm({
+      title: 'Archiver cette facture ?',
+      description: 'La facture sera archivée.',
+      variant: 'warning',
+      confirmText: 'Archiver',
+    });
+    if (!ok) return;
     try {
       await axios.delete(`${API}/invoices/${id}`);
       loadInvoices();
@@ -461,6 +470,7 @@ function InvoiceModule() {
       {paymentOpen && (
         <PaymentDialog invoice={paymentOpen} onClose={() => setPaymentOpen(null)} onPaid={() => { setPaymentOpen(null); loadInvoices(); }} />
       )}
+      <ConfirmElement />
     </div>
   );
 }
@@ -736,6 +746,7 @@ function PaymentDialog({ invoice, onClose, onPaid }) {
 // ═══════════════════════════════════════════════════════════
 
 function ExpenseModule() {
+  const { confirm, ConfirmElement } = useConfirm();
   const [expenses, setExpenses] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -760,7 +771,13 @@ function ExpenseModule() {
   useEffect(() => { load(); }, [load]);
 
   const handlePay = async (id) => {
-    if (!window.confirm('Marquer comme payée ?')) return;
+    const ok = await confirm({
+      title: 'Marquer comme payée ?',
+      description: 'La dépense sera marquée comme payée.',
+      variant: 'warning',
+      confirmText: 'Marquer payée',
+    });
+    if (!ok) return;
     try {
       await axios.post(`${API}/expenses/${id}/pay`);
       load();
@@ -768,7 +785,13 @@ function ExpenseModule() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Supprimer cette dépense ?')) return;
+    const ok = await confirm({
+      title: 'Supprimer cette dépense ?',
+      description: 'Cette action est irréversible.',
+      variant: 'danger',
+      confirmText: 'Supprimer',
+    });
+    if (!ok) return;
     try {
       await axios.delete(`${API}/expenses/${id}`);
       load();
@@ -846,6 +869,7 @@ function ExpenseModule() {
       )}
 
       <ExpenseCreateDialog open={createOpen} onClose={() => setCreateOpen(false)} onCreated={() => { setCreateOpen(false); load(); }} />
+      <ConfirmElement />
     </div>
   );
 }

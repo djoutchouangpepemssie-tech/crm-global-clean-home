@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { PageHeader } from '../../shared';
 import axios from 'axios';
+import api from '../../../lib/api';
 import BACKEND_URL from '../../../config';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { Button } from '../../ui/button';
@@ -13,6 +15,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
 } from '../../ui/dialog';
 import { Plus, FileText, Eye, AlertTriangle, RefreshCw, ChevronLeft, ChevronRight, Calendar, Clock, Edit, Trash2, History } from 'lucide-react';
+import { useConfirm } from '../../shared/ConfirmDialog';
 
 const CONTRACT_TYPES = [
   { value: 'cdi', label: 'CDI' }, { value: 'cdd', label: 'CDD' },
@@ -27,6 +30,7 @@ const STATUS_MAP = {
 };
 
 export default function ContractsModule() {
+  const { confirm, ConfirmElement } = useConfirm();
   const [contracts, setContracts] = useState([]);
   const [expiring, setExpiring] = useState([]);
   const [total, setTotal] = useState(0);
@@ -64,6 +68,17 @@ export default function ContractsModule() {
       setShowCreate(false);
       loadData();
     } catch (err) { alert(err.response?.data?.detail || 'Erreur'); }
+  };
+
+  const handleArchive = async (contractId) => {
+    const ok = await confirm({
+      title: 'Archiver ce contrat ?',
+      description: 'Le contrat sera archivé.',
+      variant: 'warning',
+      confirmText: 'Archiver',
+    });
+    if (!ok) return;
+    alert('Contrat archivé');
   };
 
   const fmt = (n) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n || 0);
@@ -241,7 +256,7 @@ export default function ContractsModule() {
                             <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" title="Voir l'historique des versions" onClick={() => alert('Historique contrat ' + c.contract_id)}>
                               <History className="w-3.5 h-3.5 text-violet-500" />
                             </Button>
-                            <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" title="Archiver le contrat" onClick={() => { if (window.confirm('Archiver ce contrat ?')) alert('Contrat archivé'); }}>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" title="Archiver le contrat" onClick={() => handleArchive(c.contract_id)}>
                               <Trash2 className="w-3.5 h-3.5 text-red-500" />
                             </Button>
                           </div>
@@ -316,6 +331,7 @@ export default function ContractsModule() {
           )}
         </DialogContent>
       </Dialog>
+      <ConfirmElement />
     </div>
   );
 }

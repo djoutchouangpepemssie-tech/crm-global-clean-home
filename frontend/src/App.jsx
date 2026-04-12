@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, NavLink } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { queryClient } from './lib/queryClient';
 import { Toaster } from 'sonner';
 import { LayoutDashboard, Users, FileText, MoreHorizontal, X, LogOut, Trello, CreditCard, BarChart3, CalendarDays, CheckSquare, TrendingUp, Plug, Activity, ChevronRight, Briefcase, Star, Settings, Globe, MessageSquare, Ticket, Workflow, BarChart2, UserCheck, Map, BookOpen, ThumbsUp, FolderOpen, Scroll, Search } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -90,6 +93,7 @@ const KanbanBoard = lazy(() => import('./components/kanban/KanbanBoard'));
 const Analytics = lazy(() => import('./components/analytics/Analytics'));
 const InvoicesList = lazy(() => import('./components/invoices/InvoicesList'));
 const PaymentSuccess = lazy(() => import('./components/invoices/PaymentSuccess'));
+const FinancialDashboard = lazy(() => import('./components/invoices/FinancialDashboard'));
 const ClientPortal = lazy(() => import('./components/portal/ClientPortal'));
 const IntervenantPortal = lazy(() => import('./components/portal/IntervenantPortal'));
 const IntervenantsManager = lazy(() => import('./components/planning/IntervenantsManager'));
@@ -105,7 +109,10 @@ const SatisfactionDashboard = lazy(() => import('./components/satisfaction/Satis
 const DocumentsManager = lazy(() => import('./components/documents/DocumentsManager'));
 const BookingManager = lazy(() => import('./components/booking/BookingManager'));
 const SettingsPage = lazy(() => import('./components/settings/SettingsPage'));
+const InvoiceForm = lazy(() => import('./components/invoices/InvoiceForm'));
 const StockTable = lazy(() => import('./components/stock/StockTable'));
+const AccountingDashboard = lazy(() => import('./components/accounting/AccountingDashboard'));
+const AccountingEnterprise = lazy(() => import('./components/accounting/AccountingEnterprise'));
 const AccountingERP = lazy(() => import('./components/accounting/AccountingERP'));
 const GlobalSearchFull = lazy(() =>
   import('./components/shared/GlobalSearch').then(m => ({ default: m.GlobalSearch || m.default }))
@@ -323,7 +330,7 @@ function NotificationHandler() {
   useEffect(() => {
     requestNotificationPermission().then(async token => {
       if (token) {
-        console.log('Push notifications enabled:', token);
+        console.warn('[FCM] Push notifications enabled');
         localStorage.setItem('fcm_token', token);
         // Save token to backend
         try {
@@ -336,11 +343,11 @@ function NotificationHandler() {
             },
             body: JSON.stringify({ token })
           });
-        } catch(e) { console.log('FCM token save failed:', e); }
+        } catch(e) { console.warn('[FCM] Token save failed:', e); }
       }
     });
     onMessageListener().then(payload => {
-      console.log('Notification received:', payload);
+      console.warn('[FCM] Notification received');
     });
   }, []);
   return null;
@@ -414,14 +421,22 @@ function AppRouter() {
                     <Route path="/leads/:id" element={<LeadDetail />} />
                     <Route path="/leads" element={<LeadsList />} />
                     <Route path="/quotes/new" element={<QuoteForm />} />
+                    {/* Legacy : /quotes/premium redirige vers /quotes/new (même composant unifié) */}
+                    <Route path="/quotes/premium" element={<QuoteForm />} />
                     <Route path="/quotes" element={<QuotesList />} />
                     <Route path="/tasks" element={<TasksList />} />
                     <Route path="/activity" element={<ActivityLog />} />
                     <Route path="/kanban" element={<KanbanBoard />} />
                     <Route path="/analytics" element={<Analytics />} />
                     <Route path="/invoices" element={<InvoicesList />} />
+                    <Route path="/invoices/new" element={<InvoiceForm />} />
                     <Route path="/invoices/:invoiceId/success" element={<PaymentSuccess />} />
+                    {/* Legacy : /invoices/premium redirige vers /invoices/new */}
+                    <Route path="/invoices/premium" element={<InvoiceForm />} />
+                    <Route path="/finance" element={<FinancialDashboard />} />
                     <Route path="/accounting-erp" element={<AccountingERP />} />
+                    <Route path="/accounting" element={<AccountingDashboard />} />
+                    <Route path="/accounting-enterprise" element={<AccountingEnterprise />} />
                     {/* PayrollModule moved to AccountingERP/payroll-rh */}
                     <Route path="/stock" element={<StockTable />} />
                     <Route path="/planning" element={<PlanningCalendar />} />
@@ -454,27 +469,32 @@ function AppRouter() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <ThemeProvider>
-      <AuthProvider>
-        <NotificationHandler />
-        <React.Suspense fallback={null}>
-          <GlobalSearchFull />
-        </React.Suspense>
-        <AppRouter />
-        <Toaster
-          position="top-right"
-          richColors
-          closeButton
-          toastOptions={{
-            style: {
-              fontFamily: 'Inter, sans-serif'
-            }
-          }}
-        />
-      </AuthProvider>
-      </ThemeProvider>
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <ThemeProvider>
+          <AuthProvider>
+            <NotificationHandler />
+            <React.Suspense fallback={null}>
+              <GlobalSearchFull />
+            </React.Suspense>
+            <AppRouter />
+            <Toaster
+              position="top-right"
+              richColors
+              closeButton
+              toastOptions={{
+                style: {
+                  fontFamily: 'Inter, sans-serif'
+                }
+              }}
+            />
+          </AuthProvider>
+        </ThemeProvider>
+      </BrowserRouter>
+      {process.env.NODE_ENV === 'development' && (
+        <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
+      )}
+    </QueryClientProvider>
   );
 }
 

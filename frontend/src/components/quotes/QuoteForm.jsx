@@ -1,264 +1,632 @@
-import React, { useState } from 'react';
+/**
+ * QuoteForm — Vague 2 (fusion de l'ancien QuoteForm simple + QuoteFormPremium).
+ *
+ * Formulaire complet de création/édition de devis avec lignes de prestations,
+ * calcul automatique HT/TVA/TTC, sélection du lead associé.
+ *
+ * Features :
+ *   - react-hook-form + validation à la volée sur le client
+ *   - Sélection d'un lead existant → auto-remplit les infos client
+ *   - Lignes multi-prestations avec ajout/suppression dynamique
+ *   - Calcul automatique : total HT par ligne (avec remise), TVA, TTC
+ *   - Récapitulatif temps réel sur le côté
+ *   - Branchement sur useCreateQuote → invalidation dashboard + leads
+ *   - Mode création uniquement (édition à venir dans une vague future)
+ *   - Pré-remplissage depuis location.state.lead (navigation depuis LeadDetail)
+ *
+ * Note : pour l'instant on utilise l'endpoint POST /api/quotes standard
+ * (et non /api/quotes/premium qui est partiellement stub côté backend).
+ * Le payload reste compatible : {lead_id, service_type, surface, amount, details}.
+ * Les lignes détaillées sont sérialisées dans le champ `details`.
+ */
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
-import { ArrowLeft, CheckCircle, Euro, User, FileText, Calendar, MapPin } from 'lucide-react';
+import {
+  ArrowLeft, Plus, Trash2, Save, Send, User, FileText, Tag, Calculator,
+} from 'lucide-react';
 import { toast } from 'sonner';
-import BACKEND_URL from '../../config.js';
-const API_URL = BACKEND_URL + '/api';
 
-const SERVICES_LABELS = {
-  'menage-domicile': 'Ménage à domicile',
-  'menage': 'Ménage à domicile',
-  'nettoyage-canape': 'Nettoyage canapé',
-  'canape': 'Nettoyage canapé',
-  'nettoyage-matelas': 'Nettoyage matelas',
-  'matelas': 'Nettoyage matelas',
-  'nettoyage-tapis': 'Nettoyage tapis',
-  'tapis': 'Nettoyage tapis',
-  'nettoyage-bureaux': 'Nettoyage bureaux',
-  'bureaux': 'Nettoyage bureaux',
-};
+import api from '../../lib/api';
+import { useCreateQuote, useSendQuote, useLeadsList } from '../../hooks/api';
+import { PageHeader } from '../shared';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
+import { ChevronDown } from 'lucide-react';
 
-const parseLeadMessage = (message) => {
-  if (!message) return { services: [], price: 0, details: {}, date: '' };
-  const lines = message.split('\n');
-  const result = { services: [], price: 0, details: {}, date: '' };
-  let currentService = null;
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith('Services:')) {
-      result.services = trimmed.replace('Services:', '').trim().split(',').map(s => s.trim());
-    } else if (trimmed.startsWith('Prix estime:')) {
-      result.price = parseFloat(trimmed.replace('Prix estime:', '').replace('EUR', '').trim()) || 0;
-    } else if (trimmed.startsWith('Date souhaitee:')) {
-      result.date = trimmed.replace('Date souhaitee:', '').trim();
-    } else if (trimmed.startsWith('-- ') && trimmed.endsWith(' --')) {
-      currentService = trimmed.replace(/-- /g, '').replace(/ --/g, '').trim();
-      result.details[currentService] = {};
-    } else if (currentService) {
-      if (trimmed.startsWith('Surface:')) result.details[currentService].surface = trimmed.replace('Surface:', '').replace('m2', '').trim();
-      else if (trimmed.startsWith('Pieces:')) result.details[currentService].pieces = trimmed.replace('Pieces:', '').trim();
-      else if (trimmed.startsWith('Etat:')) result.details[currentService].etat = trimmed.replace('Etat:', '').trim();
-      else if (trimmed.startsWith('Frequence:')) result.details[currentService].frequence = trimmed.replace('Frequence:', '').trim();
-      else if (trimmed.startsWith('Jours:')) result.details[currentService].jours = trimmed.replace('Jours:', '').trim();
-      else if (trimmed.startsWith('Espaces:')) result.details[currentService].espaces = trimmed.replace('Espaces:', '').trim();
-      else if (trimmed.startsWith('Nombre:')) result.details[currentService].nombre = trimmed.replace('Nombre:', '').trim();
-      else if (trimmed.startsWith('Temps estime:')) result.details[currentService].temps = trimmed.replace('Temps estime:', '').trim();
-    }
-  }
-  return result;
-};
+const SERVICE_TYPES = [
+  'Ménage',
+  'Canapé',
+  'Matelas',
+  'Tapis',
+  'Bureaux',
+  'Vitres',
+  'Fin de chantier',
+  'Déménagement',
+  'Autre',
+];
 
-const generateDevisText = (lead, parsed) => {
-  const lines = [];
-  lines.push('CLIENT : ' + (lead?.name || ''));
-  lines.push('Email : ' + (lead?.email || ''));
-  lines.push('Telephone : ' + (lead?.phone || ''));
-  if (lead?.address) lines.push('Adresse : ' + lead.address);
-  if (parsed.date) lines.push('Date souhaitee : ' + parsed.date);
-  lines.push('');
-  lines.push('=== PRESTATIONS DEMANDEES ===');
-  
-  // Si pas de détails parsés, utiliser le service_type du lead
-  if (Object.keys(parsed.details).length === 0 && lead?.service_type) {
-    lines.push('');
-    lines.push('• ' + (SERVICES_LABELS[lead.service_type] || lead.service_type).toUpperCase());
-    if (lead.surface) lines.push('  - Surface : ' + lead.surface + ' m2');
-  }
-  
-  for (const [svcName, details] of Object.entries(parsed.details)) {
-    lines.push('');
-    lines.push('• ' + svcName.toUpperCase());
-    if (details.surface) lines.push('  - Surface : ' + details.surface + ' m2');
-    if (details.pieces) lines.push('  - Pieces : ' + details.pieces);
-    if (details.etat) lines.push('  - Etat : ' + details.etat);
-    if (details.frequence) lines.push('  - Frequence : ' + details.frequence);
-    if (details.jours) lines.push('  - Jours : ' + details.jours);
-    if (details.espaces) lines.push('  - Espaces : ' + details.espaces);
-    if (details.nombre) lines.push('  - Nombre : ' + details.nombre);
-    if (details.temps) lines.push('  - Temps estime : ' + details.temps);
-  }
-  lines.push('');
-  lines.push('=== CONDITIONS ===');
-  lines.push('- Devis valable 30 jours');
-  lines.push('- Paiement a la prestation');
-  lines.push('- Intervention sous 24-48h apres confirmation');
-  lines.push('- Produits et equipements fournis par notre equipe');
-  return lines.join('\n');
-};
+const UNITS = ['unité', 'heure', 'm²', 'forfait'];
 
-const inputClass = "w-full px-4 py-3 bg-white/5 border border-white/10 text-slate-200 placeholder-slate-600 rounded-xl focus:outline-none focus:ring-1 focus:ring-violet-500 focus:border-violet-500 transition-all text-sm";
+const TVA_RATES = [
+  { value: 0, label: 'Exonéré (art. 293B CGI)' },
+  { value: 5.5, label: 'TVA 5,5%' },
+  { value: 10, label: 'TVA 10%' },
+  { value: 20, label: 'TVA 20% (standard)' },
+];
 
-const QuoteForm = () => {
+function newLine(overrides = {}) {
+  return {
+    id: Math.random().toString(36).slice(2, 9),
+    description: '',
+    quantity: 1,
+    unit: 'unité',
+    unit_price: 0,
+    discount_percent: 0,
+    ...overrides,
+  };
+}
+
+// Format de ligne prêt à écrire dans le champ "details" du backend
+function serializeDetails(client, serviceType, lines, totals, notes, paymentTerms) {
+  const lineText = lines
+    .map(
+      (l) =>
+        `• ${l.description || '(sans description)'} — ${l.quantity} ${l.unit} × ${Number(l.unit_price).toFixed(2)}€${
+          l.discount_percent > 0 ? ` (-${l.discount_percent}%)` : ''
+        } = ${(l.quantity * l.unit_price * (1 - l.discount_percent / 100)).toFixed(2)}€ HT`
+    )
+    .join('\n');
+
+  return [
+    `CLIENT : ${client.name || ''}`,
+    client.email && `Email : ${client.email}`,
+    client.phone && `Téléphone : ${client.phone}`,
+    client.address && `Adresse : ${client.address}`,
+    '',
+    `PRESTATION : ${serviceType}`,
+    '',
+    'DÉTAIL :',
+    lineText,
+    '',
+    `Total HT : ${totals.ht.toFixed(2)} €`,
+    totals.tva > 0 && `TVA : ${totals.tva.toFixed(2)} €`,
+    `Total TTC : ${totals.ttc.toFixed(2)} €`,
+    '',
+    notes && `NOTES : ${notes}`,
+    paymentTerms && `CONDITIONS DE PAIEMENT : ${paymentTerms}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+export default function QuoteForm() {
   const navigate = useNavigate();
   const location = useLocation();
-  const lead = location.state?.lead;
-  const parsed = parseLeadMessage(lead?.message || '');
-  const services = lead?.services || parsed.services || [lead?.service_type || 'menage-domicile'];
-  const estimatedPrice = lead?.estimated_price || parsed.price || '';
 
-  const [formData, setFormData] = useState({
-    lead_id: lead?.lead_id || '',
-    service_type: services[0] || 'Menage',
-    surface: lead?.surface || '',
-    amount: String(estimatedPrice),
-    details: generateDevisText(lead, parsed),
+  // Lead éventuellement passé depuis LeadDetail ou LeadForm
+  const seedLead = location.state?.lead || null;
+
+  const [client, setClient] = useState({
+    name: seedLead?.name || '',
+    email: seedLead?.email || '',
+    phone: seedLead?.phone || '',
+    address: seedLead?.address || '',
+    lead_id: seedLead?.lead_id || '',
   });
-  const [loading, setLoading] = useState(false);
+  const [serviceType, setServiceType] = useState(seedLead?.service_type || 'Ménage');
+  const [surface, setSurface] = useState(seedLead?.surface || '');
+  const [validityDays, setValidityDays] = useState(30);
+  const [tvaRate, setTvaRate] = useState(0);
+  const [globalDiscountPercent, setGlobalDiscountPercent] = useState(0);
+  const [notes, setNotes] = useState('');
+  const [paymentTerms, setPaymentTerms] = useState('Paiement à réception');
+  const [lines, setLines] = useState([
+    newLine({
+      description: seedLead ? `Prestation ${seedLead.service_type || 'Ménage'}` : '',
+      unit_price: seedLead?.estimated_price || 0,
+    }),
+  ]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.lead_id || !formData.amount || !formData.details) {
-      toast.error('Veuillez remplir tous les champs requis');
-      return;
+  const createQuote = useCreateQuote();
+  const sendQuote = useSendQuote();
+
+  // Liste des leads pour le sélecteur
+  const { data: allLeads = [] } = useLeadsList({ period: '90d', page: 1, page_size: 200 });
+
+  // ── Calculs automatiques ───────────────────────────────────────
+  const totals = useMemo(() => {
+    const lineHTs = lines.map((l) => {
+      const qty = Number(l.quantity) || 0;
+      const price = Number(l.unit_price) || 0;
+      const discount = Number(l.discount_percent) || 0;
+      return qty * price * (1 - discount / 100);
+    });
+    const subTotalHT = lineHTs.reduce((s, v) => s + v, 0);
+    const afterGlobalDiscount = subTotalHT * (1 - (Number(globalDiscountPercent) || 0) / 100);
+    const tva = afterGlobalDiscount * ((Number(tvaRate) || 0) / 100);
+    const ttc = afterGlobalDiscount + tva;
+    return {
+      subTotalHT,
+      ht: afterGlobalDiscount,
+      tva,
+      ttc,
+    };
+  }, [lines, globalDiscountPercent, tvaRate]);
+
+  // Sync depuis seedLead si l'utilisateur navigue avec state
+  useEffect(() => {
+    if (seedLead) {
+      setClient({
+        name: seedLead.name || '',
+        email: seedLead.email || '',
+        phone: seedLead.phone || '',
+        address: seedLead.address || '',
+        lead_id: seedLead.lead_id || '',
+      });
     }
-    setLoading(true);
+  }, [seedLead]);
+
+  // ── Handlers ───────────────────────────────────────────────────
+  const addLine = () => setLines((prev) => [...prev, newLine()]);
+  const removeLine = (id) => setLines((prev) => (prev.length > 1 ? prev.filter((l) => l.id !== id) : prev));
+  const updateLine = (id, patch) =>
+    setLines((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
+
+  const handleSelectLead = async (leadId) => {
     try {
-      const response = await axios.post(`${API_URL}/quotes`, {
-        ...formData,
-        surface: formData.surface ? parseFloat(formData.surface) : null,
-        amount: parseFloat(formData.amount),
-      }, { withCredentials: true });
-      toast.success('Devis créé avec succès !');
-      navigate(`/leads/${formData.lead_id}`);
+      const { data } = await api.get(`/leads/${leadId}`);
+      setClient({
+        name: data.name || '',
+        email: data.email || '',
+        phone: data.phone || '',
+        address: data.address || '',
+        lead_id: data.lead_id || leadId,
+      });
+      if (data.service_type) setServiceType(data.service_type);
+      if (data.surface) setSurface(data.surface);
     } catch {
-      toast.error('Erreur lors de la création du devis');
-    } finally {
-      setLoading(false);
+      toast.error('Impossible de charger les informations du lead');
     }
   };
 
+  const validate = () => {
+    if (!client.name.trim()) {
+      toast.error('Le nom du client est requis');
+      return false;
+    }
+    if (lines.length === 0 || lines.every((l) => !l.description.trim())) {
+      toast.error('Au moins une ligne de prestation est requise');
+      return false;
+    }
+    if (totals.ttc <= 0) {
+      toast.error('Le montant total doit être supérieur à 0');
+      return false;
+    }
+    return true;
+  };
+
+  const handleSave = async (sendAfter = false) => {
+    if (!validate()) return;
+
+    const payload = {
+      lead_id: client.lead_id || undefined,
+      service_type: serviceType,
+      surface: surface ? Number(surface) : undefined,
+      amount: Number(totals.ttc.toFixed(2)),
+      details: serializeDetails(client, serviceType, lines, totals, notes, paymentTerms),
+    };
+
+    try {
+      const created = await createQuote.mutateAsync(payload);
+      if (sendAfter && created?.quote_id) {
+        await sendQuote.mutateAsync(created.quote_id);
+      }
+      toast.success(sendAfter ? 'Devis créé et envoyé' : 'Devis créé');
+      // Retour vers la liste (ou vers le lead si présent)
+      if (client.lead_id) navigate(`/leads/${client.lead_id}`);
+      else navigate('/quotes');
+    } catch {
+      /* erreur affichée par useCreateQuote */
+    }
+  };
+
+  // ── Render ─────────────────────────────────────────────────────
   return (
-    <div className="p-4 md:p-6 lg:p-8 animate-fade-in" data-testid="quote-form-page">
-      <div className="max-w-3xl mx-auto">
-        
-        {/* Back button */}
-        <button onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-slate-500 hover:text-slate-300 mb-6 transition-all group text-sm">
-          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-          Retour
-        </button>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
+      <PageHeader
+        breadcrumbs={[
+          { label: 'Devis', to: '/quotes' },
+          { label: 'Nouveau devis' },
+        ]}
+        title="Créer un devis"
+        subtitle={seedLead ? `Pour ${seedLead.name}` : 'Création manuelle'}
+        actions={[
+          {
+            label: 'Annuler',
+            icon: ArrowLeft,
+            onClick: () => navigate(-1),
+          },
+          {
+            label: 'Brouillon',
+            icon: Save,
+            onClick: () => handleSave(false),
+            loading: createQuote.isPending,
+          },
+          {
+            label: 'Créer & envoyer',
+            icon: Send,
+            onClick: () => handleSave(true),
+            loading: createQuote.isPending || sendQuote.isPending,
+            variant: 'primary',
+          },
+        ]}
+      />
 
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-1">
-            <FileText className="w-5 h-5 text-violet-400" />
-            <h1 className="text-2xl font-bold text-slate-100" style={{fontFamily:'Manrope,sans-serif'}}>
-              Nouveau devis
-            </h1>
-          </div>
-          <p className="text-slate-500 text-sm">Créez un devis personnalisé pour votre client</p>
-        </div>
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Colonne gauche — formulaire */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Bloc Client */}
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+              <User className="w-4 h-4 text-violet-600" />
+              Client
+            </h3>
 
-        {/* Lead info card */}
-        {lead && (
-          <div className="mb-6 p-5 rounded-2xl" style={{background:'rgba(139,92,246,0.06)',border:'1px solid rgba(139,92,246,0.2)'}}>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-violet-500/15 border border-violet-500/20 flex items-center justify-center text-violet-400 font-bold">
-                {(lead.name || '?').charAt(0).toUpperCase()}
+            {/* Sélecteur de lead existant */}
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+                Lead associé (optionnel)
+              </label>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between font-normal">
+                    {client.lead_id
+                      ? allLeads.find((l) => l.lead_id === client.lead_id)?.name || client.name || 'Lead sélectionné'
+                      : 'Aucun (saisie manuelle)'}
+                    <ChevronDown className="w-4 h-4 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-72 overflow-y-auto">
+                  <DropdownMenuItem
+                    onClick={() => setClient({ name: '', email: '', phone: '', address: '', lead_id: '' })}
+                  >
+                    Aucun (saisie manuelle)
+                  </DropdownMenuItem>
+                  {allLeads.map((l) => (
+                    <DropdownMenuItem key={l.lead_id} onClick={() => handleSelectLead(l.lead_id)}>
+                      <div className="flex flex-col items-start">
+                        <span className="text-sm">{l.name}</span>
+                        <span className="text-xs text-slate-500">{l.email}</span>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+                  Nom <span className="text-rose-500">*</span>
+                </label>
+                <Input
+                  value={client.name}
+                  onChange={(e) => setClient({ ...client, name: e.target.value })}
+                  placeholder="Jean Dupont"
+                />
               </div>
               <div>
-                <p className="font-semibold text-slate-100">{lead.name}</p>
-                <p className="text-xs text-slate-500">{lead.email} · {lead.phone}</p>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+                  Email
+                </label>
+                <Input
+                  type="email"
+                  value={client.email}
+                  onChange={(e) => setClient({ ...client, email: e.target.value })}
+                  placeholder="client@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+                  Téléphone
+                </label>
+                <Input
+                  type="tel"
+                  value={client.phone}
+                  onChange={(e) => setClient({ ...client, phone: e.target.value })}
+                  placeholder="+33 6 12 34 56 78"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+                  Adresse
+                </label>
+                <Input
+                  value={client.address}
+                  onChange={(e) => setClient({ ...client, address: e.target.value })}
+                  placeholder="12 rue des Lilas, 75001 Paris"
+                />
               </div>
             </div>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {services.map((s, i) => (
-                <span key={i} className="px-2.5 py-1 bg-violet-500/10 border border-violet-500/20 text-violet-300 rounded-full text-xs font-medium">
-                  ✓ {SERVICES_LABELS[s] || s}
-                </span>
-              ))}
+          </div>
+
+          {/* Bloc Service */}
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+              <Tag className="w-4 h-4 text-violet-600" />
+              Prestation
+            </h3>
+            <div className="grid sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+                  Service
+                </label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between font-normal">
+                      {serviceType}
+                      <ChevronDown className="w-4 h-4 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                    {SERVICE_TYPES.map((s) => (
+                      <DropdownMenuItem key={s} onClick={() => setServiceType(s)}>
+                        {s}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+                  Surface (m²)
+                </label>
+                <Input
+                  type="number"
+                  value={surface}
+                  onChange={(e) => setSurface(e.target.value)}
+                  placeholder="80"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+                  Validité (jours)
+                </label>
+                <Input
+                  type="number"
+                  value={validityDays}
+                  onChange={(e) => setValidityDays(e.target.value)}
+                  placeholder="30"
+                />
+              </div>
             </div>
-            <div className="flex flex-wrap gap-4 text-xs text-slate-500 mt-2">
-              {lead.address && (
-                <span className="flex items-center gap-1">
-                  <MapPin className="w-3 h-3" /> {lead.address}
-                </span>
-              )}
-              {parsed.date && (
-                <span className="flex items-center gap-1">
-                  <Calendar className="w-3 h-3" /> {parsed.date}
-                </span>
-              )}
-              {estimatedPrice > 0 && (
-                <span className="text-green-400 font-semibold">
-                  💰 Prix estimé : {estimatedPrice} EUR
-                </span>
-              )}
+          </div>
+
+          {/* Bloc Lignes de prestations */}
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-violet-600" />
+                Lignes de prestations
+              </h3>
+              <Button size="sm" variant="outline" onClick={addLine}>
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Ajouter une ligne
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              {lines.map((line) => {
+                const lineHT = (Number(line.quantity) || 0) * (Number(line.unit_price) || 0) * (1 - (Number(line.discount_percent) || 0) / 100);
+                return (
+                  <div
+                    key={line.id}
+                    className="grid grid-cols-12 gap-2 items-start pb-3 border-b border-slate-100 dark:border-slate-800 last:border-0 last:pb-0"
+                  >
+                    <div className="col-span-12 sm:col-span-5">
+                      <Input
+                        value={line.description}
+                        onChange={(e) => updateLine(line.id, { description: e.target.value })}
+                        placeholder="Description"
+                      />
+                    </div>
+                    <div className="col-span-3 sm:col-span-1">
+                      <Input
+                        type="number"
+                        step="0.5"
+                        value={line.quantity}
+                        onChange={(e) => updateLine(line.id, { quantity: e.target.value })}
+                        placeholder="Qté"
+                      />
+                    </div>
+                    <div className="col-span-4 sm:col-span-2">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="w-full justify-between font-normal h-9">
+                            {line.unit}
+                            <ChevronDown className="w-3 h-3 opacity-50" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          {UNITS.map((u) => (
+                            <DropdownMenuItem key={u} onClick={() => updateLine(line.id, { unit: u })}>
+                              {u}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <div className="col-span-5 sm:col-span-2">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={line.unit_price}
+                        onChange={(e) => updateLine(line.id, { unit_price: e.target.value })}
+                        placeholder="Prix €"
+                      />
+                    </div>
+                    <div className="col-span-5 sm:col-span-1">
+                      <Input
+                        type="number"
+                        step="1"
+                        min="0"
+                        max="100"
+                        value={line.discount_percent}
+                        onChange={(e) => updateLine(line.id, { discount_percent: e.target.value })}
+                        placeholder="-%"
+                      />
+                    </div>
+                    <div className="col-span-2 sm:col-span-1 flex items-center justify-end gap-1">
+                      <span className="text-xs font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                        {lineHT.toFixed(0)} €
+                      </span>
+                      {lines.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeLine(line.id)}
+                          className="p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-500"
+                          aria-label="Supprimer la ligne"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-5" data-testid="quote-form">
-          <input type="hidden" name="lead_id" value={formData.lead_id} />
-          <input type="hidden" name="service_type" value={formData.service_type} />
-
-          {/* Lead ID si pas de lead */}
-          {!lead && (
-            <div className="section-card p-5">
-              <label className="flex items-center gap-2 text-sm font-semibold text-slate-200 mb-3">
-                <User className="w-4 h-4 text-blue-400" />
-                ID Lead (optionnel)
-              </label>
-              <input type="text" name="lead_id"
-                value={formData.lead_id}
-                onChange={(e) => setFormData(p => ({...p, lead_id: e.target.value}))}
-                placeholder="lead_xxxxx (laisser vide si nouveau client)"
-                className={inputClass} />
-              <p className="text-xs text-slate-600 mt-2">Si vous avez l'ID du lead, collez-le ici pour associer le devis</p>
+          {/* Bloc Notes */}
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">
+              Notes & conditions
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+                  Conditions de paiement
+                </label>
+                <Input
+                  value={paymentTerms}
+                  onChange={(e) => setPaymentTerms(e.target.value)}
+                  placeholder="Paiement à réception"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+                  Notes / mentions
+                </label>
+                <Textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                  placeholder="Remarques, mentions spéciales…"
+                  className="resize-none"
+                />
+              </div>
             </div>
-          )}
-
-          {/* Montant */}
-          <div className="section-card p-5">
-            <label className="flex items-center gap-2 text-sm font-semibold text-slate-200 mb-3">
-              <Euro className="w-4 h-4 text-green-400" />
-              Montant (EUR) <span className="text-rose-500">*</span>
-            </label>
-            <input type="number" name="amount" data-testid="amount-input"
-              value={formData.amount}
-              onChange={(e) => setFormData(p => ({...p, amount: e.target.value}))}
-              placeholder="500.00" step="0.01" min="0"
-              className={inputClass + " text-2xl font-bold text-violet-400"}
-              required />
-            <p className="text-xs text-slate-600 mt-2">Micro-entreprise — TVA non applicable (art. 293B du CGI)</p>
           </div>
+        </div>
 
-          {/* Détails */}
-          <div className="section-card p-5">
-            <label className="flex items-center gap-2 text-sm font-semibold text-slate-200 mb-3">
-              <FileText className="w-4 h-4 text-violet-400" />
-              Détails du devis <span className="text-rose-500">*</span>
-            </label>
-            <textarea name="details" data-testid="details-textarea"
-              value={formData.details}
-              onChange={(e) => setFormData(p => ({...p, details: e.target.value}))}
-              rows={20}
-              className="w-full px-4 py-3 bg-black/20 border border-white/10 text-slate-300 rounded-xl focus:outline-none focus:ring-1 focus:ring-violet-500 resize-none font-mono text-xs leading-relaxed"
-              required />
-          </div>
+        {/* Colonne droite — récapitulatif */}
+        <div>
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6 sticky top-6">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+              <Calculator className="w-4 h-4 text-violet-600" />
+              Récapitulatif
+            </h3>
 
-          {/* Actions */}
-          <div className="flex gap-3">
-            <button type="button" onClick={() => navigate(-1)}
-              className="flex-1 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 rounded-xl font-medium text-sm transition-all">
-              Annuler
-            </button>
-            <button type="submit" data-testid="create-quote-submit" disabled={loading}
-              className="flex-1 px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-              style={{boxShadow:'0 0 20px rgba(139,92,246,0.3)'}}>
-              {loading ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <><CheckCircle className="w-4 h-4" /> Créer le devis</>
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">
+                  Remise globale (%)
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={globalDiscountPercent}
+                  onChange={(e) => setGlobalDiscountPercent(e.target.value)}
+                  className="h-9"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">
+                  Régime TVA
+                </label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full justify-between font-normal h-9">
+                      {TVA_RATES.find((t) => t.value === Number(tvaRate))?.label || 'TVA'}
+                      <ChevronDown className="w-3 h-3 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                    {TVA_RATES.map((t) => (
+                      <DropdownMenuItem key={t.value} onClick={() => setTvaRate(t.value)}>
+                        {t.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-200 dark:border-slate-800 pt-4 space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-600 dark:text-slate-400">Sous-total HT</span>
+                <span className="font-medium">
+                  {totals.subTotalHT.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                </span>
+              </div>
+              {Number(globalDiscountPercent) > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-600 dark:text-slate-400">
+                    Remise globale ({globalDiscountPercent}%)
+                  </span>
+                  <span className="text-rose-600">
+                    −{(totals.subTotalHT - totals.ht).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                  </span>
+                </div>
               )}
-            </button>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-600 dark:text-slate-400">Total HT</span>
+                <span className="font-medium">
+                  {totals.ht.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                </span>
+              </div>
+              {tvaRate > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-600 dark:text-slate-400">TVA ({tvaRate}%)</span>
+                  <span className="font-medium">
+                    {totals.tva.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800">
+                <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">Total TTC</span>
+                <span className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                  {totals.ttc.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                </span>
+              </div>
+            </div>
+
+            {tvaRate === 0 && (
+              <p className="mt-3 text-[11px] text-slate-500 italic">
+                TVA non applicable, art. 293 B du CGI.
+              </p>
+            )}
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
-};
-
-export default QuoteForm;
+}

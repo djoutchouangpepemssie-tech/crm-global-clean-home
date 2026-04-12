@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
+import api from '../../lib/api';
 import BACKEND_URL from '../../config';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -37,6 +38,7 @@ import ReportsModule from './enterprise/ReportsModule';
 import AuditTrail from './enterprise/AuditTrail';
 import LettrageModule from './enterprise/LettrageModule';
 import ClotureModule from './enterprise/ClotureModule';
+import { PageHeader } from '../shared';
 
 const PERIODS = [
   { value: '7d', label: '7 jours' },
@@ -634,20 +636,7 @@ export default function AccountingEnterprise() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
       <div className="p-4 md:p-6 max-w-[1440px] mx-auto">
-        {/* ── Header ── */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-1">
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500/20 to-violet-500/20 border border-blue-500/20">
-              <BookOpen className="w-5 h-5 text-blue-500" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-blue-500 to-violet-500 bg-clip-text text-transparent">
-                Comptabilité Enterprise
-              </h1>
-              <p className="text-xs text-muted-foreground mt-0.5">Suite comptable professionnelle — PCG, Paie, TVA, Rapports financiers</p>
-            </div>
-          </div>
-        </div>
+        <PageHeader title="Comptabilité Entreprise" subtitle="Gestion avancée" />
 
         {/* ── Tab Navigation ── */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
