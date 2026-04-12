@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
+import { useConfirm } from '../shared/ConfirmDialog';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '../ui/select';
@@ -30,6 +31,7 @@ const CATEGORIES = [
 const UNITS = ['unité', 'litre', 'kg', 'mètre', 'rouleau', 'boîte', 'paire'];
 
 export default function StockTable() {
+  const { confirm, ConfirmElement } = useConfirm();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -124,7 +126,13 @@ export default function StockTable() {
 
   // Delete item
   const handleDelete = async (itemId) => {
-    if (!window.confirm('Supprimer cet article ?')) return;
+    const ok = await confirm({
+      title: 'Supprimer cet article ?',
+      description: 'L\'article sera retiré du stock. Cette action peut être annulée par un administrateur.',
+      variant: 'danger',
+      confirmText: 'Supprimer',
+    });
+    if (!ok) return;
     try {
       await axios.delete(`${BACKEND_URL}/api/stock/${itemId}`);
       loadItems();
@@ -404,6 +412,7 @@ export default function StockTable() {
           </div>
         </DialogContent>
       </Dialog>
+      <ConfirmElement />
     </div>
   );
 }

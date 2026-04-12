@@ -1,28 +1,25 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
+import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { MessageSquare, RefreshCw, Send, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import BACKEND_URL from "../../config.js";
+import api from "../../lib/api";
 import LeadChat from "./LeadChat";
-
-const API = BACKEND_URL + "/api/chat";
 
 export default function ChatCenter() {
   const navigate = useNavigate();
-  const [conversations, setConversations] = useState([]);
   const [selected, setSelected] = useState(null);
-  const [loading, setLoading] = useState(true);
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      const res = await axios.get(API + "/conversations", { withCredentials: true });
-      setConversations(res.data || []);
-    } catch(e) {} finally { setLoading(false); }
-  };
+  const { data: conversations = [], isLoading: loading, refetch } = useQuery({
+    queryKey: ['chat', 'conversations'],
+    queryFn: async () => {
+      const { data } = await api.get('/chat/conversations');
+      return data || [];
+    },
+    refetchInterval: 10_000,
+  });
 
-  useEffect(() => { load(); }, []);
+  const load = refetch;
 
   const totalUnread = conversations.reduce((s, c) => s + (c.unread_crm || 0), 0);
 

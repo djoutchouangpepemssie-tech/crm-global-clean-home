@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { BookOpen, Calendar, Clock, User, CheckCircle, XCircle, AlertCircle, Plus, RefreshCw, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
-import BACKEND_URL from '../../config.js';
-const API_URL = BACKEND_URL + '/api';
+import api from '../../lib/api';
 
 const STATUS_CONFIG = {
   confirmed:  { label: 'Confirmé',   color: '#34d399', bg: 'rgba(52,211,153,0.1)',  icon: CheckCircle },
@@ -21,37 +20,31 @@ const fmtDate = (d) => {
 };
 
 const BookingManager = () => {
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
 
-  useEffect(() => { fetchBookings(); }, []);
-
-  const fetchBookings = async () => {
-    setLoading(true);
-    try {
+  const { data: bookings = [], isLoading: loading, refetch: fetchBookings } = useQuery({
+    queryKey: ['bookings', 'list'],
+    queryFn: async () => {
       // Try several possible endpoints
-      let data = [];
       try {
-        const res = await axios.get(`${API_URL}/bookings`, { withCredentials: true });
+        const res = await api.get('/bookings');
         const raw = res.data;
-        data = Array.isArray(raw) ? raw : (raw?.items || raw?.bookings || []);
+        return Array.isArray(raw) ? raw : (raw?.items || raw?.bookings || []);
       } catch {
         try {
-          const res = await axios.get(`${API_URL}/planning/bookings`, { withCredentials: true });
+          const res = await api.get('/planning/bookings');
           const raw = res.data;
-          data = Array.isArray(raw) ? raw : (raw?.items || raw?.bookings || []);
+          return Array.isArray(raw) ? raw : (raw?.items || raw?.bookings || []);
         } catch {
           // no endpoint yet — stay empty
+          return [];
         }
       }
-      setBookings(data);
-    } catch {
+    },
+    onError: () => {
       toast.error('Erreur lors du chargement des réservations');
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+  });
 
   const filtered = filter ? bookings.filter(b => b.status === filter) : bookings;
 

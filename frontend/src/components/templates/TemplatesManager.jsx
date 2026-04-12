@@ -5,6 +5,7 @@ import {
   MessageSquare, Search, RefreshCw, Eye, CheckCircle, Tag
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useConfirm } from '../shared/ConfirmDialog';
 import BACKEND_URL from '../../config.js';
 const API_URL = BACKEND_URL + '/api';
 
@@ -23,6 +24,7 @@ const VARIABLES = [
 const inputCls = "w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 placeholder-slate-600 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-violet-500 transition-all";
 
 const TemplatesManager = ({ onSelectTemplate }) => {
+  const { confirm, ConfirmElement } = useConfirm();
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -74,7 +76,13 @@ const TemplatesManager = ({ onSelectTemplate }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Supprimer ce template ?')) return;
+    const ok = await confirm({
+      title: 'Supprimer ce template ?',
+      description: 'Cette action est irréversible.',
+      variant: 'danger',
+      confirmText: 'Supprimer',
+    });
+    if (!ok) return;
     try {
       await axios.delete(`${API_URL}/templates/${id}`, { withCredentials: true });
       toast.success('Template supprimé');
@@ -382,6 +390,7 @@ const TemplatesManager = ({ onSelectTemplate }) => {
           </div>
         </div>
       )}
+      <ConfirmElement />
     </div>
   );
 };

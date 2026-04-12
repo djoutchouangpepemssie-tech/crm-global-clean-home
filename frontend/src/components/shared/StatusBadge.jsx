@@ -127,6 +127,42 @@ const STATUS_MAP = {
       classes: 'bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-800',
     },
   },
+  booking: {
+    confirmed: {
+      label: 'Confirmé',
+      classes: 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-800',
+    },
+    pending: {
+      label: 'En attente',
+      classes: 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-800',
+    },
+    cancelled: {
+      label: 'Annulé',
+      classes: 'bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-800',
+    },
+    completed: {
+      label: 'Terminé',
+      classes: 'bg-blue-50 text-blue-700 ring-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-800',
+    },
+  },
+  contract: {
+    active: {
+      label: 'Actif',
+      classes: 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-800',
+    },
+    paused: {
+      label: 'En pause',
+      classes: 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-800',
+    },
+    cancelled: {
+      label: 'Annulé',
+      classes: 'bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-800',
+    },
+    expired: {
+      label: 'Expiré',
+      classes: 'bg-slate-50 text-slate-600 ring-slate-200 dark:bg-slate-900/40 dark:text-slate-400 dark:ring-slate-700',
+    },
+  },
   priority: {
     low: {
       label: 'Basse',
