@@ -1,5 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
+import {
+  useAdsSummary,
+  useGoogleCampaigns,
+  useMetaCampaigns,
+  useManualCampaigns,
+  useCreateManualCampaign,
+  useDeleteManualCampaign,
+} from '../../hooks/api';
+import api from '../../lib/api';
 import {
   TrendingUp, DollarSign, Users, Target, Zap, Plus,
   RefreshCw, ArrowUp, ArrowDown, Search, Globe,
@@ -66,11 +75,15 @@ const StatusBadge = ({status}) => {
 };
 
 const AdsDashboard = () => {
-  const [summary, setSummary] = useState(null);
-  const [googleCampaigns, setGoogleCampaigns] = useState([]);
-  const [metaCampaigns, setMetaCampaigns] = useState([]);
-  const [manualCampaigns, setManualCampaigns] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // ── Vague 7 : React Query ────────────────────────────────────
+  const { data: summary = null, isLoading: summaryLoading, refetch: refetchSummary } = useAdsSummary();
+  const { data: googleCampaigns = [], isLoading: googleLoading } = useGoogleCampaigns();
+  const { data: metaCampaigns = [], isLoading: metaLoading } = useMetaCampaigns();
+  const { data: manualCampaigns = [], isLoading: manualLoading, refetch: refetchManual } = useManualCampaigns();
+  const createCampaignMut = useCreateManualCampaign();
+  const deleteCampaignMut = useDeleteManualCampaign();
+
+  const loading = summaryLoading || googleLoading || metaLoading || manualLoading;
   const [activeTab, setActiveTab] = useState('connexions');
   const [showForm, setShowForm] = useState(false);
   const [editCampaign, setEditCampaign] = useState(null);
@@ -97,54 +110,33 @@ const AdsDashboard = () => {
     budget_daily:0, cost:0, clicks:0, impressions:0, conversions:0, status:'active'
   });
 
+  // fetchData alias pour compatibilité avec le reste du fichier
   const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [summaryRes, gadsRes, metaRes, manualRes] = await Promise.allSettled([
-        axios.get(`${API}/ads-connect/summary`, {withCredentials:true}),
-        axios.get(`${API}/ads-connect/google/campaigns`, {withCredentials:true}),
-        axios.get(`${API}/ads-connect/meta/campaigns`, {withCredentials:true}),
-        axios.get(`${API}/ads/campaigns`, {withCredentials:true}),
-        axios.get(`${API}/ads-connect/alerts`, {withCredentials:true}),
-        axios.get(`${API}/ads-connect/report/weekly`, {withCredentials:true}),
-      ]);
-      if (summaryRes.status==='fulfilled') setSummary(summaryRes.value.data);
-      // Handle paginated response formats
-      const gadsData = gadsRes.status==='fulfilled' ? gadsRes.value.data : {};
-      const gads = Array.isArray(gadsData) ? gadsData : (gadsData?.items || gadsData?.campaigns || []);
-      setGoogleCampaigns(gads);
-      const metaData = metaRes.status==='fulfilled' ? metaRes.value.data : {};
-      const meta = Array.isArray(metaData) ? metaData : (metaData?.items || metaData?.campaigns || []);
-      setMetaCampaigns(meta);
-      const manualData = manualRes.status==='fulfilled' ? manualRes.value.data : {};
-      const manual = Array.isArray(manualData) ? manualData : (manualData?.items || manualData?.campaigns || []);
-      setManualCampaigns(manual);
+    await Promise.all([refetchSummary(), refetchManual()]);
+  }, [refetchSummary, refetchManual]);
 
-      // Vérifier si Meta vient d'être connecté
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('meta_connected')) {
-        toast.success('✅ Meta Ads connecté !');
-        window.history.replaceState({}, '', window.location.pathname);
-      }
-    } catch {}
-    finally { setLoading(false); }
+  // Vérifier si Meta vient d'être connecté (callback OAuth)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('meta_connected')) {
+      toast.success('✅ Meta Ads connecté !');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
   }, []);
-
-  useEffect(()=>{ fetchData(); },[fetchData]);
 
   const connectMeta = async () => {
     setConnectingMeta(true);
     try {
-      const res = await axios.get(`${API}/ads-connect/meta/auth`, {withCredentials:true});
-      window.location.href = res.data.authorization_url;
+      const { data } = await api.get('/ads-connect/meta/auth');
+      window.location.href = data.authorization_url;
     } catch(err) {
-      toast.error(err.response?.data?.detail || 'META_APP_ID non configuré sur Railway');
+      toast.error(err.message || 'META_APP_ID non configuré sur Railway');
     }
     setConnectingMeta(false);
   };
 
   const disconnectMeta = async () => {
-    await axios.get(`${API}/ads-connect/meta/disconnect`, {withCredentials:true});
+    await api.get('/ads-connect/meta/disconnect');
     toast.success('Meta Ads déconnecté');
     fetchData();
   };
@@ -155,22 +147,20 @@ const AdsDashboard = () => {
       if (editCampaign) {
         await axios.put(`${API}/ads/campaigns/${editCampaign.campaign_id||editCampaign.id}`, form, {withCredentials:true});
         toast.success('Campagne mise à jour');
+        fetchData();
       } else {
-        await axios.post(`${API}/ads/campaigns`, form, {withCredentials:true});
-        toast.success('Campagne ajoutée');
+        await createCampaignMut.mutateAsync(form);
       }
       setShowForm(false); setEditCampaign(null);
       setForm({platform:'google_ads',name:'',objective:'LEAD_GENERATION',budget_daily:0,cost:0,clicks:0,impressions:0,conversions:0,status:'active'});
-      fetchData();
     } catch(err) { toast.error(err.response?.data?.detail||'Erreur'); }
   };
 
   const handleDelete = async (id) => {
     if (!confirm('Supprimer ?')) return;
     try {
-      await axios.delete(`${API}/ads/campaigns/${id}`, {withCredentials:true});
-      toast.success('Supprimée'); fetchData();
-    } catch { toast.error('Erreur'); }
+      await deleteCampaignMut.mutateAsync(id);
+    } catch {}
   };
 
   // Toutes les campagnes combinées
