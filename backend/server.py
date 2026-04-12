@@ -2779,6 +2779,8 @@ ALLOWED_ORIGINS = [
     "https://crm.globalcleanhome.com",
     "https://www.globalcleanhome.com",
     "https://globalcleanhome.com",
+    "https://crm-global-clean-home-production.up.railway.app",
+    "https://crm-global-clean-home.up.railway.app",
     "http://localhost:5173",
     "http://localhost:3000",
     "http://localhost:4173",
