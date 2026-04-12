@@ -64,7 +64,11 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "lint": "eslint src/ --max-warnings 2000",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write \"src/**/*.{js,jsx,json,css}\"",
+    "format:check": "prettier --check \"src/**/*.{js,jsx,json,css}\""
   },
   "browserslist": {
     "production": [
@@ -84,8 +88,11 @@
     "@pmmmwh/react-refresh-webpack-plugin": "^0.5.11",
     "autoprefixer": "^10.4.20",
     "eslint": "9.23.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.0.1",
     "globals": "15.15.0",
     "postcss": "^8.4.49",
+    "prettier": "^3.8.2",
     "react-refresh": "^0.14.0",
     "tailwindcss": "^3.4.17"
   },
