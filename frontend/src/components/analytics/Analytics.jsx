@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import React, { useState } from 'react';
+import { useCrmAnalytics, useSeoAnalytics, useGa4Analytics } from '../../hooks/api';
 import {
   TrendingUp, TrendingDown, Users, Eye, Clock, MousePointer,
   Globe, RefreshCw, AlertCircle, BarChart2, Activity,
@@ -56,26 +56,16 @@ const KPI = ({ label, value, change, icon: Icon, color, suffix='', sub }) => (
 );
 
 const Analytics = () => {
-  const [crmData, setCrmData] = useState(null);
-  const [seoData, setSeoData] = useState(null);
-  const [ga4Data, setGa4Data] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('crm');
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    const [crmRes, seoRes, ga4Res] = await Promise.allSettled([
-      axios.get(`${API}/crm-stats`, {withCredentials:true}),
-      axios.get(`${API}/seo?days=30`, {withCredentials:true}),
-      axios.get(`${API}/overview?days=30`, {withCredentials:true}),
-    ]);
-    if (crmRes.status==='fulfilled') setCrmData(crmRes.value.data);
-    if (seoRes.status==='fulfilled') setSeoData(seoRes.value.data);
-    if (ga4Res.status==='fulfilled') setGa4Data(ga4Res.value.data);
-    setLoading(false);
-  }, []);
+  // Vague 4 : React Query — 3 sources chargées en parallèle avec cache indépendant.
+  // CRM stats se rafraîchissent à 60s, SEO/GA4 à 5min (données moins volatiles).
+  const { data: crmData, isLoading: crmLoading, refetch: refetchCrm } = useCrmAnalytics();
+  const { data: seoData, isLoading: seoLoading } = useSeoAnalytics(30);
+  const { data: ga4Data, isLoading: ga4Loading } = useGa4Analytics(30);
 
-  useEffect(()=>{ fetchData(); },[fetchData]);
+  const loading = crmLoading || seoLoading || ga4Loading;
+  const fetchData = refetchCrm;
 
   const TABS = [
     {id:'crm', label:'📊 CRM & Business'},
