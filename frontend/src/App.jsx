@@ -330,7 +330,7 @@ function NotificationHandler() {
   useEffect(() => {
     requestNotificationPermission().then(async token => {
       if (token) {
-        console.log('Push notifications enabled:', token);
+        console.warn('[FCM] Push notifications enabled');
         localStorage.setItem('fcm_token', token);
         // Save token to backend
         try {
@@ -343,11 +343,11 @@ function NotificationHandler() {
             },
             body: JSON.stringify({ token })
           });
-        } catch(e) { console.log('FCM token save failed:', e); }
+        } catch(e) { console.warn('[FCM] Token save failed:', e); }
       }
     });
     onMessageListener().then(payload => {
-      console.log('Notification received:', payload);
+      console.warn('[FCM] Notification received');
     });
   }, []);
   return null;
