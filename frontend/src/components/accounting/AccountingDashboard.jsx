@@ -14,6 +14,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
 } from '../ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { useConfirm } from '../shared/ConfirmDialog';
 import {
   TrendingUp, TrendingDown, DollarSign, CreditCard, PieChart,
   Plus, BarChart3, FileText, Wallet, ArrowUpRight, ArrowDownRight,
@@ -40,6 +41,7 @@ const CATEGORIES = [
 ];
 
 export default function AccountingDashboard() {
+  const { confirm, ConfirmElement } = useConfirm();
   const [period, setPeriod] = useState('30d');
   const [dashboard, setDashboard] = useState(null);
   const [entries, setEntries] = useState([]);
@@ -105,7 +107,13 @@ export default function AccountingDashboard() {
   };
 
   const handleDeleteEntry = async (entryId) => {
-    if (!window.confirm('Supprimer cette écriture ?')) return;
+    const ok = await confirm({
+      title: 'Supprimer cette écriture ?',
+      description: 'Cette action est irréversible.',
+      variant: 'danger',
+      confirmText: 'Supprimer',
+    });
+    if (!ok) return;
     try {
       await axios.delete(`${BACKEND_URL}/api/accounting/entries/${entryId}`);
       loadDashboard();
@@ -454,6 +462,7 @@ export default function AccountingDashboard() {
           </Card>
         </TabsContent>
       </Tabs>
+      <ConfirmElement />
     </div>
   );
 }

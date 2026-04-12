@@ -22,6 +22,7 @@ import {
   PieChart, Pie
 } from 'recharts';
 import { toast } from 'sonner';
+import { useConfirm } from '../shared/ConfirmDialog';
 import BACKEND_URL from '../../config.js';
 const API = BACKEND_URL + '/api';
 
@@ -75,6 +76,7 @@ const StatusBadge = ({status}) => {
 };
 
 const AdsDashboard = () => {
+  const { confirm, ConfirmElement } = useConfirm();
   // ── Vague 7 : React Query ────────────────────────────────────
   const { data: summary = null, isLoading: summaryLoading, refetch: refetchSummary } = useAdsSummary();
   const { data: googleCampaigns = [], isLoading: googleLoading } = useGoogleCampaigns();
@@ -157,7 +159,13 @@ const AdsDashboard = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Supprimer ?')) return;
+    const ok = await confirm({
+      title: 'Supprimer ?',
+      description: 'Cette action est irréversible.',
+      variant: 'danger',
+      confirmText: 'Supprimer',
+    });
+    if (!ok) return;
     try {
       await deleteCampaignMut.mutateAsync(id);
     } catch {}
@@ -1460,6 +1468,7 @@ const AdsDashboard = () => {
           </div>
         </div>
       )}
+      <ConfirmElement />
     </div>
   );
 };

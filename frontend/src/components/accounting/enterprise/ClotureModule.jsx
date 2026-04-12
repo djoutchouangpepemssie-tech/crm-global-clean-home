@@ -14,8 +14,10 @@ import {
   Lock, Unlock, CheckCircle, XCircle, AlertTriangle, Calendar,
   FileText, RefreshCw, Shield, ChevronRight, ClipboardCheck, BarChart3, Download
 } from 'lucide-react';
+import { useConfirm } from '../../shared/ConfirmDialog';
 
 export default function ClotureModule() {
+  const { confirm, ConfirmElement } = useConfirm();
   const [periods, setPeriods] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showConfirm, setShowConfirm] = useState(null);
@@ -81,7 +83,13 @@ export default function ClotureModule() {
   };
 
   const handleReopen = async (periodId) => {
-    if (!window.confirm('Réouvrir cette période ? Les rapports générés ne seront plus valides.')) return;
+    const ok = await confirm({
+      title: 'Réouvrir cette période ?',
+      description: 'Les rapports générés ne seront plus valides.',
+      variant: 'warning',
+      confirmText: 'Réouvrir',
+    });
+    if (!ok) return;
     try {
       await axios.post(`${BACKEND_URL}/api/enterprise/period/reopen`);
       loadPeriods();
@@ -261,6 +269,7 @@ export default function ClotureModule() {
           </div>
         </DialogContent>
       </Dialog>
+      <ConfirmElement />
     </div>
   );
 }

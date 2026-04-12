@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Webhook, Calendar, MessageCircle, Code, Plus, Trash2, ToggleLeft, ToggleRight, Copy, ExternalLink, Clock, CheckCircle, XCircle, Mail, Settings, Link2, RefreshCw, Globe } from 'lucide-react';
 import { toast } from 'sonner';
+import { useConfirm } from '../shared/ConfirmDialog';
 import { formatDateTime } from '../../lib/utils';
 
 import BACKEND_URL from '../../config.js';
@@ -9,6 +10,7 @@ const API_URL = BACKEND_URL + '/api';
 
 // ============= Webhooks Tab =============
 const WebhooksTab = () => {
+  const { confirm, ConfirmElement } = useConfirm();
   const [webhooks, setWebhooks] = useState([]);
   const [events, setEvents] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -57,7 +59,13 @@ const WebhooksTab = () => {
   };
 
   const deleteWebhook = async (whId) => {
-    if (!window.confirm('Supprimer ce webhook ?')) return;
+    const ok = await confirm({
+      title: 'Supprimer ce webhook ?',
+      description: 'Cette action est irréversible.',
+      variant: 'danger',
+      confirmText: 'Supprimer',
+    });
+    if (!ok) return;
     try {
       await axios.delete(`${API_URL}/webhooks/${whId}`, { withCredentials: true });
       toast.success('Webhook supprime'); fetchData();
@@ -184,12 +192,14 @@ const WebhooksTab = () => {
           </div>
         </div>
       )}
+      <ConfirmElement />
     </div>
   );
 };
 
 // ============= Google Calendar Tab =============
 const CalendarTab = () => {
+  const { confirm, ConfirmElement } = useConfirm();
   const [gcalStatus, setGcalStatus] = useState(null);
   const [syncing, setSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -228,7 +238,13 @@ const CalendarTab = () => {
   };
 
   const disconnectGCal = async () => {
-    if (!window.confirm('Deconnecter Google Calendar ?')) return;
+    const ok = await confirm({
+      title: 'Déconnecter Google Calendar ?',
+      description: 'La synchronisation des interventions sera désactivée.',
+      variant: 'warning',
+      confirmText: 'Déconnecter',
+    });
+    if (!ok) return;
     try {
       await axios.post(`${API_URL}/gcal/disconnect`, {}, { withCredentials: true });
       toast.success('Google Calendar deconnecte');
@@ -339,6 +355,7 @@ const CalendarTab = () => {
           </ol>
         </div>
       </div>
+      <ConfirmElement />
     </div>
   );
 };
@@ -482,6 +499,7 @@ const TrackingTab = () => {
 
 // ============= Email Tab (Gmail) =============
 const EmailTab = () => {
+  const { confirm, ConfirmElement } = useConfirm();
   const [gmailStatus, setGmailStatus] = useState(null);
   const [emailStats, setEmailStats] = useState(null);
   const [syncing, setSyncing] = useState(false);
@@ -522,7 +540,13 @@ const EmailTab = () => {
   };
 
   const disconnectGmail = async () => {
-    if (!window.confirm('Deconnecter Gmail ?')) return;
+    const ok = await confirm({
+      title: 'Déconnecter Gmail ?',
+      description: 'L\'envoi et la réception d\'emails seront désactivés.',
+      variant: 'warning',
+      confirmText: 'Déconnecter',
+    });
+    if (!ok) return;
     try {
       await axios.post(`${API_URL}/gmail/disconnect`, {}, { withCredentials: true });
       toast.success('Gmail deconnecte');
@@ -664,6 +688,7 @@ const EmailTab = () => {
           </div>
         )}
       </div>
+      <ConfirmElement />
     </div>
   );
 };
