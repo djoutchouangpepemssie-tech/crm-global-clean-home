@@ -1,6 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import axios from 'axios';
 import {
+  useAllTeamMembers,
+  useTeams,
+  useInterventionsList,
+  useAddTeamMember,
+  useCreateTeam,
+} from '../../hooks/api';
+// api non utilisé dans ce fichier : les endpoints restants (messages,
+// congés, rating) appellent encore axios+API direct. Migration prévue
+// en Vague 3c quand le module portail sera refait.
+import {
   Users, Plus, Trash2, Phone, Mail, MapPin, Calendar,
   CheckCircle, Clock, X, RefreshCw, Search, Shield,
   ChevronRight, ExternalLink, Copy, Star, TrendingUp,
@@ -340,36 +350,41 @@ const IntervenantsManager = () => {
   const [modalClosing, setModalClosing] = useState(false);
   const messagesEndRef = useRef(null);
 
-  /* ── Data Fetching ── */
+  /* ── Vague 3b : React Query ────────────────────────────────────
+     fetchData axios → hooks centralisés avec cache + invalidation croisée.
+     Fallback : si /team-members renvoie vide, on dérive les membres depuis
+     /teams (ancien comportement préservé). */
+  const { data: fetchedMembers, isLoading: membersLoading, refetch: refetchMembers } = useAllTeamMembers();
+  const { data: fetchedTeams } = useTeams();
+  const { data: fetchedInterventions, isLoading: intvLoading, refetch: refetchInterventions } =
+    useInterventionsList({ limit: 200 });
+  const addMemberMutation = useAddTeamMember();
+  const createTeamMutation = useCreateTeam();
+
+  // Dérivation des membres : prioritise /team-members, fallback sur teams[].members
+  useEffect(() => {
+    if (Array.isArray(fetchedMembers) && fetchedMembers.length > 0) {
+      setMembers(fetchedMembers);
+    } else if (Array.isArray(fetchedTeams) && fetchedTeams.length > 0) {
+      const allM = fetchedTeams.flatMap(t => (t.members || []).map(mb => ({ ...mb, team_name: t.name })));
+      setMembers(allM);
+    } else {
+      setMembers([]);
+    }
+  }, [fetchedMembers, fetchedTeams]);
+
+  useEffect(() => {
+    setInterventions(Array.isArray(fetchedInterventions) ? fetchedInterventions : []);
+  }, [fetchedInterventions]);
+
+  useEffect(() => {
+    setLoading(membersLoading || intvLoading);
+  }, [membersLoading, intvLoading]);
+
+  // Alias pour ne pas casser les handlers existants qui appelaient fetchData()
   const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [teamsRes, intvRes] = await Promise.allSettled([
-        axios.get(`${API}/team-members`, { withCredentials: true }),
-        axios.get(`${API}/interventions?limit=200`, { withCredentials: true }),
-      ]);
-      const mData = teamsRes.status === 'fulfilled' ? teamsRes.value.data : {};
-      const m = Array.isArray(mData) ? mData : (mData?.items || mData?.team_members || []);
-      const iData = intvRes.status === 'fulfilled' ? intvRes.value.data : {};
-      const i = Array.isArray(iData) ? iData : (iData?.items || iData?.interventions || []);
-
-      if (!Array.isArray(m) || m.length === 0) {
-        try {
-          const teamsRes2 = await axios.get(`${API}/teams`, { withCredentials: true });
-          const tData = teamsRes2.data;
-          const teams = Array.isArray(tData) ? tData : (tData?.teams || []);
-          const allM = teams.flatMap(t => (t.members || []).map(mb => ({ ...mb, team_name: t.name })));
-          setMembers(allM);
-        } catch { setMembers([]); }
-      } else {
-        setMembers(m);
-      }
-      setInterventions(Array.isArray(i) ? i : []);
-    } catch { toast.error('Erreur chargement'); }
-    finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
+    await Promise.all([refetchMembers(), refetchInterventions()]);
+  }, [refetchMembers, refetchInterventions]);
 
   const fetchMessages = useCallback(async (agentId) => {
     try {
@@ -392,22 +407,23 @@ const IntervenantsManager = () => {
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
+      // Récupérer (ou créer) l'équipe principale
       let teamId;
-      try {
-        const teamsRes = await axios.get(`${API}/teams`, { withCredentials: true });
-        const teams = teamsRes.data?.teams || teamsRes.data || [];
-        teamId = teams[0]?.team_id;
-      } catch {}
-      if (!teamId) {
-        const res = await axios.post(`${API}/teams`, { name: 'Équipe principale' }, { withCredentials: true });
-        teamId = res.data.team_id;
+      const currentTeams = fetchedTeams || [];
+      if (currentTeams.length > 0) {
+        teamId = currentTeams[0]?.team_id;
       }
-      await axios.post(`${API}/teams/${teamId}/members`, form, { withCredentials: true });
+      if (!teamId) {
+        const created = await createTeamMutation.mutateAsync({ name: 'Équipe principale' });
+        teamId = created?.team_id;
+      }
+      if (!teamId) { toast.error('Impossible de trouver ou créer une équipe'); return; }
+      await addMemberMutation.mutateAsync({ teamId, member: form });
       toast.success(`✅ ${form.name} ajouté(e) ! Email de bienvenue envoyé.`);
       setShowForm(false);
       setForm({ name: '', email: '', phone: '', role: 'technicien', skills: [], zones: [], notes: '', max_missions_day: 4, rating: 5 });
-      fetchData();
-    } catch (err) { toast.error(err.response?.data?.detail || 'Erreur'); }
+      // Plus besoin de fetchData() : addMemberMutation invalide ['planning'] automatiquement
+    } catch (err) { toast.error(err.response?.data?.detail || err.message || 'Erreur'); }
   };
 
   const sendMessage = async () => {
