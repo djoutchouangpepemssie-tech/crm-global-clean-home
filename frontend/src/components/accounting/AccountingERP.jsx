@@ -216,7 +216,7 @@ function DashboardSection({ onNavigate }) {
                   <CartesianGrid strokeDasharray="3 3" stroke="#333" />
                   <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="#666" />
                   <YAxis tick={{ fontSize: 10 }} stroke="#666" />
-                  <Tooltip formatter={(v) => fmt(v)} contentStyle={{ background: '#1e1e2e', border: '1px solid #333' }} />
+                  <Tooltip formatter={(v) => fmt(v)} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} />
                   <Area type="monotone" dataKey="ca" stroke="#7c3aed" fill="#7c3aed" fillOpacity={0.2} />
                 </AreaChart>
               </ResponsiveContainer>
@@ -232,7 +232,7 @@ function DashboardSection({ onNavigate }) {
                   <Pie data={charts.prestation_breakdown} dataKey="ca" nameKey="type" cx="50%" cy="50%" outerRadius={80} label={({ type, ca }) => `${type}: ${fmt(ca)}`}>
                     {charts.prestation_breakdown.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
-                  <Tooltip formatter={(v) => fmt(v)} contentStyle={{ background: '#1e1e2e', border: '1px solid #333' }} />
+                  <Tooltip formatter={(v) => fmt(v)} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -247,7 +247,7 @@ function DashboardSection({ onNavigate }) {
                   <CartesianGrid strokeDasharray="3 3" stroke="#333" />
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="#666" />
                   <YAxis tick={{ fontSize: 10 }} stroke="#666" />
-                  <Tooltip formatter={(v) => fmt(v)} contentStyle={{ background: '#1e1e2e', border: '1px solid #333' }} />
+                  <Tooltip formatter={(v) => fmt(v)} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} />
                   <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                     {charts.waterfall.map((entry, i) => (
                       <Cell key={i} fill={entry.value >= 0 ? '#10b981' : '#ef4444'} />
@@ -267,7 +267,7 @@ function DashboardSection({ onNavigate }) {
                   <CartesianGrid strokeDasharray="3 3" stroke="#333" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="#666" />
                   <YAxis tick={{ fontSize: 10 }} stroke="#666" />
-                  <Tooltip formatter={(v) => fmt(v)} contentStyle={{ background: '#1e1e2e', border: '1px solid #333' }} />
+                  <Tooltip formatter={(v) => fmt(v)} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} />
                   <Area type="monotone" dataKey="solde" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.15} />
                 </AreaChart>
               </ResponsiveContainer>
@@ -1374,7 +1374,7 @@ function TopClients() {
                 <Pie data={data.clients} dataKey="ca_ttc" nameKey="client_name" cx="50%" cy="50%" outerRadius={100} label={({ client_name, pct_ca }) => `${client_name} (${pct_ca}%)`}>
                   {data.clients.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
-                <Tooltip formatter={(v) => fmt(v)} contentStyle={{ background: '#1e1e2e', border: '1px solid #333' }} />
+                <Tooltip formatter={(v) => fmt(v)} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -1441,7 +1441,7 @@ function ServicesAnalysis() {
               <CartesianGrid strokeDasharray="3 3" stroke="#333" />
               <XAxis dataKey="type" tick={{ fontSize: 11 }} stroke="#666" />
               <YAxis tick={{ fontSize: 10 }} stroke="#666" />
-              <Tooltip formatter={(v) => fmt(v)} contentStyle={{ background: '#1e1e2e', border: '1px solid #333' }} />
+              <Tooltip formatter={(v) => fmt(v)} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} />
               <Bar dataKey="ca_ttc" name="CA TTC" radius={[4, 4, 0, 0]}>
                 {data.services.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Bar>
@@ -1530,7 +1530,7 @@ function PeriodComparison() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#333" />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="#666" />
                 <YAxis tick={{ fontSize: 10 }} stroke="#666" />
-                <Tooltip formatter={(v) => fmt(v)} contentStyle={{ background: '#1e1e2e', border: '1px solid #333' }} />
+                <Tooltip formatter={(v) => fmt(v)} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} />
                 <Legend />
                 <Bar dataKey={data.period1.month} fill="#7c3aed" radius={[4, 4, 0, 0]} />
                 <Bar dataKey={data.period2.month} fill="#3b82f6" radius={[4, 4, 0, 0]} />

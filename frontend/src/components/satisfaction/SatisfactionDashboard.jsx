@@ -15,7 +15,7 @@ const StarRating = ({ score }) => {
   return (
     <div style={{ display: 'flex', gap: 2 }}>
       {[1, 2, 3, 4, 5].map(i => (
-        <Star key={i} style={{ width: 13, height: 13, color: i <= stars ? '#f59e0b' : '#334155', fill: i <= stars ? '#f59e0b' : 'transparent' }} />
+        <Star key={i} style={{ width: 13, height: 13, color: i <= stars ? '#f59e0b' : 'var(--border-strong)', fill: i <= stars ? '#f59e0b' : 'transparent' }} />
       ))}
     </div>
   );
@@ -36,7 +36,7 @@ const NPSGauge = ({ score }) => {
   return (
     <svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 260 }}>
       {/* Background arc */}
-      <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="16" strokeLinecap="round" />
+      <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="var(--border-default)" strokeWidth="16" strokeLinecap="round" />
       {/* Red zone (-100 to 0) */}
       <path d="M 20 100 A 80 80 0 0 1 100 20" fill="none" stroke="rgba(244,63,94,0.3)" strokeWidth="16" strokeLinecap="round" />
       {/* Yellow zone (0 to 50) */}

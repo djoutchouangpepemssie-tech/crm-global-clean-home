@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '../shared';
 import axios from 'axios';
 import api from '../../lib/api';
+import { useStockList, useCreateStockItem, useUpdateStockItem, useDeleteStockItem } from '../../hooks/api';
 import BACKEND_URL from '../../config';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
