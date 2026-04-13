@@ -1138,3 +1138,248 @@ tbody tr:last-child { border-bottom: none !important; }
 }
 [data-theme="dark"] .period-selector-premium { background: rgba(255,255,255,0.04) !important; }
 [data-theme="dark"] .period-selector-premium button.active { background: rgba(255,255,255,0.08) !important; }
+
+/* ══════════════════════════════════════════════════════════════
+   GLOBAL PREMIUM COMPONENTS — All Pages
+══════════════════════════════════════════════════════════════ */
+
+/* Page Header */
+.page-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 24px; gap: 16px; flex-wrap: wrap;
+}
+
+/* Action buttons */
+.action-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: 13px; font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-card);
+}
+.action-btn:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+  background: var(--brand-light);
+}
+.action-icon {
+  width: 32px; height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-muted);
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+}
+
+/* Alert icon */
+.alert-icon {
+  width: 36px; height: 36px;
+  border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Chip */
+.chip-icon { font-size: 14px; line-height: 1; }
+
+/* Content header */
+.ct-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-default);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.ct-premium {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+/* Doc card */
+.doc-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-card);
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.doc-card:hover {
+  box-shadow: var(--shadow-card-hover);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+.docs-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+/* Filters row */
+.filters-row {
+  display: flex; align-items: center; gap: 8px;
+  flex-wrap: wrap; margin-bottom: 20px;
+}
+
+/* Finance card */
+.finance-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-card);
+  padding: 1.25rem;
+  transition: all 0.2s ease;
+}
+.finance-card:hover { box-shadow: var(--shadow-card-hover); }
+
+/* Input wrap */
+.input-wrap {
+  position: relative;
+  display: flex; align-items: center;
+}
+.input-wrap input { padding-left: 36px; }
+.input-wrap svg {
+  position: absolute; left: 10px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+/* Invoice badge */
+.iv-badge {
+  display: inline-flex; align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px; font-weight: 600;
+}
+.iv-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-card);
+  padding: 1.25rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.iv-card:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-1px);
+}
+
+/* Pre wrap */
+.pre-wrap { white-space: pre-wrap; word-break: break-word; }
+
+/* Section card density */
+.section-card-premium { padding: var(--density-spacing, 1rem); }
+
+/* Shimmer premium */
+.shimmer-premium {
+  background: linear-gradient(90deg, var(--bg-muted) 25%, var(--bg-card) 50%, var(--bg-muted) 75%);
+  background-size: 200% 100%;
+  animation: shimmerAnim 1.5s infinite;
+  border-radius: var(--radius-md);
+}
+
+/* Skeleton premium */
+.skeleton-premium {
+  background: linear-gradient(90deg, #E2E8F0 25%, #EEF2F6 50%, #E2E8F0 75%);
+  background-size: 200% 100%;
+  animation: shimmerAnim 1.5s infinite;
+  border-radius: var(--radius-md);
+}
+
+/* State icon */
+.state-icon {
+  width: 40px; height: 40px;
+  border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Ticket card */
+.ticket-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-card);
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.ticket-card:hover {
+  box-shadow: var(--shadow-card-hover);
+  border-color: var(--border-strong);
+}
+
+/* Tooltip */
+.tooltip-header {
+  font-size: 11px; font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-default);
+}
+.tooltip-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+/* Urgent badge */
+.urgent-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px;
+  background: #FEE2E2;
+  color: #991B1B;
+  border-radius: var(--radius-full);
+  font-size: 10px; font-weight: 700;
+}
+
+/* Dark mode overrides for all above */
+[data-theme="dark"] .action-btn {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.7);
+}
+[data-theme="dark"] .action-btn:hover {
+  background: rgba(99,102,241,0.12);
+  border-color: rgba(99,102,241,0.3);
+  color: #818CF8;
+}
+[data-theme="dark"] .ct-premium,
+[data-theme="dark"] .doc-card,
+[data-theme="dark"] .finance-card,
+[data-theme="dark"] .iv-card,
+[data-theme="dark"] .ticket-card {
+  background: rgba(255,255,255,0.03);
+  border-color: rgba(255,255,255,0.07);
+}
+[data-theme="dark"] .skeleton-premium,
+[data-theme="dark"] .shimmer-premium {
+  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.04) 75%) !important;
+  background-size: 200% 100% !important;
+}
+[data-theme="dark"] .urgent-badge {
+  background: rgba(239,68,68,0.15);
+  color: #FCA5A5;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TAILWIND DARK MODE OVERRIDES
+   Remplace les classes dark: de Tailwind pour le light mode
+══════════════════════════════════════════════════════════════ */
+.dark\:bg-slate-900\/30 { background: var(--bg-card) !important; }
+.dark\:bg-slate-900\/60 { background: var(--bg-muted) !important; }
+.dark\:bg-slate-800 { background: var(--bg-muted) !important; }
+.dark\:border-slate-800 { border-color: var(--border-default) !important; }
+.dark\:text-slate-400 { color: var(--text-muted) !important; }
+.dark\:text-slate-300 { color: var(--text-secondary) !important; }
+.dark\:text-white { color: var(--text-primary) !important; }
+
+/* Recharts dark fixes */
+.recharts-surface text { fill: var(--text-muted) !important; }
