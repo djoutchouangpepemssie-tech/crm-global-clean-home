@@ -687,7 +687,7 @@ const BeforeAfterModal = ({ data, onClose }) => {
         className="ba-modal-grid"
         style={{
           width: '92vw', maxWidth: 950,
-          background: 'linear-gradient(180deg, hsl(224,71%,8%), hsl(224,71%,4%))',
+          background: 'var(--bg-app)',
           borderRadius: 24, padding: 32,
           border: '1px solid rgba(255,255,255,0.08)',
           boxShadow: '0 30px 80px rgba(0,0,0,0.5)',
@@ -817,7 +817,7 @@ const UploadBeforeAfterModal = ({ onClose, onUpload, uploading }) => {
         onClick={e => e.stopPropagation()}
         style={{
           width: '100%', maxWidth: 500,
-          background: 'linear-gradient(180deg, hsl(224,71%,8%), hsl(224,71%,4%))',
+          background: 'var(--bg-app)',
           borderRadius: 24, padding: 32,
           border: '1px solid rgba(255,255,255,0.08)',
           boxShadow: '0 30px 80px rgba(0,0,0,0.5)',

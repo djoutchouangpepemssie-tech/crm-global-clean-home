@@ -2445,7 +2445,7 @@ const SettingsPage = () => {
   const activeTabData = settingsTabs.find(t => t.id === activeTab);
 
   return (
-    <div className="flex flex-col lg:flex-row h-full min-h-0" style={{ background: 'hsl(224, 71%, 4%)' }}>
+    <div className="flex flex-col lg:flex-row h-full min-h-0" style={{ background: 'var(--bg-app)' }}>
       {/* ── Left sidebar nav ── */}
       <div className="lg:w-64 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-white/5 bg-white/[0.01]">
         <div className="p-4 lg:p-5">

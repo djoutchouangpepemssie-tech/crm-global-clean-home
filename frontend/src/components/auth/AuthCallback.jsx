@@ -100,7 +100,7 @@ const AuthCallback = () => {
   }, [location, navigate, login]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: 'hsl(224, 71%, 4%)' }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-app)' }}>
       <div className="text-center space-y-4">
         <div className="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center"
           style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', boxShadow: '0 0 30px rgba(139,92,246,0.4)' }}>
