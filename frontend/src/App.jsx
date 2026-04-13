@@ -27,7 +27,7 @@ class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'hsl(224,71%,4%)',flexDirection:'column',gap:'16px',padding:'24px'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'var(--bg-app, #EAEEF0)',flexDirection:'column',gap:'16px',padding:'24px'}}>
           <div style={{fontSize:'48px'}}>⚠️</div>
           <h2 style={{color:'#e2e8f0',fontSize:'20px',fontWeight:'bold',margin:0}}>Erreur de chargement</h2>
           <p style={{color:'#64748b',fontSize:'14px',margin:0,textAlign:'center'}}>{this.state.error?.message || 'Une erreur est survenue'}</p>
@@ -363,7 +363,7 @@ function AppRouter() {
 
   return (
     <Routes>
-      <Route path="/" element={<Suspense fallback={<div className="min-h-screen bg-dark-1" />}><LandingPage /></Suspense>} />
+      <Route path="/" element={<Suspense fallback={<div className="min-h-screen" style={{background:"var(--bg-app)"}} />}><LandingPage /></Suspense>} />
       <Route path="/login" element={<Login />} />
       <Route path="/auth/join" element={<InvitationJoin />} />
       <Route path="/portal" element={<ClientPortal />} />
@@ -373,7 +373,7 @@ function AppRouter() {
         path="/*"
         element={
           <ProtectedRoute>
-            <div className="flex h-screen w-full overflow-hidden bg-dark-1">
+            <div className="flex h-screen w-full overflow-hidden" style={{background:"var(--bg-app)"}}>
               {/* Sidebar - hidden on mobile */}
               <div className="hidden lg:flex flex-shrink-0">
                 <Sidebar />
@@ -405,7 +405,7 @@ function AppRouter() {
                   </React.Suspense>
                   <NotificationBell />
                 </div>
-                <div className="flex-1 overflow-y-auto overflow-x-hidden pb-16 lg:pb-0">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden pb-16 lg:pb-0" style={{background:"var(--bg-app)"}}>
                   <PWAInstallBanner />
         <ErrorBoundary>
         <Suspense fallback={

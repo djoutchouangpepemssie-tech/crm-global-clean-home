@@ -1,30 +1,70 @@
 import React from 'react';
-import { Calendar } from 'lucide-react';
+import { Calendar, Search, Bell } from 'lucide-react';
 import NotificationCenter from '../notifications/NotificationCenter';
 
 const Header = ({ title, subtitle, actions }) => {
   return (
-    <div className="bg-white border-b border-slate-200 px-4 md:px-8 py-4 md:py-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl md:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
-            {title}
-          </h1>
-          {subtitle && <p className="text-slate-600 mt-1 text-sm">{subtitle}</p>}
+    <div style={{
+      background: 'var(--bg-card)',
+      borderBottom: '1px solid var(--border-default)',
+      padding: '0 24px',
+      height: '60px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      position: 'sticky',
+      top: 0,
+      zIndex: 30,
+      backdropFilter: 'blur(12px)',
+      gap: '16px',
+    }}>
+
+      {/* Left — Title */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', minWidth: 0 }}>
+        <h1 style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: '16px',
+          fontWeight: '700',
+          color: 'var(--text-primary)',
+          margin: 0,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}>
+          {title}
+        </h1>
+        {subtitle && (
+          <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>
+            {subtitle}
+          </p>
+        )}
+      </div>
+
+      {/* Right — Actions + Date + Notifications */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+        {actions}
+
+        {/* Date */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '6px',
+          padding: '6px 12px',
+          background: 'var(--bg-muted)',
+          borderRadius: 'var(--radius-md)',
+          fontSize: '11px',
+          color: 'var(--text-muted)',
+          fontWeight: '500',
+          whiteSpace: 'nowrap',
+        }}>
+          <Calendar size={12} />
+          {new Date().toLocaleDateString('fr-FR', {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          })}
         </div>
-        <div className="flex items-center gap-3">
-          {actions}
-          <NotificationCenter />
-          <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-lg text-sm text-slate-600">
-            <Calendar className="w-4 h-4" />
-            {new Date().toLocaleDateString('fr-FR', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })}
-          </div>
-        </div>
+
+        <NotificationCenter />
       </div>
     </div>
   );
