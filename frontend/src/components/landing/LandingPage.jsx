@@ -135,7 +135,7 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-dark-1 text-slate-200 overflow-x-hidden">
+    <div className="min-h-screen text-slate-200 overflow-x-hidden" style={{background:"#0a0f23"}}>
 
       {/* ═══════ NAVBAR ═══════ */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/5" style={{ background: 'rgba(9,15,35,0.8)', backdropFilter: 'blur(24px)' }}>

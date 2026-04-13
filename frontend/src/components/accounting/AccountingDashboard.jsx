@@ -314,7 +314,7 @@ export default function AccountingDashboard() {
                       return (
                         <div key={i} className="flex items-center gap-3">
                           <span className="text-sm w-20 text-gray-500">{m.month}</span>
-                          <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full h-6">
+                          <div className="flex-1 bg-gray-100 rounded-full h-6">
                             <div className="bg-emerald-500 rounded-full h-6 flex items-center px-2" style={{ width: `${Math.max(pct, 5)}%` }}>
                               <span className="text-xs text-white font-medium">{formatCurrency(m.total)}</span>
                             </div>
@@ -371,7 +371,7 @@ export default function AccountingDashboard() {
                     const typeInfo = ENTRY_TYPES.find(t => t.value === entry.entry_type) || ENTRY_TYPES[0];
                     const isIncome = entry.entry_type === 'revenue' || entry.entry_type === 'payment_in';
                     return (
-                      <div key={entry.entry_id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800">
+                      <div key={entry.entry_id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50">
                         <div className="flex items-center gap-3">
                           {isIncome ? (
                             <ArrowUpRight className="h-5 w-5 text-green-600" />

@@ -243,7 +243,7 @@ export default function StockTable() {
 
       {/* Alerts */}
       {alerts.length > 0 && (
-        <Card className="border-red-200 bg-red-50 dark:bg-red-900/20">
+        <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-4">
             <div className="flex items-center gap-2 mb-2">
               <AlertTriangle className="h-5 w-5 text-red-600" />
@@ -314,7 +314,7 @@ export default function StockTable() {
                   {items.map(item => {
                     const isLow = item.quantity <= item.alert_threshold;
                     return (
-                      <tr key={item.item_id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
+                      <tr key={item.item_id} className="border-b hover:bg-gray-50">
                         <td className="py-3">
                           <div className="flex items-center gap-2">
                             {isLow && <AlertTriangle className="h-4 w-4 text-red-500" />}

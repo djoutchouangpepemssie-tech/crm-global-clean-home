@@ -32,7 +32,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-dark-1" data-testid="login-page">
+    <div className="min-h-screen flex " data-testid="login-page">
 
       {/* Left Panel - Premium */}
       <div className="hidden lg:flex lg:w-[55%] relative overflow-hidden">
@@ -115,7 +115,7 @@ const Login = () => {
       </div>
 
       {/* Right Panel */}
-      <div className="flex-1 flex items-center justify-center p-6 md:p-10 bg-dark-1 relative">
+      <div className="flex-1 flex items-center justify-center p-6 md:p-10  relative">
         <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-violet-600/[0.05] rounded-full blur-[100px]" />
 
         <div className={`w-full max-w-sm relative z-10 transition-all duration-600 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
@@ -183,7 +183,7 @@ const Login = () => {
               <div className="w-full border-t border-slate-700"></div>
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="px-2 bg-dark-1 text-slate-600">Ou</span>
+              <span className="px-2  text-slate-600">Ou</span>
             </div>
           </div>
 

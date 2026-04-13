@@ -105,18 +105,18 @@ function daysOverdue(inv) {
 // ── KPI card ─────────────────────────────────────────────────────
 function KpiCard({ icon: Icon, label, value, accent = 'violet', sub }) {
   const accents = {
-    violet: 'from-violet-500/10 to-violet-500/5 ring-violet-200 dark:ring-violet-900/40 text-violet-600',
-    blue: 'from-blue-500/10 to-blue-500/5 ring-blue-200 dark:ring-blue-900/40 text-blue-600',
-    emerald: 'from-emerald-500/10 to-emerald-500/5 ring-emerald-200 dark:ring-emerald-900/40 text-emerald-600',
-    amber: 'from-amber-500/10 to-amber-500/5 ring-amber-200 dark:ring-amber-900/40 text-amber-600',
-    rose: 'from-rose-500/10 to-rose-500/5 ring-rose-200 dark:ring-rose-900/40 text-rose-600',
+    violet: 'from-violet-500/10 to-violet-500/5 ring-violet-200 text-violet-600',
+    blue: 'from-blue-500/10 to-blue-500/5 ring-blue-200 text-blue-600',
+    emerald: 'from-emerald-500/10 to-emerald-500/5 ring-emerald-200 text-emerald-600',
+    amber: 'from-amber-500/10 to-amber-500/5 ring-amber-200 text-amber-600',
+    rose: 'from-rose-500/10 to-rose-500/5 ring-rose-200 text-rose-600',
   };
   return (
     <div className={`rounded-xl bg-gradient-to-br ${accents[accent]} ring-1 p-4 animate-fade-in-up`}>
       <Icon className="w-5 h-5 mb-3" />
-      <div className="text-2xl font-bold text-slate-900 dark:text-slate-50 tracking-tight">{value}</div>
+      <div className="text-2xl font-bold text-slate-900 tracking-tight">{value}</div>
       <div className="text-xs text-slate-600 mt-1">{label}</div>
-      {sub && <div className="text-[11px] text-slate-500 dark:text-slate-500 mt-0.5">{sub}</div>}
+      {sub && <div className="text-[11px] text-slate-500 mt-0.5">{sub}</div>}
     </div>
   );
 }
@@ -130,9 +130,9 @@ function InvoicesSkeleton() {
           key={i}
           className="flex items-center gap-4 px-4 py-3 border-b border-slate-200 last:border-b-0"
         >
-          <div className="h-4 w-4 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+          <div className="h-4 w-4 bg-slate-200 rounded animate-pulse" />
           <div className="flex-1 space-y-2">
-            <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+            <div className="h-4 w-32 bg-slate-200 rounded animate-pulse" />
             <div className="h-3 w-24 /60 rounded animate-pulse" />
           </div>
           <div className="h-5 w-20 /60 rounded animate-pulse" />
@@ -158,8 +158,8 @@ function InvoiceRow({ invoice, isSelected, onToggle, onView, onRecordPayment, on
       className={`
         group flex items-center gap-4 px-4 py-3 border-b border-slate-200 last:border-b-0
         cursor-pointer transition-colors animate-fade-in-up
-        ${isSelected ? 'bg-violet-50/50 dark:bg-violet-950/20' : 'hover:bg-slate-50 dark:hover:bg-slate-900/40'}
-        ${overdue && status === 'en_attente' ? 'bg-rose-50/30 dark:bg-rose-950/10' : ''}
+        ${isSelected ? 'bg-violet-50/50' : 'hover:bg-slate-50'}
+        ${overdue && status === 'en_attente' ? 'bg-rose-50/30' : ''}
       `}
       style={{ animationDelay: `${idx * 20}ms` }}
     >
@@ -176,14 +176,14 @@ function InvoiceRow({ invoice, isSelected, onToggle, onView, onRecordPayment, on
               {invoice.reference || invoice.invoice_number || (invoice.invoice_id ? invoice.invoice_id.slice(0, 8) : '—')}
             </span>
           </div>
-          <div className="font-semibold text-slate-900 dark:text-slate-100 truncate mt-0.5">
+          <div className="font-semibold text-slate-900 truncate mt-0.5">
             {invoice.lead_name || invoice.client_name || 'Sans client'}
           </div>
         </div>
 
         {/* Montant + payé */}
         <div className="col-span-6 sm:col-span-3">
-          <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
+          <div className="text-sm font-bold text-slate-900">
             {amount.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €
           </div>
           {paid > 0 && paid < amount && (
@@ -218,7 +218,7 @@ function InvoiceRow({ invoice, isSelected, onToggle, onView, onRecordPayment, on
             <button
               type="button"
               onClick={onRecordPayment}
-              className="p-1.5 rounded hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-emerald-600"
+              className="p-1.5 rounded hover:bg-emerald-50 text-emerald-600"
               aria-label="Enregistrer paiement"
             >
               <CreditCard className="w-4 h-4" />
@@ -228,7 +228,7 @@ function InvoiceRow({ invoice, isSelected, onToggle, onView, onRecordPayment, on
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+                className="p-1.5 rounded hover:bg-slate-100 text-slate-500"
                 aria-label="Plus"
               >
                 <ChevronDown className="w-4 h-4" />
@@ -601,7 +601,7 @@ export default function InvoicesList() {
             flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ease-snappy
             ${status === '' && !smartFilter
               ? 'bg-slate-900 text-white   shadow-sm'
-              : 'section-card/40 text-slate-600 border border-slate-200 hover:border-slate-300 dark:hover:border-slate-700'}
+              : 'section-card/40 text-slate-600 border border-slate-200 hover:border-slate-300'}
           `}
         >
           <FileText className="w-3.5 h-3.5" />
@@ -621,7 +621,7 @@ export default function InvoicesList() {
                 flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ease-snappy
                 ${active
                   ? 'bg-slate-900 text-white   shadow-sm'
-                  : 'section-card/40 text-slate-600 border border-slate-200 hover:border-slate-300 dark:hover:border-slate-700'}
+                  : 'section-card/40 text-slate-600 border border-slate-200 hover:border-slate-300'}
               `}
             >
               <StatusBadge domain="invoice" status={s} size="xs" className="-ml-1 pointer-events-none" />
@@ -647,7 +647,7 @@ export default function InvoicesList() {
             <button
               type="button"
               onClick={() => setSearch('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-slate-100"
             >
               <X className="w-3.5 h-3.5 text-slate-400" />
             </button>
@@ -700,20 +700,20 @@ export default function InvoicesList() {
       {/* Bulk actions */}
       {selectedIds.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-fade-in-up">
-          <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-slate-900 text-white  shadow-card-xl ring-1 ring-slate-700/50 dark:ring-slate-300/50">
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-slate-900 text-white  shadow-card-xl ring-1 ring-slate-700/50">
             <span className="text-sm font-medium">
               {selectedIds.size} {selectedIds.size > 1 ? 'factures sélectionnées' : 'facture sélectionnée'}
             </span>
-            <div className="w-px h-5 bg-slate-700 dark:bg-slate-300" />
+            <div className="w-px h-5 bg-slate-700" />
             <button
               type="button"
               onClick={handleBulkDelete}
-              className="text-sm font-medium text-rose-300 dark:text-rose-600 hover:opacity-80 transition-opacity flex items-center gap-1"
+              className="text-sm font-medium text-rose-300 hover:opacity-80 transition-opacity flex items-center gap-1"
             >
               <Trash2 className="w-4 h-4" />
               Supprimer
             </button>
-            <div className="w-px h-5 bg-slate-700 dark:bg-slate-300" />
+            <div className="w-px h-5 bg-slate-700" />
             <button
               type="button"
               onClick={() => setSelectedIds(new Set())}

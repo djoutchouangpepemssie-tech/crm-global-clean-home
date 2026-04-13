@@ -274,7 +274,7 @@ export default function QuoteForm() {
         <div className="lg:col-span-2 space-y-6">
           {/* Bloc Client */}
           <div className="rounded-xl border border-slate-200 section-card/30 p-6">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
               <User className="w-4 h-4 text-violet-600" />
               Client
             </h3>
@@ -359,7 +359,7 @@ export default function QuoteForm() {
 
           {/* Bloc Service */}
           <div className="rounded-xl border border-slate-200 section-card/30 p-6">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
               <Tag className="w-4 h-4 text-violet-600" />
               Prestation
             </h3>
@@ -412,7 +412,7 @@ export default function QuoteForm() {
           {/* Bloc Lignes de prestations */}
           <div className="rounded-xl border border-slate-200 section-card/30 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
                 <FileText className="w-4 h-4 text-violet-600" />
                 Lignes de prestations
               </h3>
@@ -491,7 +491,7 @@ export default function QuoteForm() {
                         <button
                           type="button"
                           onClick={() => removeLine(line.id)}
-                          className="p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-500"
+                          className="p-1 rounded hover:bg-rose-50 text-rose-500"
                           aria-label="Supprimer la ligne"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -506,7 +506,7 @@ export default function QuoteForm() {
 
           {/* Bloc Notes */}
           <div className="rounded-xl border border-slate-200 section-card/30 p-6">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">
+            <h3 className="text-sm font-semibold text-slate-900 mb-4">
               Notes & conditions
             </h3>
             <div className="space-y-4">
@@ -539,7 +539,7 @@ export default function QuoteForm() {
         {/* Colonne droite — récapitulatif */}
         <div>
           <div className="rounded-xl border border-slate-200 section-card/30 p-6 sticky top-6">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
               <Calculator className="w-4 h-4 text-violet-600" />
               Récapitulatif
             </h3>
@@ -612,8 +612,8 @@ export default function QuoteForm() {
                 </div>
               )}
               <div className="flex items-center justify-between pt-3 border-t border-slate-200">
-                <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">Total TTC</span>
-                <span className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                <span className="text-sm font-semibold text-slate-900">Total TTC</span>
+                <span className="text-xl font-bold text-slate-900">
                   {totals.ttc.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                 </span>
               </div>

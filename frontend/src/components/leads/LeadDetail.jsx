@@ -74,7 +74,7 @@ function ScoreCircle({ score = 0, size = 120 }) {
           stroke="currentColor"
           strokeWidth="8"
           fill="none"
-          className="text-slate-200 dark:text-slate-800"
+          className="text-slate-200"
         />
         <circle
           cx={size / 2}
@@ -90,7 +90,7 @@ function ScoreCircle({ score = 0, size = 120 }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-3xl font-bold text-slate-900 dark:text-slate-100">{s}</span>
+        <span className="text-3xl font-bold text-slate-900">{s}</span>
         <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color }}>
           {label}
         </span>
@@ -107,12 +107,12 @@ function InfoRow({ icon: Icon, label, value, href }) {
       <Icon className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
       <div className="min-w-0 flex-1">
         <div className="text-xs text-slate-500">{label}</div>
-        <div className="text-slate-900 dark:text-slate-100 truncate">{value}</div>
+        <div className="text-slate-900 truncate">{value}</div>
       </div>
     </div>
   );
   return href ? (
-    <a href={href} className="block hover:bg-slate-50 dark:hover:bg-slate-900/40 rounded-lg -mx-2 px-2 transition-colors">
+    <a href={href} className="block hover:bg-slate-50 rounded-lg -mx-2 px-2 transition-colors">
       {content}
     </a>
   ) : (
@@ -124,26 +124,26 @@ function InfoRow({ icon: Icon, label, value, href }) {
 function TimelineItem({ item }) {
   const icons = {
     note: { Icon: FileText, color: 'text-slate-500 ' },
-    appel: { Icon: Phone, color: 'text-blue-600 bg-blue-50 dark:bg-blue-950/40 dark:text-blue-400' },
-    email: { Icon: Mail, color: 'text-violet-600 bg-violet-50 dark:bg-violet-950/40 dark:text-violet-400' },
-    sms: { Icon: MessageSquare, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400' },
-    relance: { Icon: Sparkles, color: 'text-amber-600 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-400' },
-    quote: { Icon: FileText, color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 dark:text-indigo-400' },
-    task: { Icon: CheckSquare, color: 'text-teal-600 bg-teal-50 dark:bg-teal-950/40 dark:text-teal-400' },
+    appel: { Icon: Phone, color: 'text-blue-600 bg-blue-50' },
+    email: { Icon: Mail, color: 'text-violet-600 bg-violet-50' },
+    sms: { Icon: MessageSquare, color: 'text-emerald-600 bg-emerald-50' },
+    relance: { Icon: Sparkles, color: 'text-amber-600 bg-amber-50' },
+    quote: { Icon: FileText, color: 'text-indigo-600 bg-indigo-50' },
+    task: { Icon: CheckSquare, color: 'text-teal-600 bg-teal-50' },
   };
   const { Icon, color } = icons[item.type] || icons.note;
 
   return (
     <div className="relative flex gap-4 group">
       <div className="flex flex-col items-center flex-shrink-0">
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center ring-4 ring-white dark:ring-slate-950 ${color}`}>
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center ring-4 ring-white ${color}`}>
           <Icon className="w-4 h-4" />
         </div>
-        <div className="flex-1 w-px bg-slate-200 dark:bg-slate-800 mt-1" />
+        <div className="flex-1 w-px bg-slate-200 mt-1" />
       </div>
       <div className="flex-1 min-w-0 pb-6">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <span className="text-sm font-semibold text-slate-900">
             {item.title}
           </span>
           {item.badge && (
@@ -295,10 +295,10 @@ export default function LeadDetail() {
   if (isLoading) {
     return (
       <div className="p-6 max-w-6xl mx-auto animate-pulse">
-        <div className="h-8 w-40 bg-slate-200 dark:bg-slate-800 rounded mb-6" />
+        <div className="h-8 w-40 bg-slate-200 rounded mb-6" />
         <div className="grid lg:grid-cols-3 gap-6">
-          <div className="h-64 bg-slate-100 dark:bg-slate-900/40 rounded-xl lg:col-span-2" />
-          <div className="h-64 bg-slate-100 dark:bg-slate-900/40 rounded-xl" />
+          <div className="h-64 bg-slate-100 rounded-xl lg:col-span-2" />
+          <div className="h-64 bg-slate-100 rounded-xl" />
         </div>
       </div>
     );
@@ -382,7 +382,7 @@ export default function LeadDetail() {
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <div className="rounded-xl border border-slate-200 section-card/30 p-6">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">
+              <h3 className="text-sm font-semibold text-slate-900 mb-4">
                 Informations de contact
               </h3>
               <div className="grid sm:grid-cols-2 gap-x-6">
@@ -396,7 +396,7 @@ export default function LeadDetail() {
             </div>
 
             <div className="rounded-xl border border-slate-200 section-card/30 p-6">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">
+              <h3 className="text-sm font-semibold text-slate-900 mb-4">
                 Tracking & acquisition
               </h3>
               <div className="grid sm:grid-cols-2 gap-x-6">
@@ -412,7 +412,7 @@ export default function LeadDetail() {
 
             {lead.message && (
               <div className="rounded-xl border border-slate-200 section-card/30 p-6">
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                <h3 className="text-sm font-semibold text-slate-900 mb-2">
                   Message initial
                 </h3>
                 <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">
@@ -432,7 +432,7 @@ export default function LeadDetail() {
                 <div className="w-full mt-6">
                   <div className="flex items-center justify-between text-xs mb-1.5">
                     <span className="text-slate-500">Probabilité de closing</span>
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">
+                    <span className="font-semibold text-slate-900">
                       {lead.probability}%
                     </span>
                   </div>
@@ -450,7 +450,7 @@ export default function LeadDetail() {
               <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
                 Dernière activité
               </h3>
-              <div className="flex items-center gap-2 text-sm text-slate-900 dark:text-slate-100">
+              <div className="flex items-center gap-2 text-sm text-slate-900">
                 <Clock className="w-4 h-4 text-slate-400" />
                 {relativeTime(lead.updated_at || lead.created_at)}
               </div>
@@ -479,7 +479,7 @@ export default function LeadDetail() {
                     px-3 py-1.5 rounded-full text-xs font-medium transition-colors capitalize
                     ${newInteraction.type === t
                       ? 'bg-slate-900 text-white  '
-                      : ' text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700'}
+                      : ' text-slate-600 hover:bg-slate-200'}
                   `}
                 >
                   {t}
@@ -526,7 +526,7 @@ export default function LeadDetail() {
       {activeTab === 'quotes' && (
         <div className="rounded-xl border border-slate-200 section-card/30 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+            <h3 className="text-sm font-semibold text-slate-900">
               Devis liés ({quotes.length})
             </h3>
             <Button
@@ -551,11 +551,11 @@ export default function LeadDetail() {
               {quotes.map((q) => (
                 <div
                   key={q.quote_id}
-                  className="flex items-center justify-between p-4 rounded-lg border border-slate-200 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
+                  className="flex items-center justify-between p-4 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-slate-900 dark:text-slate-100">
+                      <span className="font-semibold text-slate-900">
                         {q.service_type || 'Devis'}
                       </span>
                       <StatusBadge domain="quote" status={q.status} size="xs" />
@@ -582,7 +582,7 @@ export default function LeadDetail() {
       {/* ── Onglet Tâches ───────────────────────────────────────── */}
       {activeTab === 'tasks' && (
         <div className="rounded-xl border border-slate-200 section-card/30 p-6">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">
+          <h3 className="text-sm font-semibold text-slate-900 mb-4">
             Tâches ({tasks.length})
           </h3>
           {tasks.length === 0 ? (
@@ -606,7 +606,7 @@ export default function LeadDetail() {
                   />
                   <div className="min-w-0 flex-1">
                     <div className={`text-sm font-medium ${
-                      t.status === 'completed' ? 'line-through text-slate-400' : 'text-slate-900 dark:text-slate-100'
+                      t.status === 'completed' ? 'line-through text-slate-400' : 'text-slate-900'
                     }`}>
                       {t.title}
                     </div>
@@ -631,7 +631,7 @@ export default function LeadDetail() {
       {activeTab === 'notes' && (
         <div className="rounded-xl border border-slate-200 section-card/30 p-6">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+            <h3 className="text-sm font-semibold text-slate-900">
               Notes privées
             </h3>
             {notesDirty && (

@@ -60,7 +60,7 @@ const SOURCES = ['Direct', 'Google Ads', 'SEO', 'Meta Ads', 'Referral', 'Recomma
 function FieldError({ error }) {
   if (!error) return null;
   return (
-    <p className="mt-1.5 text-xs text-rose-600 dark:text-rose-400 flex items-center gap-1">
+    <p className="mt-1.5 text-xs text-rose-600 flex items-center gap-1">
       <AlertTriangle className="w-3 h-3" />
       {error.message}
     </p>
@@ -174,13 +174,13 @@ export default function LeadForm() {
 
       {/* Alerte doublon */}
       {duplicateWarning && (
-        <div className="mb-6 rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/20 p-4 flex items-start gap-3 animate-fade-in-down">
-          <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 flex items-start gap-3 animate-fade-in-down">
+          <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+            <p className="text-sm font-semibold text-amber-900">
               Doublon potentiel détecté
             </p>
-            <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+            <p className="text-xs text-amber-700 mt-0.5">
               Un lead avec le même email ou téléphone existe déjà :{' '}
               <button
                 type="button"
@@ -198,7 +198,7 @@ export default function LeadForm() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Bloc Contact */}
         <div className="rounded-xl border border-slate-200 section-card/30 p-6">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-5 flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-slate-900 mb-5 flex items-center gap-2">
             <User className="w-4 h-4 text-violet-600" />
             Informations de contact
           </h3>
@@ -260,7 +260,7 @@ export default function LeadForm() {
 
         {/* Bloc Service */}
         <div className="rounded-xl border border-slate-200 section-card/30 p-6">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-5 flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-slate-900 mb-5 flex items-center gap-2">
             <Tag className="w-4 h-4 text-violet-600" />
             Service & acquisition
           </h3>
@@ -328,7 +328,7 @@ export default function LeadForm() {
 
         {/* Bloc Message */}
         <div className="rounded-xl border border-slate-200 section-card/30 p-6">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-5 flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-slate-900 mb-5 flex items-center gap-2">
             <MessageSquare className="w-4 h-4 text-violet-600" />
             Message / notes internes
           </h3>
@@ -342,9 +342,9 @@ export default function LeadForm() {
         </div>
 
         {/* Info : pas d'email automatique */}
-        <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 p-3 flex items-start gap-2">
-          <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-blue-900 dark:text-blue-200">
+        <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 flex items-start gap-2">
+          <CheckCircle2 className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-blue-900">
             Aucun email automatique ne sera envoyé. Le client recevra un message
             uniquement quand vous enverrez explicitement un devis.
           </p>
