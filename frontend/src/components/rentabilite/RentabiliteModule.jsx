@@ -102,7 +102,7 @@ function OverviewTab({ financial }) {
           <h3 className="text-sm font-semibold text-slate-200 mb-4">CA par service</h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={SERVICES_DATA}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default, rgba(0,0,0,0.06))" />
               <XAxis dataKey="service" stroke="#475569" style={{fontSize:"9px"}} tickLine={false} axisLine={false}
                 tickFormatter={v => v.split(" ")[0]} />
               <YAxis stroke="#475569" style={{fontSize:"10px"}} tickLine={false} axisLine={false} width={40} />
@@ -274,7 +274,7 @@ function CanauxTab() {
           <h3 className="text-sm font-semibold text-slate-200 mb-4">CA par canal</h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={CANAUX_DATA} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" horizontal={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default, rgba(0,0,0,0.06))" horizontal={false} />
               <XAxis type="number" stroke="#475569" style={{fontSize:"10px"}} tickLine={false} axisLine={false} />
               <YAxis dataKey="canal" type="category" stroke="#475569" style={{fontSize:"10px"}} tickLine={false} axisLine={false} width={100} />
               <Tooltip contentStyle={{background:"hsl(224,71%,8%)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:"8px",fontSize:"12px"}}
@@ -359,7 +359,7 @@ function PrevisionsTab() {
         <h3 className="text-sm font-semibold text-slate-200 mb-4">Evolution CA reel vs previsions IA</h3>
         <ResponsiveContainer width="100%" height={250}>
           <LineChart data={PREVISIONS_DATA}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default, rgba(0,0,0,0.06))" />
             <XAxis dataKey="mois" stroke="#475569" style={{fontSize:"10px"}} tickLine={false} axisLine={false} />
             <YAxis stroke="#475569" style={{fontSize:"10px"}} tickLine={false} axisLine={false} width={50} />
             <Tooltip contentStyle={{background:"hsl(224,71%,8%)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:"8px",fontSize:"12px"}}

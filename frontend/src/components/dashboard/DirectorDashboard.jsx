@@ -42,7 +42,7 @@ function HealthScore({ score }) {
       <h3 className="text-sm font-semibold text-slate-200 mb-4 self-start">Sante business</h3>
       <div className="relative w-32 h-32">
         <svg className="w-32 h-32 -rotate-90" viewBox="0 0 100 100">
-          <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
+          <circle cx="50" cy="50" r="45" fill="none" stroke="var(--border-default, rgba(0,0,0,0.06))" strokeWidth="8" />
           <circle cx="50" cy="50" r="45" fill="none" stroke={color} strokeWidth="8"
             strokeDasharray={c} strokeDashoffset={offset} strokeLinecap="round" />
         </svg>
@@ -362,7 +362,7 @@ export default function DirectorDashboard() {
                         <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default, rgba(0,0,0,0.06))" />
                     <XAxis dataKey="date" stroke="#475569" style={{fontSize:"10px"}} tickLine={false} axisLine={false} interval="preserveStartEnd" />
                     <YAxis stroke="#475569" style={{fontSize:"10px"}} tickLine={false} axisLine={false} width={25} allowDecimals={false} />
                     <Tooltip contentStyle={{background:"hsl(224,71%,8%)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:"8px",fontSize:"12px"}} />

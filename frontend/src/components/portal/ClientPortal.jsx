@@ -112,7 +112,7 @@ const PortalLogin = ({ onAuth }) => {
         </div>
 
         {/* Card */}
-        <div className="rounded-2xl p-8" style={{background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',backdropFilter:'blur(20px)',boxShadow:'0 24px 80px rgba(0,0,0,0.4)'}}>
+        <div className="rounded-2xl p-8" style={{background:'rgba(255,255,255,0.05)',border:'1px solid var(--border-default)',backdropFilter:'blur(20px)',boxShadow:'0 24px 80px rgba(0,0,0,0.4)'}}>
           {!sent ? (
             <>
               <h2 className="text-lg font-bold text-slate-100 mb-2">Connexion sécurisée</h2>
@@ -125,7 +125,7 @@ const PortalLogin = ({ onAuth }) => {
                     <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
                       placeholder="votre@email.com"
                       className="w-full pl-10 pr-4 py-3 rounded-xl border text-sm font-medium outline-none transition-all text-slate-200 placeholder-slate-600"
-                      style={{background:'rgba(255,255,255,0.05)',borderColor:'rgba(255,255,255,0.1)'}}
+                      style={{background:'rgba(255,255,255,0.05)',borderColor:'var(--border-default)'}}
                       onFocus={e => e.target.style.borderColor='#f97316'}
                       onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.1)'} />
                   </div>
@@ -781,7 +781,7 @@ const PortalDashboard = ({ user, onLogout }) => {
                       <div className={`max-w-[75%] px-4 py-3 rounded-2xl text-sm ${isClient ? 'rounded-br-sm' : 'rounded-bl-sm'}`}
                         style={isClient
                           ? {background:'linear-gradient(135deg,#f97316,#ea580c)',color:'white'}
-                          : {background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',color:'#e2e8f0'}}>
+                          : {background:'rgba(255,255,255,0.07)',border:'1px solid var(--border-default)',color:'#e2e8f0'}}>
                         <p className="leading-relaxed">{msg.content}</p>
                         <p className={`text-[10px] mt-1 ${isClient ? 'text-white/60' : 'text-slate-600'}`}>
                           {new Date(msg.created_at).toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'})}
@@ -797,7 +797,7 @@ const PortalDashboard = ({ user, onLogout }) => {
                   onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
                   placeholder="Écrivez votre message..."
                   className="flex-1 px-4 py-3 rounded-2xl border text-sm text-slate-200 placeholder-slate-600 outline-none transition-all"
-                  style={{background:'rgba(255,255,255,0.05)',borderColor:'rgba(255,255,255,0.1)'}}
+                  style={{background:'rgba(255,255,255,0.05)',borderColor:'var(--border-default)'}}
                   onFocus={e => e.target.style.borderColor='#f97316'}
                   onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.1)'} />
                 <button onClick={handleSendMessage} disabled={sendingMessage || !newMessage.trim()}
@@ -833,7 +833,7 @@ const PortalDashboard = ({ user, onLogout }) => {
                   <textarea value={reviewComment} onChange={e => setReviewComment(e.target.value)} rows={4}
                     placeholder="Partagez votre expérience avec Global Clean Home..."
                     className="w-full px-4 py-3 rounded-2xl border text-sm text-slate-200 placeholder-slate-600 outline-none resize-none transition-all mb-4"
-                    style={{background:'rgba(255,255,255,0.05)',borderColor:'rgba(255,255,255,0.1)'}}
+                    style={{background:'rgba(255,255,255,0.05)',borderColor:'var(--border-default)'}}
                     onFocus={e => e.target.style.borderColor='#f97316'}
                     onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.1)'} />
                   <button onClick={submitReview}

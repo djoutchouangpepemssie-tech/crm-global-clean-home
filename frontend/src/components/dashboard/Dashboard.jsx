@@ -749,7 +749,7 @@ const Dashboard = () => {
                   <stop offset="100%" stopColor="#34d399" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default, rgba(0,0,0,0.06))" />
               <XAxis dataKey="date" stroke="#475569" style={{ fontSize: 10, fontFamily: 'Manrope, sans-serif' }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
               <YAxis stroke="#475569" style={{ fontSize: 10, fontFamily: 'Manrope, sans-serif' }} tickLine={false} axisLine={false} width={35} />
               <Tooltip content={<PremiumTooltip />} />
@@ -840,7 +840,7 @@ const Dashboard = () => {
           <SectionHeader title="🧹 Leads par service" />
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={serviceData} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" horizontal={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default, rgba(0,0,0,0.06))" horizontal={false} />
               <XAxis type="number" stroke="#475569" style={{ fontSize: 10, fontFamily: 'Manrope, sans-serif' }} tickLine={false} axisLine={false} />
               <YAxis dataKey="name" type="category" stroke="#475569" style={{ fontSize: 10, fontFamily: 'Manrope, sans-serif' }} tickLine={false} axisLine={false} width={80} />
               <Tooltip content={<PremiumTooltip />} />

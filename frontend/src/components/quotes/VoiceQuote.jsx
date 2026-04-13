@@ -224,7 +224,7 @@ const VoiceQuote = ({ leadId = null, leadName = '', onQuoteCreated, onClose }) =
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{background:'rgba(0,0,0,0.85)'}}>
       <div className="rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-fade-in"
-        style={{background:'hsl(224,71%,6%)',border:'1px solid rgba(255,255,255,0.1)'}}>
+        style={{background:'var(--bg-card)',border:'1px solid var(--border-default)'}}>
 
         {/* HEADER */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">

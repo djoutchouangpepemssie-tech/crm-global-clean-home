@@ -18,7 +18,7 @@ const API = BACKEND_URL + '/api/analytics-data';
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-2xl p-3 border text-xs" style={{background:'hsl(224,71%,8%)',borderColor:'rgba(255,255,255,0.1)'}}>
+    <div className="rounded-2xl p-3 border text-xs" style={{background:'var(--bg-card)',borderColor:'var(--border-default)'}}>
       <p className="text-slate-400 mb-2 font-semibold">{label}</p>
       {payload.map((p,i)=>(
         <p key={i} style={{color:p.color}} className="font-bold">{p.name}: {typeof p.value==='number'&&p.value<100?p.value.toFixed(2)+'%':p.value}</p>
@@ -158,7 +158,7 @@ const SEODashboard = () => {
                   <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default, rgba(0,0,0,0.06))"/>
               <XAxis dataKey="date" tick={{fill:'#475569',fontSize:10}} tickLine={false} axisLine={false} interval={Math.floor(dailyData.length/6)}/>
               <YAxis yAxisId="left" tick={{fill:'#475569',fontSize:10}} tickLine={false} axisLine={false}/>
               <YAxis yAxisId="right" orientation="right" tick={{fill:'#475569',fontSize:10}} tickLine={false} axisLine={false}/>

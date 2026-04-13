@@ -888,7 +888,7 @@ const PlanningCalendar = () => {
           <div className="section-card overflow-x-auto" style={{ animation: 'fadeIn 0.4s ease forwards' }}>
             <div className="min-w-[800px]">
               {/* Header jours */}
-              <div className="grid gap-px sticky top-0 z-10" style={{gridTemplateColumns:`64px repeat(7, 1fr)`, background:'hsl(224,71%,6%)'}}>
+              <div className="grid gap-px sticky top-0 z-10" style={{gridTemplateColumns:`64px repeat(7, 1fr)`, background:'var(--bg-card)'}}>
                 <div className="p-3 border-b border-white/[0.06]"/>
                 {weekDays.map((day,i)=>{
                   const isToday = day.toISOString().slice(0,10)===today;

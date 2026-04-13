@@ -224,7 +224,7 @@ const FinancialDashboard = () => {
                     <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.1}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default, rgba(0,0,0,0.06))" />
                 <XAxis dataKey="date" stroke="#475569" style={{fontSize:9}} tickLine={false} axisLine={false}
                   interval="preserveStartEnd" tickFormatter={v => v?.slice(5) || v} />
                 <YAxis yAxisId="left" stroke="#475569" style={{fontSize:9}} tickLine={false} axisLine={false}
@@ -250,7 +250,7 @@ const FinancialDashboard = () => {
           ) : (
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={serviceData} margin={{ top: 4, right: 4, bottom: 20, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default, rgba(0,0,0,0.06))" />
                 <XAxis dataKey="name" stroke="#475569" style={{fontSize:9}} tickLine={false} axisLine={false}
                   angle={-20} textAnchor="end" height={44} interval={0} />
                 <YAxis stroke="#475569" style={{fontSize:9}} tickLine={false} axisLine={false}

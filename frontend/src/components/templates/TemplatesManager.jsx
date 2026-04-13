@@ -259,7 +259,7 @@ const TemplatesManager = ({ onSelectTemplate }) => {
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{background:'rgba(0,0,0,0.8)'}}
           onClick={()=>setPreviewTemplate(null)}>
           <div className="rounded-2xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto"
-            style={{background:'hsl(224,71%,6%)',border:'1px solid rgba(255,255,255,0.1)'}}
+            style={{background:'var(--bg-card)',border:'1px solid var(--border-default)'}}
             onClick={e=>e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-black text-slate-100">{previewTemplate.name}</h3>
@@ -297,7 +297,7 @@ const TemplatesManager = ({ onSelectTemplate }) => {
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{background:'rgba(0,0,0,0.8)'}}
           onClick={()=>{ setShowForm(false); setEditingTemplate(null); }}>
           <div className="rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-            style={{background:'hsl(224,71%,6%)',border:'1px solid rgba(255,255,255,0.1)'}}
+            style={{background:'var(--bg-card)',border:'1px solid var(--border-default)'}}
             onClick={e=>e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-black text-slate-100">

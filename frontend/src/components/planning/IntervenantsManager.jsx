@@ -268,7 +268,7 @@ const ProgressRing = ({ percent, size = 56, strokeWidth = 4, color = '#10b981', 
     <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="transform -rotate-90">
         <circle cx={size/2} cy={size/2} r={radius} fill="none"
-          stroke="rgba(255,255,255,0.06)" strokeWidth={strokeWidth} />
+          stroke="var(--border-default, rgba(0,0,0,0.06))" strokeWidth={strokeWidth} />
         <circle cx={size/2} cy={size/2} r={radius} fill="none"
           stroke={color} strokeWidth={strokeWidth} strokeLinecap="round"
           strokeDasharray={circumference} strokeDashoffset={offset}

@@ -89,7 +89,7 @@ const Login = ({ onAuth }) => {
           <h1 className="text-3xl font-black text-white mb-1" style={{fontFamily:'Manrope,sans-serif'}}>Portail Agent</h1>
           <p className="text-emerald-400/80 text-sm font-medium">Global Clean Home</p>
         </div>
-        <div className="rounded-3xl p-8" style={{background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',backdropFilter:'blur(20px)'}}>
+        <div className="rounded-3xl p-8" style={{background:'rgba(255,255,255,0.05)',border:'1px solid var(--border-default)',backdropFilter:'blur(20px)'}}>
           {step === 1 ? (
             <>
               <h2 className="text-lg font-bold text-white mb-1">Connexion sécurisée</h2>
@@ -102,7 +102,7 @@ const Login = ({ onAuth }) => {
                     <input type="email" value={email} onChange={e=>setEmail(e.target.value)} required
                       placeholder="vous@globalcleanhome.com"
                       className="w-full pl-10 pr-4 py-3 rounded-xl border text-sm text-slate-200 placeholder-slate-600 outline-none transition-all"
-                      style={{background:'rgba(255,255,255,0.05)',borderColor:'rgba(255,255,255,0.1)'}}/>
+                      style={{background:'rgba(255,255,255,0.05)',borderColor:'var(--border-default)'}}/>
                   </div>
                 </div>
                 <button type="submit" disabled={loading}
@@ -125,7 +125,7 @@ const Login = ({ onAuth }) => {
                 <input type="text" value={code} onChange={e=>setCode(e.target.value)} required
                   placeholder="• • • • • •" maxLength={6}
                   className="w-full px-4 py-4 rounded-xl border text-center text-3xl font-black text-slate-200 tracking-[0.5em] outline-none transition-all"
-                  style={{background:'rgba(255,255,255,0.05)',borderColor:'rgba(255,255,255,0.1)'}}/>
+                  style={{background:'rgba(255,255,255,0.05)',borderColor:'var(--border-default)'}}/>
                 <button type="submit" disabled={loading}
                   className="w-full py-3.5 rounded-xl font-bold text-white text-sm disabled:opacity-50"
                   style={{background:'linear-gradient(135deg,#10b981,#059669)',boxShadow:'0 4px 20px rgba(16,185,129,0.4)'}}>
@@ -167,8 +167,8 @@ const ChecklistModal = ({ intervention, onClose, onComplete }) => {
   return (
     <div className="fixed inset-0 flex items-end sm:items-center justify-center z-50 p-4" style={{background:'rgba(0,0,0,0.85)'}}>
       <div className="rounded-3xl w-full max-w-md max-h-[92vh] overflow-y-auto"
-        style={{background:'hsl(224,71%,6%)',border:'1px solid rgba(255,255,255,0.1)'}}>
-        <div className="sticky top-0 p-5 border-b border-white/10" style={{background:'hsl(224,71%,6%)'}}>
+        style={{background:'var(--bg-card)',border:'1px solid var(--border-default)'}}>
+        <div className="sticky top-0 p-5 border-b border-white/10" style={{background:'var(--bg-card)'}}>
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3 className="text-lg font-black text-slate-100">Checklist</h3>
@@ -197,7 +197,7 @@ const ChecklistModal = ({ intervention, onClose, onComplete }) => {
             <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={3}
               placeholder="Problèmes rencontrés, matériel supplémentaire..."
               className="w-full px-4 py-3 rounded-xl border text-sm text-slate-200 placeholder-slate-600 outline-none resize-none"
-              style={{background:'rgba(255,255,255,0.05)',borderColor:'rgba(255,255,255,0.1)'}}/>
+              style={{background:'rgba(255,255,255,0.05)',borderColor:'var(--border-default)'}}/>
           </div>
         </div>
         <div className="p-5 border-t border-white/10">
@@ -592,7 +592,7 @@ const Dashboard = ({ agent, onLogout }) => {
                       <div className={`max-w-[78%] px-4 py-3 rounded-2xl text-sm ${isMe?'rounded-br-sm':'rounded-bl-sm'}`}
                         style={isMe
                           ? {background:'linear-gradient(135deg,#10b981,#059669)',color:'white'}
-                          : {background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',color:'#e2e8f0'}}>
+                          : {background:'rgba(255,255,255,0.07)',border:'1px solid var(--border-default)',color:'#e2e8f0'}}>
                         <p className="leading-relaxed">{msg.content}</p>
                         <p className={`text-[10px] mt-1 ${isMe?'text-white/50':'text-slate-600'}`}>
                           {msg.created_at ? new Date(msg.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : ''}
@@ -608,7 +608,7 @@ const Dashboard = ({ agent, onLogout }) => {
                   onKeyDown={e=>e.key==='Enter'&&!e.shiftKey&&sendMessage()}
                   placeholder="Message au bureau..."
                   className="flex-1 px-4 py-3 rounded-2xl border text-sm text-slate-200 placeholder-slate-600 outline-none"
-                  style={{background:'rgba(255,255,255,0.05)',borderColor:'rgba(255,255,255,0.1)'}}/>
+                  style={{background:'rgba(255,255,255,0.05)',borderColor:'var(--border-default)'}}/>
                 <button onClick={sendMessage} disabled={sendingMsg||!newMsg.trim()}
                   className="w-12 h-12 rounded-2xl flex items-center justify-center text-white disabled:opacity-50"
                   style={{background:'linear-gradient(135deg,#10b981,#059669)'}}>
@@ -780,7 +780,7 @@ const Dashboard = ({ agent, onLogout }) => {
       {selectedIntv && !showChecklist && (
         <div className="fixed inset-0 flex items-end sm:items-center justify-center z-50 p-4" style={{background:'rgba(0,0,0,0.8)'}} onClick={()=>setSelectedIntv(null)}>
           <div className="rounded-3xl p-6 max-w-md w-full animate-fade-in"
-            style={{background:'hsl(224,71%,6%)',border:'1px solid rgba(255,255,255,0.1)'}} onClick={e=>e.stopPropagation()}>
+            style={{background:'var(--bg-card)',border:'1px solid var(--border-default)'}} onClick={e=>e.stopPropagation()}>
             <div className="flex items-start justify-between mb-5">
               <div className="flex items-center gap-3">
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl"

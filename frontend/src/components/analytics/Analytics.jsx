@@ -20,7 +20,7 @@ const COLORS = ['#8b5cf6','#10b981','#f97316','#60a5fa','#f43f5e','#f59e0b','#34
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-2xl p-3 border text-xs" style={{background:'hsl(224,71%,8%)',borderColor:'rgba(255,255,255,0.1)'}}>
+    <div className="rounded-2xl p-3 border text-xs" style={{background:'var(--bg-card, #fff)',borderColor:'var(--border-default)'}}>
       <p className="text-slate-400 mb-2 font-semibold">{label}</p>
       {payload.map((p,i) => (
         <p key={i} style={{color:p.color}} className="font-bold">
@@ -135,7 +135,7 @@ const Analytics = () => {
                       <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default, rgba(0,0,0,0.06))"/>
                   <XAxis dataKey="week" tick={{fill:'#475569',fontSize:10}} tickLine={false} axisLine={false}/>
                   <YAxis tick={{fill:'#475569',fontSize:10}} tickLine={false} axisLine={false}/>
                   <Tooltip content={<CustomTooltip/>}/>
@@ -154,7 +154,7 @@ const Analytics = () => {
                 <h3 className="text-sm font-black text-slate-200 mb-4">💰 CA Hebdomadaire</h3>
                 <ResponsiveContainer width="100%" height={180}>
                   <BarChart data={crmData.weekly.slice(-8)}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default, rgba(0,0,0,0.06))"/>
                     <XAxis dataKey="week" tick={{fill:'#475569',fontSize:9}} tickLine={false} axisLine={false}/>
                     <YAxis tick={{fill:'#475569',fontSize:9}} tickLine={false} axisLine={false}/>
                     <Tooltip content={<CustomTooltip/>}/>
@@ -263,7 +263,7 @@ const Analytics = () => {
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default, rgba(0,0,0,0.06))"/>
                   <XAxis dataKey="date" tick={{fill:'#475569',fontSize:10}} tickLine={false} axisLine={false} interval={6}/>
                   <YAxis tick={{fill:'#475569',fontSize:10}} tickLine={false} axisLine={false}/>
                   <Tooltip content={<CustomTooltip/>}/>
@@ -307,7 +307,7 @@ const Analytics = () => {
                   date: new Date(d.date.replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3')).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}),
                   Sessions: d.sessions, Utilisateurs: d.users,
                 }))}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default, rgba(0,0,0,0.06))"/>
                   <XAxis dataKey="date" tick={{fill:'#475569',fontSize:10}} tickLine={false} axisLine={false}/>
                   <YAxis tick={{fill:'#475569',fontSize:10}} tickLine={false} axisLine={false}/>
                   <Tooltip content={<CustomTooltip/>}/>

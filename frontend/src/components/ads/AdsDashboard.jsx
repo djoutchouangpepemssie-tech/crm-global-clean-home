@@ -48,7 +48,7 @@ const OBJECTIVES = [
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-2xl p-3 border text-xs" style={{background:'hsl(224,71%,8%)',borderColor:'rgba(255,255,255,0.1)'}}>
+    <div className="rounded-2xl p-3 border text-xs" style={{background:'var(--bg-card)',borderColor:'var(--border-default)'}}>
       <p className="text-slate-400 mb-2 font-semibold">{label}</p>
       {payload.map((p,i)=>(
         <p key={i} style={{color:p.color}} className="font-bold">
@@ -779,7 +779,7 @@ const AdsDashboard = () => {
                         className="w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 placeholder-slate-600 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"/>
                       {interestResults.length>0 && (
                         <div className="absolute top-full left-0 right-0 mt-1 rounded-xl border border-white/10 overflow-hidden z-20 max-h-40 overflow-y-auto"
-                          style={{background:'hsl(224,71%,8%)'}}>
+                          style={{background:'var(--bg-card)'}}>
                           {interestResults.map(i=>(
                             <button key={i.id} onClick={()=>{
                               setAdForm(p=>({...p,interests:[...p.interests.filter(x=>x.id!==i.id),{id:i.id,name:i.name}],interest_search:''}));
@@ -1358,7 +1358,7 @@ const AdsDashboard = () => {
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{background:'rgba(0,0,0,0.8)'}}
           onClick={()=>{setShowForm(false);setEditCampaign(null);}}>
           <div className="rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto animate-fade-in"
-            style={{background:'hsl(224,71%,6%)',border:'1px solid rgba(255,255,255,0.1)'}}
+            style={{background:'var(--bg-card)',border:'1px solid var(--border-default)'}}
             onClick={e=>e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-black text-slate-100">{editCampaign?'Modifier':'Nouvelle campagne'}</h3>

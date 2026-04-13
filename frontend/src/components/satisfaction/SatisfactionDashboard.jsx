@@ -192,7 +192,7 @@ const SatisfactionDashboard = () => {
           ) : (
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={trendData}>
-                <CartesianGrid stroke="rgba(255,255,255,0.04)" />
+                <CartesianGrid stroke="var(--border-default, rgba(0,0,0,0.06))" />
                 <XAxis dataKey="month" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} domain={[-100, 100]} />
                 <Tooltip content={<CustomTooltip />} />
