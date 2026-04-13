@@ -74,7 +74,7 @@ function ScoreCircle({ score = 0, size = 120 }) {
           stroke="currentColor"
           strokeWidth="8"
           fill="none"
-          className="text-slate-200"
+          style={{color:"var(--border-strong)"}}
         />
         <circle
           cx={size / 2}
@@ -90,7 +90,7 @@ function ScoreCircle({ score = 0, size = 120 }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-3xl font-bold text-slate-900">{s}</span>
+        <span className="text-3xl font-bold" style={{color:"var(--text-primary)"}}>{s}</span>
         <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color }}>
           {label}
         </span>
@@ -478,7 +478,7 @@ export default function LeadDetail() {
                   className={`
                     px-3 py-1.5 rounded-full text-xs font-medium transition-colors capitalize
                     ${newInteraction.type === t
-                      ? 'bg-slate-900 text-white  '
+                      ? 'bg-slate-800 text-white  '
                       : ' text-slate-600 hover:bg-slate-200'}
                   `}
                 >

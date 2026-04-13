@@ -415,7 +415,7 @@ function LeadsCards({ leads, selectedIds, onToggleSelect, favorites, onToggleFav
 function BulkActionsBar({ count, onClearSelection, onBulkStatusChange, onBulkDelete, onBulkExport }) {
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-fade-in-up">
-      <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-slate-900 text-white  shadow-card-xl ring-1 ring-slate-700/50">
+      <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-slate-800 text-white  shadow-card-xl ring-1 ring-slate-700/50">
         <span className="text-sm font-medium">
           {count} {count > 1 ? 'leads sélectionnés' : 'lead sélectionné'}
         </span>
@@ -710,7 +710,7 @@ export default function LeadsList() {
             flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap
             transition-all duration-150 ease-snappy
             ${status === ''
-              ? 'bg-slate-900 text-white   shadow-sm'
+              ? 'bg-slate-800 text-white   shadow-sm'
               : 'section-card/40 text-slate-600 border border-slate-200 hover:border-slate-300'}
           `}
         >
@@ -731,7 +731,7 @@ export default function LeadsList() {
                 flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap
                 transition-all duration-150 ease-snappy
                 ${active
-                  ? 'bg-slate-900 text-white   shadow-sm'
+                  ? 'bg-slate-800 text-white   shadow-sm'
                   : 'section-card/40 text-slate-600 border border-slate-200 hover:border-slate-300'}
               `}
             >
@@ -837,7 +837,7 @@ export default function LeadsList() {
             onClick={() => setView('table')}
             className={`p-2 transition-colors ${
               view === 'table'
-                ? 'bg-slate-900 text-white  '
+                ? 'bg-slate-800 text-white  '
                 : 'text-slate-500 hover:bg-slate-100'
             }`}
             aria-label="Vue tableau"
@@ -849,7 +849,7 @@ export default function LeadsList() {
             onClick={() => setView('cards')}
             className={`p-2 transition-colors ${
               view === 'cards'
-                ? 'bg-slate-900 text-white  '
+                ? 'bg-slate-800 text-white  '
                 : 'text-slate-500 hover:bg-slate-100'
             }`}
             aria-label="Vue cartes"

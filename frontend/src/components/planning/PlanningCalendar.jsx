@@ -337,7 +337,7 @@ const ModalWrapper = ({ show, onClose, children, size = 'md' }) => {
           ${isVisible ? 'scale-100 translate-y-0 opacity-100' : 'scale-95 translate-y-4 opacity-0'}`}
         style={{
           background: 'linear-gradient(180deg, var(--bg-card) 0%, var(--bg-app) 100%)',
-          border: '1px solid rgba(255,255,255,0.08)',
+          border: '1px solid var(--border-default)',
           boxShadow: '0 32px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.05)'
         }}
         onClick={e => e.stopPropagation()}
@@ -1436,7 +1436,7 @@ const PlanningCalendar = () => {
                 ].map((item, i) => (
                   <div key={i}
                     className="group/info flex items-center gap-3.5 text-sm text-slate-400 p-3.5 rounded-2xl border transition-all duration-300 hover:bg-white/[0.04] hover:border-white/[0.1]"
-                    style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.06)',
+                    style={{ background: 'var(--bg-muted)', borderColor: 'var(--border-default)',
                       animation: `slideUpFade 0.3s ease forwards`, animationDelay: `${i * 60}ms`, opacity: 0 }}>
                     <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover/info:scale-110"
                       style={{ background: item.color + '15', border: `1px solid ${item.color}25` }}>
@@ -1677,12 +1677,12 @@ const PlanningCalendar = () => {
                 ? 'linear-gradient(135deg, rgba(251,113,133,0.04), transparent)'
                 : agentAvail?.available && form.assigned_agent_id
                   ? 'linear-gradient(135deg, rgba(52,211,153,0.04), transparent)'
-                  : 'rgba(255,255,255,0.02)',
+                  : 'var(--bg-muted)',
               borderColor: agentAvail && !agentAvail.available
                 ? 'rgba(251,113,133,0.2)'
                 : agentAvail?.available && form.assigned_agent_id
                   ? 'rgba(52,211,153,0.2)'
-                  : 'rgba(255,255,255,0.06)'
+                  : 'var(--border-default)'
             }}>
             <Field label="👷 Assigner à un intervenant">
               <select value={form.assigned_agent_id}
@@ -1789,7 +1789,7 @@ const PlanningCalendar = () => {
       {/* ── CSS ANIMATIONS INLINE ── */}
       <style>{`
         .shimmer-premium {
-          background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.03) 50%, transparent 100%);
+          background: linear-gradient(90deg, transparent 0%, var(--bg-muted) 50%, transparent 100%);
           background-size: 200% 100%;
           animation: shimmer-sweep 2s ease-in-out infinite;
         }

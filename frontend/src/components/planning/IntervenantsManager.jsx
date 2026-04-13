@@ -120,7 +120,7 @@ if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
     .iv-backdrop-enter { animation: iv-backdropIn 0.3s ease both; }
     .iv-tab-content { animation: iv-tabSlide 0.35s cubic-bezier(0.16,1,0.3,1) both; }
     .iv-skeleton-line {
-      background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+      background: linear-gradient(90deg, var(--bg-muted) 25%, var(--border-default) 50%, var(--bg-muted) 75%);
       background-size: 200% 100%;
       animation: iv-shimmer 1.8s ease-in-out infinite;
       border-radius: 12px;
@@ -200,7 +200,7 @@ const PremiumSkeleton = () => (
     {[...Array(6)].map((_, i) => (
       <div key={i}
         className="rounded-3xl border border-white/[0.06] p-6 space-y-4"
-        style={{ background: 'rgba(255,255,255,0.02)', animationDelay: `${i * 0.1}s` }}>
+        style={{ background: 'var(--bg-muted)', animationDelay: `${i * 0.1}s` }}>
         {/* Avatar + name */}
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-2xl iv-skeleton-line flex-shrink-0" />
@@ -613,7 +613,7 @@ const IntervenantsManager = () => {
 
         {/* Filter Panel with slide transition */}
         <div className={`overflow-hidden transition-all duration-500 ${showFilters ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`} style={{ transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)' }}>
-          <div className="p-5 rounded-2xl border border-white/[0.06] space-y-4" style={{ background: 'rgba(255,255,255,0.02)' }}>
+          <div className="p-5 rounded-2xl border border-white/[0.06] space-y-4" style={{ background: 'var(--bg-muted)' }}>
             {/* Skills Filter */}
             <div>
               <p className="text-[11px] font-bold text-slate-400 mb-2.5 uppercase tracking-wider flex items-center gap-2">
@@ -711,7 +711,7 @@ const IntervenantsManager = () => {
                   onClick={() => { setSelectedMember(member); setMemberTab('Profil'); }}
                   className="iv-card-enter iv-card-hover rounded-3xl border border-white/[0.06] cursor-pointer group relative overflow-hidden"
                   style={{
-                    background: 'rgba(255,255,255,0.02)',
+                    background: 'var(--bg-muted)',
                     animationDelay: `${idx * 0.06}s`,
                   }}>
 
@@ -863,7 +863,7 @@ const IntervenantsManager = () => {
           <div className={`rounded-3xl w-full max-w-2xl mb-8 overflow-hidden ${modalClosing ? 'scale-95 opacity-0' : 'iv-modal-enter'}`}
             style={{
               background: 'linear-gradient(180deg, var(--bg-card) 0%, var(--bg-app) 100%)',
-              border: '1px solid rgba(255,255,255,0.08)',
+              border: '1px solid var(--border-default)',
               boxShadow: '0 32px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05)',
               transition: 'all 0.25s ease',
             }}
@@ -967,7 +967,7 @@ const IntervenantsManager = () => {
                   </div>
 
                   {/* Compétences */}
-                  <div className="iv-cascade p-5 rounded-2xl border border-white/[0.06]" style={{ background: 'rgba(255,255,255,0.02)', animationDelay: '0.32s' }}>
+                  <div className="iv-cascade p-5 rounded-2xl border border-white/[0.06]" style={{ background: 'var(--bg-muted)', animationDelay: '0.32s' }}>
                     <p className="text-[11px] font-bold text-slate-400 mb-3 uppercase tracking-wider flex items-center gap-2">
                       <Award className="w-3.5 h-3.5 text-violet-400" /> Compétences
                     </p>
@@ -987,7 +987,7 @@ const IntervenantsManager = () => {
                   </div>
 
                   {/* Zones */}
-                  <div className="iv-cascade p-5 rounded-2xl border border-white/[0.06]" style={{ background: 'rgba(255,255,255,0.02)', animationDelay: '0.4s' }}>
+                  <div className="iv-cascade p-5 rounded-2xl border border-white/[0.06]" style={{ background: 'var(--bg-muted)', animationDelay: '0.4s' }}>
                     <p className="text-[11px] font-bold text-slate-400 mb-3 uppercase tracking-wider flex items-center gap-2">
                       <MapPin className="w-3.5 h-3.5 text-emerald-400" /> Zones d'intervention
                     </p>
@@ -1004,7 +1004,7 @@ const IntervenantsManager = () => {
                   </div>
 
                   {selectedMember.notes && (
-                    <div className="iv-cascade p-5 rounded-2xl border border-white/[0.06]" style={{ background: 'rgba(255,255,255,0.02)', animationDelay: '0.48s' }}>
+                    <div className="iv-cascade p-5 rounded-2xl border border-white/[0.06]" style={{ background: 'var(--bg-muted)', animationDelay: '0.48s' }}>
                       <p className="text-[11px] font-bold text-slate-400 mb-2 uppercase tracking-wider">📝 Notes</p>
                       <p className="text-sm text-slate-300 leading-relaxed">{selectedMember.notes}</p>
                     </div>
@@ -1082,8 +1082,8 @@ const IntervenantsManager = () => {
                               return (
                                 <div key={intv.intervention_id || intv.id}
                                   className="iv-cascade flex items-center gap-3 p-4 rounded-2xl border transition-all duration-300 hover:border-white/[0.12]"
-                                  style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.06)', animationDelay: `${idx * 0.05}s` }}>
-                                  <div className="text-center w-12 flex-shrink-0 p-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                                  style={{ background: 'var(--bg-muted)', borderColor: 'var(--border-default)', animationDelay: `${idx * 0.05}s` }}>
+                                  <div className="text-center w-12 flex-shrink-0 p-2 rounded-xl" style={{ background: 'var(--bg-muted)' }}>
                                     <p className="text-lg font-black text-slate-200">{(intv.scheduled_date || '').slice(8, 10)}</p>
                                     <p className="text-[9px] text-slate-500 font-bold">
                                       {['', 'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'][parseInt((intv.scheduled_date || '').slice(5, 7))] || ''}
@@ -1115,7 +1115,7 @@ const IntervenantsManager = () => {
               {/* ── DISPONIBILITÉS ── */}
               {memberTab === 'Disponibilités' && (
                 <div className="space-y-5">
-                  <div className="iv-cascade p-5 rounded-2xl border border-white/[0.06]" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                  <div className="iv-cascade p-5 rounded-2xl border border-white/[0.06]" style={{ background: 'var(--bg-muted)' }}>
                     <p className="text-[11px] font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2">
                       <Calendar className="w-3.5 h-3.5 text-emerald-400" /> Jours disponibles
                     </p>
@@ -1134,7 +1134,7 @@ const IntervenantsManager = () => {
                     </div>
                   </div>
 
-                  <div className="iv-cascade p-5 rounded-2xl border border-white/[0.06]" style={{ background: 'rgba(255,255,255,0.02)', animationDelay: '0.1s' }}>
+                  <div className="iv-cascade p-5 rounded-2xl border border-white/[0.06]" style={{ background: 'var(--bg-muted)', animationDelay: '0.1s' }}>
                     <p className="text-[11px] font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2">
                       <AlertCircle className="w-3.5 h-3.5 text-amber-400" /> Congés & Absences
                     </p>
@@ -1181,7 +1181,7 @@ const IntervenantsManager = () => {
                   <p className="text-xs text-slate-500 mb-2">Documents RH de <span className="text-slate-300 font-bold">{selectedMember.name}</span></p>
 
                   {/* Progress bar */}
-                  <div className="iv-cascade p-4 rounded-2xl border border-white/[0.06]" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                  <div className="iv-cascade p-4 rounded-2xl border border-white/[0.06]" style={{ background: 'var(--bg-muted)' }}>
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Progression</p>
                       <p className="text-xs font-bold text-emerald-400">
@@ -1273,7 +1273,7 @@ const IntervenantsManager = () => {
                         </div>
 
                         {/* Monthly History - Premium bars */}
-                        <div className="iv-cascade p-5 rounded-2xl border border-white/[0.06]" style={{ background: 'rgba(255,255,255,0.02)', animationDelay: '0.3s' }}>
+                        <div className="iv-cascade p-5 rounded-2xl border border-white/[0.06]" style={{ background: 'var(--bg-muted)', animationDelay: '0.3s' }}>
                           <p className="text-[11px] font-bold text-slate-400 mb-5 uppercase tracking-wider flex items-center gap-2">
                             <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> Historique mensuel
                           </p>
@@ -1361,7 +1361,7 @@ const IntervenantsManager = () => {
                           <div className={`max-w-[75%] px-4 py-3 rounded-2xl text-sm ${isAdmin ? 'rounded-br-lg' : 'rounded-bl-lg'}`}
                             style={isAdmin
                               ? { background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', color: 'white', boxShadow: '0 4px 20px rgba(124,58,237,0.25)' }
-                              : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#e2e8f0' }}>
+                              : { background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-default)', color: '#e2e8f0' }}>
                             <p className="leading-relaxed">{msg.content}</p>
                             <p className={`text-[10px] mt-1.5 ${isAdmin ? 'text-white/40' : 'text-slate-600'}`}>
                               {new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
@@ -1377,7 +1377,7 @@ const IntervenantsManager = () => {
                       onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                       placeholder={`Message à ${selectedMember.name}...`}
                       className="flex-1 px-4 py-3 rounded-2xl border text-sm text-slate-200 placeholder-slate-600 outline-none focus:ring-2 focus:ring-violet-500/30 transition-all duration-300"
-                      style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }} />
+                      style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'var(--border-default)' }} />
                     <button onClick={sendMessage} disabled={!newMsg.trim()}
                       className="w-12 h-12 rounded-2xl flex items-center justify-center text-white disabled:opacity-30 transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:hover:scale-100"
                       style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', boxShadow: '0 4px 20px rgba(124,58,237,0.25)' }}>
@@ -1400,7 +1400,7 @@ const IntervenantsManager = () => {
           <div className="rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto iv-modal-enter iv-scrollbar"
             style={{
               background: 'linear-gradient(180deg, var(--bg-card) 0%, var(--bg-app) 100%)',
-              border: '1px solid rgba(255,255,255,0.08)',
+              border: '1px solid var(--border-default)',
               boxShadow: '0 32px 100px rgba(0,0,0,0.7)',
             }}
             onClick={e => e.stopPropagation()}>

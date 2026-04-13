@@ -223,7 +223,7 @@ const SatisfactionDashboard = () => {
                         <span style={{ fontSize: 12, fontWeight: 600, color: '#cbd5e1' }}>{inter.name || inter.intervenant_name}</span>
                         <span style={{ fontSize: 12, fontWeight: 800, color }}>{score > 0 ? '+' : ''}{score}</span>
                       </div>
-                      <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={{ height: 4, background: 'var(--border-default)', borderRadius: 4, overflow: 'hidden' }}>
                         <div style={{ height: '100%', width: `${Math.max(0, pct)}%`, background: color, borderRadius: 4, transition: 'width 0.5s' }} />
                       </div>
                       <span style={{ fontSize: 10, color: '#475569' }}>{inter.survey_count || 0} enquêtes · ⭐ {(inter.avg_rating || 0).toFixed(1)}</span>
@@ -246,7 +246,7 @@ const SatisfactionDashboard = () => {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {surveys.slice(0, 8).map((s, i) => (
-                <div key={s.id || i} style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10 }}>
+                <div key={s.id || i} style={{ padding: '12px 14px', background: 'var(--bg-muted)', border: '1px solid var(--border-default)', borderRadius: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
                     <div>
                       <span style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>{s.client_name || 'Client anonyme'}</span>
@@ -290,7 +290,7 @@ const SatisfactionDashboard = () => {
                       : '—'}
                   </span>
                 </div>
-                <div style={{ height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 6, overflow: 'hidden' }}>
+                <div style={{ height: 8, background: 'var(--border-default)', borderRadius: 6, overflow: 'hidden' }}>
                   <div style={{
                     height: '100%', borderRadius: 6,
                     background: 'linear-gradient(90deg,#34d399,#059669)',

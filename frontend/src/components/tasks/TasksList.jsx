@@ -672,7 +672,7 @@ export default function TasksList() {
                 onClick={() => setStatusFilter(t.value)}
                 className={`px-3 py-1.5 text-sm font-medium transition-colors ${
                   active
-                    ? 'bg-slate-900 text-white  '
+                    ? 'bg-slate-800 text-white  '
                     : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
@@ -798,7 +798,7 @@ export default function TasksList() {
       {/* Bulk actions */}
       {selectedIds.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-fade-in-up">
-          <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-slate-900 text-white  shadow-card-xl ring-1 ring-slate-700/50">
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-slate-800 text-white  shadow-card-xl ring-1 ring-slate-700/50">
             <span className="text-sm font-medium">
               {selectedIds.size} {selectedIds.size > 1 ? 'tâches' : 'tâche'} sélectionnée
               {selectedIds.size > 1 ? 's' : ''}

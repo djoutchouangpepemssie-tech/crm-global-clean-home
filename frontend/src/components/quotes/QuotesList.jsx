@@ -466,7 +466,7 @@ export default function QuotesList() {
           className={`
             flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ease-snappy
             ${status === ''
-              ? 'bg-slate-900 text-white   shadow-sm'
+              ? 'bg-slate-800 text-white   shadow-sm'
               : 'section-card/40 text-slate-600 border border-slate-200 hover:border-slate-300'}
           `}
         >
@@ -486,7 +486,7 @@ export default function QuotesList() {
               className={`
                 flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ease-snappy
                 ${active
-                  ? 'bg-slate-900 text-white   shadow-sm'
+                  ? 'bg-slate-800 text-white   shadow-sm'
                   : 'section-card/40 text-slate-600 border border-slate-200 hover:border-slate-300'}
               `}
             >
@@ -567,7 +567,7 @@ export default function QuotesList() {
       {/* Bulk actions floating bar */}
       {selectedIds.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-fade-in-up">
-          <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-slate-900 text-white  shadow-card-xl ring-1 ring-slate-700/50">
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-slate-800 text-white  shadow-card-xl ring-1 ring-slate-700/50">
             <span className="text-sm font-medium">
               {selectedIds.size} {selectedIds.size > 1 ? 'devis sélectionnés' : 'devis sélectionné'}
             </span>
