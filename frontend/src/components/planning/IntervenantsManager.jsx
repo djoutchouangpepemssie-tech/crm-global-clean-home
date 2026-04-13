@@ -862,7 +862,7 @@ const IntervenantsManager = () => {
           onClick={closeModal}>
           <div className={`rounded-3xl w-full max-w-2xl mb-8 overflow-hidden ${modalClosing ? 'scale-95 opacity-0' : 'iv-modal-enter'}`}
             style={{
-              background: 'linear-gradient(180deg, hsl(224,71%,7%) 0%, hsl(224,71%,5%) 100%)',
+              background: 'linear-gradient(180deg, var(--bg-card) 0%, var(--bg-app) 100%)',
               border: '1px solid rgba(255,255,255,0.08)',
               boxShadow: '0 32px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05)',
               transition: 'all 0.25s ease',
@@ -872,7 +872,7 @@ const IntervenantsManager = () => {
             {/* Modal Header - Gradient banner */}
             <div className="relative overflow-hidden">
               <div className="absolute inset-0 opacity-40" style={{ background: getAvatarGradient(selectedMember.name) }} />
-              <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 0%, hsl(224,71%,7%) 100%)' }} />
+              <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 0%, var(--bg-card) 100%)' }} />
 
               <div className="relative p-6 pt-8">
                 <div className="flex items-start justify-between">
@@ -1399,7 +1399,7 @@ const IntervenantsManager = () => {
           onClick={() => setShowForm(false)}>
           <div className="rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto iv-modal-enter iv-scrollbar"
             style={{
-              background: 'linear-gradient(180deg, hsl(224,71%,7%) 0%, hsl(224,71%,5%) 100%)',
+              background: 'linear-gradient(180deg, var(--bg-card) 0%, var(--bg-app) 100%)',
               border: '1px solid rgba(255,255,255,0.08)',
               boxShadow: '0 32px 100px rgba(0,0,0,0.7)',
             }}

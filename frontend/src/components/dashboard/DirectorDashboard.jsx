@@ -365,7 +365,7 @@ export default function DirectorDashboard() {
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default, rgba(0,0,0,0.06))" />
                     <XAxis dataKey="date" stroke="#475569" style={{fontSize:"10px"}} tickLine={false} axisLine={false} interval="preserveStartEnd" />
                     <YAxis stroke="#475569" style={{fontSize:"10px"}} tickLine={false} axisLine={false} width={25} allowDecimals={false} />
-                    <Tooltip contentStyle={{background:"hsl(224,71%,8%)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:"8px",fontSize:"12px"}} />
+                    <Tooltip contentStyle={{background:"var(--bg-card)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:"8px",fontSize:"12px"}} />
                     <Area type="monotone" dataKey="count" stroke="#8b5cf6" strokeWidth={2} fill="url(#dg)" dot={false} name="Leads" />
                   </AreaChart>
                 </ResponsiveContainer>

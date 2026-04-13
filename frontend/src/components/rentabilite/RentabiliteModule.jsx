@@ -106,7 +106,7 @@ function OverviewTab({ financial }) {
               <XAxis dataKey="service" stroke="#475569" style={{fontSize:"9px"}} tickLine={false} axisLine={false}
                 tickFormatter={v => v.split(" ")[0]} />
               <YAxis stroke="#475569" style={{fontSize:"10px"}} tickLine={false} axisLine={false} width={40} />
-              <Tooltip contentStyle={{background:"hsl(224,71%,8%)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:"8px",fontSize:"12px"}}
+              <Tooltip contentStyle={{background:"var(--bg-card)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:"8px",fontSize:"12px"}}
                 formatter={v => [v+"EUR","CA"]} />
               <Bar dataKey="ca" radius={[4,4,0,0]} barSize={30}>
                 {SERVICES_DATA.map((_,i) => <Cell key={i} fill={COLORS[i%COLORS.length]} />)}
@@ -277,7 +277,7 @@ function CanauxTab() {
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default, rgba(0,0,0,0.06))" horizontal={false} />
               <XAxis type="number" stroke="#475569" style={{fontSize:"10px"}} tickLine={false} axisLine={false} />
               <YAxis dataKey="canal" type="category" stroke="#475569" style={{fontSize:"10px"}} tickLine={false} axisLine={false} width={100} />
-              <Tooltip contentStyle={{background:"hsl(224,71%,8%)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:"8px",fontSize:"12px"}}
+              <Tooltip contentStyle={{background:"var(--bg-card)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:"8px",fontSize:"12px"}}
                 formatter={v => [v+"EUR","CA"]} />
               <Bar dataKey="ca" radius={[0,4,4,0]} barSize={18}>
                 {CANAUX_DATA.map((_,i) => <Cell key={i} fill={COLORS[i%COLORS.length]} />)}
@@ -362,7 +362,7 @@ function PrevisionsTab() {
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default, rgba(0,0,0,0.06))" />
             <XAxis dataKey="mois" stroke="#475569" style={{fontSize:"10px"}} tickLine={false} axisLine={false} />
             <YAxis stroke="#475569" style={{fontSize:"10px"}} tickLine={false} axisLine={false} width={50} />
-            <Tooltip contentStyle={{background:"hsl(224,71%,8%)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:"8px",fontSize:"12px"}}
+            <Tooltip contentStyle={{background:"var(--bg-card)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:"8px",fontSize:"12px"}}
               formatter={(v,n) => [v ? v.toLocaleString()+"EUR" : "-", n==="reel"?"CA reel":"Prevision IA"]} />
             <Line type="monotone" dataKey="reel" stroke="#34d399" strokeWidth={2} dot={{fill:"#34d399",r:4}} connectNulls={false} name="reel" />
             <Line type="monotone" dataKey="prevision" stroke="#8b5cf6" strokeWidth={2} strokeDasharray="5 5" dot={{fill:"#8b5cf6",r:4}} connectNulls={false} name="prevision" />

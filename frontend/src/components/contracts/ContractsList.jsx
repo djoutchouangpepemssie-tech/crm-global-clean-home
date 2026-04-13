@@ -220,7 +220,7 @@ function injectStyles() {
     }
     .ct-modal-select {
       width: 100%;
-      background: hsl(215, 28%, 10%);
+      background: var(--bg-muted);
       border: 1.5px solid rgba(255,255,255,0.08);
       border-radius: 10px;
       padding: 10px 14px;
@@ -431,7 +431,7 @@ function ConfirmModal({ isOpen, onConfirm, onCancel, title, desc, confirmLabel, 
       animation: 'ct-modal-overlay 0.25s ease-out',
     }} onClick={onCancel}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: 'linear-gradient(145deg, hsl(224,71%,6%), hsl(224,71%,8%))',
+        background: 'linear-gradient(145deg, var(--bg-card), var(--bg-card))',
         border: '1px solid rgba(255,255,255,0.1)',
         borderRadius: 20, padding: 28, width: '100%', maxWidth: 400,
         animation: 'ct-modal-content 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
@@ -687,7 +687,7 @@ function ContractModal({ isOpen, editingId, form, setForm, onSave, onClose }) {
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          background: 'linear-gradient(145deg, hsl(224,71%,6%), hsl(224,71%,8%))',
+          background: 'linear-gradient(145deg, var(--bg-card), var(--bg-card))',
           border: '1px solid rgba(255,255,255,0.1)',
           borderRadius: 20, padding: 0,
           width: '100%', maxWidth: 640, maxHeight: '90vh',

@@ -57,7 +57,7 @@ const NPSGauge = ({ score }) => {
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: 'hsl(224,71%,6%)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 14px' }}>
+    <div style={{ background: 'var(--bg-card)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 14px' }}>
       <p style={{ color: '#94a3b8', fontSize: 11, marginBottom: 4 }}>{label}</p>
       <p style={{ color: '#a78bfa', fontWeight: 700, fontSize: 15 }}>NPS: {payload[0].value}</p>
     </div>

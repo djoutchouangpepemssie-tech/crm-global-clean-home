@@ -336,7 +336,7 @@ const ModalWrapper = ({ show, onClose, children, size = 'md' }) => {
         className={`${sizeClass} w-full max-h-[90vh] overflow-y-auto rounded-3xl relative transition-all duration-500 ease-out
           ${isVisible ? 'scale-100 translate-y-0 opacity-100' : 'scale-95 translate-y-4 opacity-0'}`}
         style={{
-          background: 'linear-gradient(180deg, hsl(224,71%,7%) 0%, hsl(224,71%,5%) 100%)',
+          background: 'linear-gradient(180deg, var(--bg-card) 0%, var(--bg-app) 100%)',
           border: '1px solid rgba(255,255,255,0.08)',
           boxShadow: '0 32px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.05)'
         }}
@@ -1402,7 +1402,7 @@ const PlanningCalendar = () => {
                     {getSvcIcon(selected.service_type || selected.title)}
                     {selected.assigned_agent_id && (
                       <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 flex items-center justify-center text-[8px] font-bold"
-                        style={{ background: agentColor, borderColor: 'hsl(224,71%,6%)', color: 'white' }}>
+                        style={{ background: agentColor, borderColor: 'var(--bg-card)', color: 'white' }}>
                         {(selected.assigned_agent_name || '?')[0]}
                       </div>
                     )}
@@ -1571,7 +1571,7 @@ const PlanningCalendar = () => {
                 {/* Suggestions dropdown */}
                 {leadSuggestions.length > 0 && (
                   <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl border border-white/[0.1] overflow-hidden z-20 shadow-2xl"
-                    style={{ background: 'hsl(224,71%,7%)', boxShadow: '0 16px 48px rgba(0,0,0,0.5)' }}>
+                    style={{ background: 'var(--bg-card)', boxShadow: '0 16px 48px rgba(0,0,0,0.5)' }}>
                     {leadSuggestions.map((lead, idx) => (
                       <button key={lead.lead_id} type="button" onClick={() => applyLead(lead)}
                         className="group/lead w-full flex items-center gap-3 p-3.5 hover:bg-white/[0.05] transition-all duration-200 text-left border-b border-white/[0.05] last:border-0"

@@ -168,7 +168,7 @@ function GlobalSearchModal({ onClose }) {
       <div
         style={{
           width: 640, maxWidth: '90vw', maxHeight: '70vh',
-          background: 'hsl(224,71%,6%)',
+          background: 'var(--bg-card)',
           border: '1px solid rgba(255,255,255,0.1)',
           borderRadius: 16, overflow: 'hidden',
           boxShadow: '0 25px 60px rgba(0,0,0,0.5)',

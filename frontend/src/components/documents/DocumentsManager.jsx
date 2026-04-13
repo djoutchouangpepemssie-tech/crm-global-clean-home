@@ -301,7 +301,7 @@ const DeleteConfirmation = ({ docName, onConfirm, onCancel }) => (
       onClick={e => e.stopPropagation()}
       style={{
         width: '100%', maxWidth: 380,
-        background: 'linear-gradient(180deg, hsl(224,71%,8%), hsl(224,71%,5%))',
+        background: 'linear-gradient(180deg, var(--bg-card), var(--bg-app))',
         borderRadius: 20, padding: 28,
         border: '1px solid rgba(244,63,94,0.2)',
         boxShadow: '0 25px 60px rgba(0,0,0,0.5)',

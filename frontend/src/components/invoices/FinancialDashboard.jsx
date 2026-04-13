@@ -46,7 +46,7 @@ const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
     <div style={{
-      background: 'hsl(224,71%,8%)', border: '1px solid rgba(255,255,255,0.08)',
+      background: 'var(--bg-card)', border: '1px solid rgba(255,255,255,0.08)',
       borderRadius: 8, padding: '10px 14px', minWidth: 140,
     }}>
       {label && <p style={{ color: '#94a3b8', fontSize: 11, marginBottom: 6 }}>{label}</p>}
