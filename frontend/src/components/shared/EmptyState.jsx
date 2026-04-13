@@ -1,68 +1,82 @@
-/**
- * EmptyState — composant unifié pour les listes vides.
- *
- * Remplace les dizaines de `<p>Aucune donnée</p>` éparpillés dans le CRM
- * par une expérience cohérente et actionnable.
- *
- * Usage :
- *   <EmptyState
- *     icon={Inbox}
- *     title="Aucun lead trouvé"
- *     description="Créez votre premier lead pour démarrer."
- *     action={{ label: 'Nouveau lead', onClick: () => navigate('/leads/new') }}
- *   />
- */
 import React from 'react';
-import { Button } from '../ui/button';
 
-export function EmptyState({
-  icon: Icon,
-  title = 'Rien à afficher',
-  description,
-  action,
-  secondaryAction,
-  className = '',
-}) {
+export function EmptyState({ icon: Icon, title='Rien à afficher', description, action, secondaryAction, className='' }) {
   return (
-    <div
-      className={`flex flex-col items-center justify-center py-16 px-6 text-center ${className}`}
-    >
+    <div style={{
+      display:'flex', flexDirection:'column',
+      alignItems:'center', justifyContent:'center',
+      padding:'48px 24px', textAlign:'center',
+    }} className={className}>
       {Icon && (
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-100 to-pink-100 dark:from-violet-900/30 dark:to-pink-900/30 flex items-center justify-center mb-5 ring-1 ring-violet-200/50 dark:ring-violet-800/50">
-          <Icon className="w-8 h-8 text-violet-600 dark:text-violet-400" strokeWidth={1.75} />
+        <div style={{
+          width:'56px', height:'56px',
+          borderRadius:'var(--radius-lg)',
+          background:'var(--brand-light)',
+          border:'1px solid var(--brand-medium)',
+          display:'flex', alignItems:'center', justifyContent:'center',
+          marginBottom:'16px',
+        }}>
+          <Icon size={24} style={{ color:'var(--brand)' }} strokeWidth={1.75} />
         </div>
       )}
-      <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-1.5">
+      <h3 style={{
+        fontFamily:'var(--font-display)',
+        fontSize:'15px', fontWeight:'600',
+        color:'var(--text-primary)',
+        margin:'0 0 8px',
+      }}>
         {title}
       </h3>
       {description && (
-        <p className="text-sm text-slate-500 max-w-sm mb-6 leading-relaxed">
+        <p style={{
+          fontSize:'13px', color:'var(--text-muted)',
+          maxWidth:'320px', lineHeight:1.6,
+          margin:'0 0 20px',
+        }}>
           {description}
         </p>
       )}
       {(action || secondaryAction) && (
-        <div className="flex items-center gap-2">
+        <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
           {secondaryAction && (
-            <Button
-              variant="outline"
-              size="sm"
+            <button
               onClick={secondaryAction.onClick}
               disabled={secondaryAction.disabled}
+              style={{
+                display:'inline-flex', alignItems:'center', gap:'6px',
+                padding:'8px 16px',
+                background:'var(--bg-card)',
+                border:'1px solid var(--border-default)',
+                borderRadius:'var(--radius-md)',
+                fontSize:'13px', fontWeight:'500',
+                color:'var(--text-secondary)',
+                cursor:'pointer',
+                boxShadow:'var(--shadow-card)',
+              }}
             >
-              {secondaryAction.icon && <secondaryAction.icon className="w-4 h-4 mr-2" />}
+              {secondaryAction.icon && <secondaryAction.icon size={14} />}
               {secondaryAction.label}
-            </Button>
+            </button>
           )}
           {action && (
-            <Button
-              size="sm"
+            <button
               onClick={action.onClick}
               disabled={action.disabled}
-              className="bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700 text-white shadow-sm"
+              style={{
+                display:'inline-flex', alignItems:'center', gap:'6px',
+                padding:'8px 16px',
+                background:'var(--brand)',
+                border:'none',
+                borderRadius:'var(--radius-md)',
+                fontSize:'13px', fontWeight:'600',
+                color:'#fff',
+                cursor:'pointer',
+                boxShadow:'0 2px 8px rgba(99,102,241,0.25)',
+              }}
             >
-              {action.icon && <action.icon className="w-4 h-4 mr-2" />}
+              {action.icon && <action.icon size={14} />}
               {action.label}
-            </Button>
+            </button>
           )}
         </div>
       )}
