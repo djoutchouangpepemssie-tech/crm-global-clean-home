@@ -197,7 +197,7 @@ export default function LeadForm() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Bloc Contact */}
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
+        <div className="rounded-xl border border-slate-200 section-card/30 p-6">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-5 flex items-center gap-2">
             <User className="w-4 h-4 text-violet-600" />
             Informations de contact
@@ -205,7 +205,7 @@ export default function LeadForm() {
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
                 Nom complet <span className="text-rose-500">*</span>
               </label>
               <Input
@@ -217,7 +217,7 @@ export default function LeadForm() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
                 <Mail className="w-3 h-3 inline mr-1" />
                 Email <span className="text-rose-500">*</span>
               </label>
@@ -231,7 +231,7 @@ export default function LeadForm() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
                 <Phone className="w-3 h-3 inline mr-1" />
                 Téléphone <span className="text-rose-500">*</span>
               </label>
@@ -245,7 +245,7 @@ export default function LeadForm() {
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
                 <MapPin className="w-3 h-3 inline mr-1" />
                 Adresse
               </label>
@@ -259,7 +259,7 @@ export default function LeadForm() {
         </div>
 
         {/* Bloc Service */}
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
+        <div className="rounded-xl border border-slate-200 section-card/30 p-6">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-5 flex items-center gap-2">
             <Tag className="w-4 h-4 text-violet-600" />
             Service & acquisition
@@ -267,7 +267,7 @@ export default function LeadForm() {
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
                 Type de service <span className="text-rose-500">*</span>
               </label>
               <DropdownMenu>
@@ -289,7 +289,7 @@ export default function LeadForm() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
                 Surface (m²)
               </label>
               <Input
@@ -304,7 +304,7 @@ export default function LeadForm() {
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
                 Source d'acquisition
               </label>
               <DropdownMenu>
@@ -327,7 +327,7 @@ export default function LeadForm() {
         </div>
 
         {/* Bloc Message */}
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
+        <div className="rounded-xl border border-slate-200 section-card/30 p-6">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-5 flex items-center gap-2">
             <MessageSquare className="w-4 h-4 text-violet-600" />
             Message / notes internes

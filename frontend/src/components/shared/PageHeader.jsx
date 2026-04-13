@@ -41,7 +41,7 @@ import { Badge } from '../ui/badge';
 function Breadcrumbs({ items = [] }) {
   if (!items.length) return null;
   return (
-    <nav className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 mb-2">
+    <nav className="flex items-center gap-1 text-xs text-slate-500 mb-2">
       {items.map((item, idx) => {
         const isLast = idx === items.length - 1;
         return (
@@ -69,7 +69,7 @@ function Breadcrumbs({ items = [] }) {
 function PageTabs({ tabs = [], onTabChange }) {
   if (!tabs.length) return null;
   return (
-    <div className="flex items-center gap-1 mt-6 border-b border-slate-200 dark:border-slate-800 -mb-px">
+    <div className="flex items-center gap-1 mt-6 border-b border-slate-200 -mb-px">
       {tabs.map((tab) => {
         const active = tab.active;
         return (
@@ -82,7 +82,7 @@ function PageTabs({ tabs = [], onTabChange }) {
               relative px-4 py-2.5 text-sm font-medium transition-colors
               ${active
                 ? 'text-violet-600 dark:text-violet-400'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'}
+                : 'text-slate-600 hover:text-slate-900 dark:hover:text-slate-100'}
               ${tab.disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
             `}
           >
@@ -125,7 +125,7 @@ export function PageHeader({
             {title}
           </h1>
           {subtitle && (
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-sm text-slate-500">
               {subtitle}
             </p>
           )}

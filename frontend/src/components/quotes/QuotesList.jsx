@@ -79,7 +79,7 @@ function KpiCard({ icon: Icon, label, value, accent = 'violet' }) {
     <div className={`rounded-xl bg-gradient-to-br ${accents[accent]} ring-1 p-4 animate-fade-in-up`}>
       <Icon className="w-5 h-5 mb-3" />
       <div className="text-2xl font-bold text-slate-900 dark:text-slate-50 tracking-tight">{value}</div>
-      <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">{label}</div>
+      <div className="text-xs text-slate-600 mt-1">{label}</div>
     </div>
   );
 }
@@ -91,17 +91,17 @@ function QuotesSkeleton() {
       {Array.from({ length: 6 }).map((_, i) => (
         <div
           key={i}
-          className="rounded-xl border border-slate-200 dark:border-slate-800 p-5 bg-white dark:bg-slate-900/30"
+          className="rounded-xl border border-slate-200 p-5 section-card/30"
         >
           <div className="flex items-start justify-between mb-3">
             <div className="space-y-2 flex-1">
               <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
-              <div className="h-3 w-20 bg-slate-100 dark:bg-slate-800/60 rounded animate-pulse" />
+              <div className="h-3 w-20 /60 rounded animate-pulse" />
             </div>
-            <div className="h-6 w-16 bg-slate-100 dark:bg-slate-800/60 rounded-full animate-pulse" />
+            <div className="h-6 w-16 /60 rounded-full animate-pulse" />
           </div>
           <div className="h-8 w-24 bg-slate-200 dark:bg-slate-800 rounded animate-pulse mt-4" />
-          <div className="h-3 w-full bg-slate-100 dark:bg-slate-800/60 rounded animate-pulse mt-4" />
+          <div className="h-3 w-full /60 rounded animate-pulse mt-4" />
         </div>
       ))}
     </div>
@@ -127,7 +127,7 @@ function QuoteCard({ quote, isSelected, onToggleSelect, onView, onSend, onConver
         transition-all duration-200 ease-standard animate-fade-in-up
         ${isSelected
           ? 'border-violet-300 dark:border-violet-700 bg-violet-50/40 dark:bg-violet-950/20 shadow-brand'
-          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-card-lg'}
+          : 'border-slate-200 section-card/30 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-card-lg'}
       `}
       onClick={onView}
     >
@@ -156,14 +156,14 @@ function QuoteCard({ quote, isSelected, onToggleSelect, onView, onSend, onConver
               />
             </div>
             <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
-            <span className="text-xs font-mono text-slate-500 dark:text-slate-400 truncate">
+            <span className="text-xs font-mono text-slate-500 truncate">
               {quote.quote_number || (quote.quote_id ? quote.quote_id.slice(0, 8) : '—')}
             </span>
           </div>
           <div className="font-semibold text-slate-900 dark:text-slate-100 truncate">
             {quote.lead_name || quote.client_name || 'Sans client'}
           </div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <div className="text-xs text-slate-500 mt-0.5">
             {quote.service_type || 'Service non précisé'}
           </div>
         </div>
@@ -174,7 +174,7 @@ function QuoteCard({ quote, isSelected, onToggleSelect, onView, onSend, onConver
 
       <div className="flex items-end justify-between mt-4">
         <div>
-          <div className="text-xs text-slate-500 dark:text-slate-400">Montant</div>
+          <div className="text-xs text-slate-500">Montant</div>
           <div className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
             {quote.amount
               ? `${Number(quote.amount).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €`
@@ -196,7 +196,7 @@ function QuoteCard({ quote, isSelected, onToggleSelect, onView, onSend, onConver
 
       {/* Actions row */}
       <div
-        className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+        className="mt-4 pt-3 border-t border-slate-200 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
         onClick={(e) => e.stopPropagation()}
       >
         {isDraft && (
@@ -466,8 +466,8 @@ export default function QuotesList() {
           className={`
             flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ease-snappy
             ${status === ''
-              ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm'
-              : 'bg-white dark:bg-slate-900/40 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'}
+              ? 'bg-slate-900 text-white   shadow-sm'
+              : 'section-card/40 text-slate-600 border border-slate-200 hover:border-slate-300 dark:hover:border-slate-700'}
           `}
         >
           <FileText className="w-3.5 h-3.5" />
@@ -486,8 +486,8 @@ export default function QuotesList() {
               className={`
                 flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ease-snappy
                 ${active
-                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm'
-                  : 'bg-white dark:bg-slate-900/40 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'}
+                  ? 'bg-slate-900 text-white   shadow-sm'
+                  : 'section-card/40 text-slate-600 border border-slate-200 hover:border-slate-300 dark:hover:border-slate-700'}
               `}
             >
               <StatusBadge domain="quote" status={s} size="xs" className="-ml-1 pointer-events-none" />
@@ -567,7 +567,7 @@ export default function QuotesList() {
       {/* Bulk actions floating bar */}
       {selectedIds.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-fade-in-up">
-          <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-card-xl ring-1 ring-slate-700/50 dark:ring-slate-300/50">
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-slate-900 text-white  shadow-card-xl ring-1 ring-slate-700/50 dark:ring-slate-300/50">
             <span className="text-sm font-medium">
               {selectedIds.size} {selectedIds.size > 1 ? 'devis sélectionnés' : 'devis sélectionné'}
             </span>

@@ -115,7 +115,7 @@ function KpiCard({ icon: Icon, label, value, accent = 'violet', sub }) {
     <div className={`rounded-xl bg-gradient-to-br ${accents[accent]} ring-1 p-4 animate-fade-in-up`}>
       <Icon className="w-5 h-5 mb-3" />
       <div className="text-2xl font-bold text-slate-900 dark:text-slate-50 tracking-tight">{value}</div>
-      <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">{label}</div>
+      <div className="text-xs text-slate-600 mt-1">{label}</div>
       {sub && <div className="text-[11px] text-slate-500 dark:text-slate-500 mt-0.5">{sub}</div>}
     </div>
   );
@@ -124,19 +124,19 @@ function KpiCard({ icon: Icon, label, value, accent = 'violet', sub }) {
 // ── Skeleton ─────────────────────────────────────────────────────
 function InvoicesSkeleton() {
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900/30">
+    <div className="rounded-xl border border-slate-200 overflow-hidden section-card/30">
       {Array.from({ length: 6 }).map((_, i) => (
         <div
           key={i}
-          className="flex items-center gap-4 px-4 py-3 border-b border-slate-100 dark:border-slate-800 last:border-b-0"
+          className="flex items-center gap-4 px-4 py-3 border-b border-slate-200 last:border-b-0"
         >
           <div className="h-4 w-4 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
           <div className="flex-1 space-y-2">
             <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
-            <div className="h-3 w-24 bg-slate-100 dark:bg-slate-800/60 rounded animate-pulse" />
+            <div className="h-3 w-24 /60 rounded animate-pulse" />
           </div>
-          <div className="h-5 w-20 bg-slate-100 dark:bg-slate-800/60 rounded animate-pulse" />
-          <div className="h-5 w-16 bg-slate-100 dark:bg-slate-800/60 rounded animate-pulse" />
+          <div className="h-5 w-20 /60 rounded animate-pulse" />
+          <div className="h-5 w-16 /60 rounded animate-pulse" />
         </div>
       ))}
     </div>
@@ -156,7 +156,7 @@ function InvoiceRow({ invoice, isSelected, onToggle, onView, onRecordPayment, on
     <div
       onClick={onView}
       className={`
-        group flex items-center gap-4 px-4 py-3 border-b border-slate-100 dark:border-slate-800 last:border-b-0
+        group flex items-center gap-4 px-4 py-3 border-b border-slate-200 last:border-b-0
         cursor-pointer transition-colors animate-fade-in-up
         ${isSelected ? 'bg-violet-50/50 dark:bg-violet-950/20' : 'hover:bg-slate-50 dark:hover:bg-slate-900/40'}
         ${overdue && status === 'en_attente' ? 'bg-rose-50/30 dark:bg-rose-950/10' : ''}
@@ -172,7 +172,7 @@ function InvoiceRow({ invoice, isSelected, onToggle, onView, onRecordPayment, on
         <div className="col-span-12 sm:col-span-4 min-w-0">
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
-            <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
+            <span className="text-xs font-mono text-slate-500">
               {invoice.reference || invoice.invoice_number || (invoice.invoice_id ? invoice.invoice_id.slice(0, 8) : '—')}
             </span>
           </div>
@@ -187,7 +187,7 @@ function InvoiceRow({ invoice, isSelected, onToggle, onView, onRecordPayment, on
             {amount.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €
           </div>
           {paid > 0 && paid < amount && (
-            <div className="text-xs text-slate-500 dark:text-slate-400">
+            <div className="text-xs text-slate-500">
               {paid.toLocaleString('fr-FR')} payés · {reste.toLocaleString('fr-FR')} reste
             </div>
           )}
@@ -205,7 +205,7 @@ function InvoiceRow({ invoice, isSelected, onToggle, onView, onRecordPayment, on
         </div>
 
         {/* Échéance */}
-        <div className="col-span-6 sm:col-span-2 text-xs text-slate-500 dark:text-slate-400">
+        <div className="col-span-6 sm:col-span-2 text-xs text-slate-500">
           {invoice.due_date ? shortDate(invoice.due_date) : relativeTime(invoice.created_at)}
         </div>
 
@@ -296,7 +296,7 @@ function RecordPaymentModal({ open, onOpenChange, invoice, onSubmit, isPending }
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <div>
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
               Montant (€)
             </label>
             <Input
@@ -307,7 +307,7 @@ function RecordPaymentModal({ open, onOpenChange, invoice, onSubmit, isPending }
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
               Méthode
             </label>
             <DropdownMenu>
@@ -327,7 +327,7 @@ function RecordPaymentModal({ open, onOpenChange, invoice, onSubmit, isPending }
             </DropdownMenu>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
               Référence (optionnel)
             </label>
             <Input
@@ -337,7 +337,7 @@ function RecordPaymentModal({ open, onOpenChange, invoice, onSubmit, isPending }
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
               Notes
             </label>
             <Textarea
@@ -600,8 +600,8 @@ export default function InvoicesList() {
           className={`
             flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ease-snappy
             ${status === '' && !smartFilter
-              ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm'
-              : 'bg-white dark:bg-slate-900/40 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'}
+              ? 'bg-slate-900 text-white   shadow-sm'
+              : 'section-card/40 text-slate-600 border border-slate-200 hover:border-slate-300 dark:hover:border-slate-700'}
           `}
         >
           <FileText className="w-3.5 h-3.5" />
@@ -620,8 +620,8 @@ export default function InvoicesList() {
               className={`
                 flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ease-snappy
                 ${active
-                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm'
-                  : 'bg-white dark:bg-slate-900/40 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'}
+                  ? 'bg-slate-900 text-white   shadow-sm'
+                  : 'section-card/40 text-slate-600 border border-slate-200 hover:border-slate-300 dark:hover:border-slate-700'}
               `}
             >
               <StatusBadge domain="invoice" status={s} size="xs" className="-ml-1 pointer-events-none" />
@@ -680,7 +680,7 @@ export default function InvoicesList() {
           }
         />
       ) : (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900/30">
+        <div className="rounded-xl border border-slate-200 overflow-hidden section-card/30">
           {filteredInvoices.map((inv, idx) => (
             <InvoiceRow
               key={inv.invoice_id}
@@ -700,7 +700,7 @@ export default function InvoicesList() {
       {/* Bulk actions */}
       {selectedIds.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-fade-in-up">
-          <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-card-xl ring-1 ring-slate-700/50 dark:ring-slate-300/50">
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-slate-900 text-white  shadow-card-xl ring-1 ring-slate-700/50 dark:ring-slate-300/50">
             <span className="text-sm font-medium">
               {selectedIds.size} {selectedIds.size > 1 ? 'factures sélectionnées' : 'facture sélectionnée'}
             </span>

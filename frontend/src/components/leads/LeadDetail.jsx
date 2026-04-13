@@ -106,7 +106,7 @@ function InfoRow({ icon: Icon, label, value, href }) {
     <div className="flex items-start gap-3 py-2.5 text-sm">
       <Icon className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
       <div className="min-w-0 flex-1">
-        <div className="text-xs text-slate-500 dark:text-slate-400">{label}</div>
+        <div className="text-xs text-slate-500">{label}</div>
         <div className="text-slate-900 dark:text-slate-100 truncate">{value}</div>
       </div>
     </div>
@@ -123,7 +123,7 @@ function InfoRow({ icon: Icon, label, value, href }) {
 // ── Item de timeline ─────────────────────────────────────────────
 function TimelineItem({ item }) {
   const icons = {
-    note: { Icon: FileText, color: 'text-slate-500 bg-slate-100 dark:bg-slate-800' },
+    note: { Icon: FileText, color: 'text-slate-500 ' },
     appel: { Icon: Phone, color: 'text-blue-600 bg-blue-50 dark:bg-blue-950/40 dark:text-blue-400' },
     email: { Icon: Mail, color: 'text-violet-600 bg-violet-50 dark:bg-violet-950/40 dark:text-violet-400' },
     sms: { Icon: MessageSquare, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400' },
@@ -147,17 +147,17 @@ function TimelineItem({ item }) {
             {item.title}
           </span>
           {item.badge && (
-            <span className="text-xs px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+            <span className="text-xs px-1.5 py-0.5 rounded  text-slate-600">
               {item.badge}
             </span>
           )}
         </div>
         {item.description && (
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 leading-relaxed whitespace-pre-wrap">
+          <p className="text-sm text-slate-600 mt-1 leading-relaxed whitespace-pre-wrap">
             {item.description}
           </p>
         )}
-        <div className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">
+        <div className="text-xs text-slate-400 mt-1.5">
           {relativeTime(item.date)} · {shortDateTime(item.date)}
         </div>
       </div>
@@ -381,7 +381,7 @@ export default function LeadDetail() {
       {activeTab === 'overview' && (
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
+            <div className="rounded-xl border border-slate-200 section-card/30 p-6">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">
                 Informations de contact
               </h3>
@@ -395,7 +395,7 @@ export default function LeadDetail() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
+            <div className="rounded-xl border border-slate-200 section-card/30 p-6">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">
                 Tracking & acquisition
               </h3>
@@ -411,11 +411,11 @@ export default function LeadDetail() {
             </div>
 
             {lead.message && (
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
+              <div className="rounded-xl border border-slate-200 section-card/30 p-6">
                 <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">
                   Message initial
                 </h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed">
+                <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">
                   {lead.message}
                 </p>
               </div>
@@ -423,20 +423,20 @@ export default function LeadDetail() {
           </div>
 
           <div className="space-y-6">
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6 flex flex-col items-center">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4">
+            <div className="rounded-xl border border-slate-200 section-card/30 p-6 flex flex-col items-center">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-4">
                 Score de prospection
               </h3>
               <ScoreCircle score={lead.score || 0} />
               {lead.probability !== undefined && (
                 <div className="w-full mt-6">
                   <div className="flex items-center justify-between text-xs mb-1.5">
-                    <span className="text-slate-500 dark:text-slate-400">Probabilité de closing</span>
+                    <span className="text-slate-500">Probabilité de closing</span>
                     <span className="font-semibold text-slate-900 dark:text-slate-100">
                       {lead.probability}%
                     </span>
                   </div>
-                  <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-1.5  rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-violet-500 to-pink-500 rounded-full transition-all duration-700 ease-standard"
                       style={{ width: `${lead.probability}%` }}
@@ -446,15 +446,15 @@ export default function LeadDetail() {
               )}
             </div>
 
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
+            <div className="rounded-xl border border-slate-200 section-card/30 p-6">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
                 Dernière activité
               </h3>
               <div className="flex items-center gap-2 text-sm text-slate-900 dark:text-slate-100">
                 <Clock className="w-4 h-4 text-slate-400" />
                 {relativeTime(lead.updated_at || lead.created_at)}
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              <p className="text-xs text-slate-500 mt-1">
                 {shortDateTime(lead.updated_at || lead.created_at)}
               </p>
             </div>
@@ -464,9 +464,9 @@ export default function LeadDetail() {
 
       {/* ── Onglet Timeline ─────────────────────────────────────── */}
       {activeTab === 'timeline' && (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
-          <form onSubmit={handleAddInteraction} className="mb-6 pb-6 border-b border-slate-200 dark:border-slate-800">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+        <div className="rounded-xl border border-slate-200 section-card/30 p-6">
+          <form onSubmit={handleAddInteraction} className="mb-6 pb-6 border-b border-slate-200">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
               Ajouter une interaction
             </label>
             <div className="flex gap-2 mb-2 flex-wrap">
@@ -478,8 +478,8 @@ export default function LeadDetail() {
                   className={`
                     px-3 py-1.5 rounded-full text-xs font-medium transition-colors capitalize
                     ${newInteraction.type === t
-                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}
+                      ? 'bg-slate-900 text-white  '
+                      : ' text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700'}
                   `}
                 >
                   {t}
@@ -524,7 +524,7 @@ export default function LeadDetail() {
 
       {/* ── Onglet Devis ────────────────────────────────────────── */}
       {activeTab === 'quotes' && (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
+        <div className="rounded-xl border border-slate-200 section-card/30 p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
               Devis liés ({quotes.length})
@@ -551,7 +551,7 @@ export default function LeadDetail() {
               {quotes.map((q) => (
                 <div
                   key={q.quote_id}
-                  className="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
+                  className="flex items-center justify-between p-4 rounded-lg border border-slate-200 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -560,7 +560,7 @@ export default function LeadDetail() {
                       </span>
                       <StatusBadge domain="quote" status={q.status} size="xs" />
                     </div>
-                    <div className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                    <div className="text-sm text-slate-500 mt-0.5">
                       {q.amount ? `${Number(q.amount).toLocaleString('fr-FR')} € HT` : 'Montant non défini'}
                       {' · '}
                       {relativeTime(q.created_at)}
@@ -581,7 +581,7 @@ export default function LeadDetail() {
 
       {/* ── Onglet Tâches ───────────────────────────────────────── */}
       {activeTab === 'tasks' && (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
+        <div className="rounded-xl border border-slate-200 section-card/30 p-6">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">
             Tâches ({tasks.length})
           </h3>
@@ -597,7 +597,7 @@ export default function LeadDetail() {
               {tasks.map((t) => (
                 <div
                   key={t.task_id || t.id}
-                  className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-800"
+                  className="flex items-start gap-3 p-3 rounded-lg border border-slate-200"
                 >
                   <CheckSquare
                     className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
@@ -611,7 +611,7 @@ export default function LeadDetail() {
                       {t.title}
                     </div>
                     {t.description && (
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.description}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{t.description}</p>
                     )}
                     {t.due_date && (
                       <p className="text-xs text-slate-400 mt-1">
@@ -629,7 +629,7 @@ export default function LeadDetail() {
 
       {/* ── Onglet Notes ────────────────────────────────────────── */}
       {activeTab === 'notes' && (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 p-6">
+        <div className="rounded-xl border border-slate-200 section-card/30 p-6">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
               Notes privées
