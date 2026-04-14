@@ -15,7 +15,7 @@ import axios from 'axios';
 import BACKEND_URL from '../config';
 
 const api = axios.create({
-  baseURL: `${BACKEND_URL}/api`,
+  baseURL: `${BACKEND_URL}/api`.replace('http://', 'https://'),
   timeout: 15000,
   withCredentials: true,
   headers: {
@@ -115,5 +115,16 @@ export const queryKeys = {
     apiKeys: () => ['settings', 'apiKeys'],
   },
 };
+
+// Force HTTPS sur toutes les requêtes de cette instance
+api.interceptors.request.use((config) => {
+  if (config.url && config.url.startsWith('http://')) {
+    config.url = config.url.replace('http://', 'https://');
+  }
+  if (config.baseURL && config.baseURL.startsWith('http://')) {
+    config.baseURL = config.baseURL.replace('http://', 'https://');
+  }
+  return config;
+});
 
 export default api;

@@ -12,7 +12,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../lib/api';
 import { useTheme } from '../../contexts/ThemeContext';
 import BACKEND_URL from '../../config.js';
-const API_URL = BACKEND_URL + '/api';
+const API_URL = (BACKEND_URL + '/api').replace('http://', 'https://');
 import axios from 'axios';
 
 /* ── NAV GROUPS ── */
@@ -125,7 +125,7 @@ export default function Sidebar() {
     } catch {}
   }, []);
 
-  useEffect(() => { fetchBadges(); const t = setInterval(fetchBadges, 60000); return () => clearInterval(t); }, [fetchBadges]);
+  useEffect(() => { fetchBadges(); const t = setInterval(fetchBadges, 120000); return () => clearInterval(t); }, [fetchBadges]);
 
   const toggleGroup = (label) => setOpenGroups(p => ({ ...p, [label]: !p[label] }));
 
