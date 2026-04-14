@@ -54,10 +54,12 @@ import { Checkbox } from '../ui/checkbox';
 const SERVICES = ['Ménage', 'Canapé', 'Matelas', 'Tapis', 'Bureaux'];
 const SOURCES = ['Google Ads', 'SEO', 'Meta Ads', 'Direct', 'Referral', 'Recommandation'];
 const PERIODS = [
+  { value: 'all', label: 'Tous les leads' },
   { value: '1d', label: "Aujourd'hui" },
   { value: '7d', label: '7 derniers jours' },
   { value: '30d', label: '30 derniers jours' },
   { value: '90d', label: '90 derniers jours' },
+  { value: '1y', label: 'Cette année' },
 ];
 const FAVORITES_KEY = 'crm:favorite-leads';
 
@@ -485,7 +487,7 @@ export default function LeadsList() {
   const [status, setStatus] = useState('');
   const [service, setService] = useState('');
   const [source, setSource] = useState('');
-  const [period, setPeriod] = useState('30d');
+  const [period, setPeriod] = useState('all');
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [favorites, setFavorites] = useState(loadFavorites);
@@ -659,7 +661,7 @@ export default function LeadsList() {
     setStatus('');
     setService('');
     setSource('');
-    setPeriod('30d');
+    setPeriod('all');
     setSearch('');
   }, []);
 
@@ -672,7 +674,7 @@ export default function LeadsList() {
     escape: () => handleClearSelection(),
   });
 
-  const hasFilters = status || service || source || search || period !== '30d';
+  const hasFilters = status || service || source || search || period !== 'all';
 
   // ── Render ────────────────────────────────────────────────────
   return (
