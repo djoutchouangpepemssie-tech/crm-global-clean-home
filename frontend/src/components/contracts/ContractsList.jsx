@@ -385,7 +385,7 @@ function EmptyState({ search, filter, onReset, onCreate }) {
       }}>
         {hasFilters ? 'Aucun contrat trouvé' : 'Pas encore de contrats'}
       </h3>
-      <p style={{ color: '#64748b', fontSize: 13, maxWidth: 360, margin: '0 auto 24px', lineHeight: 1.6 }}>
+      <p style={{ color: 'var(--text-muted)', fontSize: 13, maxWidth: 360, margin: '0 auto 24px', lineHeight: 1.6 }}>
         {hasFilters
           ? 'Essayez de modifier vos filtres ou votre recherche pour trouver ce que vous cherchez.'
           : 'Créez votre premier contrat récurrent pour commencer à gérer vos prestations automatiquement.'}
@@ -395,7 +395,7 @@ function EmptyState({ search, filter, onReset, onCreate }) {
           <button
             onClick={onReset}
             className="ct-premium-btn"
-            style={{ background: 'rgba(255,255,255,0.06)', color: '#94a3b8' }}
+            style={{ background: 'var(--border-default)', color: '#94a3b8' }}
           >
             <RotateCcw style={{ width: 14, height: 14 }} />
             Réinitialiser
@@ -446,13 +446,13 @@ function ConfirmModal({ isOpen, onConfirm, onCancel, title, desc, confirmLabel, 
         </div>
         <h3 style={{
           fontFamily: 'Manrope, sans-serif', fontSize: 17, fontWeight: 700,
-          color: '#f1f5f9', margin: '0 0 8px', textAlign: 'center'
+          color: 'var(--text-primary)', margin: '0 0 8px', textAlign: 'center'
         }}>{title}</h3>
         <p style={{ color: '#94a3b8', fontSize: 13, textAlign: 'center', margin: '0 0 24px', lineHeight: 1.5 }}>{desc}</p>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={onCancel} className="ct-premium-btn" style={{
             flex: 1, justifyContent: 'center',
-            background: 'rgba(255,255,255,0.06)', color: '#94a3b8',
+            background: 'var(--border-default)', color: '#94a3b8',
             border: '1px solid rgba(255,255,255,0.08)',
           }}>Annuler</button>
           <button onClick={onConfirm} className="ct-premium-btn" style={{
@@ -496,11 +496,11 @@ function ContractCard({ contract, index, onEdit, onAction, onConfirmAction }) {
             </div>
             <div style={{ minWidth: 0 }}>
               <p style={{
-                fontSize: 14, fontWeight: 700, color: '#f1f5f9',
+                fontSize: 14, fontWeight: 700, color: 'var(--text-primary)',
                 fontFamily: 'Manrope, sans-serif',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0
               }}>{c.client_name}</p>
-              <p style={{ fontSize: 11, color: '#64748b', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {c.client_email || c.client_phone || '—'}
               </p>
             </div>
@@ -565,31 +565,31 @@ function ContractCard({ contract, index, onEdit, onAction, onConfirmAction }) {
           <p style={{ fontSize: 15, fontWeight: 800, color: '#a78bfa', margin: 0, fontFamily: 'Manrope, sans-serif' }}>
             {c.price_per_intervention ? `${c.price_per_intervention}€` : '—'}
           </p>
-          <p style={{ fontSize: 9, color: '#64748b', margin: '2px 0 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>/ inter.</p>
+          <p style={{ fontSize: 9, color: 'var(--text-muted)', margin: '2px 0 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>/ inter.</p>
         </div>
         <div style={{ textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.06)', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
           <p style={{ fontSize: 15, fontWeight: 800, color: '#8b5cf6', margin: 0, fontFamily: 'Manrope, sans-serif' }}>
             {monthlyValue ? `${Math.round(monthlyValue)}€` : '—'}
           </p>
-          <p style={{ fontSize: 9, color: '#64748b', margin: '2px 0 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>MRR</p>
+          <p style={{ fontSize: 9, color: 'var(--text-muted)', margin: '2px 0 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>MRR</p>
         </div>
         <div style={{ textAlign: 'center' }}>
           <p style={{ fontSize: 15, fontWeight: 800, color: '#7c3aed', margin: 0, fontFamily: 'Manrope, sans-serif' }}>
             {annualValue ? `${Math.round(annualValue).toLocaleString('fr-FR')}€` : '—'}
           </p>
-          <p style={{ fontSize: 9, color: '#64748b', margin: '2px 0 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Annuel</p>
+          <p style={{ fontSize: 9, color: 'var(--text-muted)', margin: '2px 0 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Annuel</p>
         </div>
       </div>
 
       {/* Next intervention + Dates */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, fontSize: 12, color: '#94a3b8' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <Calendar style={{ width: 12, height: 12, color: '#64748b' }} />
+          <Calendar style={{ width: 12, height: 12, color: 'var(--text-muted)' }} />
           <span>Prochaine : {c.next_intervention ? new Date(c.next_intervention).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '—'}</span>
         </div>
         {c.intervenant_name && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <Users style={{ width: 12, height: 12, color: '#64748b' }} />
+            <Users style={{ width: 12, height: 12, color: 'var(--text-muted)' }} />
             <span>{c.intervenant_name}</span>
           </div>
         )}
@@ -643,7 +643,7 @@ function ContractCard({ contract, index, onEdit, onAction, onConfirmAction }) {
           onClick={() => onEdit(c)}
           className="ct-action-btn"
           title="Détails"
-          style={{ background: 'rgba(255,255,255,0.04)', color: '#64748b' }}
+          style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--text-muted)' }}
         >
           <Eye style={{ width: 14, height: 14 }} />
         </button>
@@ -669,7 +669,7 @@ function ContractModal({ isOpen, editingId, form, setForm, onSave, onClose }) {
   const inputStyle = 'ct-modal-input';
   const selectStyle = 'ct-modal-select';
   const labelStyle = {
-    display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b',
+    display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
     marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em',
   };
 
@@ -714,17 +714,17 @@ function ContractModal({ isOpen, editingId, form, setForm, onSave, onClose }) {
             <div>
               <h2 style={{
                 fontFamily: 'Manrope, sans-serif', fontSize: 17, fontWeight: 800,
-                color: '#f1f5f9', margin: 0
+                color: 'var(--text-primary)', margin: 0
               }}>
                 {editingId ? 'Modifier le contrat' : 'Nouveau contrat'}
               </h2>
-              <p style={{ fontSize: 11, color: '#64748b', margin: '2px 0 0' }}>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '2px 0 0' }}>
                 {editingId ? 'Mettez à jour les informations' : 'Configurez un nouveau contrat récurrent'}
               </p>
             </div>
           </div>
           <button onClick={onClose} className="ct-action-btn" style={{
-            background: 'rgba(255,255,255,0.06)', color: '#64748b'
+            background: 'var(--border-default)', color: 'var(--text-muted)'
           }}>
             <X style={{ width: 16, height: 16 }} />
           </button>
@@ -857,7 +857,7 @@ function ContractModal({ isOpen, editingId, form, setForm, onSave, onClose }) {
             </div>
             <div>
               <p style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', margin: 0 }}>Renouvellement automatique</p>
-              <p style={{ fontSize: 11, color: '#64748b', margin: '2px 0 0' }}>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '2px 0 0' }}>
                 {form.auto_renew ? 'Le contrat se renouvellera automatiquement' : 'Le contrat expirera à la date de fin'}
               </p>
             </div>
@@ -880,7 +880,7 @@ function ContractModal({ isOpen, editingId, form, setForm, onSave, onClose }) {
           background: 'rgba(0,0,0,0.2)',
         }}>
           <button onClick={onClose} className="ct-premium-btn" style={{
-            background: 'rgba(255,255,255,0.06)', color: '#94a3b8',
+            background: 'var(--border-default)', color: '#94a3b8',
             border: '1px solid rgba(255,255,255,0.08)',
           }}>
             Annuler
@@ -911,8 +911,7 @@ const ContractsList = () => {
   injectStyles();
 
   // ── Vague 6 : React Query ────────────────────────────────────
-  const filters = useMemo(() => ({ status: statusFilter || undefined }), [statusFilter]);
-  const { data: contracts = [], isLoading: loading, refetch: fetchContracts } = useContractsList(filters);
+  const { data: contracts = [], isLoading: loading, refetch: fetchContracts } = useContractsList({});
   const createContractMut = useCreateContract();
   const contractActionMut = useContractAction();
   const generateIntMut = useGenerateInterventions();
@@ -936,6 +935,7 @@ const ContractsList = () => {
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const filters = useMemo(() => ({ status: statusFilter || undefined }), [statusFilter]);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(defaultForm);
@@ -1096,13 +1096,13 @@ const ContractsList = () => {
               )}
             </div>
             <p style={{
-              fontSize: 28, fontWeight: 800, color: '#f1f5f9', margin: 0,
+              fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: 0,
               fontFamily: 'Manrope, sans-serif', position: 'relative',
               animation: m.isRevenue ? 'ct-count-up 0.6s ease-out' : undefined,
             }}>
               <AnimatedCounter value={m.value} suffix={m.suffix || ''} />
             </p>
-            <p style={{ fontSize: 12, color: '#64748b', marginTop: 4, position: 'relative' }}>{m.label}</p>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, position: 'relative' }}>{m.label}</p>
           </div>
         ))}
       </div>
@@ -1118,7 +1118,7 @@ const ContractsList = () => {
           <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
             <Search style={{
               position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
-              color: '#64748b', width: 15, height: 15, pointerEvents: 'none'
+              color: 'var(--text-muted)', width: 15, height: 15, pointerEvents: 'none'
             }} />
             <input
               className="ct-search-input"
@@ -1132,9 +1132,9 @@ const ContractsList = () => {
               className="ct-filter-chip"
               onClick={() => setStatusFilter('')}
               style={{
-                color: !statusFilter ? '#f1f5f9' : '#64748b',
-                background: !statusFilter ? 'rgba(255,255,255,0.08)' : 'transparent',
-                borderColor: !statusFilter ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)',
+                color: !statusFilter ? 'var(--text-primary)' : 'var(--text-muted)',
+                background: !statusFilter ? 'var(--bg-muted)' : 'transparent',
+                borderColor: !statusFilter ? 'var(--border-strong)' : 'var(--border-default)',
               }}
             >
               Tous ({contracts.length})
@@ -1148,9 +1148,9 @@ const ContractsList = () => {
                   className="ct-filter-chip"
                   onClick={() => setStatusFilter(isActive ? '' : key)}
                   style={{
-                    color: isActive ? cfg.color : '#64748b',
+                    color: isActive ? cfg.color : 'var(--text-muted)',
                     background: isActive ? cfg.bg : 'transparent',
-                    borderColor: isActive ? cfg.border : 'rgba(255,255,255,0.06)',
+                    borderColor: isActive ? cfg.border : 'var(--border-default)',
                     boxShadow: isActive ? `0 0 12px ${cfg.glow}` : 'none',
                   }}
                 >
