@@ -1,3 +1,4 @@
+// CRM v2.1 - HTTPS enforced - build 202604141733
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, NavLink } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
