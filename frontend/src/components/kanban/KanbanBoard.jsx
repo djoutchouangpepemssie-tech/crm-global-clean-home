@@ -532,7 +532,7 @@ const KanbanBoard = () => {
   // React Query gère le fetching + le cache. L'invalidation depuis d'autres
   // pages (création de lead, update depuis la liste...) met à jour ce kanban
   // automatiquement sans reload.
-  const kanbanFilters = { period: '90d', page: 1, page_size: 500 };
+  const kanbanFilters = { period: 'all', page: 1, page_size: 200 };
   const { data: leads = [], isLoading: loading, isRefetching: isRefreshing, refetch } = useLeadsList(kanbanFilters);
   const updateLead = useUpdateLead();
 
