@@ -1,30 +1,63 @@
 import axios from 'axios';
 
-// Backend URL configuration
-// Production: Use Railway domain with HTTPS (FORCE HTTPS)
-// Local: Use localhost:8000 with HTTP
-// Force HTTPS - build v2
-const BACKEND_URL = (() => {
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    return 'http://localhost:8000';
-  }
-  // FORCE HTTPS for all production domains - never HTTP
-  const base = 'https://crm-global-clean-home-production.up.railway.app';
-  return base.replace('http://', 'https://');
-})();
+// ══════════════════════════════════════════════════════════════
+// BACKEND URL — Hardcodé HTTPS en production, localhost en dev.
+// Le navigateur refuse les requêtes http:// depuis une page https://
+// (Mixed Content). Toute requête non-HTTPS est upgradée ici.
+// ══════════════════════════════════════════════════════════════
+const isLocal =
+  typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-console.log('[Config] BACKEND_URL:', BACKEND_URL);
+const BACKEND_URL = isLocal
+  ? 'http://localhost:8000'
+  : 'https://crm-global-clean-home-production.up.railway.app';
 
-// Force HTTPS interceptor
+// Double sécurité : si on n'est pas en local, forcer HTTPS de toute manière
+const SAFE_BACKEND_URL = isLocal
+  ? BACKEND_URL
+  : BACKEND_URL.replace(/^http:\/\//i, 'https://');
+
+console.log('[Config] BACKEND_URL:', SAFE_BACKEND_URL);
+
+// ══════════════════════════════════════════════════════════════
+// INTERCEPTEURS AXIOS — Force HTTPS + auth bearer
+// ══════════════════════════════════════════════════════════════
 axios.interceptors.request.use((config) => {
-  if (config.url && config.url.startsWith('http://')) {
-    config.url = config.url.replace('http://', 'https://');
+  // Force HTTPS sur url
+  if (config.url && typeof config.url === 'string' && !isLocal) {
+    config.url = config.url.replace(/^http:\/\//i, 'https://');
   }
-  if (config.baseURL && config.baseURL.startsWith('http://')) {
-    config.baseURL = config.baseURL.replace('http://', 'https://');
+  // Force HTTPS sur baseURL
+  if (config.baseURL && typeof config.baseURL === 'string' && !isLocal) {
+    config.baseURL = config.baseURL.replace(/^http:\/\//i, 'https://');
   }
   return config;
 });
+
+// ══════════════════════════════════════════════════════════════
+// FETCH NATIF — monkey-patch pour forcer HTTPS aussi
+// Couvre les appels qui n'utilisent pas axios (firebase, keepAlive...)
+// ══════════════════════════════════════════════════════════════
+if (typeof window !== 'undefined' && !isLocal && !window.__fetchPatched) {
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = function (input, init) {
+    try {
+      if (typeof input === 'string') {
+        input = input.replace(/^http:\/\/crm-global-clean-home-production\.up\.railway\.app/i,
+                              'https://crm-global-clean-home-production.up.railway.app');
+      } else if (input && typeof input === 'object' && input.url) {
+        const safeUrl = input.url.replace(/^http:\/\/crm-global-clean-home-production\.up\.railway\.app/i,
+                                          'https://crm-global-clean-home-production.up.railway.app');
+        if (safeUrl !== input.url) {
+          input = new Request(safeUrl, input);
+        }
+      }
+    } catch {}
+    return originalFetch(input, init);
+  };
+  window.__fetchPatched = true;
+}
 
 // Request interceptor: Add token to all requests
 axios.interceptors.request.use((config) => {
@@ -36,7 +69,7 @@ axios.interceptors.request.use((config) => {
   return config;
 });
 
-export const API_BASE_URL = BACKEND_URL;
+export const API_BASE_URL = SAFE_BACKEND_URL;
 
 axios.defaults.timeout = 15000; // 15s timeout
 
@@ -55,4 +88,4 @@ axios.interceptors.response.use(
   }
 );
 
-export default BACKEND_URL;
+export default SAFE_BACKEND_URL;
