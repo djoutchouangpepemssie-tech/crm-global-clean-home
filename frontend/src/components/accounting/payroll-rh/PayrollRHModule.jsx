@@ -1,604 +1,512 @@
-/**
- * PayrollRHModule PRO — Enterprise-Grade Professional Version
- * Architecture : Modular, Scalable, Zero-Bug Guaranteed
- */
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import axios from 'axios';
-import BACKEND_URL from '../../../config';
-import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
-import { Button } from '../../ui/button';
-import { Badge } from '../../ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
-import {
-  Briefcase, RefreshCw, AlertCircle, TrendingUp, Users, FileText,
-  DollarSign, Clock, Download, Plus, Eye, Edit2, Trash2, CheckCircle, AlertTriangle
-} from 'lucide-react';
+import { toast } from 'sonner';
+import { Plus, RefreshCw, User, FileText, Euro, X, Check, Trash2, Download } from 'lucide-react';
+import BACKEND_URL from '../../../config.js';
+const API = `${BACKEND_URL}/api/payroll-rh`;
 
-const API_BASE = `${BACKEND_URL}/api/payroll-rh`;
+const TABS = [
+  { id: 'employees', label: '👥 Employés' },
+  { id: 'payslips', label: '💰 Fiches de paie' },
+  { id: 'contracts', label: '📋 Contrats' },
+  { id: 'expenses', label: '🧾 Notes de frais' },
+];
 
-// ═══════════════════════════════════════════════════════════════════════
-// MAIN MODULE COMPONENT
-// ═══════════════════════════════════════════════════════════════════════
+const fmt = (v) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(v || 0);
 
-export default function PayrollRHModulePro() {
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [refreshKey, setRefreshKey] = useState(0);
+function Modal({ title, onClose, children }) {
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
+    }}>
+      <div style={{
+        background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)',
+        border: '1px solid var(--border-default)', width: '100%', maxWidth: '560px',
+        maxHeight: '90vh', overflow: 'auto', boxShadow: 'var(--shadow-dropdown)'
+      }}>
+        <div style={{
+          padding: '16px 20px', borderBottom: '1px solid var(--border-default)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+        }}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{title}</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px' }}>
+            <X size={18} />
+          </button>
+        </div>
+        <div style={{ padding: '20px' }}>{children}</div>
+      </div>
+    </div>
+  );
+}
 
-  const handleRefresh = useCallback(() => {
-    setRefreshKey(prev => prev + 1);
+function Field({ label, children }) {
+  return (
+    <div style={{ marginBottom: '14px' }}>
+      <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function Input({ value, onChange, type = 'text', placeholder }) {
+  return (
+    <input
+      type={type} value={value} onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      style={{
+        width: '100%', padding: '8px 12px',
+        background: 'var(--bg-input)', border: '1px solid var(--border-input)',
+        borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
+        fontSize: '13px', outline: 'none', boxSizing: 'border-box'
+      }}
+    />
+  );
+}
+
+function Select({ value, onChange, options }) {
+  return (
+    <select value={value} onChange={e => onChange(e.target.value)} style={{
+      width: '100%', padding: '8px 12px',
+      background: 'var(--bg-input)', border: '1px solid var(--border-input)',
+      borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', fontSize: '13px'
+    }}>
+      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+    </select>
+  );
+}
+
+function Btn({ children, onClick, variant = 'primary', disabled, style = {} }) {
+  const styles = {
+    primary: { background: 'var(--brand)', color: '#fff', border: 'none' },
+    secondary: { background: 'var(--bg-muted)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' },
+    danger: { background: '#ef4444', color: '#fff', border: 'none' },
+  };
+  return (
+    <button onClick={onClick} disabled={disabled} style={{
+      display: 'inline-flex', alignItems: 'center', gap: '6px',
+      padding: '8px 16px', borderRadius: 'var(--radius-md)',
+      fontSize: '13px', fontWeight: 600, cursor: disabled ? 'not-allowed' : 'pointer',
+      opacity: disabled ? 0.6 : 1, transition: 'all 0.15s',
+      ...styles[variant], ...style
+    }}>
+      {children}
+    </button>
+  );
+}
+
+/* ══════════════════ EMPLOYEES ══════════════════ */
+function EmployeesTab() {
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState({ first_name: '', last_name: '', email: '', phone: '', role: 'intervenant', salary_base: '', contract_type: 'CDI', start_date: '' });
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const { data } = await axios.get(`${API}/employees`, { withCredentials: true });
+      setEmployees(Array.isArray(data) ? data : data.items || []);
+    } catch (e) { toast.error('Erreur chargement employés'); }
+    setLoading(false);
   }, []);
 
-  return (
-    <div className="w-full bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen p-6">
-      {/* HEADER */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-violet-500/20 rounded-lg">
-              <Briefcase className="h-8 w-8 text-violet-600" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Paie & Ressources Humaines</h1>
-              <p className="text-sm text-gray-600 mt-1">Gestion complète des salaires, contrats et notes de frais</p>
-            </div>
-          </div>
-          <Button 
-            onClick={handleRefresh}
-            variant="outline"
-            className="gap-2"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Actualiser
-          </Button>
-        </div>
-      </div>
+  useEffect(() => { load(); }, [load]);
 
-      {/* TABS NAVIGATION */}
-      <Tabs 
-        value={activeTab} 
-        onValueChange={setActiveTab}
-        className="w-full"
-      >
-        <TabsList className="grid w-full grid-cols-5 mb-6 bg-white border border-gray-200 rounded-lg p-1">
-          <TabsTrigger 
-            value="dashboard"
-            className="data-[state=active]:bg-violet-500 data-[state=active]:text-white"
-          >
-            <TrendingUp className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Vue d'ensemble</span>
-            <span className="sm:hidden">Accueil</span>
-          </TabsTrigger>
-          
-          <TabsTrigger 
-            value="employees"
-            className="data-[state=active]:bg-violet-500 data-[state=active]:text-white"
-          >
-            <Users className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Intervenants</span>
-            <span className="sm:hidden">RH</span>
-          </TabsTrigger>
-          
-          <TabsTrigger 
-            value="contracts"
-            className="data-[state=active]:bg-violet-500 data-[state=active]:text-white"
-          >
-            <FileText className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Contrats</span>
-            <span className="sm:hidden">Docs</span>
-          </TabsTrigger>
-          
-          <TabsTrigger 
-            value="payslips"
-            className="data-[state=active]:bg-violet-500 data-[state=active]:text-white"
-          >
-            <DollarSign className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Fiches de Paie</span>
-            <span className="sm:hidden">Paie</span>
-          </TabsTrigger>
-          
-          <TabsTrigger 
-            value="expenses"
-            className="data-[state=active]:bg-violet-500 data-[state=active]:text-white"
-          >
-            <Clock className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Notes de Frais</span>
-            <span className="sm:hidden">Frais</span>
-          </TabsTrigger>
-        </TabsList>
-
-        {/* TAB CONTENTS */}
-        <div className="space-y-6">
-          <TabsContent value="dashboard" key={`dashboard-${refreshKey}`}>
-            <DashboardTabPro />
-          </TabsContent>
-
-          <TabsContent value="employees" key={`employees-${refreshKey}`}>
-            <EmployeesTabPro />
-          </TabsContent>
-
-          <TabsContent value="contracts" key={`contracts-${refreshKey}`}>
-            <ContractsTabPro />
-          </TabsContent>
-
-          <TabsContent value="payslips" key={`payslips-${refreshKey}`}>
-            <PayslipsTabPro />
-          </TabsContent>
-
-          <TabsContent value="expenses" key={`expenses-${refreshKey}`}>
-            <ExpenseReportsTabPro />
-          </TabsContent>
-        </div>
-      </Tabs>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// HOOKS & UTILITIES
-// ═══════════════════════════════════════════════════════════════════════
-
-const useApiData = (endpoint, defaultValue = null) => {
-  const [data, setData] = useState(defaultValue);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const fetch = useCallback(async () => {
+  const handleCreate = async () => {
+    if (!form.first_name || !form.last_name) return toast.error('Prénom et nom requis');
+    setSaving(true);
     try {
-      setLoading(true);
-      setError(null);
-      const response = await axios.get(`${API_BASE}${endpoint}`, {
-        timeout: 8000,
-        headers: { 'Accept': 'application/json' }
-      });
-      setData(response.data);
-    } catch (err) {
-      console.error(`[useApiData] Error fetching ${endpoint}:`, err);
-      setError(err.response?.data?.detail || err.message || 'Erreur de chargement');
-      setData(defaultValue);
-    } finally {
-      setLoading(false);
-    }
-  }, [endpoint]);
-
-  useEffect(() => {
-    fetch();
-  }, [fetch]);
-
-  return { data, loading, error, refetch: fetch };
-};
-
-const formatCurrency = (value) => {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  }).format(value || 0);
-};
-
-const getStatusBadgeVariant = (status) => {
-  const variants = {
-    'active': 'bg-green-100 text-green-800 border-green-300',
-    'inactive': 'bg-gray-100 text-gray-800 border-gray-300',
-    'suspended': 'bg-yellow-100 text-yellow-800 border-yellow-300',
-    'paid': 'bg-green-100 text-green-800 border-green-300',
-    'pending': 'bg-blue-100 text-blue-800 border-blue-300',
-    'validated': 'bg-green-100 text-green-800 border-green-300',
-    'rejected': 'bg-red-100 text-red-800 border-red-300'
+      await axios.post(`${API}/employees`, { ...form, salary_base: parseFloat(form.salary_base) || 0 }, { withCredentials: true });
+      toast.success('Employé créé !');
+      setShowModal(false);
+      setForm({ first_name: '', last_name: '', email: '', phone: '', role: 'intervenant', salary_base: '', contract_type: 'CDI', start_date: '' });
+      load();
+    } catch (e) { toast.error(e.response?.data?.detail || 'Erreur création'); }
+    setSaving(false);
   };
-  return variants[status] || 'bg-gray-100 text-gray-800 border-gray-300';
-};
 
-// ═══════════════════════════════════════════════════════════════════════
-// REUSABLE COMPONENTS
-// ═══════════════════════════════════════════════════════════════════════
-
-const LoadingState = () => (
-  <div className="flex items-center justify-center py-12">
-    <div className="text-center">
-      <div className="animate-spin mb-4">
-        <RefreshCw className="h-8 w-8 text-violet-500 mx-auto" />
-      </div>
-      <p className="text-gray-600 font-medium">Chargement des données...</p>
-    </div>
-  </div>
-);
-
-const ErrorState = ({ message, onRetry }) => (
-  <Card className="border-red-200 bg-red-50">
-    <CardContent className="pt-6">
-      <div className="flex items-start gap-4">
-        <AlertCircle className="h-6 w-6 text-red-600 flex-shrink-0 mt-0.5" />
-        <div className="flex-1">
-          <h3 className="font-semibold text-red-900">Erreur de chargement</h3>
-          <p className="text-sm text-red-700 mt-1">{message}</p>
-          {onRetry && (
-            <Button onClick={onRetry} size="sm" variant="outline" className="mt-3">
-              Réessayer
-            </Button>
-          )}
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-);
-
-const EmptyState = ({ icon: Icon, title, description, action }) => (
-  <Card className="border-dashed border-2">
-    <CardContent className="pt-12 pb-12 text-center">
-      <Icon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-      <h3 className="font-semibold text-gray-900 mb-2">{title}</h3>
-      <p className="text-sm text-gray-600 mb-6">{description}</p>
-      {action && action}
-    </CardContent>
-  </Card>
-);
-
-const KPICard = ({ title, value, trend, icon: Icon, color = 'violet' }) => (
-  <Card>
-    <CardContent className="pt-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-gray-600 font-medium">{title}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-2">{value}</p>
-          {trend && (
-            <p className={`text-xs mt-2 ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {trend > 0 ? '↑' : '↓'} {Math.abs(trend)}% vs mois dernier
-            </p>
-          )}
-        </div>
-        <div className={`p-3 bg-${color}-100 rounded-lg`}>
-          <Icon className={`h-6 w-6 text-${color}-600`} />
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-);
-
-// ═══════════════════════════════════════════════════════════════════════
-// DASHBOARD TAB PRO
-// ═══════════════════════════════════════════════════════════════════════
-
-function DashboardTabPro() {
-  const { data: stats, loading, error, refetch } = useApiData('/stats', {});
-
-  if (loading) return <LoadingState />;
-  if (error) return <ErrorState message={error} onRetry={refetch} />;
-
-  const totalEmployees = stats.total_employees || 0;
-  const monthlySalary = stats.monthly_salary_total || 0;
-  const socialCharges = monthlySalary * 0.42;
-  const pendingExpenses = stats.pending_expenses || 0;
+  const handleDelete = async (id) => {
+    if (!window.confirm('Supprimer cet employé ?')) return;
+    try {
+      await axios.delete(`${API}/employees/${id}`, { withCredentials: true });
+      toast.success('Employé supprimé');
+      load();
+    } catch (e) { toast.error('Erreur suppression'); }
+  };
 
   return (
-    <div className="space-y-6">
-      {/* KPI GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard 
-          title="Intervenants Actifs"
-          value={totalEmployees}
-          icon={Users}
-          color="blue"
-        />
-        <KPICard 
-          title="Masse Salariale (Mois)"
-          value={formatCurrency(monthlySalary)}
-          icon={DollarSign}
-          color="green"
-        />
-        <KPICard 
-          title="Charges Sociales"
-          value={formatCurrency(socialCharges)}
-          icon={TrendingUp}
-          color="orange"
-        />
-        <KPICard 
-          title="Notes en Attente"
-          value={pendingExpenses}
-          icon={Clock}
-          color="red"
-        />
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--text-primary)' }}>
+          {employees.length} employé{employees.length > 1 ? 's' : ''}
+        </h3>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Btn variant="secondary" onClick={load}><RefreshCw size={14} /></Btn>
+          <Btn onClick={() => setShowModal(true)}><Plus size={14} /> Nouvel employé</Btn>
+        </div>
       </div>
 
-      {/* QUICK STATS */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Récapitulatif du mois</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <div>
-              <p className="text-sm text-gray-600">Coût total (Brut + Charges)</p>
-              <p className="text-xl font-bold text-gray-900 mt-1">
-                {formatCurrency(monthlySalary + socialCharges)}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Coût unitaire moyen</p>
-              <p className="text-xl font-bold text-gray-900 mt-1">
-                {formatCurrency(totalEmployees > 0 ? (monthlySalary + socialCharges) / totalEmployees : 0)}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Taux de charge</p>
-              <p className="text-xl font-bold text-gray-900 mt-1">
-                {(monthlySalary > 0 ? (socialCharges / monthlySalary * 100).toFixed(1) : 0)}%
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Dépenses en attente</p>
-              <p className="text-xl font-bold text-red-600 mt-1">{pendingExpenses}</p>
-            </div>
+      {loading ? <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '32px' }}>Chargement...</p> :
+        employees.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+            <User size={40} style={{ margin: '0 auto 12px', opacity: 0.3 }} />
+            <p>Aucun employé — créez le premier</p>
           </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// EMPLOYEES TAB PRO
-// ═══════════════════════════════════════════════════════════════════════
-
-function EmployeesTabPro() {
-  const { data: response, loading, error, refetch } = useApiData('/employees', { employees: [] });
-  const employees = useMemo(() => response.employees || [], [response]);
-
-  if (loading) return <LoadingState />;
-  if (error) return <ErrorState message={error} onRetry={refetch} />;
-  if (employees.length === 0) {
-    return <EmptyState 
-      icon={Users} 
-      title="Aucun intervenant" 
-      description="Commencez par ajouter des intervenants à votre équipe"
-      action={<Button className="gap-2"><Plus className="h-4 w-4" />Ajouter un intervenant</Button>}
-    />;
-  }
-
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Annuaire des Intervenants ({employees.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-gray-200 bg-gray-50">
-                <tr>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700">Nom</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700">Fonction</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700">Email</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700">Statut</th>
-                  <th className="text-right px-4 py-3 font-semibold text-gray-700">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {employees.map((emp, idx) => (
-                  <tr key={emp._id || idx} className="border-b border-gray-100 hover:bg-gray-50 transition">
-                    <td className="px-4 py-4 font-medium text-gray-900">{emp.full_name}</td>
-                    <td className="px-4 py-4 text-gray-600">{emp.function}</td>
-                    <td className="px-4 py-4 text-gray-600">{emp.email}</td>
-                    <td className="px-4 py-4">
-                      <Badge variant="outline" className={getStatusBadgeVariant(emp.status)}>
-                        {emp.status === 'active' ? '🟢 Actif' : emp.status === 'suspended' ? '🟡 Suspendu' : '🔴 Quitté'}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="ghost"><Eye className="h-4 w-4" /></Button>
-                        <Button size="sm" variant="ghost"><Edit2 className="h-4 w-4" /></Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// CONTRACTS TAB PRO
-// ═══════════════════════════════════════════════════════════════════════
-
-function ContractsTabPro() {
-  const { data: response, loading, error, refetch } = useApiData('/contracts', { contracts: [] });
-  const contracts = useMemo(() => response.contracts || [], [response]);
-
-  if (loading) return <LoadingState />;
-  if (error) return <ErrorState message={error} onRetry={refetch} />;
-  if (contracts.length === 0) {
-    return <EmptyState 
-      icon={FileText} 
-      title="Aucun contrat" 
-      description="Créez le premier contrat pour vos intervenants"
-      action={<Button className="gap-2"><Plus className="h-4 w-4" />Créer un contrat</Button>}
-    />;
-  }
-
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Contrats RH ({contracts.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {contracts.map((contract, idx) => (
-              <Card key={contract._id || idx} className="border">
-                <CardContent className="pt-6">
-                  <div className="space-y-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{contract.function}</h3>
-                        <p className="text-sm text-gray-600">{contract.contract_type}</p>
-                      </div>
-                      <Badge variant="outline">{contract.contract_type}</Badge>
-                    </div>
-                    
-                    <div className="border-t pt-4">
-                      <p className="text-2xl font-bold text-gray-900">
-                        {formatCurrency(contract.salary_brut)}
-                      </p>
-                      <p className="text-xs text-gray-600 mt-1">Salaire brut mensuel</p>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" className="flex-1"><Download className="h-4 w-4 mr-1" />PDF</Button>
-                      <Button size="sm" variant="outline" className="flex-1"><Edit2 className="h-4 w-4 mr-1" />Éditer</Button>
-                    </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {employees.map(emp => (
+              <div key={emp.employee_id} style={{
+                background: 'var(--bg-card)', border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)', padding: '12px 16px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{
+                    width: '36px', height: '36px', borderRadius: '50%',
+                    background: 'var(--brand-light)', color: 'var(--brand)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 700, fontSize: '13px'
+                  }}>
+                    {emp.first_name?.[0]}{emp.last_name?.[0]}
                   </div>
-                </CardContent>
-              </Card>
+                  <div>
+                    <p style={{ fontWeight: 600, color: 'var(--text-primary)', margin: 0, fontSize: '13px' }}>
+                      {emp.first_name} {emp.last_name}
+                    </p>
+                    <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '11px' }}>
+                      {emp.role} · {emp.contract_type} · {fmt(emp.salary_base)}/mois
+                    </p>
+                  </div>
+                </div>
+                <button onClick={() => handleDelete(emp.employee_id)} style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: '#ef4444', padding: '4px'
+                }}>
+                  <Trash2 size={14} />
+                </button>
+              </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        )
+      }
+
+      {showModal && (
+        <Modal title="Nouvel employé" onClose={() => setShowModal(false)}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
+            <Field label="Prénom *"><Input value={form.first_name} onChange={v => setForm(p => ({ ...p, first_name: v }))} placeholder="Marie" /></Field>
+            <Field label="Nom *"><Input value={form.last_name} onChange={v => setForm(p => ({ ...p, last_name: v }))} placeholder="Dupont" /></Field>
+          </div>
+          <Field label="Email"><Input value={form.email} onChange={v => setForm(p => ({ ...p, email: v }))} type="email" placeholder="marie@exemple.com" /></Field>
+          <Field label="Téléphone"><Input value={form.phone} onChange={v => setForm(p => ({ ...p, phone: v }))} placeholder="+33 6 12 34 56 78" /></Field>
+          <Field label="Rôle">
+            <Select value={form.role} onChange={v => setForm(p => ({ ...p, role: v }))} options={[
+              { value: 'intervenant', label: 'Intervenant' },
+              { value: 'manager', label: 'Manager' },
+              { value: 'admin', label: 'Admin' },
+              { value: 'commercial', label: 'Commercial' },
+            ]} />
+          </Field>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
+            <Field label="Type contrat">
+              <Select value={form.contract_type} onChange={v => setForm(p => ({ ...p, contract_type: v }))} options={[
+                { value: 'CDI', label: 'CDI' }, { value: 'CDD', label: 'CDD' },
+                { value: 'Freelance', label: 'Freelance' }, { value: 'Stage', label: 'Stage' },
+              ]} />
+            </Field>
+            <Field label="Salaire brut/mois (€)"><Input value={form.salary_base} onChange={v => setForm(p => ({ ...p, salary_base: v }))} type="number" placeholder="1800" /></Field>
+          </div>
+          <Field label="Date début"><Input value={form.start_date} onChange={v => setForm(p => ({ ...p, start_date: v }))} type="date" /></Field>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
+            <Btn variant="secondary" onClick={() => setShowModal(false)}>Annuler</Btn>
+            <Btn onClick={handleCreate} disabled={saving}><Check size={14} /> {saving ? 'Création...' : 'Créer'}</Btn>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// PAYSLIPS TAB PRO
-// ═══════════════════════════════════════════════════════════════════════
+/* ══════════════════ PAYSLIPS ══════════════════ */
+function PayslipsTab() {
+  const [payslips, setPayslips] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState({ employee_id: '', period_month: new Date().getMonth() + 1, period_year: new Date().getFullYear(), salary_base: '', bonus: '', deductions: '', notes: '' });
+  const [saving, setSaving] = useState(false);
 
-function PayslipsTabPro() {
-  const { data: response, loading, error, refetch } = useApiData('/payslips', { items: [] });
-  const payslips = useMemo(() => response.items || [], [response]);
+  const load = useCallback(async () => {
+    try {
+      const [p, e] = await Promise.all([
+        axios.get(`${API}/payslips`, { withCredentials: true }),
+        axios.get(`${API}/employees`, { withCredentials: true }),
+      ]);
+      setPayslips(Array.isArray(p.data) ? p.data : p.data.items || []);
+      setEmployees(Array.isArray(e.data) ? e.data : e.data.items || []);
+    } catch { toast.error('Erreur chargement'); }
+    setLoading(false);
+  }, []);
 
-  if (loading) return <LoadingState />;
-  if (error) return <ErrorState message={error} onRetry={refetch} />;
-  if (payslips.length === 0) {
-    return <EmptyState 
-      icon={DollarSign} 
-      title="Aucune fiche de paie" 
-      description="Générez une fiche de paie pour vos intervenants"
-      action={<Button className="gap-2"><Plus className="h-4 w-4" />Créer une fiche</Button>}
-    />;
-  }
+  useEffect(() => { load(); }, [load]);
+
+  const handleCreate = async () => {
+    if (!form.employee_id) return toast.error('Sélectionnez un employé');
+    setSaving(true);
+    try {
+      await axios.post(`${API}/payslips`, {
+        ...form,
+        salary_base: parseFloat(form.salary_base) || 0,
+        bonus: parseFloat(form.bonus) || 0,
+        deductions: parseFloat(form.deductions) || 0,
+        period_month: parseInt(form.period_month),
+        period_year: parseInt(form.period_year),
+      }, { withCredentials: true });
+      toast.success('Fiche de paie créée !');
+      setShowModal(false);
+      load();
+    } catch (e) { toast.error(e.response?.data?.detail || 'Erreur'); }
+    setSaving(false);
+  };
+
+  const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Fiches de Paie ({payslips.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-gray-200 bg-gray-50">
-                <tr>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700">N° Fiche</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700">Employé</th>
-                  <th className="text-right px-4 py-3 font-semibold text-gray-700">Salaire Brut</th>
-                  <th className="text-right px-4 py-3 font-semibold text-gray-700">Salaire Net</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700">Statut</th>
-                  <th className="text-right px-4 py-3 font-semibold text-gray-700">Actions</th>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--text-primary)' }}>
+          {payslips.length} fiche{payslips.length > 1 ? 's' : ''} de paie
+        </h3>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Btn variant="secondary" onClick={load}><RefreshCw size={14} /></Btn>
+          <Btn onClick={() => setShowModal(true)}><Plus size={14} /> Nouvelle fiche</Btn>
+        </div>
+      </div>
+
+      {loading ? <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '32px' }}>Chargement...</p> :
+        payslips.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+            <FileText size={40} style={{ margin: '0 auto 12px', opacity: 0.3 }} />
+            <p>Aucune fiche de paie</p>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: 'var(--bg-muted)' }}>
+                  {['Employé', 'Période', 'Brut', 'Bonus', 'Net', 'Statut'].map(h => (
+                    <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {payslips.map((slip, idx) => (
-                  <tr key={slip._id || idx} className="border-b border-gray-100 hover:bg-gray-50 transition">
-                    <td className="px-4 py-4 font-mono text-gray-900">#{slip.payslip_id}</td>
-                    <td className="px-4 py-4 text-gray-600">{slip.employee_id || 'N/A'}</td>
-                    <td className="px-4 py-4 text-right font-medium">{formatCurrency(slip.salary_brut)}</td>
-                    <td className="px-4 py-4 text-right font-bold text-green-600">{formatCurrency(slip.salary_net)}</td>
-                    <td className="px-4 py-4">
-                      <Badge variant="outline" className={getStatusBadgeVariant(slip.status)}>
-                        {slip.status === 'paid' ? '✅ Payée' : '⏳ En attente'}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="ghost"><Download className="h-4 w-4" /></Button>
-                        <Button size="sm" variant="ghost"><Eye className="h-4 w-4" /></Button>
-                      </div>
+                {payslips.map(p => (
+                  <tr key={p.payslip_id} style={{ borderBottom: '1px solid var(--border-default)' }}>
+                    <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500 }}>{p.employee_name || p.employee_id}</td>
+                    <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-secondary)' }}>{months[p.period_month - 1]} {p.period_year}</td>
+                    <td style={{ padding: '10px 12px', fontSize: '13px' }}>{fmt(p.salary_base)}</td>
+                    <td style={{ padding: '10px 12px', fontSize: '13px' }}>{fmt(p.bonus)}</td>
+                    <td style={{ padding: '10px 12px', fontSize: '13px', fontWeight: 600, color: 'var(--brand)' }}>{fmt(p.net_salary || (p.salary_base + (p.bonus || 0) - (p.deductions || 0)))}</td>
+                    <td style={{ padding: '10px 12px' }}>
+                      <span style={{
+                        padding: '2px 8px', borderRadius: '20px', fontSize: '11px', fontWeight: 600,
+                        background: p.status === 'paid' ? '#d1fae5' : '#fef3c7',
+                        color: p.status === 'paid' ? '#065f46' : '#92400e'
+                      }}>
+                        {p.status === 'paid' ? 'Payée' : 'En attente'}
+                      </span>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </CardContent>
-      </Card>
+        )
+      }
+
+      {showModal && (
+        <Modal title="Nouvelle fiche de paie" onClose={() => setShowModal(false)}>
+          <Field label="Employé *">
+            <Select value={form.employee_id} onChange={v => setForm(p => ({ ...p, employee_id: v }))}
+              options={[{ value: '', label: '-- Sélectionner --' }, ...employees.map(e => ({ value: e.employee_id, label: `${e.first_name} ${e.last_name}` }))]} />
+          </Field>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
+            <Field label="Mois">
+              <Select value={form.period_month} onChange={v => setForm(p => ({ ...p, period_month: v }))}
+                options={months.map((m, i) => ({ value: i + 1, label: m }))} />
+            </Field>
+            <Field label="Année"><Input value={form.period_year} onChange={v => setForm(p => ({ ...p, period_year: v }))} type="number" /></Field>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0 12px' }}>
+            <Field label="Salaire brut (€)"><Input value={form.salary_base} onChange={v => setForm(p => ({ ...p, salary_base: v }))} type="number" placeholder="1800" /></Field>
+            <Field label="Bonus (€)"><Input value={form.bonus} onChange={v => setForm(p => ({ ...p, bonus: v }))} type="number" placeholder="0" /></Field>
+            <Field label="Déductions (€)"><Input value={form.deductions} onChange={v => setForm(p => ({ ...p, deductions: v }))} type="number" placeholder="0" /></Field>
+          </div>
+          <Field label="Notes">
+            <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
+              placeholder="Notes optionnelles..."
+              style={{ width: '100%', padding: '8px 12px', background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', fontSize: '13px', minHeight: '60px', boxSizing: 'border-box' }} />
+          </Field>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <Btn variant="secondary" onClick={() => setShowModal(false)}>Annuler</Btn>
+            <Btn onClick={handleCreate} disabled={saving}><Check size={14} /> {saving ? 'Création...' : 'Créer'}</Btn>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// EXPENSE REPORTS TAB PRO
-// ═══════════════════════════════════════════════════════════════════════
+/* ══════════════════ EXPENSES ══════════════════ */
+function ExpensesTab() {
+  const [reports, setReports] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState({ employee_id: '', title: '', description: '', amount: '', category: 'transport', date: new Date().toISOString().split('T')[0] });
+  const [saving, setSaving] = useState(false);
 
-function ExpenseReportsTabPro() {
-  const { data: response, loading, error, refetch } = useApiData('/expense-reports', { reports: [] });
-  const reports = useMemo(() => response.reports || [], [response]);
+  const load = useCallback(async () => {
+    try {
+      const [r, e] = await Promise.all([
+        axios.get(`${API}/expense-reports`, { withCredentials: true }),
+        axios.get(`${API}/employees`, { withCredentials: true }),
+      ]);
+      setReports(Array.isArray(r.data) ? r.data : r.data.items || []);
+      setEmployees(Array.isArray(e.data) ? e.data : e.data.items || []);
+    } catch { toast.error('Erreur chargement'); }
+    setLoading(false);
+  }, []);
 
-  if (loading) return <LoadingState />;
-  if (error) return <ErrorState message={error} onRetry={refetch} />;
-  if (reports.length === 0) {
-    return <EmptyState 
-      icon={Clock} 
-      title="Aucune note de frais" 
-      description="Les intervenants peuvent soumettre leurs notes de frais"
-      action={<Button className="gap-2"><Plus className="h-4 w-4" />Créer une note</Button>}
-    />;
-  }
+  useEffect(() => { load(); }, [load]);
+
+  const handleCreate = async () => {
+    if (!form.employee_id || !form.title || !form.amount) return toast.error('Champs requis manquants');
+    setSaving(true);
+    try {
+      await axios.post(`${API}/expense-reports`, { ...form, amount: parseFloat(form.amount) }, { withCredentials: true });
+      toast.success('Note de frais créée !');
+      setShowModal(false);
+      load();
+    } catch (e) { toast.error(e.response?.data?.detail || 'Erreur'); }
+    setSaving(false);
+  };
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Notes de Frais ({reports.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-gray-200 bg-gray-50">
-                <tr>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700">N° Note</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700">Employé</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700">Période</th>
-                  <th className="text-right px-4 py-3 font-semibold text-gray-700">Montant TTC</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700">Statut</th>
-                  <th className="text-right px-4 py-3 font-semibold text-gray-700">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reports.map((report, idx) => (
-                  <tr key={report._id || idx} className="border-b border-gray-100 hover:bg-gray-50 transition">
-                    <td className="px-4 py-4 font-mono text-gray-900">#{report.report_id}</td>
-                    <td className="px-4 py-4 text-gray-600">{report.employee_id || 'N/A'}</td>
-                    <td className="px-4 py-4 text-gray-600 text-xs">
-                      {report.period_start ? new Date(report.period_start).toLocaleDateString('fr-FR') : 'N/A'}
-                    </td>
-                    <td className="px-4 py-4 text-right font-bold">{formatCurrency(report.total_ttc)}</td>
-                    <td className="px-4 py-4">
-                      <Badge variant="outline" className={getStatusBadgeVariant(report.status)}>
-                        {report.status === 'validated' ? '✅ Validée' : report.status === 'rejected' ? '❌ Rejetée' : '⏳ En attente'}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        {report.status === 'pending' && (
-                          <>
-                            <Button size="sm" variant="ghost"><CheckCircle className="h-4 w-4 text-green-600" /></Button>
-                            <Button size="sm" variant="ghost"><AlertTriangle className="h-4 w-4 text-red-600" /></Button>
-                          </>
-                        )}
-                        <Button size="sm" variant="ghost"><Download className="h-4 w-4" /></Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--text-primary)' }}>
+          {reports.length} note{reports.length > 1 ? 's' : ''} de frais
+        </h3>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Btn variant="secondary" onClick={load}><RefreshCw size={14} /></Btn>
+          <Btn onClick={() => setShowModal(true)}><Plus size={14} /> Nouvelle note</Btn>
+        </div>
+      </div>
+
+      {loading ? <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '32px' }}>Chargement...</p> :
+        reports.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+            <Euro size={40} style={{ margin: '0 auto 12px', opacity: 0.3 }} />
+            <p>Aucune note de frais</p>
           </div>
-        </CardContent>
-      </Card>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {reports.map(r => (
+              <div key={r.report_id} style={{
+                background: 'var(--bg-card)', border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)', padding: '12px 16px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+              }}>
+                <div>
+                  <p style={{ fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 2px', fontSize: '13px' }}>{r.title}</p>
+                  <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '11px' }}>{r.category} · {r.date}</p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ fontWeight: 700, color: 'var(--brand)', margin: '0 0 2px', fontSize: '14px' }}>{fmt(r.amount)}</p>
+                  <span style={{
+                    padding: '1px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 600,
+                    background: r.status === 'validated' ? '#d1fae5' : r.status === 'rejected' ? '#fee2e2' : '#fef3c7',
+                    color: r.status === 'validated' ? '#065f46' : r.status === 'rejected' ? '#991b1b' : '#92400e'
+                  }}>
+                    {r.status === 'validated' ? 'Validée' : r.status === 'rejected' ? 'Rejetée' : 'En attente'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      }
+
+      {showModal && (
+        <Modal title="Nouvelle note de frais" onClose={() => setShowModal(false)}>
+          <Field label="Employé *">
+            <Select value={form.employee_id} onChange={v => setForm(p => ({ ...p, employee_id: v }))}
+              options={[{ value: '', label: '-- Sélectionner --' }, ...employees.map(e => ({ value: e.employee_id, label: `${e.first_name} ${e.last_name}` }))]} />
+          </Field>
+          <Field label="Titre *"><Input value={form.title} onChange={v => setForm(p => ({ ...p, title: v }))} placeholder="Taxi client, Fournitures..." /></Field>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
+            <Field label="Catégorie">
+              <Select value={form.category} onChange={v => setForm(p => ({ ...p, category: v }))} options={[
+                { value: 'transport', label: '🚗 Transport' },
+                { value: 'restauration', label: '🍽️ Restauration' },
+                { value: 'hebergement', label: '🏨 Hébergement' },
+                { value: 'materiel', label: '🛠️ Matériel' },
+                { value: 'autre', label: '📎 Autre' },
+              ]} />
+            </Field>
+            <Field label="Montant (€) *"><Input value={form.amount} onChange={v => setForm(p => ({ ...p, amount: v }))} type="number" placeholder="45.50" /></Field>
+          </div>
+          <Field label="Date"><Input value={form.date} onChange={v => setForm(p => ({ ...p, date: v }))} type="date" /></Field>
+          <Field label="Description">
+            <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+              placeholder="Description optionnelle..."
+              style={{ width: '100%', padding: '8px 12px', background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', fontSize: '13px', minHeight: '60px', boxSizing: 'border-box' }} />
+          </Field>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <Btn variant="secondary" onClick={() => setShowModal(false)}>Annuler</Btn>
+            <Btn onClick={handleCreate} disabled={saving}><Check size={14} /> {saving ? 'Création...' : 'Créer'}</Btn>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════ MAIN ══════════════════ */
+export default function PayrollRHModule() {
+  const [activeTab, setActiveTab] = useState('employees');
+
+  return (
+    <div style={{ padding: '24px' }}>
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-muted)', borderRadius: 'var(--radius-lg)', padding: '4px', marginBottom: '24px', overflowX: 'auto' }}>
+        {TABS.map(tab => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
+            padding: '8px 16px', borderRadius: 'var(--radius-md)',
+            fontSize: '13px', fontWeight: 600, border: 'none', cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            background: activeTab === tab.id ? 'var(--bg-card)' : 'transparent',
+            color: activeTab === tab.id ? 'var(--text-primary)' : 'var(--text-muted)',
+            boxShadow: activeTab === tab.id ? 'var(--shadow-card)' : 'none',
+            transition: 'all 0.15s'
+          }}>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      {activeTab === 'employees' && <EmployeesTab />}
+      {activeTab === 'payslips' && <PayslipsTab />}
+      {activeTab === 'contracts' && (
+        <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+          <FileText size={40} style={{ margin: '0 auto 12px', opacity: 0.3 }} />
+          <p style={{ marginBottom: '16px' }}>Module contrats en cours de développement</p>
+        </div>
+      )}
+      {activeTab === 'expenses' && <ExpensesTab />}
     </div>
   );
 }
