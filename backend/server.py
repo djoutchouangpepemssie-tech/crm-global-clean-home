@@ -2852,18 +2852,9 @@ app.add_middleware(ForceCORSMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://crm.globalcleanhome.com",
-        "https://www.globalcleanhome.com",
-        "https://globalcleanhome.com",
-        "https://crm-global-clean-home-production.up.railway.app",
-        "https://crm-global-clean-home.up.railway.app",
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://localhost:4173"
-    ],
+    allow_origins=["*"],
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_headers=["*", "X-Portal-Token", "Content-Type", "Authorization", "Accept", "Origin"],
     expose_headers=["Content-Length", "Content-Type"],
     max_age=86400,
