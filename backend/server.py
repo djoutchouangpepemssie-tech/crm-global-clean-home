@@ -2817,6 +2817,39 @@ async def force_cors_middleware(request: StarletteRequest, call_next):
         response.headers["Vary"] = "Origin"
     return response
 
+# Force CORS headers on ALL responses including errors
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request as StarletteRequest
+from starlette.responses import Response as StarletteResponse
+
+class ForceCORSMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: StarletteRequest, call_next):
+        origin = request.headers.get("origin", "")
+        allowed = [
+            "https://crm.globalcleanhome.com",
+            "https://www.globalcleanhome.com", 
+            "https://globalcleanhome.com",
+            "https://crm-global-clean-home-production.up.railway.app",
+            "http://localhost:3000",
+            "http://localhost:5173",
+        ]
+        if request.method == "OPTIONS":
+            response = StarletteResponse(status_code=200)
+        else:
+            try:
+                response = await call_next(request)
+            except Exception as e:
+                response = StarletteResponse(status_code=500, content=str(e))
+        
+        if origin in allowed:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "*, Authorization, Content-Type, X-Portal-Token"
+        return response
+
+app.add_middleware(ForceCORSMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
