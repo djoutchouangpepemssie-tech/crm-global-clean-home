@@ -2492,7 +2492,7 @@ const SettingsPage = () => {
                     border: `1px solid ${tab.color}25`,
                   } : { border: '1px solid transparent' }}
                 >
-                  <tab.icon className="w-4 h-4 flex-shrink-0" style={isActive ? { color: tab.color } : {}} />
+                  {tab.icon && <tab.icon className="w-4 h-4 flex-shrink-0" style={isActive ? { color: tab.color } : {}} />}
                   <span>{tab.label}</span>
                 </button>
               );
@@ -2510,7 +2510,7 @@ const SettingsPage = () => {
               {activeTabData && (
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center"
                   style={{ background: `${activeTabData.color}15` }}>
-                  <activeTabData.icon className="w-4 h-4" style={{ color: activeTabData.color }} />
+                  {activeTabData.icon && <activeTabData.icon className="w-4 h-4" style={{ color: activeTabData.color }} />}
                 </div>
               )}
               <div>
