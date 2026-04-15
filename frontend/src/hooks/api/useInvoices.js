@@ -19,7 +19,7 @@ export function useInvoicesList(filters = {}) {
         if (v !== undefined && v !== null && v !== '') params.append(k, v);
       });
       const { data } = await api.get(`/invoices?${params.toString()}`);
-      return Array.isArray(data) ? data : data.invoices || [];
+      return Array.isArray(data) ? data : data.items || data.invoices || [];
     },
   });
 }
@@ -40,7 +40,7 @@ export function useInvoicesByLead(leadId) {
     queryKey: queryKeys.invoices.byLead(leadId),
     queryFn: async () => {
       const { data } = await api.get(`/invoices?lead_id=${leadId}`);
-      return Array.isArray(data) ? data : data.invoices || [];
+      return Array.isArray(data) ? data : data.items || data.invoices || [];
     },
     enabled: !!leadId,
   });

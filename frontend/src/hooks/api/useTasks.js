@@ -21,7 +21,7 @@ export function useTasksList(filters = {}) {
       const { data } = await api.get(`/tasks?${params.toString()}`);
       // L'endpoint renvoie {items, total, page, page_size, total_pages}
       if (Array.isArray(data)) return data;
-      return data.items || data.tasks || [];
+      return data.items || data.items || data.tasks || [];
     },
   });
 }
@@ -31,7 +31,7 @@ export function useTasksByLead(leadId) {
     queryKey: queryKeys.tasks.byLead(leadId),
     queryFn: async () => {
       const { data } = await api.get(`/tasks?lead_id=${leadId}`);
-      return Array.isArray(data) ? data : data.tasks || [];
+      return Array.isArray(data) ? data : data.items || data.tasks || [];
     },
     enabled: !!leadId,
   });
@@ -43,7 +43,7 @@ export function useUrgentTasks() {
     queryKey: queryKeys.tasks.urgent(),
     queryFn: async () => {
       const { data } = await api.get('/tasks?status=pending&urgent=true');
-      return Array.isArray(data) ? data : data.tasks || [];
+      return Array.isArray(data) ? data : data.items || data.tasks || [];
     },
     staleTime: 30_000,
   });

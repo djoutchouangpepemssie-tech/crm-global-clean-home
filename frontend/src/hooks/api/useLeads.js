@@ -29,7 +29,7 @@ export function useLeadsList(filters = {}) {
         if (v !== undefined && v !== null && v !== '') params.append(k, v);
       });
       const { data } = await api.get(`/leads?${params.toString()}`);
-      return Array.isArray(data) ? data : data.leads || [];
+      return Array.isArray(data) ? data : data.items || data.items || data.leads || [];
     },
   });
 }

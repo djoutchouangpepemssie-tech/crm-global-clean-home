@@ -19,7 +19,7 @@ export function useQuotesList(filters = {}) {
         if (v !== undefined && v !== null && v !== '') params.append(k, v);
       });
       const { data } = await api.get(`/quotes?${params.toString()}`);
-      return Array.isArray(data) ? data : data.quotes || [];
+      return Array.isArray(data) ? data : data.items || data.quotes || [];
     },
   });
 }
@@ -41,7 +41,7 @@ export function useQuotesByLead(leadId) {
     queryKey: queryKeys.quotes.byLead(leadId),
     queryFn: async () => {
       const { data } = await api.get(`/quotes?lead_id=${leadId}`);
-      return Array.isArray(data) ? data : data.quotes || [];
+      return Array.isArray(data) ? data : data.items || data.quotes || [];
     },
     enabled: !!leadId,
   });
