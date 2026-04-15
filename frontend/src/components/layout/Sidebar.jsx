@@ -108,7 +108,7 @@ export default function Sidebar() {
         axios.get(`${API_URL}/leads?status=nouveau&limit=1`, { withCredentials: true }),
         axios.get(`${API_URL}/quotes?status=pending&limit=1`, { withCredentials: true }),
         axios.get(`${API_URL}/invoices?status=en_retard&limit=1`, { withCredentials: true }),
-        axios.get(`${API_URL}/tickets?status=open&limit=1`, { withCredentials: true }),
+        Promise.resolve({ status: 'fulfilled', value: { data: null } }),
       ]);
       const get = (res, keys) => {
         if (res.status !== 'fulfilled') return null;
