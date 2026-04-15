@@ -149,16 +149,92 @@ class ExpenseItemModel(BaseModel):
 # ═══════════════════════════════════════════════════════
 
 def compute_payslip_amounts(salary_brut: float) -> dict:
-    """Compute simplified payslip: charges ~42%, impôt ~20% of net before tax."""
-    social_charges = round(salary_brut * 0.42, 2)
-    net_before_tax = round(salary_brut - social_charges, 2)
-    tax_estimation = round(net_before_tax * 0.20, 2)
-    salary_net = round(net_before_tax - tax_estimation, 2)
+    """
+    Calcul bulletin de paie conforme droit français 2024.
+    Source : URSSAF, taux en vigueur au 01/01/2024.
+    """
+    # ── Cotisations salariales ──
+    # Sécurité sociale maladie : 0% (pris en charge par patronal)
+    css_maladie_sal = 0.0
+
+    # Retraite complémentaire AGIRC-ARRCO T1 (jusqu'à 1 PASS = 3864€/mois)
+    pass_mensuel = 3864.0
+    t1 = min(salary_brut, pass_mensuel)
+    t2 = max(0, salary_brut - pass_mensuel)
+    retraite_comp_sal = round(t1 * 0.0315 + t2 * 0.0864, 2)
+
+    # Assurance vieillesse plafonnée (T1)
+    vieillesse_plafonnee = round(t1 * 0.0690, 2)
+    # Assurance vieillesse déplafonnée
+    vieillesse_deplafonnee = round(salary_brut * 0.0040, 2)
+
+    # Chômage (salarié exonéré depuis 2019 en France métropolitaine)
+    chomage_sal = 0.0
+
+    # CSG déductible 6.80%
+    base_csg = round(salary_brut * 0.9825, 2)  # assiette CSG = 98.25% du brut
+    csg_deductible = round(base_csg * 0.0680, 2)
+
+    # CSG non déductible 2.40%
+    csg_non_deductible = round(base_csg * 0.0240, 2)
+
+    # CRDS 0.50%
+    crds = round(base_csg * 0.0050, 2)
+
+    # Prévoyance (estimation 0.70% selon convention collective)
+    prevoyance_sal = round(salary_brut * 0.0070, 2)
+
+    # Total cotisations salariales
+    total_cotisations_sal = round(
+        retraite_comp_sal + vieillesse_plafonnee + vieillesse_deplafonnee +
+        csg_deductible + csg_non_deductible + crds + prevoyance_sal, 2
+    )
+
+    # ── Salaire net avant impôt ──
+    net_avant_impot = round(salary_brut - total_cotisations_sal, 2)
+
+    # ── Prélèvement à la source (estimation taux moyen 11%) ──
+    pas = round(net_avant_impot * 0.11, 2)
+
+    # ── Salaire net à payer ──
+    salary_net = round(net_avant_impot - pas, 2)
+
+    # ── Cotisations patronales (informatives) ──
+    patronal_maladie = round(salary_brut * 0.1300, 2)
+    patronal_vieillesse = round(salary_brut * 0.0845, 2)
+    patronal_retraite_comp = round(t1 * 0.0486 + t2 * 0.1288, 2)
+    patronal_chomage = round(salary_brut * 0.0405, 2)
+    patronal_accidents = round(salary_brut * 0.0230, 2)
+    patronal_famille = round(salary_brut * 0.0525, 2)
+    patronal_fnal = round(salary_brut * 0.0010, 2)
+    total_patronal = round(
+        patronal_maladie + patronal_vieillesse + patronal_retraite_comp +
+        patronal_chomage + patronal_accidents + patronal_famille + patronal_fnal, 2
+    )
+
+    cout_total_employeur = round(salary_brut + total_patronal, 2)
+
     return {
         "salary_brut": salary_brut,
-        "social_charges": social_charges,
-        "tax_estimation": tax_estimation,
+        # Cotisations salariales détaillées
+        "retraite_comp_sal": retraite_comp_sal,
+        "vieillesse_plafonnee": vieillesse_plafonnee,
+        "vieillesse_deplafonnee": vieillesse_deplafonnee,
+        "csg_deductible": csg_deductible,
+        "csg_non_deductible": csg_non_deductible,
+        "crds": crds,
+        "prevoyance_sal": prevoyance_sal,
+        "total_cotisations_sal": total_cotisations_sal,
+        # Net
+        "net_avant_impot": net_avant_impot,
+        "pas": pas,
         "salary_net": salary_net,
+        # Patronal
+        "total_patronal": total_patronal,
+        "cout_total_employeur": cout_total_employeur,
+        # Legacy compat
+        "social_charges": total_cotisations_sal,
+        "tax_estimation": pas,
     }
 
 
@@ -704,33 +780,80 @@ async def get_payslip_pdf(payslip_id: str, request: Request):
     elements.append(info_table)
     elements.append(Spacer(1, 8*mm))
     
-    # Salary breakdown
     fmt = lambda v: f"{v:,.2f} €".replace(",", " ").replace(".", ",")
-    salary_data = [
-        ["Rubrique", "Montant"],
-        ["Salaire brut", fmt(doc["salary_brut"])],
-        ["Charges sociales (≈42%)", f"- {fmt(doc['social_charges'])}"],
-        ["Impôt estimation (≈20%)", f"- {fmt(doc['tax_estimation'])}"],
-        ["", ""],
-        ["SALAIRE NET", fmt(doc["salary_net"])],
+    
+    # ── Section cotisations salariales ──
+    elements.append(Paragraph("<b>COTISATIONS ET CONTRIBUTIONS SOCIALES</b>", 
+        ParagraphStyle('SectionTitle', parent=styles['Normal'], fontSize=9, 
+        textColor=HexColor('#1e3a5f'), spaceBefore=4*mm, spaceAfter=2*mm)))
+    
+    cotis_data = [
+        ["Désignation", "Base", "Taux salarié", "Montant salarié", "Taux patronal", "Montant patronal"],
+        ["Retraite complémentaire (AGIRC-ARRCO)", fmt(doc["salary_brut"]), "3,15%", fmt(doc.get("retraite_comp_sal", 0)), "4,86%", fmt(doc.get("total_patronal", 0) * 0.20)],
+        ["Assurance vieillesse (plafonnée)", fmt(min(doc["salary_brut"], 3864)), "6,90%", fmt(doc.get("vieillesse_plafonnee", 0)), "8,45%", fmt(doc.get("total_patronal", 0) * 0.22)],
+        ["Assurance vieillesse (déplafonnée)", fmt(doc["salary_brut"]), "0,40%", fmt(doc.get("vieillesse_deplafonnee", 0)), "1,90%", ""],
+        ["Maladie - Maternité - Invalidité", fmt(doc["salary_brut"]), "—", "0,00 €", "13,00%", fmt(doc.get("total_patronal", 0) * 0.35)],
+        ["Allocations familiales", fmt(doc["salary_brut"]), "—", "0,00 €", "5,25%", fmt(doc.get("total_patronal", 0) * 0.14)],
+        ["Accidents du travail", fmt(doc["salary_brut"]), "—", "0,00 €", "2,30%", fmt(doc.get("total_patronal", 0) * 0.06)],
+        ["Assurance chômage", fmt(doc["salary_brut"]), "—", "0,00 €", "4,05%", fmt(doc.get("total_patronal", 0) * 0.11)],
+        ["Prévoyance", fmt(doc["salary_brut"]), "0,70%", fmt(doc.get("prevoyance_sal", 0)), "—", "—"],
+        ["CSG déductible", fmt(doc["salary_brut"]), "6,80%", fmt(doc.get("csg_deductible", 0)), "—", "—"],
+        ["CSG non déductible", fmt(doc["salary_brut"]), "2,40%", fmt(doc.get("csg_non_deductible", 0)), "—", "—"],
+        ["CRDS", fmt(doc["salary_brut"]), "0,50%", fmt(doc.get("crds", 0)), "—", "—"],
+        ["", "", "", "", "", ""],
+        ["TOTAL COTISATIONS", "", "", fmt(doc.get("total_cotisations_sal", doc.get("social_charges", 0))), "", fmt(doc.get("total_patronal", 0))],
     ]
     
-    salary_table = Table(salary_data, colWidths=[300, 170])
-    salary_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), HexColor('#2563eb')),
+    cotis_table = Table(cotis_data, colWidths=[130, 65, 60, 70, 65, 70])
+    cotis_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), HexColor('#1e3a5f')),
         ('TEXTCOLOR', (0, 0), (-1, 0), white),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 10),
-        ('FONTSIZE', (0, 1), (-1, -1), 9),
-        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
-        ('GRID', (0, 0), (-1, -1), 0.5, HexColor('#dddddd')),
-        ('BACKGROUND', (0, -1), (-1, -1), HexColor('#f0f7ff')),
+        ('FONTSIZE', (0, 0), (-1, 0), 7),
+        ('FONTSIZE', (0, 1), (-1, -1), 7.5),
+        ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+        ('GRID', (0, 0), (-1, -1), 0.3, HexColor('#cccccc')),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -2), [HexColor('#f8fafc'), white]),
+        ('BACKGROUND', (0, -1), (-1, -1), HexColor('#e8f0fe')),
         ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, -1), (-1, -1), 11),
-        ('TOPPADDING', (0, 0), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
     ]))
-    elements.append(salary_table)
+    elements.append(cotis_table)
+    elements.append(Spacer(1, 6*mm))
+    
+    # ── Récapitulatif net ──
+    elements.append(Paragraph("<b>RÉCAPITULATIF</b>", 
+        ParagraphStyle('SectionTitle2', parent=styles['Normal'], fontSize=9, 
+        textColor=HexColor('#1e3a5f'), spaceAfter=2*mm)))
+    
+    recap_data = [
+        ["Salaire brut", fmt(doc["salary_brut"])],
+        ["- Total cotisations salariales", f"- {fmt(doc.get('total_cotisations_sal', doc.get('social_charges', 0)))}"],
+        ["= Net avant prélèvement à la source", fmt(doc.get("net_avant_impot", doc["salary_brut"] - doc.get("total_cotisations_sal", doc.get("social_charges", 0))))],
+        ["- Prélèvement à la source (11%)", f"- {fmt(doc.get('pas', doc.get('tax_estimation', 0)))}"],
+        ["NET À PAYER", fmt(doc["salary_net"])],
+        ["", ""],
+        ["Coût total employeur", fmt(doc.get("cout_total_employeur", doc["salary_brut"] + doc.get("total_patronal", 0)))],
+    ]
+    
+    recap_table = Table(recap_data, colWidths=[350, 110])
+    recap_table.setStyle(TableStyle([
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ('GRID', (0, 0), (-1, -1), 0.3, HexColor('#dddddd')),
+        ('BACKGROUND', (0, 4), (-1, 4), HexColor('#1e3a5f')),
+        ('TEXTCOLOR', (0, 4), (-1, 4), white),
+        ('FONTNAME', (0, 4), (-1, 4), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 4), (-1, 4), 11),
+        ('BACKGROUND', (0, 6), (-1, 6), HexColor('#fef3c7')),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(recap_table)
     elements.append(Spacer(1, 10*mm))
     
     # Status
@@ -751,6 +874,149 @@ async def get_payslip_pdf(payslip_id: str, request: Request):
     filename = f"fiche_paie_{doc['employee_name'].replace(' ', '_')}_{doc['period_month']:02d}_{doc['period_year']}.pdf"
     return StreamingResponse(buf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
+
+@payroll_rh_router.post("/payslips/{payslip_id}/send-email")
+async def send_payslip_email(payslip_id: str, request: Request):
+    """Envoyer la fiche de paie par email à l'intervenant."""
+    await _require_auth(request)
+    doc = await _db.rh_payslips.find_one({"payslip_id": payslip_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Fiche de paie introuvable")
+    
+    emp = await _db.rh_employees.find_one({"employee_id": doc["employee_id"]}, {"_id": 0})
+    if not emp:
+        raise HTTPException(404, "Intervenant introuvable")
+    
+    if not emp.get("email"):
+        raise HTTPException(400, "L'intervenant n'a pas d'adresse email")
+    
+    # Générer le PDF
+    from io import BytesIO
+    buf = BytesIO()
+    pdf_doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=1.5*cm, bottomMargin=1.5*cm, leftMargin=2*cm, rightMargin=2*cm)
+    
+    # Réutiliser la même logique de génération PDF
+    from fastapi.responses import StreamingResponse as SR
+    import sys
+    
+    # Build PDF inline
+    styles = getSampleStyleSheet()
+    fmt = lambda v: f"{v:,.2f} €".replace(",", " ").replace(".", ",")
+    elements = []
+    
+    title_style = ParagraphStyle('T', parent=styles['Heading1'], fontSize=14, textColor=HexColor('#1a1a2e'))
+    elements.append(Paragraph("BULLETIN DE PAIE", title_style))
+    elements.append(Paragraph(f"Global Clean Home — {MONTHS_FR.get(doc['period_month'])} {doc['period_year']}", styles['Normal']))
+    elements.append(Spacer(1, 5*mm))
+    
+    info_data = [
+        ["Intervenant :", doc.get("employee_name", "—")],
+        ["Fonction :", doc.get("function", emp.get("function", "—"))],
+        ["Contrat :", doc.get("contract_type", "—")],
+        ["Période :", f"{MONTHS_FR.get(doc['period_month'])} {doc['period_year']}"],
+        ["N° Fiche :", payslip_id],
+    ]
+    info_table = Table(info_data, colWidths=[120, 350])
+    info_table.setStyle(TableStyle([
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+    ]))
+    elements.append(info_table)
+    elements.append(Spacer(1, 5*mm))
+    
+    recap_data = [
+        ["Désignation", "Montant"],
+        ["Salaire brut", fmt(doc["salary_brut"])],
+        ["Cotisations salariales", f"- {fmt(doc.get('total_cotisations_sal', doc.get('social_charges', 0)))}"],
+        ["Net avant PAS", fmt(doc.get("net_avant_impot", 0))],
+        ["Prélèvement à la source", f"- {fmt(doc.get('pas', doc.get('tax_estimation', 0)))}"],
+        ["NET À PAYER", fmt(doc["salary_net"])],
+    ]
+    t = Table(recap_data, colWidths=[300, 170])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), HexColor('#1e3a5f')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ('GRID', (0, 0), (-1, -1), 0.5, HexColor('#dddddd')),
+        ('BACKGROUND', (0, -1), (-1, -1), HexColor('#1e3a5f')),
+        ('TEXTCOLOR', (0, -1), (-1, -1), white),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, -1), (-1, -1), 11),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+    ]))
+    elements.append(t)
+    elements.append(Spacer(1, 10*mm))
+    footer = ParagraphStyle('F', parent=styles['Normal'], fontSize=7, textColor=HexColor('#999999'), alignment=TA_CENTER)
+    elements.append(Paragraph(f"Document généré le {datetime.now().strftime('%d/%m/%Y')} — Global Clean Home, 231 rue Saint-Honoré, 75001 Paris", footer))
+    
+    pdf_doc.build(elements)
+    buf.seek(0)
+    pdf_bytes = buf.read()
+    
+    # Envoyer par email via SendGrid
+    try:
+        from email_service import send_email
+        period_label = f"{MONTHS_FR.get(doc['period_month'])} {doc['period_year']}"
+        filename = f"bulletin_paie_{doc['employee_name'].replace(' ', '_')}_{doc['period_month']:02d}_{doc['period_year']}.pdf"
+        
+        html_content = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: #1e3a5f; padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 20px;">Global Clean Home</h1>
+                <p style="color: #93c5fd; margin: 4px 0 0;">Bulletin de paie — {period_label}</p>
+            </div>
+            <div style="padding: 24px; background: #f8fafc; border: 1px solid #e2e8f0;">
+                <p>Bonjour <strong>{doc.get('employee_name', '')}</strong>,</p>
+                <p>Veuillez trouver ci-joint votre bulletin de paie pour la période de <strong>{period_label}</strong>.</p>
+                <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+                    <tr style="background: #1e3a5f; color: white;">
+                        <th style="padding: 10px; text-align: left;">Rubrique</th>
+                        <th style="padding: 10px; text-align: right;">Montant</th>
+                    </tr>
+                    <tr style="background: white;">
+                        <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0;">Salaire brut</td>
+                        <td style="padding: 8px 10px; text-align: right; border-bottom: 1px solid #e2e8f0;">{doc['salary_brut']:.2f} €</td>
+                    </tr>
+                    <tr style="background: #f8fafc;">
+                        <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0;">Cotisations salariales</td>
+                        <td style="padding: 8px 10px; text-align: right; border-bottom: 1px solid #e2e8f0;">- {doc.get('total_cotisations_sal', doc.get('social_charges', 0)):.2f} €</td>
+                    </tr>
+                    <tr style="background: #1e3a5f; color: white; font-weight: bold; font-size: 16px;">
+                        <td style="padding: 10px;">NET À PAYER</td>
+                        <td style="padding: 10px; text-align: right;">{doc['salary_net']:.2f} €</td>
+                    </tr>
+                </table>
+                <p style="font-size: 12px; color: #64748b;">Ce bulletin de paie est généré automatiquement. Pour toute question, contactez votre responsable.</p>
+            </div>
+            <div style="padding: 16px; text-align: center; background: #f1f5f9; border-radius: 0 0 8px 8px;">
+                <p style="font-size: 11px; color: #94a3b8; margin: 0;">Global Clean Home — 231 rue Saint-Honoré, 75001 Paris</p>
+            </div>
+        </div>
+        """
+        
+        success = send_email(
+            to=emp["email"],
+            subject=f"Bulletin de paie — {period_label} — Global Clean Home",
+            html_content=html_content,
+            attachment_data=pdf_bytes,
+            attachment_name=filename,
+        )
+        
+        if success:
+            await _db.rh_payslips.update_one(
+                {"payslip_id": payslip_id},
+                {"$set": {"email_sent": True, "email_sent_at": datetime.now(timezone.utc).isoformat()}}
+            )
+            return {"success": True, "message": f"Bulletin envoyé à {emp['email']}"}
+        else:
+            raise HTTPException(500, "Erreur envoi email — vérifiez la configuration SendGrid")
+    except ImportError:
+        raise HTTPException(500, "Service email non configuré")
 
 # ═══════════════════════════════════════════════════════
 # 4. NOTES DE FRAIS
