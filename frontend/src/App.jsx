@@ -126,7 +126,7 @@ const GlobalSearchTrigger = () => (
 const LandingPage = lazy(() => import('./components/landing/LandingPage'));
 import './App.css';
 import './mobile-responsive.css';
-import { requestNotificationPermission, onMessageListener } from './firebase';
+import { requestNotificationPermission, onForegroundMessage } from './firebase';
 
 const menuCategories = [
   {
@@ -333,12 +333,11 @@ function NotificationHandler() {
       if (token) {
         console.warn('[FCM] Push notifications enabled');
         localStorage.setItem('fcm_token', token);
-        // Save token to backend
         try {
           const BACKEND_URL = 'https://crm-global-clean-home-production.up.railway.app';
           await fetch(`${BACKEND_URL}/api/auth/fcm-token`, {
             method: 'POST',
-            headers: { 
+            headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${localStorage.getItem('session_token')}`
             },
@@ -347,9 +346,55 @@ function NotificationHandler() {
         } catch(e) { console.warn('[FCM] Token save failed:', e); }
       }
     });
-    onMessageListener().then(payload => {
-      console.warn('[FCM] Notification received');
-    });
+
+    // ⚠️ CORRECTIF CRITIQUE : invalider le cache React Query à chaque
+    // notification FCM. Sinon les nouveaux leads arrivent en DB mais
+    // la page /leads ne les affiche pas (cache périmé).
+    const handleFcmMessage = (payload) => {
+      console.warn('[FCM] Notification received', payload?.data?.type);
+      const type = payload?.data?.type || '';
+      // Nouveau lead / hot lead → rafraîchir toutes les queries leads + dashboard
+      if (type.includes('lead') || type === 'new_lead' || type === 'hot_lead') {
+        queryClient.invalidateQueries({ queryKey: ['leads'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      }
+      // Devis accepté / facture payée → rafraîchir les listes financières
+      if (type.includes('quote') || type.includes('invoice') || type.includes('payment')) {
+        queryClient.invalidateQueries({ queryKey: ['quotes'] });
+        queryClient.invalidateQueries({ queryKey: ['invoices'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      }
+      // Tâche, intervention, ticket → idem pour leur domaine
+      if (type.includes('task')) queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      if (type.includes('intervention')) queryClient.invalidateQueries({ queryKey: ['planning'] });
+      if (type.includes('ticket')) queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      // Fallback sûr : si le type n'est pas reconnu, on invalide les leads
+      // (90% des notifications concernent des leads)
+      if (!type) {
+        queryClient.invalidateQueries({ queryKey: ['leads'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      }
+    };
+
+    // Écouteur continu (plus de Promise one-shot) — chaque message FCM
+    // déclenche handleFcmMessage qui invalide les queries concernées.
+    const unsubscribe = onForegroundMessage(handleFcmMessage);
+
+    // Filet de sécurité : polling toutes les 60s sur les leads pour couvrir
+    // le cas où FCM n'a pas pu être configuré (Safari iOS, Firefox strict,
+    // utilisateur qui a refusé les notifications...). Pas de polling si FCM
+    // marche car React Query gère déjà refetchOnWindowFocus.
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        queryClient.invalidateQueries({ queryKey: ['leads'], refetchType: 'active' });
+        queryClient.invalidateQueries({ queryKey: ['dashboard'], refetchType: 'active' });
+      }
+    }, 60_000);
+
+    return () => {
+      clearInterval(pollInterval);
+      try { if (typeof unsubscribe === 'function') unsubscribe(); } catch {}
+    };
   }, []);
   return null;
 }

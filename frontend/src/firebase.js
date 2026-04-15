@@ -30,6 +30,22 @@ export const requestNotificationPermission = async () => {
   }
 };
 
+/**
+ * Écouter les messages FCM de manière continue.
+ * Retourne une fonction unsubscribe.
+ *
+ * Ancienne version (bugguée) retournait une Promise qui ne résolvait qu'UNE
+ * fois, donc seule la première notification déclenchait l'invalidation
+ * React Query. Toutes les suivantes étaient perdues.
+ */
+export const onForegroundMessage = (callback) => {
+  return onMessage(messaging, (payload) => {
+    try { callback(payload); } catch (e) { console.error('FCM handler error:', e); }
+  });
+};
+
+// Compat : ancienne API Promise-based, gardée pour ne rien casser ailleurs.
+// NE PAS UTILISER pour les nouvelles intégrations.
 export const onMessageListener = () =>
   new Promise((resolve) => {
     onMessage(messaging, (payload) => {
