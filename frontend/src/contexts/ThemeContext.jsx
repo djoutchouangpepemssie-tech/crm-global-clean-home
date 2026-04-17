@@ -5,7 +5,7 @@ const ThemeContext = createContext(null);
 const STORAGE_KEY = 'gch-theme-prefs';
 
 const DEFAULTS = {
-  theme: 'light',
+  theme: 'dark',
   accentColor: '#8b5cf6',
   fontSize: 'medium',
   density: 'comfortable',
