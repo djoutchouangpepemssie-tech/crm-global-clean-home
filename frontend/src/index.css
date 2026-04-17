@@ -1,4 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+@import './styles/tokens.css';
+@import './styles/tokens.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -632,43 +634,6 @@ tbody tr:last-child { border-bottom: none !important; }
 }
 
 /* ══════════════════════════════════════════════════════════════
-   LEGACY DARK MODE COMPAT (sidebar toujours sombre)
-   Le CRM est maintenant en LIGHT MODE par défaut
-══════════════════════════════════════════════════════════════ */
-[data-theme="dark"] {
-  --bg-app: hsl(224, 71%, 4%);
-  --bg-card: hsl(224, 71%, 6%);
-  --bg-card-hover: hsl(224, 71%, 7%);
-  --bg-input: rgba(255,255,255,0.05);
-  --bg-input-focus: rgba(255,255,255,0.08);
-  --bg-muted: rgba(255,255,255,0.04);
-  --bg-sidebar: hsl(224, 71%, 5%);
-  --bg-sidebar-hover: rgba(255,255,255,0.06);
-  --bg-sidebar-active: rgba(99,102,241,0.18);
-  --text-primary: hsl(213, 31%, 91%);
-  --text-secondary: hsl(215, 20%, 65%);
-  --text-muted: hsl(215, 20%, 45%);
-  --border-default: rgba(255,255,255,0.07);
-  --border-strong: rgba(255,255,255,0.12);
-  --border-input: rgba(255,255,255,0.10);
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.2);
-  --shadow-card-hover: 0 4px 12px rgba(0,0,0,0.4), 0 12px 32px rgba(0,0,0,0.3);
-  --surface-1: hsl(224, 71%, 4%);
-  --surface-2: hsl(224, 71%, 6%);
-  --surface-3: hsl(215, 28%, 10%);
-  --surface-4: hsl(215, 28%, 14%);
-  
-  /* shadcn dark */
-  --background: 224 71% 4%;
-  --foreground: 213 31% 91%;
-  --card: 224 71% 6%;
-  --card-foreground: 213 31% 91%;
-  --border: 215 28% 16%;
-  --input: 215 28% 14%;
-  --muted: 215 28% 14%;
-  --muted-foreground: 215 20% 55%;
-}
-
 [data-theme="dark"] body {
   background-color: hsl(224, 71%, 4%);
   color: hsl(213, 31%, 91%);
