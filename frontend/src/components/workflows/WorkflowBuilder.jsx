@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { PageHeader } from '../shared';
 import axios from 'axios';
 import api from '../../lib/api';
@@ -22,22 +22,22 @@ const WorkflowCard = ({ workflow, onToggle, onTest, leads }) => {
     catch { toast.error('Erreur'); } finally { setTesting(false); }
   };
   return (
-    <div className={'section-card p-5 transition-all ' + (workflow.is_active ? 'border-violet-500/20' : 'opacity-60')}>
+    <div className={'bg-white border border-neutral-200 rounded-xl p-5 transition-all ' + (workflow.is_active ? 'border-brand-500/20' : 'opacity-60')}>
       <div className='flex items-start justify-between mb-4'>
         <div className='flex-1 min-w-0 pr-3'>
           <div className='flex items-center gap-2 mb-1'>
-            <h3 className='font-bold text-slate-100 text-sm'>{workflow.name}</h3>
+            <h3 className='font-bold text-neutral-100 text-sm'>{workflow.name}</h3>
             {workflow.is_active
-              ? <span className='px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'>Actif</span>
-              : <span className='px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/15 text-slate-400 border border-slate-500/25'>Inactif</span>}
+              ? <span className='px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-500/15 text-brand-400 border border-brand-500/25'>Actif</span>
+              : <span className='px-2 py-0.5 rounded-full text-[10px] font-bold bg-neutral-500/15 text-neutral-400 border border-neutral-500/25'>Inactif</span>}
           </div>
-          <p className='text-xs text-slate-500 mb-2'>{workflow.description}</p>
-          <span className='inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-violet-500/10 text-violet-300 border border-violet-500/20'>
+          <p className='text-xs text-neutral-500 mb-2'>{workflow.description}</p>
+          <span className='inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-brand-500/10 text-brand-300 border border-brand-500/20'>
             {TRIGGER_LABELS[workflow.trigger && workflow.trigger.type] || ''}
           </span>
         </div>
         <button onClick={() => onToggle(workflow.workflow_id)} className='flex-shrink-0'>
-          {workflow.is_active ? <ToggleRight className='w-8 h-8 text-emerald-400' /> : <ToggleLeft className='w-8 h-8 text-slate-600' />}
+          {workflow.is_active ? <ToggleRight className='w-8 h-8 text-brand-400' /> : <ToggleLeft className='w-8 h-8 text-neutral-600' />}
         </button>
       </div>
       <div className='flex items-center gap-1 mb-4 overflow-x-auto pb-1'>
@@ -50,27 +50,27 @@ const WorkflowCard = ({ workflow, onToggle, onTest, leads }) => {
                 <div className='w-8 h-8 rounded-lg flex items-center justify-center' style={{background:color+'15',border:'1px solid '+color+'30'}}>
                   <Icon className='w-4 h-4' style={{color}} />
                 </div>
-                {step.delay_hours > 0 && <span className='text-[9px] text-slate-600'>{step.delay_hours >= 24 ? (step.delay_hours/24)+'j' : step.delay_hours+'h'}</span>}
+                {step.delay_hours > 0 && <span className='text-[9px] text-neutral-600'>{step.delay_hours >= 24 ? (step.delay_hours/24)+'j' : step.delay_hours+'h'}</span>}
               </div>
-              {i < workflow.steps.length - 1 && <ChevronRight className='w-3 h-3 text-slate-700 flex-shrink-0' />}
+              {i < workflow.steps.length - 1 && <ChevronRight className='w-3 h-3 text-neutral-700 flex-shrink-0' />}
             </React.Fragment>
           );
         })}
       </div>
       <div className='flex gap-2'>
-        <button onClick={() => setShowTest(!showTest)} className='flex items-center gap-1.5 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 rounded-xl text-xs font-medium transition-all'>
+        <button onClick={() => setShowTest(!showTest)} className='flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-neutral-50 border border-neutral-200 text-neutral-400 rounded-xl text-xs font-medium transition-all'>
           <Play className='w-3.5 h-3.5' /> Tester
         </button>
       </div>
       {showTest && (
-        <div className='mt-3 p-3 rounded-xl bg-white/3 border border-white/10'>
-          <p className='text-xs font-semibold text-slate-400 mb-2'>Tester sur un lead :</p>
+        <div className='mt-3 p-3 rounded-xl bg-white/3 border border-neutral-200'>
+          <p className='text-xs font-semibold text-neutral-400 mb-2'>Tester sur un lead :</p>
           <div className='flex gap-2'>
-            <select value={testLead} onChange={e => setTestLead(e.target.value)} className='flex-1 px-3 py-2 bg-white/5 border border-white/10 text-slate-200 rounded-xl text-xs'>
-              <option value='' className='bg-slate-800'>Selectionnez...</option>
-              {leads.map(l => <option key={l.lead_id} value={l.lead_id} className='bg-slate-800'>{l.name}</option>)}
+            <select value={testLead} onChange={e => setTestLead(e.target.value)} className='flex-1 px-3 py-2 bg-white border border-neutral-200 text-neutral-200 rounded-xl text-xs'>
+              <option value='' className='bg-neutral-800'>Selectionnez...</option>
+              {leads.map(l => <option key={l.lead_id} value={l.lead_id} className='bg-neutral-800'>{l.name}</option>)}
             </select>
-            <button onClick={handleTest} disabled={testing} className='px-3 py-2 bg-violet-600 text-white rounded-xl text-xs font-bold disabled:opacity-60'>
+            <button onClick={handleTest} disabled={testing} className='px-3 py-2 bg-brand-600 text-white rounded-xl text-xs font-bold disabled:opacity-60'>
               {testing ? <div className='w-3.5 h-3.5 border border-white/30 border-t-white rounded-full animate-spin' /> : <Send className='w-3.5 h-3.5' />}
             </button>
           </div>
@@ -145,16 +145,16 @@ const WorkflowBuilder = () => {
       <div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4'>
         <div>
           <div className='flex items-center gap-2 mb-1'>
-            <Zap className='w-5 h-5 text-violet-400' />
-            <h1 className='text-2xl font-bold text-slate-100' style={{fontFamily:'Manrope,sans-serif'}}>Workflow Builder</h1>
+            <Zap className='w-5 h-5 text-brand-400' />
+            <h1 className='text-2xl font-bold text-neutral-100' style={{}}>Workflow Builder</h1>
           </div>
-          <p className='text-slate-500 text-sm'>Automatisez vos relances — emails naturels, rediges comme un humain</p>
+          <p className='text-neutral-500 text-sm'>Automatisez vos relances — emails naturels, rediges comme un humain</p>
         </div>
         <div className='flex items-center gap-2'>
-          <button onClick={fetchAll} className='p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 border border-white/5'>
+          <button onClick={fetchAll} className='p-2 rounded-lg bg-white hover:bg-neutral-50 text-neutral-400 border border-neutral-100'>
             <RefreshCw className='w-4 h-4' />
           </button>
-          <button onClick={handleProcess} disabled={processing} className='flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-sm disabled:opacity-60'>
+          <button onClick={handleProcess} disabled={processing} className='flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl text-sm disabled:opacity-60'>
             {processing ? <div className='w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin' /> : <Play className='w-4 h-4' />}
             Traiter maintenant
           </button>
@@ -174,17 +174,17 @@ const WorkflowBuilder = () => {
               <div className='w-8 h-8 rounded-lg flex items-center justify-center mb-2' style={{background:m.color+'15',border:'1px solid '+m.color+'30'}}>
                 <m.icon className='w-4 h-4' style={{color:m.color}} />
               </div>
-              <p className='text-xl font-bold text-slate-100'>{m.value}</p>
-              <p className='text-xs text-slate-500'>{m.label}</p>
+              <p className='text-xl font-bold text-neutral-100'>{m.value}</p>
+              <p className='text-xs text-neutral-500'>{m.label}</p>
             </div>
           ))}
         </div>
       )}
 
-      <div className='flex gap-1 bg-white/3 rounded-2xl border border-white/5 p-1.5'>
+      <div className='flex gap-1 bg-white/3 rounded-2xl border border-neutral-100 p-1.5'>
         {[{id:'workflows',label:'Workflows',icon:Zap},{id:'history',label:'Historique',icon:Clock},{id:'templates',label:'Emails',icon:Mail}].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className={'flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ' + (activeTab===tab.id?'bg-violet-600 text-white':'text-slate-500 hover:text-slate-300')}>
+            className={'flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ' + (activeTab===tab.id?'bg-brand-600 text-white':'text-neutral-500 hover:text-neutral-300')}>
             <tab.icon className='w-4 h-4' />{tab.label}
           </button>
         ))}
@@ -203,21 +203,21 @@ const WorkflowBuilder = () => {
       )}
 
       {activeTab === 'history' && (
-        <div className='section-card p-5'>
-          <h3 className='text-sm font-semibold text-slate-200 mb-4'>Historique des executions</h3>
+        <div className='bg-white border border-neutral-200 rounded-xl p-5'>
+          <h3 className='text-sm font-semibold text-neutral-200 mb-4'>Historique des executions</h3>
           {executions.length > 0 ? (
             <div className='space-y-2'>
               {executions.slice(0,30).map((exec, i) => {
                 const cfg = STATUS_CFG[exec.status] || STATUS_CFG.scheduled;
                 const Icon = STEP_ICONS[exec.step_type] || Zap;
                 return (
-                  <div key={i} className='flex items-center gap-3 p-3 rounded-xl bg-white/3 hover:bg-white/5 transition-all'>
+                  <div key={i} className='flex items-center gap-3 p-3 rounded-xl bg-white/3 hover:bg-white transition-all'>
                     <div className='w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0' style={{background:cfg.bg,border:'1px solid '+cfg.color+'30'}}>
                       <Icon className='w-4 h-4' style={{color:cfg.color}} />
                     </div>
                     <div className='flex-1 min-w-0'>
-                      <p className='text-xs font-semibold text-slate-200 truncate'>{exec.workflow_name}</p>
-                      <p className='text-[10px] text-slate-500'>{exec.step_label} — {exec.lead_name}</p>
+                      <p className='text-xs font-semibold text-neutral-200 truncate'>{exec.workflow_name}</p>
+                      <p className='text-[10px] text-neutral-500'>{exec.step_label} — {exec.lead_name}</p>
                     </div>
                     <span className='px-2 py-0.5 rounded-full text-[10px] font-bold flex-shrink-0' style={{background:cfg.bg,color:cfg.color}}>{cfg.label}</span>
                   </div>
@@ -225,7 +225,7 @@ const WorkflowBuilder = () => {
               })}
             </div>
           ) : (
-            <div className='text-center py-12 text-slate-600'>
+            <div className='text-center py-12 text-neutral-600'>
               <Clock className='w-12 h-12 mx-auto mb-3 opacity-30' />
               <p className='text-sm'>Aucune execution</p>
               <p className='text-xs mt-1'>Activez un workflow et testez-le</p>
@@ -235,9 +235,9 @@ const WorkflowBuilder = () => {
       )}
 
       {activeTab === 'templates' && (
-        <div className='section-card p-5'>
-          <h3 className='text-sm font-semibold text-slate-200 mb-1'>Emails rediges comme un humain</h3>
-          <p className='text-xs text-slate-500 mb-4'>Chaque email est personnalise. Ton naturel, pas robotique.</p>
+        <div className='bg-white border border-neutral-200 rounded-xl p-5'>
+          <h3 className='text-sm font-semibold text-neutral-200 mb-1'>Emails rediges comme un humain</h3>
+          <p className='text-xs text-neutral-500 mb-4'>Chaque email est personnalise. Ton naturel, pas robotique.</p>
           <div className='space-y-2'>
             {[
               {label:'Email de bienvenue', timing:'Immediat', color:'#a78bfa'},
@@ -250,15 +250,15 @@ const WorkflowBuilder = () => {
               {label:'Nurturing conseils', timing:'Semaine 1', color:'#34d399'},
               {label:'Nurturing offre speciale', timing:'Semaine 2', color:'#a78bfa'},
             ].map((t,i) => (
-              <div key={i} className='flex items-center gap-3 p-3 rounded-xl bg-white/3 border border-white/5'>
+              <div key={i} className='flex items-center gap-3 p-3 rounded-xl bg-white/3 border border-neutral-100'>
                 <div className='w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0' style={{background:t.color+'15',border:'1px solid '+t.color+'30'}}>
                   <Mail className='w-4 h-4' style={{color:t.color}} />
                 </div>
                 <div className='flex-1'>
-                  <p className='text-sm font-semibold text-slate-200'>{t.label}</p>
-                  <p className='text-xs text-slate-500'>{t.timing}</p>
+                  <p className='text-sm font-semibold text-neutral-200'>{t.label}</p>
+                  <p className='text-xs text-neutral-500'>{t.timing}</p>
                 </div>
-                <span className='px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'>Actif</span>
+                <span className='px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-500/10 text-brand-400 border border-brand-500/20'>Actif</span>
               </div>
             ))}
           </div>

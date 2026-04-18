@@ -1,4 +1,4 @@
-/**
+﻿/**
  * LeadForm — ATELIER direction
  * Crème / Fraunces / émeraude / terracotta
  * Logique 100% préservée (RHF + zod + détection doublons).
@@ -270,7 +270,7 @@ export default function LeadForm() {
           <FieldError error={errors.message} />
         </div>
 
-        {/* Info (brand-50 au lieu de blue-50) */}
+        {/* Info (brand-50 au lieu de neutral-50) */}
         <div className="rounded-lg bg-brand-50 border border-brand-100 p-3 flex items-start gap-2">
           <CheckCircle2 className="w-4 h-4 text-brand-700 flex-shrink-0 mt-0.5" />
           <p className="text-xs text-brand-900 leading-relaxed">

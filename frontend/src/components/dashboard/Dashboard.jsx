@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+﻿import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import axios from 'axios';
 import { apiCache } from '../../lib/apiCache.js';
 import { useNavigate } from 'react-router-dom';
@@ -117,7 +117,7 @@ const DashboardSkeleton = () => (
 const AtelierTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white/95 backdrop-blur shadow-lg px-3 py-2 text-xs">
+    <div className="rounded-lg border border-neutral-200 bg-white backdrop-blur shadow-lg px-3 py-2 text-xs">
       {label && <div className="font-semibold text-neutral-700 mb-1.5 font-mono tracking-wide uppercase text-[10px]">{label}</div>}
       <div className="space-y-1">
         {payload.map((p, i) => (

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Shield, Zap, BarChart3, Users, CheckCircle, ArrowRight, TrendingUp, Calendar } from 'lucide-react';
 
@@ -65,7 +65,7 @@ const Login = () => {
           {/* Contenu principal */}
           <div className={`transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
 
-            <div className="inline-flex items-center gap-2.5 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full mb-8">
+            <div className="inline-flex items-center gap-2.5 px-3 py-1.5 bg-white border border-neutral-200 rounded-full mb-8">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-500" />
@@ -102,7 +102,7 @@ const Login = () => {
           </div>
 
           {/* Stats */}
-          <div className="flex gap-10 pt-8 border-t border-white/5">
+          <div className="flex gap-10 pt-8 border-t border-neutral-100">
             {[
               { value: '2 500+', label: 'Clients gérés' },
               { value: '98%',    label: 'Satisfaction' },

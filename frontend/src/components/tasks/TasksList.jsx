@@ -1,4 +1,4 @@
-/**
+﻿/**
  * TasksList — Vague 3a.
  *
  * Refonte complète : React Query + composants partagés.
@@ -68,10 +68,10 @@ const TASK_TYPES = [
 ];
 
 const PRIORITIES = [
-  { value: 'urgente', label: 'Urgente', classes: 'bg-rose-50 text-rose-700 ring-rose-200' },
+  { value: 'urgente', label: 'Urgente', classes: 'bg-terracotta-50 text-terracotta-700 ring-terracotta-200' },
   { value: 'haute', label: 'Haute', classes: 'bg-amber-50 text-amber-700 ring-amber-200' },
-  { value: 'normale', label: 'Normale', classes: 'bg-blue-50 text-blue-700 ring-blue-200' },
-  { value: 'basse', label: 'Basse', classes: 'bg-slate-50 text-slate-600 ring-slate-200' },
+  { value: 'normale', label: 'Normale', classes: 'bg-neutral-50 text-brand-700 ring-neutral-200' },
+  { value: 'basse', label: 'Basse', classes: 'bg-neutral-50 text-neutral-600 ring-neutral-200' },
 ];
 
 function getTypeConfig(type) {
@@ -126,13 +126,13 @@ function groupTasksByDate(tasks) {
 // ── KPI card ─────────────────────────────────────────────────────
 function KpiCard({ icon: Icon, label, value, accent = 'violet', onClick, active = false }) {
   const accents = {
-    violet: 'from-violet-500/10 to-violet-500/5 ring-violet-200 text-violet-600',
-    emerald: 'from-emerald-500/10 to-emerald-500/5 ring-emerald-200 text-emerald-600',
+    violet: 'from-brand-500/10 to-brand-500/5 ring-brand-200 text-brand-600',
+    emerald: 'from-brand-500/10 to-brand-500/5 ring-brand-200 text-brand-600',
     amber: 'from-amber-500/10 to-amber-500/5 ring-amber-200 text-amber-600',
-    rose: 'from-rose-500/10 to-rose-500/5 ring-rose-200 text-rose-600',
+    rose: 'from-terracotta-500/10 to-terracotta-500/5 ring-terracotta-200 text-terracotta-600',
   };
   const clickableClasses = onClick
-    ? `cursor-pointer hover:scale-[1.02] ${active ? 'ring-2 ring-violet-500' : ''}`
+    ? `cursor-pointer hover:scale-[1.02] ${active ? 'ring-2 ring-brand-500' : ''}`
     : '';
   return (
     <div
@@ -140,8 +140,8 @@ function KpiCard({ icon: Icon, label, value, accent = 'violet', onClick, active 
       className={`rounded-xl bg-gradient-to-br ${accents[accent]} ring-1 p-4 animate-fade-in-up transition-transform ${clickableClasses}`}
     >
       <Icon className="w-5 h-5 mb-3" />
-      <div className="text-2xl font-bold text-slate-900 tracking-tight">{value}</div>
-      <div className="text-xs text-slate-600 mt-1">{label}</div>
+      <div className="text-2xl font-bold text-neutral-900 tracking-tight">{value}</div>
+      <div className="text-xs text-neutral-600 mt-1">{label}</div>
     </div>
   );
 }
@@ -152,15 +152,15 @@ function TasksSkeleton() {
     <div className="space-y-4">
       {Array.from({ length: 3 }).map((_, i) => (
         <div key={i} className="space-y-2">
-          <div className="h-4 w-24 bg-slate-200 rounded animate-pulse" />
+          <div className="h-4 w-24 bg-neutral-200 rounded animate-pulse" />
           {Array.from({ length: 2 }).map((_, j) => (
             <div
               key={j}
-              className="flex items-center gap-3 p-4 rounded-xl border border-slate-200 section-card/30"
+              className="flex items-center gap-3 p-4 rounded-xl border border-neutral-200 bg-white border border-neutral-200 rounded-xl/30"
             >
-              <div className="h-5 w-5 bg-slate-200 rounded animate-pulse" />
+              <div className="h-5 w-5 bg-neutral-200 rounded animate-pulse" />
               <div className="flex-1 space-y-2">
-                <div className="h-4 w-48 bg-slate-200 rounded animate-pulse" />
+                <div className="h-4 w-48 bg-neutral-200 rounded animate-pulse" />
                 <div className="h-3 w-32 /60 rounded animate-pulse" />
               </div>
               <div className="h-5 w-16 /60 rounded-full animate-pulse" />
@@ -185,10 +185,10 @@ function TaskRow({ task, onToggleSelect, isSelected, onComplete, onDelete, onOpe
       className={`
         group flex items-start gap-3 p-4 rounded-xl border transition-all duration-150 animate-fade-in-up
         ${isSelected
-          ? 'border-violet-300 bg-violet-50/50'
+          ? 'border-brand-300 bg-brand-50/50'
           : isOverdue
-            ? 'border-rose-200 bg-rose-50/30 hover:border-rose-300'
-            : 'border-slate-200 section-card/30 hover:border-slate-300'}
+            ? 'border-terracotta-200 bg-terracotta-50/30 hover:border-terracotta-300'
+            : 'border-neutral-200 bg-white border border-neutral-200 rounded-xl/30 hover:border-neutral-300'}
       `}
       style={{ animationDelay: `${idx * 20}ms` }}
     >
@@ -204,8 +204,8 @@ function TaskRow({ task, onToggleSelect, isSelected, onComplete, onDelete, onOpe
         className={`
           mt-0.5 w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all
           ${isCompleted
-            ? 'bg-emerald-500 border-emerald-500'
-            : 'border-slate-300 hover:border-emerald-500 hover:bg-emerald-50'}
+            ? 'bg-brand-500 border-brand-500'
+            : 'border-neutral-300 hover:border-brand-500 hover:bg-brand-50'}
         `}
         aria-label={isCompleted ? 'Tâche terminée' : 'Marquer comme terminée'}
       >
@@ -217,8 +217,8 @@ function TaskRow({ task, onToggleSelect, isSelected, onComplete, onDelete, onOpe
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <TypeIcon className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-              <span className={`text-sm font-semibold ${isCompleted ? 'line-through text-slate-400' : 'text-slate-900'}`}>
+              <TypeIcon className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+              <span className={`text-sm font-semibold ${isCompleted ? 'line-through text-neutral-400' : 'text-neutral-900'}`}>
                 {task.title || '(sans titre)'}
               </span>
               <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset uppercase tracking-wider ${priorityConfig.classes}`}>
@@ -226,7 +226,7 @@ function TaskRow({ task, onToggleSelect, isSelected, onComplete, onDelete, onOpe
               </span>
             </div>
             {task.description && (
-              <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+              <p className="text-xs text-neutral-500 mt-1 line-clamp-2">
                 {task.description}
               </p>
             )}
@@ -234,7 +234,7 @@ function TaskRow({ task, onToggleSelect, isSelected, onComplete, onDelete, onOpe
               {task.due_date && (
                 <span
                   className={`flex items-center gap-1 ${
-                    isOverdue ? 'text-rose-600 font-semibold' : 'text-slate-500'
+                    isOverdue ? 'text-terracotta-600 font-semibold' : 'text-neutral-500'
                   }`}
                 >
                   <Clock className="w-3 h-3" />
@@ -249,7 +249,7 @@ function TaskRow({ task, onToggleSelect, isSelected, onComplete, onDelete, onOpe
                     e.stopPropagation();
                     onOpenLead();
                   }}
-                  className="flex items-center gap-1 text-slate-500 hover:text-violet-600 transition-colors"
+                  className="flex items-center gap-1 text-neutral-500 hover:text-brand-600 transition-colors"
                 >
                   <UserPlus className="w-3 h-3" />
                   {task.lead_name}
@@ -264,7 +264,7 @@ function TaskRow({ task, onToggleSelect, isSelected, onComplete, onDelete, onOpe
             <button
               type="button"
               onClick={onDelete}
-              className="p-1.5 rounded hover:bg-rose-50 text-rose-500"
+              className="p-1.5 rounded hover:bg-terracotta-50 text-terracotta-500"
               aria-label="Supprimer"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -281,17 +281,17 @@ function TasksBucket({ bucket, children }) {
   if (bucket.tasks.length === 0) return null;
   const Icon = bucket.icon;
   const accents = {
-    rose: 'text-rose-600',
-    violet: 'text-violet-600',
-    blue: 'text-blue-600',
-    slate: 'text-slate-500',
+    rose: 'text-terracotta-600',
+    violet: 'text-brand-600',
+    blue: 'text-brand-600',
+    slate: 'text-neutral-500',
   };
   return (
     <div className="mb-6">
       <div className="flex items-center gap-2 mb-3">
         <Icon className={`w-4 h-4 ${accents[bucket.accent]}`} />
-        <h3 className="text-sm font-semibold text-slate-900">{bucket.label}</h3>
-        <span className="text-xs text-slate-500">{bucket.tasks.length}</span>
+        <h3 className="text-sm font-semibold text-neutral-900">{bucket.label}</h3>
+        <span className="text-xs text-neutral-500">{bucket.tasks.length}</span>
       </div>
       <div className="space-y-2">{children}</div>
     </div>
@@ -344,8 +344,8 @@ function TaskFormModal({ open, onOpenChange, onSubmit, isPending, leads }) {
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
-              Titre <span className="text-rose-500">*</span>
+            <label className="block text-xs font-semibold text-neutral-600 mb-1.5 uppercase tracking-wider">
+              Titre <span className="text-terracotta-500">*</span>
             </label>
             <Input
               autoFocus
@@ -357,7 +357,7 @@ function TaskFormModal({ open, onOpenChange, onSubmit, isPending, leads }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
+              <label className="block text-xs font-semibold text-neutral-600 mb-1.5 uppercase tracking-wider">
                 Type
               </label>
               <DropdownMenu>
@@ -378,7 +378,7 @@ function TaskFormModal({ open, onOpenChange, onSubmit, isPending, leads }) {
               </DropdownMenu>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
+              <label className="block text-xs font-semibold text-neutral-600 mb-1.5 uppercase tracking-wider">
                 Priorité
               </label>
               <DropdownMenu>
@@ -400,7 +400,7 @@ function TaskFormModal({ open, onOpenChange, onSubmit, isPending, leads }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
+            <label className="block text-xs font-semibold text-neutral-600 mb-1.5 uppercase tracking-wider">
               Échéance
             </label>
             <Input
@@ -411,7 +411,7 @@ function TaskFormModal({ open, onOpenChange, onSubmit, isPending, leads }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
+            <label className="block text-xs font-semibold text-neutral-600 mb-1.5 uppercase tracking-wider">
               Lead associé (optionnel)
             </label>
             <DropdownMenu>
@@ -429,7 +429,7 @@ function TaskFormModal({ open, onOpenChange, onSubmit, isPending, leads }) {
                   <DropdownMenuItem key={l.lead_id} onClick={() => setForm({ ...form, lead_id: l.lead_id })}>
                     <div className="flex flex-col items-start">
                       <span className="text-sm">{l.name}</span>
-                      <span className="text-xs text-slate-500">{l.email}</span>
+                      <span className="text-xs text-neutral-500">{l.email}</span>
                     </div>
                   </DropdownMenuItem>
                 ))}
@@ -438,7 +438,7 @@ function TaskFormModal({ open, onOpenChange, onSubmit, isPending, leads }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
+            <label className="block text-xs font-semibold text-neutral-600 mb-1.5 uppercase tracking-wider">
               Description
             </label>
             <Textarea
@@ -457,7 +457,7 @@ function TaskFormModal({ open, onOpenChange, onSubmit, isPending, leads }) {
           <Button
             onClick={handleSubmit}
             disabled={isPending || !form.title.trim()}
-            className="bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700 text-white"
+            className="bg-gradient-to-r from-brand-600 to-terracotta-600 hover:from-brand-700 hover:to-terracotta-700 text-white"
           >
             <Save className="w-3.5 h-3.5 mr-1" />
             {isPending ? 'Création…' : 'Créer la tâche'}
@@ -658,7 +658,7 @@ export default function TasksList() {
 
       {/* Tabs statut + filtre priorité */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
-        <div className="flex items-center rounded-lg border border-slate-200 overflow-hidden">
+        <div className="flex items-center rounded-lg border border-neutral-200 overflow-hidden">
           {[
             { value: 'pending', label: 'À faire' },
             { value: 'completed', label: 'Terminées' },
@@ -672,8 +672,8 @@ export default function TasksList() {
                 onClick={() => setStatusFilter(t.value)}
                 className={`px-3 py-1.5 text-sm font-medium transition-colors ${
                   active
-                    ? 'bg-slate-800 text-white  '
-                    : 'text-slate-600 hover:bg-slate-100'
+                    ? 'bg-neutral-800 text-white  '
+                    : 'text-neutral-600 hover:bg-neutral-100'
                 }`}
               >
                 {t.label}
@@ -700,7 +700,7 @@ export default function TasksList() {
         </DropdownMenu>
 
         {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={resetFilters} className="gap-1 text-slate-500">
+          <Button variant="ghost" size="sm" onClick={resetFilters} className="gap-1 text-neutral-500">
             <X className="w-3.5 h-3.5" />
             Réinitialiser
           </Button>
@@ -709,7 +709,7 @@ export default function TasksList() {
         <div className="flex-1" />
 
         <div className="relative min-w-[240px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
           <Input
             ref={searchInputRef}
             type="text"
@@ -722,9 +722,9 @@ export default function TasksList() {
             <button
               type="button"
               onClick={() => setSearch('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-slate-100"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-neutral-100"
             >
-              <X className="w-3.5 h-3.5 text-slate-400" />
+              <X className="w-3.5 h-3.5 text-neutral-400" />
             </button>
           )}
         </div>
@@ -798,16 +798,16 @@ export default function TasksList() {
       {/* Bulk actions */}
       {selectedIds.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-fade-in-up">
-          <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-slate-800 text-white  shadow-card-xl ring-1 ring-slate-700/50">
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-neutral-800 text-white  shadow-card-xl ring-1 ring-neutral-700/50">
             <span className="text-sm font-medium">
               {selectedIds.size} {selectedIds.size > 1 ? 'tâches' : 'tâche'} sélectionnée
               {selectedIds.size > 1 ? 's' : ''}
             </span>
-            <div className="w-px h-5 bg-slate-700" />
+            <div className="w-px h-5 bg-neutral-700" />
             <button
               type="button"
               onClick={handleBulkComplete}
-              className="text-sm font-medium text-emerald-300 hover:opacity-80 flex items-center gap-1"
+              className="text-sm font-medium text-brand-300 hover:opacity-80 flex items-center gap-1"
             >
               <CheckCircle2 className="w-4 h-4" />
               Terminer
@@ -815,12 +815,12 @@ export default function TasksList() {
             <button
               type="button"
               onClick={handleBulkDelete}
-              className="text-sm font-medium text-rose-300 hover:opacity-80 flex items-center gap-1"
+              className="text-sm font-medium text-terracotta-300 hover:opacity-80 flex items-center gap-1"
             >
               <Trash2 className="w-4 h-4" />
               Supprimer
             </button>
-            <div className="w-px h-5 bg-slate-700" />
+            <div className="w-px h-5 bg-neutral-700" />
             <button
               type="button"
               onClick={() => setSelectedIds(new Set())}

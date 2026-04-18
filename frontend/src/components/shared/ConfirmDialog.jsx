@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ConfirmDialog — remplace window.confirm() partout dans l'app.
  *
  * Usage avec le hook (recommandé) :
@@ -39,8 +39,8 @@ import {
 const VARIANTS = {
   info: {
     icon: Info,
-    iconClass: 'text-blue-500 bg-blue-50',
-    actionClass: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500',
+    iconClass: 'text-neutral-500 bg-neutral-50',
+    actionClass: 'bg-brand-600 hover:bg-brand-700 focus:ring-neutral-500',
   },
   warning: {
     icon: AlertTriangle,
@@ -49,13 +49,13 @@ const VARIANTS = {
   },
   danger: {
     icon: Trash2,
-    iconClass: 'text-red-500 bg-red-50',
-    actionClass: 'bg-red-600 hover:bg-red-700 focus:ring-red-500',
+    iconClass: 'text-terracotta-500 bg-terracotta-50',
+    actionClass: 'bg-terracotta-600 hover:bg-terracotta-700 focus:ring-terracotta-500',
   },
   success: {
     icon: CheckCircle2,
-    iconClass: 'text-emerald-500 bg-emerald-50',
-    actionClass: 'bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500',
+    iconClass: 'text-brand-500 bg-brand-50',
+    actionClass: 'bg-brand-600 hover:bg-brand-700 focus:ring-brand-500',
   },
 };
 

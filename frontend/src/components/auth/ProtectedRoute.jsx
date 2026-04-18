@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
@@ -24,10 +24,10 @@ const ProtectedRoute = ({ children }) => {
   // Show loading while checking auth
   if (isAuthenticated === null || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50">
         <div className="text-center">
-          <p className="text-sm text-slate-400">Chargement...</p>
-          <p className="text-slate-600">Vérification...</p>
+          <p className="text-sm text-neutral-400">Chargement...</p>
+          <p className="text-neutral-600">Vérification...</p>
         </div>
       </div>
     );

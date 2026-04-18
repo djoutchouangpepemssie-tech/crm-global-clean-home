@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AIInsights — ATELIER direction
  * Crème / Fraunces / émeraude (brand) / terracotta / amber
  * Logique 100% préservée (génération d'insights à partir des stats).

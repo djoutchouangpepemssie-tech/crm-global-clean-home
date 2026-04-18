@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '../shared';
 import axios from 'axios';
 import api from '../../lib/api';
@@ -165,7 +165,7 @@ export default function StockTable() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Package className="h-6 w-6 text-purple-600" /> Gestion des stocks
+          <Package className="h-6 w-6 text-brand-600" /> Gestion des stocks
         </h1>
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
@@ -192,15 +192,15 @@ export default function StockTable() {
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs text-gray-500">Quantité</label>
+                  <label className="text-xs text-neutral-500">Quantité</label>
                   <Input type="number" min="0" value={newItem.quantity} onChange={e => setNewItem(f => ({ ...f, quantity: parseFloat(e.target.value) || 0 }))} />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500">Prix unitaire</label>
+                  <label className="text-xs text-neutral-500">Prix unitaire</label>
                   <Input type="number" min="0" step="0.01" value={newItem.unit_price} onChange={e => setNewItem(f => ({ ...f, unit_price: parseFloat(e.target.value) || 0 }))} />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500">Seuil alerte</label>
+                  <label className="text-xs text-neutral-500">Seuil alerte</label>
                   <Input type="number" min="0" value={newItem.alert_threshold} onChange={e => setNewItem(f => ({ ...f, alert_threshold: parseFloat(e.target.value) || 0 }))} />
                 </div>
               </div>
@@ -217,26 +217,26 @@ export default function StockTable() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <Card><CardContent className="pt-4 text-center">
             <p className="text-2xl font-bold">{summary.total_items}</p>
-            <p className="text-xs text-gray-500">Articles</p>
+            <p className="text-xs text-neutral-500">Articles</p>
           </CardContent></Card>
           <Card><CardContent className="pt-4 text-center">
             <p className="text-2xl font-bold">{summary.total_quantity}</p>
-            <p className="text-xs text-gray-500">Quantité totale</p>
+            <p className="text-xs text-neutral-500">Quantité totale</p>
           </CardContent></Card>
           <Card><CardContent className="pt-4 text-center">
-            <p className="text-2xl font-bold text-blue-600">{summary.total_value?.toFixed(2)} €</p>
-            <p className="text-xs text-gray-500">Valeur totale</p>
+            <p className="text-2xl font-bold text-brand-600">{summary.total_value?.toFixed(2)} €</p>
+            <p className="text-xs text-neutral-500">Valeur totale</p>
           </CardContent></Card>
           <Card><CardContent className="pt-4 text-center">
             <p className="text-2xl font-bold">{summary.categories?.length || 0}</p>
-            <p className="text-xs text-gray-500">Catégories</p>
+            <p className="text-xs text-neutral-500">Catégories</p>
           </CardContent></Card>
-          <Card className={summary.low_stock_count > 0 ? 'border-red-300' : ''}>
+          <Card className={summary.low_stock_count > 0 ? 'border-terracotta-300' : ''}>
             <CardContent className="pt-4 text-center">
-              <p className={`text-2xl font-bold ${summary.low_stock_count > 0 ? 'text-red-600' : 'text-green-600'}`}>
+              <p className={`text-2xl font-bold ${summary.low_stock_count > 0 ? 'text-terracotta-600' : 'text-brand-600'}`}>
                 {summary.low_stock_count}
               </p>
-              <p className="text-xs text-gray-500">Stock bas</p>
+              <p className="text-xs text-neutral-500">Stock bas</p>
             </CardContent>
           </Card>
         </div>
@@ -244,11 +244,11 @@ export default function StockTable() {
 
       {/* Alerts */}
       {alerts.length > 0 && (
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-terracotta-200 bg-terracotta-50">
           <CardContent className="pt-4">
             <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-              <span className="font-semibold text-red-600">Articles en stock bas ({alerts.length})</span>
+              <AlertTriangle className="h-5 w-5 text-terracotta-600" />
+              <span className="font-semibold text-terracotta-600">Articles en stock bas ({alerts.length})</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {alerts.slice(0, 10).map(item => (
@@ -266,7 +266,7 @@ export default function StockTable() {
         <CardContent className="pt-4">
           <div className="flex flex-wrap gap-3 items-center">
             <div className="relative flex-1 min-w-48">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
               <Input
                 className="pl-10" placeholder="Rechercher..."
                 value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
@@ -290,9 +290,9 @@ export default function StockTable() {
       <Card>
         <CardContent className="pt-4">
           {loading ? (
-            <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600" /></div>
+            <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600" /></div>
           ) : items.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-neutral-500">
               <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
               <p>Aucun article trouvé</p>
             </div>
@@ -300,7 +300,7 @@ export default function StockTable() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-gray-500 border-b">
+                  <tr className="text-left text-neutral-500 border-b">
                     <th className="pb-3">Article</th>
                     <th className="pb-3">SKU</th>
                     <th className="pb-3">Catégorie</th>
@@ -315,32 +315,32 @@ export default function StockTable() {
                   {items.map(item => {
                     const isLow = item.quantity <= item.alert_threshold;
                     return (
-                      <tr key={item.item_id} className="border-b hover:bg-gray-50">
+                      <tr key={item.item_id} className="border-b hover:bg-neutral-50">
                         <td className="py-3">
                           <div className="flex items-center gap-2">
-                            {isLow && <AlertTriangle className="h-4 w-4 text-red-500" />}
+                            {isLow && <AlertTriangle className="h-4 w-4 text-terracotta-500" />}
                             <span className="font-medium">{item.name}</span>
                           </div>
-                          {item.description && <p className="text-xs text-gray-400 mt-0.5">{item.description}</p>}
+                          {item.description && <p className="text-xs text-neutral-400 mt-0.5">{item.description}</p>}
                         </td>
-                        <td className="text-gray-500 font-mono text-xs">{item.sku}</td>
+                        <td className="text-neutral-500 font-mono text-xs">{item.sku}</td>
                         <td><Badge variant="outline">{CATEGORIES.find(c => c.value === item.category)?.label || item.category}</Badge></td>
-                        <td className={`text-right font-medium ${isLow ? 'text-red-600' : ''}`}>
+                        <td className={`text-right font-medium ${isLow ? 'text-terracotta-600' : ''}`}>
                           {item.quantity} {item.unit}
                         </td>
                         <td className="text-right">{item.unit_price?.toFixed(2)} €</td>
                         <td className="text-right font-medium">{item.total_value?.toFixed(2)} €</td>
-                        <td className="text-gray-500">{item.supplier || '-'}</td>
+                        <td className="text-neutral-500">{item.supplier || '-'}</td>
                         <td className="text-right">
                           <div className="flex items-center justify-end gap-1">
                             <Button variant="ghost" size="sm" onClick={() => { setSelectedItem(item); setMoveForm({ movement_type: 'in', quantity: 1, reason: '', reference: '' }); setMoveOpen(true); }} title="Mouvement stock">
-                              <ArrowDown className="h-4 w-4 text-green-600" />
+                              <ArrowDown className="h-4 w-4 text-brand-600" />
                             </Button>
                             <Button variant="ghost" size="sm" onClick={() => { setSelectedItem(item); setEditOpen(true); }} title="Modifier">
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button variant="ghost" size="sm" onClick={() => handleDelete(item.item_id)} title="Supprimer">
-                              <Trash2 className="h-4 w-4 text-red-500" />
+                              <Trash2 className="h-4 w-4 text-terracotta-500" />
                             </Button>
                           </div>
                         </td>
@@ -356,7 +356,7 @@ export default function StockTable() {
           {total > 50 && (
             <div className="flex justify-center gap-2 mt-4">
               <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Précédent</Button>
-              <span className="text-sm text-gray-500 self-center">Page {page} / {Math.ceil(total / 50)}</span>
+              <span className="text-sm text-neutral-500 self-center">Page {page} / {Math.ceil(total / 50)}</span>
               <Button variant="outline" size="sm" disabled={page >= Math.ceil(total / 50)} onClick={() => setPage(p => p + 1)}>Suivant</Button>
             </div>
           )}
@@ -392,17 +392,17 @@ export default function StockTable() {
         <DialogContent>
           <DialogHeader><DialogTitle>Mouvement de stock — {selectedItem?.name}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <p className="text-sm text-gray-500">Stock actuel : <span className="font-bold">{selectedItem?.quantity} {selectedItem?.unit}</span></p>
+            <p className="text-sm text-neutral-500">Stock actuel : <span className="font-bold">{selectedItem?.quantity} {selectedItem?.unit}</span></p>
             <Select value={moveForm.movement_type} onValueChange={v => setMoveForm(f => ({ ...f, movement_type: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="in"><TrendingUp className="h-4 w-4 inline mr-1 text-green-600" />Entrée</SelectItem>
-                <SelectItem value="out"><TrendingDown className="h-4 w-4 inline mr-1 text-red-600" />Sortie</SelectItem>
-                <SelectItem value="adjustment"><RotateCcw className="h-4 w-4 inline mr-1 text-blue-600" />Ajustement (nouveau solde)</SelectItem>
+                <SelectItem value="in"><TrendingUp className="h-4 w-4 inline mr-1 text-brand-600" />Entrée</SelectItem>
+                <SelectItem value="out"><TrendingDown className="h-4 w-4 inline mr-1 text-terracotta-600" />Sortie</SelectItem>
+                <SelectItem value="adjustment"><RotateCcw className="h-4 w-4 inline mr-1 text-brand-600" />Ajustement (nouveau solde)</SelectItem>
               </SelectContent>
             </Select>
             <div>
-              <label className="text-xs text-gray-500">{moveForm.movement_type === 'adjustment' ? 'Nouveau solde' : 'Quantité'}</label>
+              <label className="text-xs text-neutral-500">{moveForm.movement_type === 'adjustment' ? 'Nouveau solde' : 'Quantité'}</label>
               <Input type="number" min="0" step="0.5" value={moveForm.quantity} onChange={e => setMoveForm(f => ({ ...f, quantity: parseFloat(e.target.value) || 0 }))} />
             </div>
             <Input placeholder="Raison / motif" value={moveForm.reason} onChange={e => setMoveForm(f => ({ ...f, reason: e.target.value }))} />

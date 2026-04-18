@@ -1,4 +1,4 @@
-/**
+﻿/**
  * QuotesList — Atelier direction.
  *
  * Palette Atelier (terracotta + émeraude + crème + encre chaude) en remplacement
@@ -170,7 +170,7 @@ function QuoteCard({ quote, isSelected, onToggleSelect, onView, onSend, onConver
           </div>
           {(isExpiringSoon || isExpired) && (
             <div className={`mt-1 text-xs font-semibold flex items-center gap-1 justify-end ${
-              isExpired ? 'text-rose-700' : 'text-amber-700'
+              isExpired ? 'text-terracotta-700' : 'text-amber-700'
             }`}>
               <AlertTriangle className="w-3 h-3" strokeWidth={2} />
               {isExpired ? 'Expiré' : `Expire dans ${expiryDays}j`}
@@ -220,7 +220,7 @@ function QuoteCard({ quote, isSelected, onToggleSelect, onView, onSend, onConver
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onDelete} className="text-rose-700 focus:text-rose-700">
+            <DropdownMenuItem onClick={onDelete} className="text-terracotta-700 focus:text-terracotta-700">
               <Trash2 className="w-3.5 h-3.5 mr-2" />
               Supprimer
             </DropdownMenuItem>
@@ -520,7 +520,7 @@ export default function QuotesList() {
             <button
               type="button"
               onClick={handleBulkDelete}
-              className="text-sm font-medium text-rose-300 hover:text-rose-200 transition-colors flex items-center gap-1"
+              className="text-sm font-medium text-terracotta-300 hover:text-terracotta-200 transition-colors flex items-center gap-1"
             >
               <Trash2 className="w-4 h-4" />
               Supprimer
