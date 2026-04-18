@@ -1,28 +1,14 @@
 /**
- * QuoteForm — Vague 2 (fusion de l'ancien QuoteForm simple + QuoteFormPremium).
+ * QuoteForm — Atelier direction.
  *
- * Formulaire complet de création/édition de devis avec lignes de prestations,
- * calcul automatique HT/TVA/TTC, sélection du lead associé.
- *
- * Features :
- *   - react-hook-form + validation à la volée sur le client
- *   - Sélection d'un lead existant → auto-remplit les infos client
- *   - Lignes multi-prestations avec ajout/suppression dynamique
- *   - Calcul automatique : total HT par ligne (avec remise), TVA, TTC
- *   - Récapitulatif temps réel sur le côté
- *   - Branchement sur useCreateQuote → invalidation dashboard + leads
- *   - Mode création uniquement (édition à venir dans une vague future)
- *   - Pré-remplissage depuis location.state.lead (navigation depuis LeadDetail)
- *
- * Note : pour l'instant on utilise l'endpoint POST /api/quotes standard
- * (et non /api/quotes/premium qui est partiellement stub côté backend).
- * Le payload reste compatible : {lead_id, service_type, surface, amount, details}.
- * Les lignes détaillées sont sérialisées dans le champ `details`.
+ * Tokens atelier : ink-* (encre chaude), accent-* (terracotta), brand-* (émeraude).
+ * Accents violet/rose génériques remplacés. Aucune logique modifiée.
  */
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, Plus, Trash2, Save, Send, User, FileText, Tag, Calculator,
+  ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -38,18 +24,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
-import { ChevronDown } from 'lucide-react';
 
 const SERVICE_TYPES = [
-  'Ménage',
-  'Canapé',
-  'Matelas',
-  'Tapis',
-  'Bureaux',
-  'Vitres',
-  'Fin de chantier',
-  'Déménagement',
-  'Autre',
+  'Ménage', 'Canapé', 'Matelas', 'Tapis', 'Bureaux', 'Vitres',
+  'Fin de chantier', 'Déménagement', 'Autre',
 ];
 
 const UNITS = ['unité', 'heure', 'm²', 'forfait'];
@@ -73,7 +51,6 @@ function newLine(overrides = {}) {
   };
 }
 
-// Format de ligne prêt à écrire dans le champ "details" du backend
 function serializeDetails(client, serviceType, lines, totals, notes, paymentTerms) {
   const lineText = lines
     .map(
@@ -106,11 +83,15 @@ function serializeDetails(client, serviceType, lines, totals, notes, paymentTerm
     .join('\n');
 }
 
+/* ── Petits helpers de style atelier ─────────────────────────────── */
+const sectionCard = 'rounded-card border border-ink-200 bg-bg-card p-6';
+const sectionTitle = 'text-display text-base font-semibold text-ink-900 mb-4 flex items-center gap-2 tracking-tight';
+const fieldLabel = 'block font-mono text-[10px] font-semibold text-ink-600 mb-1.5 uppercase tracking-[0.12em]';
+
 export default function QuoteForm() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Lead éventuellement passé depuis LeadDetail ou LeadForm
   const seedLead = location.state?.lead || null;
 
   const [client, setClient] = useState({
@@ -137,10 +118,8 @@ export default function QuoteForm() {
   const createQuote = useCreateQuote();
   const sendQuote = useSendQuote();
 
-  // Liste des leads pour le sélecteur
   const { data: allLeads = [] } = useLeadsList({ period: '90d', page: 1, page_size: 200 });
 
-  // ── Calculs automatiques ───────────────────────────────────────
   const totals = useMemo(() => {
     const lineHTs = lines.map((l) => {
       const qty = Number(l.quantity) || 0;
@@ -152,15 +131,9 @@ export default function QuoteForm() {
     const afterGlobalDiscount = subTotalHT * (1 - (Number(globalDiscountPercent) || 0) / 100);
     const tva = afterGlobalDiscount * ((Number(tvaRate) || 0) / 100);
     const ttc = afterGlobalDiscount + tva;
-    return {
-      subTotalHT,
-      ht: afterGlobalDiscount,
-      tva,
-      ttc,
-    };
+    return { subTotalHT, ht: afterGlobalDiscount, tva, ttc };
   }, [lines, globalDiscountPercent, tvaRate]);
 
-  // Sync depuis seedLead si l'utilisateur navigue avec state
   useEffect(() => {
     if (seedLead) {
       setClient({
@@ -173,7 +146,6 @@ export default function QuoteForm() {
     }
   }, [seedLead]);
 
-  // ── Handlers ───────────────────────────────────────────────────
   const addLine = () => setLines((prev) => [...prev, newLine()]);
   const removeLine = (id) => setLines((prev) => (prev.length > 1 ? prev.filter((l) => l.id !== id) : prev));
   const updateLine = (id, patch) =>
@@ -229,15 +201,11 @@ export default function QuoteForm() {
         await sendQuote.mutateAsync(created.quote_id);
       }
       toast.success(sendAfter ? 'Devis créé et envoyé' : 'Devis créé');
-      // Retour vers la liste (ou vers le lead si présent)
       if (client.lead_id) navigate(`/leads/${client.lead_id}`);
       else navigate('/quotes');
-    } catch {
-      /* erreur affichée par useCreateQuote */
-    }
+    } catch {}
   };
 
-  // ── Render ─────────────────────────────────────────────────────
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
       <PageHeader
@@ -248,17 +216,8 @@ export default function QuoteForm() {
         title="Créer un devis"
         subtitle={seedLead ? `Pour ${seedLead.name}` : 'Création manuelle'}
         actions={[
-          {
-            label: 'Annuler',
-            icon: ArrowLeft,
-            onClick: () => navigate(-1),
-          },
-          {
-            label: 'Brouillon',
-            icon: Save,
-            onClick: () => handleSave(false),
-            loading: createQuote.isPending,
-          },
+          { label: 'Annuler', icon: ArrowLeft, onClick: () => navigate(-1) },
+          { label: 'Brouillon', icon: Save, onClick: () => handleSave(false), loading: createQuote.isPending },
           {
             label: 'Créer & envoyer',
             icon: Send,
@@ -272,18 +231,15 @@ export default function QuoteForm() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Colonne gauche — formulaire */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Bloc Client */}
-          <div className="rounded-xl border border-slate-200 section-card/30 p-6">
-            <h3 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
-              <User className="w-4 h-4 text-violet-600" />
+          {/* Client */}
+          <div className={sectionCard}>
+            <h3 className={sectionTitle}>
+              <User className="w-4 h-4 text-accent-700" strokeWidth={1.8} />
               Client
             </h3>
 
-            {/* Sélecteur de lead existant */}
             <div className="mb-4">
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
-                Lead associé (optionnel)
-              </label>
+              <label className={fieldLabel}>Lead associé (optionnel)</label>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="w-full justify-between font-normal">
@@ -303,7 +259,7 @@ export default function QuoteForm() {
                     <DropdownMenuItem key={l.lead_id} onClick={() => handleSelectLead(l.lead_id)}>
                       <div className="flex flex-col items-start">
                         <span className="text-sm">{l.name}</span>
-                        <span className="text-xs text-slate-500">{l.email}</span>
+                        <span className="text-xs text-ink-500">{l.email}</span>
                       </div>
                     </DropdownMenuItem>
                   ))}
@@ -313,8 +269,8 @@ export default function QuoteForm() {
 
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
-                  Nom <span className="text-rose-500">*</span>
+                <label className={fieldLabel}>
+                  Nom <span className="text-rose-600">*</span>
                 </label>
                 <Input
                   value={client.name}
@@ -323,9 +279,7 @@ export default function QuoteForm() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
-                  Email
-                </label>
+                <label className={fieldLabel}>Email</label>
                 <Input
                   type="email"
                   value={client.email}
@@ -334,9 +288,7 @@ export default function QuoteForm() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
-                  Téléphone
-                </label>
+                <label className={fieldLabel}>Téléphone</label>
                 <Input
                   type="tel"
                   value={client.phone}
@@ -345,9 +297,7 @@ export default function QuoteForm() {
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
-                  Adresse
-                </label>
+                <label className={fieldLabel}>Adresse</label>
                 <Input
                   value={client.address}
                   onChange={(e) => setClient({ ...client, address: e.target.value })}
@@ -357,17 +307,15 @@ export default function QuoteForm() {
             </div>
           </div>
 
-          {/* Bloc Service */}
-          <div className="rounded-xl border border-slate-200 section-card/30 p-6">
-            <h3 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
-              <Tag className="w-4 h-4 text-violet-600" />
+          {/* Prestation */}
+          <div className={sectionCard}>
+            <h3 className={sectionTitle}>
+              <Tag className="w-4 h-4 text-accent-700" strokeWidth={1.8} />
               Prestation
             </h3>
             <div className="grid sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
-                  Service
-                </label>
+                <label className={fieldLabel}>Service</label>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="w-full justify-between font-normal">
@@ -385,9 +333,7 @@ export default function QuoteForm() {
                 </DropdownMenu>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
-                  Surface (m²)
-                </label>
+                <label className={fieldLabel}>Surface (m²)</label>
                 <Input
                   type="number"
                   value={surface}
@@ -396,9 +342,7 @@ export default function QuoteForm() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
-                  Validité (jours)
-                </label>
+                <label className={fieldLabel}>Validité (jours)</label>
                 <Input
                   type="number"
                   value={validityDays}
@@ -409,11 +353,11 @@ export default function QuoteForm() {
             </div>
           </div>
 
-          {/* Bloc Lignes de prestations */}
-          <div className="rounded-xl border border-slate-200 section-card/30 p-6">
+          {/* Lignes */}
+          <div className={sectionCard}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-violet-600" />
+              <h3 className={sectionTitle + ' mb-0'}>
+                <FileText className="w-4 h-4 text-accent-700" strokeWidth={1.8} />
                 Lignes de prestations
               </h3>
               <Button size="sm" variant="outline" onClick={addLine}>
@@ -428,7 +372,7 @@ export default function QuoteForm() {
                 return (
                   <div
                     key={line.id}
-                    className="grid grid-cols-12 gap-2 items-start pb-3 border-b border-slate-200 last:border-0 last:pb-0"
+                    className="grid grid-cols-12 gap-2 items-start pb-3 border-b border-ink-200 last:border-0 last:pb-0"
                   >
                     <div className="col-span-12 sm:col-span-5">
                       <Input
@@ -484,14 +428,14 @@ export default function QuoteForm() {
                       />
                     </div>
                     <div className="col-span-2 sm:col-span-1 flex items-center justify-end gap-1">
-                      <span className="text-xs font-mono text-slate-600 whitespace-nowrap">
+                      <span className="font-mono text-xs text-ink-700 whitespace-nowrap tabular-nums">
                         {lineHT.toFixed(0)} €
                       </span>
                       {lines.length > 1 && (
                         <button
                           type="button"
                           onClick={() => removeLine(line.id)}
-                          className="p-1 rounded hover:bg-rose-50 text-rose-500"
+                          className="p-1 rounded hover:bg-rose-50 text-rose-600"
                           aria-label="Supprimer la ligne"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -504,16 +448,12 @@ export default function QuoteForm() {
             </div>
           </div>
 
-          {/* Bloc Notes */}
-          <div className="rounded-xl border border-slate-200 section-card/30 p-6">
-            <h3 className="text-sm font-semibold text-slate-900 mb-4">
-              Notes & conditions
-            </h3>
+          {/* Notes */}
+          <div className={sectionCard}>
+            <h3 className={sectionTitle}>Notes &amp; conditions</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
-                  Conditions de paiement
-                </label>
+                <label className={fieldLabel}>Conditions de paiement</label>
                 <Input
                   value={paymentTerms}
                   onChange={(e) => setPaymentTerms(e.target.value)}
@@ -521,9 +461,7 @@ export default function QuoteForm() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
-                  Notes / mentions
-                </label>
+                <label className={fieldLabel}>Notes / mentions</label>
                 <Textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
@@ -538,17 +476,18 @@ export default function QuoteForm() {
 
         {/* Colonne droite — récapitulatif */}
         <div>
-          <div className="rounded-xl border border-slate-200 section-card/30 p-6 sticky top-6">
-            <h3 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
-              <Calculator className="w-4 h-4 text-violet-600" />
+          <div className={`${sectionCard} sticky top-6 relative overflow-hidden`}>
+            {/* Filet accent gauche */}
+            <span className="absolute top-0 left-0 h-full w-[3px] bg-accent-600" aria-hidden />
+
+            <h3 className={sectionTitle}>
+              <Calculator className="w-4 h-4 text-accent-700" strokeWidth={1.8} />
               Récapitulatif
             </h3>
 
             <div className="space-y-3 mb-4">
               <div>
-                <label className="block text-xs text-slate-600 mb-1">
-                  Remise globale (%)
-                </label>
+                <label className={fieldLabel}>Remise globale (%)</label>
                 <Input
                   type="number"
                   min="0"
@@ -559,9 +498,7 @@ export default function QuoteForm() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-slate-600 mb-1">
-                  Régime TVA
-                </label>
+                <label className={fieldLabel}>Régime TVA</label>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="w-full justify-between font-normal h-9">
@@ -580,47 +517,49 @@ export default function QuoteForm() {
               </div>
             </div>
 
-            <div className="border-t border-slate-200 pt-4 space-y-2">
+            <div className="border-t border-ink-200 pt-4 space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-600">Sous-total HT</span>
-                <span className="font-medium">
+                <span className="text-ink-600">Sous-total HT</span>
+                <span className="font-medium tabular-nums">
                   {totals.subTotalHT.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                 </span>
               </div>
               {Number(globalDiscountPercent) > 0 && (
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600">
+                  <span className="text-ink-600">
                     Remise globale ({globalDiscountPercent}%)
                   </span>
-                  <span className="text-rose-600">
+                  <span className="text-rose-700 tabular-nums">
                     −{(totals.subTotalHT - totals.ht).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                   </span>
                 </div>
               )}
               <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-600">Total HT</span>
-                <span className="font-medium">
+                <span className="text-ink-600">Total HT</span>
+                <span className="font-medium tabular-nums">
                   {totals.ht.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                 </span>
               </div>
               {tvaRate > 0 && (
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600">TVA ({tvaRate}%)</span>
-                  <span className="font-medium">
+                  <span className="text-ink-600">TVA ({tvaRate}%)</span>
+                  <span className="font-medium tabular-nums">
                     {totals.tva.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                   </span>
                 </div>
               )}
-              <div className="flex items-center justify-between pt-3 border-t border-slate-200">
-                <span className="text-sm font-semibold text-slate-900">Total TTC</span>
-                <span className="text-xl font-bold text-slate-900">
+              <div className="flex items-center justify-between pt-3 border-t border-ink-200">
+                <span className="font-mono text-[10px] uppercase tracking-[0.12em] font-semibold text-ink-900">
+                  Total TTC
+                </span>
+                <span className="text-display text-2xl font-semibold text-accent-700 tracking-tight tabular-nums">
                   {totals.ttc.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                 </span>
               </div>
             </div>
 
             {tvaRate === 0 && (
-              <p className="mt-3 text-[11px] text-slate-500 italic">
+              <p className="mt-3 text-[11px] text-ink-500 italic">
                 TVA non applicable, art. 293 B du CGI.
               </p>
             )}
