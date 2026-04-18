@@ -1,740 +1,471 @@
-/**
- * InvoicesList — Vague 2.
- *
- * Refonte complète : React Query + composants partagés.
- *
- * Features préservées :
- *   - Filtres statut (en_attente, payée, en_retard, annulée)
- *   - Stats en haut : factures du mois, CA mois, impayés, en retard > 30j
- *   - Enregistrement de paiement via modale
- *   - Détection automatique des factures en retard (côté client)
- *   - Actions : voir, marquer payée, relance (soft), supprimer
- *
- * Nouveautés :
- *   - Édition inline du statut
- *   - Filtre "Smart" : en retard > 30j (un clic)
- *   - Lien Invoice → Lead cliquable
- *   - Bulk delete
- *   - Raccourcis clavier
- */
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Plus, Search, X, RefreshCw, FileText, CreditCard, Trash2,
-  AlertTriangle, DollarSign, Clock,
-  Inbox, ChevronDown, ExternalLink,
-} from 'lucide-react';
-import { toast } from 'sonner';
+import api from '../../lib/api';
 
-import {
-  useInvoicesList,
-  useRecordPayment,
-  useDeleteInvoice,
-  useUpdateInvoice,
-} from '../../hooks/api';
-import useHotkeys from '../../hooks/useHotkeys';
-import { PageHeader, EmptyState, StatusBadge, useConfirm } from '../shared';
-import { relativeTime, shortDate, daysSince } from '../../lib/dates';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Textarea } from '../ui/textarea';
-import { Checkbox } from '../ui/checkbox';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '../ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '../ui/dropdown-menu';
+/**
+ * InvoicesList — Registre des factures, niveau atelier.
+ * Cover éditoriale + barre actions primaires + hero 4 chiffres + alerte impayés
+ * + ruban annotations + tableau dense avec pastilles type BTP, TVA, relances, statut.
+ * API : GET /api/invoices → { invoices[], stats }
+ */
 
-const INVOICE_STATUSES = ['en_attente', 'payée', 'en_retard', 'annulée'];
-
-const INVOICE_STATUS_LABELS = {
-  en_attente: 'En attente',
-  payée: 'Payée',
-  payee: 'Payée',
-  en_retard: 'En retard',
-  annulée: 'Annulée',
-  annulee: 'Annulée',
+const STATUS = {
+  draft:     { label: 'Brouillon', bg: 'bg-neutral-200',     fg: 'text-neutral-500' },
+  emitted:   { label: 'Émise',     bg: 'bg-[#dbeafe]',       fg: 'text-[#1e40af]' },
+  paid:      { label: 'Payée',     bg: 'bg-brand-100',       fg: 'text-brand-700' },
+  overdue:   { label: 'Retard',    bg: 'bg-[#fecdd3]',       fg: 'text-[#881337]' },
+  cancelled: { label: 'Annulée',   bg: 'bg-neutral-100',     fg: 'text-neutral-400 line-through' },
 };
 
-const PAYMENT_METHODS = [
-  { value: 'virement', label: 'Virement bancaire' },
-  { value: 'carte', label: 'Carte bancaire' },
-  { value: 'espèces', label: 'Espèces' },
-  { value: 'chèque', label: 'Chèque' },
-  { value: 'stripe', label: 'Stripe' },
-];
+const TYPE_PILL = {
+  acompte:   { label: 'Acompte',    cls: 'bg-amber-100 text-amber-800 border-amber-300' },
+  situation: { label: 'Situation',  cls: 'bg-[#dbeafe] text-[#1e40af] border-[#60a5fa]' },
+  finale:    { label: 'Finale',     cls: 'bg-brand-100 text-brand-700 border-brand-600' },
+  retenue:   { label: 'Retenue 5%', cls: 'bg-[#f3e8ff] text-[#6b21a8] border-[#c084fc]' },
+  avoir:     { label: 'Avoir',      cls: 'bg-[#fce7f3] text-[#9d174d] border-[#f472b6]' },
+};
 
-function normalizeStatus(s) {
-  if (!s) return 'en_attente';
-  const map = { payee: 'payée', annulee: 'annulée' };
-  return map[s] || s;
-}
+const fmtMoney = (v) => new Intl.NumberFormat('fr-FR').format(Math.round(v || 0));
+const fmtK = (v) => (Math.round((v || 0) / 100) / 10).toLocaleString('fr-FR', { minimumFractionDigits: 1 });
+const fmtDate = (d) => {
+  if (!d) return '—';
+  try { return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' }); }
+  catch { return '—'; }
+};
+const daysSince = (d) => {
+  if (!d) return null;
+  return Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
+};
 
-/** Détecte si une facture est en retard (côté client) */
-function isOverdue(inv) {
-  const status = normalizeStatus(inv.status);
-  if (status === 'payée' || status === 'annulée') return false;
-  if (status === 'en_retard') return true;
-  if (inv.due_date && new Date(inv.due_date) < new Date()) return true;
-  // Défaut : 30 jours après création
-  const age = daysSince(inv.created_at);
-  return age !== null && age > 30;
-}
+const initials = (n) => (n || '').split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase();
 
-/** Nombre de jours de retard */
-function daysOverdue(inv) {
-  if (!isOverdue(inv)) return 0;
-  if (inv.due_date) {
-    const d = daysSince(inv.due_date);
-    return d !== null ? d : 0;
-  }
-  const age = daysSince(inv.created_at);
-  return age !== null ? Math.max(0, age - 30) : 0;
-}
-
-// ── KPI card ─────────────────────────────────────────────────────
-function KpiCard({ icon: Icon, label, value, accent = 'violet', sub }) {
-  const accents = {
-    violet: 'bg-brand-50 ring-brand-200 text-brand-700',
-    blue: 'bg-neutral-100 ring-neutral-200 text-neutral-700',
-    emerald: 'bg-brand-50 ring-brand-200 text-brand-700',
-    amber: 'bg-amber-50 ring-amber-200 text-amber-700',
-    rose: 'bg-terracotta-50 ring-terracotta-200 text-terracotta-700',
-  };
-  return (
-    <div className={`rounded-xl bg-white border border-neutral-200 shadow-card ${accents[accent]} ring-1 p-4 animate-fade-in-up`}>
-      <Icon className="w-5 h-5 mb-3" />
-      <div className="text-2xl font-bold text-neutral-900 tracking-tight tabular-nums">{value}</div>
-      <div className="text-[11px] font-mono uppercase tracking-[0.1em] text-neutral-500 mt-1">{label}</div>
-      {sub && <div className="text-[11px] text-neutral-400 mt-0.5">{sub}</div>}
-    </div>
-  );
-}
-
-// ── Skeleton ─────────────────────────────────────────────────────
-function InvoicesSkeleton() {
-  return (
-    <div className="rounded-xl border border-neutral-200 overflow-hidden bg-white">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div
-          key={i}
-          className="flex items-center gap-4 px-4 py-3 border-b border-neutral-200 last:border-b-0"
-        >
-          <div className="h-4 w-4 bg-neutral-200 rounded animate-pulse" />
-          <div className="flex-1 space-y-2">
-            <div className="h-4 w-32 bg-neutral-200 rounded animate-pulse" />
-            <div className="h-3 w-24 bg-neutral-100 rounded animate-pulse" />
-          </div>
-          <div className="h-5 w-20 bg-neutral-100 rounded animate-pulse" />
-          <div className="h-5 w-16 bg-neutral-100 rounded animate-pulse" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Ligne facture ────────────────────────────────────────────────
-function InvoiceRow({ invoice, isSelected, onToggle, onView, onRecordPayment, onStatusChange, onDelete, idx }) {
-  const status = normalizeStatus(invoice.status);
-  const overdue = isOverdue(invoice);
-  const daysLate = daysOverdue(invoice);
-  const amount = Number(invoice.total_ttc || invoice.amount_ttc || invoice.amount || 0);
-  const paid = Number(invoice.amount_paid || 0);
-  const reste = Math.max(0, amount - paid);
-
-  return (
-    <div
-      onClick={onView}
-      className={`
-        group flex items-center gap-4 px-4 py-3 border-b border-neutral-200 last:border-b-0
-        cursor-pointer transition-colors animate-fade-in-up
-        ${isSelected ? 'bg-brand-50/50' : 'hover:bg-neutral-50'}
-        ${overdue && status === 'en_attente' ? 'bg-terracotta-50/30' : ''}
-      `}
-      style={{ animationDelay: `${idx * 20}ms` }}
-    >
-      <div onClick={(e) => e.stopPropagation()}>
-        <Checkbox checked={isSelected} onCheckedChange={onToggle} aria-label="Sélectionner" />
-      </div>
-
-      <div className="flex-1 min-w-0 grid grid-cols-12 gap-3 items-center">
-        {/* Référence + client */}
-        <div className="col-span-12 sm:col-span-4 min-w-0">
-          <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-neutral-400 flex-shrink-0" />
-            <span className="text-xs font-mono text-neutral-500">
-              {invoice.reference || invoice.invoice_number || (invoice.invoice_id ? invoice.invoice_id.slice(0, 8) : '—')}
-            </span>
-          </div>
-          <div className="font-semibold text-neutral-900 truncate mt-0.5">
-            {invoice.lead_name || invoice.client_name || 'Sans client'}
-          </div>
-        </div>
-
-        {/* Montant + payé */}
-        <div className="col-span-6 sm:col-span-3">
-          <div className="text-sm font-bold text-neutral-900">
-            {amount.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €
-          </div>
-          {paid > 0 && paid < amount && (
-            <div className="text-xs text-neutral-500">
-              {paid.toLocaleString('fr-FR')} payés · {reste.toLocaleString('fr-FR')} reste
-            </div>
-          )}
-        </div>
-
-        {/* Statut */}
-        <div className="col-span-6 sm:col-span-2" onClick={(e) => e.stopPropagation()}>
-          <StatusBadge domain="invoice" status={status} />
-          {overdue && status === 'en_attente' && daysLate > 0 && (
-            <div className="text-[11px] text-terracotta-600 font-semibold mt-0.5 flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3" />
-              +{daysLate}j
-            </div>
-          )}
-        </div>
-
-        {/* Échéance */}
-        <div className="col-span-6 sm:col-span-2 text-xs text-neutral-500">
-          {invoice.due_date ? shortDate(invoice.due_date) : relativeTime(invoice.created_at)}
-        </div>
-
-        {/* Actions */}
-        <div
-          className="col-span-6 sm:col-span-1 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {status !== 'payée' && status !== 'annulée' && (
-            <button
-              type="button"
-              onClick={onRecordPayment}
-              className="p-1.5 rounded hover:bg-brand-50 text-brand-600"
-              aria-label="Enregistrer paiement"
-            >
-              <CreditCard className="w-4 h-4" />
-            </button>
-          )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="p-1.5 rounded hover:bg-neutral-100 text-neutral-500"
-                aria-label="Plus"
-              >
-                <ChevronDown className="w-4 h-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel className="text-xs">Changer le statut</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {INVOICE_STATUSES.map((s) => (
-                <DropdownMenuItem key={s} onClick={() => onStatusChange(s)}>
-                  <StatusBadge domain="invoice" status={s} size="xs" />
-                  <span className="ml-2 text-sm">{INVOICE_STATUS_LABELS[s]}</span>
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              {invoice.lead_id && (
-                <DropdownMenuItem onClick={onView}>
-                  <ExternalLink className="w-3.5 h-3.5 mr-2" />
-                  Ouvrir le lead
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem onClick={onDelete} className="text-terracotta-600 focus:text-terracotta-600">
-                <Trash2 className="w-3.5 h-3.5 mr-2" />
-                Supprimer
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Modale paiement ──────────────────────────────────────────────
-function RecordPaymentModal({ open, onOpenChange, invoice, onSubmit, isPending }) {
-  const amount = Number(invoice?.total_ttc || invoice?.amount_ttc || invoice?.amount || 0);
-  const paid = Number(invoice?.amount_paid || 0);
-  const reste = Math.max(0, amount - paid);
-
-  const [formAmount, setFormAmount] = useState(reste);
-  const [method, setMethod] = useState('virement');
-  const [reference, setReference] = useState('');
-  const [notes, setNotes] = useState('');
-
-  // Reset quand la modale s'ouvre
-  React.useEffect(() => {
-    if (open) {
-      setFormAmount(reste);
-      setMethod('virement');
-      setReference('');
-      setNotes('');
-    }
-  }, [open, reste]);
-
-  if (!invoice) return null;
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Enregistrer un paiement</DialogTitle>
-          <p className="text-xs text-neutral-500 mt-1">
-            Facture : {invoice.reference || invoice.invoice_id?.slice(0, 8)} · {amount.toLocaleString('fr-FR')} €
-          </p>
-        </DialogHeader>
-        <div className="space-y-4 pt-2">
-          <div>
-            <label className="block text-[11px] font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.1em]">
-              Montant (€)
-            </label>
-            <Input
-              type="number"
-              step="0.01"
-              value={formAmount}
-              onChange={(e) => setFormAmount(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.1em]">
-              Méthode
-            </label>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-full justify-between font-normal">
-                  {PAYMENT_METHODS.find((m) => m.value === method)?.label || 'Sélectionner'}
-                  <ChevronDown className="w-4 h-4 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
-                {PAYMENT_METHODS.map((m) => (
-                  <DropdownMenuItem key={m.value} onClick={() => setMethod(m.value)}>
-                    {m.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          <div>
-            <label className="block text-[11px] font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.1em]">
-              Référence (optionnel)
-            </label>
-            <Input
-              value={reference}
-              onChange={(e) => setReference(e.target.value)}
-              placeholder="N° de virement, transaction Stripe…"
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.1em]">
-              Notes
-            </label>
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-              placeholder="Commentaire interne…"
-              className="resize-none"
-            />
-          </div>
-        </div>
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
-            Annuler
-          </Button>
-          <Button
-            onClick={() =>
-              onSubmit({
-                amount: Number(formAmount),
-                method,
-                reference,
-                notes,
-              })
-            }
-            disabled={isPending || Number(formAmount) <= 0}
-            className="bg-brand-600 hover:bg-brand-700 text-white"
-          >
-            {isPending ? 'Enregistrement…' : 'Enregistrer'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ── Composant principal ──────────────────────────────────────────
-export default function InvoicesList() {
+const InvoicesList = () => {
   const navigate = useNavigate();
-  const { confirm, ConfirmElement } = useConfirm();
-  const searchInputRef = useRef(null);
-
-  const [status, setStatus] = useState('');
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState('all');
   const [search, setSearch] = useState('');
-  const [selectedIds, setSelectedIds] = useState(() => new Set());
-  const [smartFilter, setSmartFilter] = useState(''); // '', 'overdue30'
-  const [paymentModal, setPaymentModal] = useState({ open: false, invoice: null });
+  const [selected, setSelected] = useState(new Set());
 
-  const { data: invoices = [], isLoading, isRefetching, refetch } = useInvoicesList();
-  const recordPayment = useRecordPayment();
-  const deleteInvoice = useDeleteInvoice();
-  const updateInvoice = useUpdateInvoice();
+  useEffect(() => {
+    let alive = true;
+    api.get('/invoices').then(r => { if (alive) setData(r.data); })
+      .catch(() => { if (alive) setData(FALLBACK); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, []);
 
-  const invoicesList = useMemo(() => {
-    if (Array.isArray(invoices)) return invoices;
-    return invoices?.items || invoices?.invoices || [];
-  }, [invoices]);
+  const d = data || FALLBACK;
+  const stats = d.stats || FALLBACK.stats;
+  const invoices = d.invoices || [];
 
-  // Stats
-  const stats = useMemo(() => {
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    const monthly = invoicesList.filter((inv) => {
-      const d = new Date(inv.created_at);
-      return d >= monthStart;
-    });
-
-    const monthlyRevenue = monthly
-      .filter((inv) => normalizeStatus(inv.status) === 'payée')
-      .reduce((s, inv) => s + Number(inv.total_ttc || inv.amount_ttc || inv.amount || 0), 0);
-
-    const pending = invoicesList
-      .filter((inv) => normalizeStatus(inv.status) === 'en_attente')
-      .reduce((s, inv) => s + Number(inv.total_ttc || inv.amount_ttc || inv.amount || 0), 0);
-
-    const overdueCount = invoicesList.filter((inv) => isOverdue(inv) && daysOverdue(inv) > 30).length;
-
-    return {
-      monthlyCount: monthly.length,
-      monthlyRevenue,
-      pending,
-      overdueCount,
-    };
-  }, [invoicesList]);
-
-  // Compteurs par statut
-  const statusCounts = useMemo(() => {
-    const counts = { '': invoicesList.length };
-    invoicesList.forEach((inv) => {
-      const s = normalizeStatus(inv.status);
-      counts[s] = (counts[s] || 0) + 1;
-    });
-    return counts;
-  }, [invoicesList]);
-
-  // Filtrage
-  const filteredInvoices = useMemo(() => {
-    let list = invoicesList;
-    if (status) list = list.filter((inv) => normalizeStatus(inv.status) === status);
-    if (smartFilter === 'overdue30') list = list.filter((inv) => isOverdue(inv) && daysOverdue(inv) > 30);
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter((inv) =>
-        [inv.lead_name, inv.client_name, inv.reference, inv.invoice_number, inv.invoice_id]
-          .filter(Boolean)
-          .some((v) => String(v).toLowerCase().includes(q))
+  const filtered = useMemo(() => {
+    let arr = invoices;
+    if (tab !== 'all') arr = arr.filter(q => q.status === tab);
+    if (search) {
+      const s = search.toLowerCase();
+      arr = arr.filter(q =>
+        q.ref?.toLowerCase().includes(s) ||
+        q.clientName?.toLowerCase().includes(s) ||
+        q.title?.toLowerCase().includes(s)
       );
     }
-    return list;
-  }, [invoicesList, status, smartFilter, search]);
+    return arr;
+  }, [invoices, tab, search]);
 
-  // Handlers
-  const handleView = useCallback(
-    (invoice) => {
-      if (invoice.lead_id) navigate(`/leads/${invoice.lead_id}`);
-      else toast.info("Cette facture n'est liée à aucun lead");
-    },
-    [navigate]
-  );
+  const counts = useMemo(() => {
+    const c = { all: invoices.length };
+    invoices.forEach(q => { c[q.status] = (c[q.status] || 0) + 1; });
+    return c;
+  }, [invoices]);
 
-  const handleRecordPayment = useCallback((invoice) => {
-    setPaymentModal({ open: true, invoice });
-  }, []);
+  const overdueList = useMemo(() => invoices.filter(i => i.status === 'overdue'), [invoices]);
+  const overdueAmount = useMemo(() => overdueList.reduce((s, i) => s + (i.amountHT || 0), 0), [overdueList]);
+  const oldestOverdue = useMemo(() => {
+    return overdueList.reduce((max, i) => {
+      const ds = daysSince(i.dueDate);
+      return (!max || ds > max.d) ? { invoice: i, d: ds } : max;
+    }, null);
+  }, [overdueList]);
 
-  const handleSubmitPayment = useCallback(
-    async (payload) => {
-      if (!paymentModal.invoice) return;
-      await recordPayment.mutateAsync({
-        invoiceId: paymentModal.invoice.invoice_id,
-        payload,
-      });
-      setPaymentModal({ open: false, invoice: null });
-    },
-    [paymentModal.invoice, recordPayment]
-  );
+  const toggle = (id) => {
+    const n = new Set(selected);
+    n.has(id) ? n.delete(id) : n.add(id);
+    setSelected(n);
+  };
 
-  const handleStatusChange = useCallback(
-    async (invoice, nextStatus) => {
-      await updateInvoice.mutateAsync({
-        invoiceId: invoice.invoice_id,
-        payload: { status: nextStatus },
-      });
-      toast.success(`Statut changé en "${INVOICE_STATUS_LABELS[nextStatus]}"`);
-    },
-    [updateInvoice]
-  );
-
-  const handleDelete = useCallback(
-    async (invoice) => {
-      const ok = await confirm({
-        title: 'Supprimer cette facture ?',
-        description: 'La facture sera archivée. Cette action peut être annulée par un administrateur.',
-        variant: 'danger',
-        confirmText: 'Supprimer',
-      });
-      if (ok) await deleteInvoice.mutateAsync(invoice.invoice_id);
-    },
-    [confirm, deleteInvoice]
-  );
-
-  const handleToggleSelect = useCallback((id) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
-
-  const handleBulkDelete = useCallback(async () => {
-    const ids = Array.from(selectedIds);
-    if (!ids.length) return;
-    const ok = await confirm({
-      title: `Supprimer ${ids.length} factures ?`,
-      description: 'Les factures seront archivées. Action annulable par un admin.',
-      variant: 'danger',
-      confirmText: 'Supprimer',
-    });
-    if (!ok) return;
-    await Promise.all(ids.map((id) => deleteInvoice.mutateAsync(id)));
-    setSelectedIds(new Set());
-  }, [selectedIds, confirm, deleteInvoice]);
-
-  const resetFilters = useCallback(() => {
-    setStatus('');
-    setSearch('');
-    setSmartFilter('');
-  }, []);
-
-  useHotkeys({
-    '/': () => searchInputRef.current?.focus(),
-    c: () => navigate('/invoices/new'),
-    r: () => refetch(),
-    escape: () => setSelectedIds(new Set()),
-  });
-
-  const hasFilters = status || search || smartFilter;
+  const tabs = [
+    { k: 'all',       l: 'Toutes' },
+    { k: 'draft',     l: 'Brouillon' },
+    { k: 'emitted',   l: 'Émise' },
+    { k: 'paid',      l: 'Payée' },
+    { k: 'overdue',   l: 'En retard', danger: true },
+    { k: 'cancelled', l: 'Annulée' },
+  ];
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto">
-      <PageHeader
-        title="Factures"
-        subtitle={`${invoicesList.length} ${invoicesList.length > 1 ? 'factures au total' : 'facture'}${hasFilters ? ' · filtrées' : ''}`}
-        actions={[
-          {
-            label: 'Actualiser',
-            icon: RefreshCw,
-            onClick: () => refetch(),
-            loading: isRefetching,
-          },
-          {
-            label: 'Nouvelle facture',
-            icon: Plus,
-            onClick: () => navigate('/invoices/new'),
-            variant: 'primary',
-          },
-        ]}
-      />
+    <div className="min-h-screen bg-[#faf7f2]">
+      <div className="px-14 pt-10 pb-32 max-w-[1640px] mx-auto">
 
-      {/* Stats KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <KpiCard
-          icon={FileText}
-          label="Factures du mois"
-          value={stats.monthlyCount}
-          accent="violet"
-        />
-        <KpiCard
-          icon={DollarSign}
-          label="CA encaissé (mois)"
-          value={`${stats.monthlyRevenue.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €`}
-          accent="emerald"
-        />
-        <KpiCard
-          icon={Clock}
-          label="En attente"
-          value={`${stats.pending.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €`}
-          accent="amber"
-        />
-        <button
-          type="button"
-          onClick={() => setSmartFilter(smartFilter === 'overdue30' ? '' : 'overdue30')}
-          className="text-left"
-        >
-          <KpiCard
-            icon={AlertTriangle}
-            label="En retard > 30 jours"
-            value={stats.overdueCount}
-            accent="rose"
-            sub={smartFilter === 'overdue30' ? '→ filtre actif' : '→ cliquer pour filtrer'}
-          />
-        </button>
-      </div>
-
-      {/* Filtres chips */}
-      <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1 -mx-1 px-1">
-        <button
-          type="button"
-          onClick={() => setStatus('')}
-          className={`
-            flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ease-snappy
-            ${status === '' && !smartFilter
-              ? 'bg-neutral-900 text-white shadow-sm'
-              : 'bg-white text-neutral-600 border border-neutral-200 hover:border-neutral-300'}
-          `}
-        >
-          <FileText className="w-3.5 h-3.5" />
-          Toutes
-          <span className="text-xs opacity-70">{statusCounts[''] || 0}</span>
-        </button>
-        {INVOICE_STATUSES.map((s) => {
-          const count = statusCounts[s] || 0;
-          if (count === 0 && status !== s) return null;
-          const active = status === s;
-          return (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setStatus(active ? '' : s)}
-              className={`
-                flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ease-snappy
-                ${active
-                  ? 'bg-neutral-900 text-white shadow-sm'
-                  : 'bg-white text-neutral-600 border border-neutral-200 hover:border-neutral-300'}
-              `}
-            >
-              <StatusBadge domain="invoice" status={s} size="xs" className="-ml-1 pointer-events-none" />
-              <span className="text-xs opacity-70">{count}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Barre recherche */}
-      <div className="flex items-center gap-2 mb-4 flex-wrap">
-        <div className="relative flex-1 min-w-[240px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
-          <Input
-            ref={searchInputRef}
-            type="text"
-            placeholder="Rechercher par client, référence… (/)"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 pr-9"
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-neutral-100"
-            >
-              <X className="w-3.5 h-3.5 text-neutral-400" />
-            </button>
-          )}
-        </div>
-        {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={resetFilters} className="gap-1 text-neutral-500">
-            <X className="w-3.5 h-3.5" />
-            Réinitialiser
-          </Button>
-        )}
-      </div>
-
-      {/* Tableau */}
-      {isLoading ? (
-        <InvoicesSkeleton />
-      ) : filteredInvoices.length === 0 ? (
-        <EmptyState
-          icon={Inbox}
-          title={hasFilters ? 'Aucune facture trouvée' : 'Aucune facture pour le moment'}
-          description={
-            hasFilters
-              ? 'Ajustez vos filtres ou créez une nouvelle facture.'
-              : 'Créez une facture manuellement ou depuis un devis accepté.'
-          }
-          action={
-            hasFilters
-              ? { label: 'Réinitialiser les filtres', onClick: resetFilters }
-              : { label: 'Créer une facture', icon: Plus, onClick: () => navigate('/invoices/new') }
-          }
-        />
-      ) : (
-        <div className="rounded-xl border border-neutral-200 overflow-hidden bg-white">
-          {filteredInvoices.map((inv, idx) => (
-            <InvoiceRow
-              key={inv.invoice_id}
-              invoice={inv}
-              idx={idx}
-              isSelected={selectedIds.has(inv.invoice_id)}
-              onToggle={() => handleToggleSelect(inv.invoice_id)}
-              onView={() => handleView(inv)}
-              onRecordPayment={() => handleRecordPayment(inv)}
-              onStatusChange={(s) => handleStatusChange(inv, s)}
-              onDelete={() => handleDelete(inv)}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Bulk actions */}
-      {selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-fade-in-up">
-          <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-neutral-900 text-white shadow-card-xl ring-1 ring-neutral-700/50">
-            <span className="text-sm font-medium">
-              {selectedIds.size} {selectedIds.size > 1 ? 'factures sélectionnées' : 'facture sélectionnée'}
-            </span>
-            <div className="w-px h-5 bg-neutral-700" />
-            <button
-              type="button"
-              onClick={handleBulkDelete}
-              className="text-sm font-medium text-terracotta-300 hover:opacity-80 transition-opacity flex items-center gap-1"
-            >
-              <Trash2 className="w-4 h-4" />
-              Supprimer
-            </button>
-            <div className="w-px h-5 bg-neutral-700" />
-            <button
-              type="button"
-              onClick={() => setSelectedIds(new Set())}
-              className="hover:opacity-80 transition-opacity"
-              aria-label="Effacer la sélection"
-            >
-              <X className="w-4 h-4" />
-            </button>
+        {/* COVER */}
+        <div className="grid grid-cols-[1fr_auto] gap-12 items-end pb-8 border-b border-neutral-300 mb-10">
+          <div>
+            <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-neutral-500 mb-4 flex items-center gap-6">
+              <span>Atelier · ERP</span>
+              <span className="w-8 h-px bg-neutral-300" />
+              <span>Chapitre IV</span>
+              <span className="w-8 h-px bg-neutral-300" />
+              <span>Édition {new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</span>
+            </div>
+            <h1 className="font-display font-light text-[84px] leading-[0.92] tracking-[-0.02em] m-0 mb-4 text-neutral-900">
+              Le registre<br/>des <em className="italic font-normal text-terracotta-800">factures</em>
+            </h1>
+            <p className="font-display italic text-[22px] text-neutral-700 font-light max-w-[640px]">
+              Journal comptable des chantiers — acomptes, situations, finales et retenues consignés au fil des encaissements.
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="font-mono text-[11px] tracking-[0.15em] text-neutral-500 uppercase">
+              {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
+            </div>
           </div>
         </div>
+
+        {/* BARRE ACTIONS PRIMAIRES */}
+        <div className="flex items-center gap-4 py-5 px-6 bg-[#f5ede0] border border-neutral-300 border-l-[3px] border-l-neutral-900 mb-10">
+          <button onClick={() => navigate('/invoices/new')}
+            className="inline-flex items-center gap-3 px-6 py-4 bg-neutral-900 text-[#faf7f2] border-0 cursor-pointer font-mono text-[13px] tracking-[0.12em] uppercase font-medium rounded-sm hover:bg-brand-900 transition-colors">
+            <span className="font-display text-lg leading-none">+</span>
+            <span>Nouvelle facture</span>
+            <span className="ml-1 px-2 py-0.5 bg-white/15 border border-white/20 text-[10px] rounded-sm">N</span>
+          </button>
+          {overdueList.length > 0 && (
+            <button className="inline-flex items-center gap-3 px-[22px] py-[14px] bg-terracotta-800 text-[#faf7f2] border-0 cursor-pointer font-mono text-[12px] tracking-[0.12em] uppercase font-medium rounded-sm hover:bg-[#881337] transition-colors relative">
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#881337] rounded-full border-2 border-[#f5ede0] animate-pulse" />
+              <span className="font-semibold">↯</span>
+              <span>Relancer {overdueList.length} impayés</span>
+              <span className="px-2 py-0.5 bg-white/12 font-display italic font-medium text-[12px] tracking-normal normal-case rounded-sm tabular-nums">
+                {fmtMoney(overdueAmount)} €
+              </span>
+            </button>
+          )}
+          <button className="inline-flex items-center gap-3 px-[22px] py-[14px] bg-transparent text-neutral-900 border border-neutral-500 cursor-pointer font-mono text-[12px] tracking-[0.12em] uppercase font-medium rounded-sm hover:bg-neutral-100 hover:border-neutral-900 transition-colors">
+            <span className="font-semibold">↓</span>
+            <span>Export · Historique</span>
+          </button>
+          <div className="flex-1" />
+          <div className="flex flex-col gap-1 pl-6 border-l border-dashed border-neutral-300 text-right">
+            <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-neutral-500">Tréso · mois en cours</span>
+            <span className="font-display text-[22px] font-medium text-brand-700 tabular-nums flex items-baseline gap-1 justify-end">
+              +{fmtMoney(stats.cashFlow)}<em className="text-xs text-neutral-500 italic font-normal">k€</em>
+            </span>
+          </div>
+        </div>
+
+        {/* HERO 4 CHIFFRES */}
+        <div className="grid grid-cols-[1.4fr_1fr_1fr_1fr] border-t border-b border-neutral-300 mb-10">
+          <div className="px-7 py-8 border-r border-neutral-300">
+            <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-neutral-500 mb-4 flex items-center gap-2">
+              <span className="font-display italic text-[13px] text-terracotta-800 font-medium normal-case tracking-normal">i.</span>
+              <span>CA facturé · {new Date().toLocaleDateString('fr-FR', { month: 'long' })}</span>
+            </div>
+            <div className="font-display font-light text-[84px] leading-[0.95] tracking-[-0.02em] text-neutral-900 tabular-nums">
+              {fmtK(stats.caBilled)}<span className="text-[22px] text-neutral-500 font-normal italic ml-1">k€</span>
+            </div>
+            <div className="mt-4 font-mono text-[11px] text-neutral-500 flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-100 text-brand-700 rounded-sm text-[10px] font-medium">↑ {stats.caDelta}%</span>
+              <span>vs mois précédent · {fmtK(stats.caPrev)} k€</span>
+            </div>
+          </div>
+
+          <div className="px-7 py-8 border-r border-neutral-300 relative">
+            <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-neutral-500 mb-4 flex items-center gap-2">
+              <span className="font-display italic text-[13px] text-terracotta-800 font-medium normal-case tracking-normal">ii.</span>
+              <span>CA encaissé</span>
+            </div>
+            <div className="font-display font-light text-[64px] leading-[0.95] tracking-[-0.02em] text-neutral-900 tabular-nums">
+              {fmtK(stats.caPaid)}<span className="text-[22px] text-neutral-500 font-normal italic ml-1">k€</span>
+            </div>
+            <svg className="absolute right-5 top-7 w-20 h-6 opacity-60" viewBox="0 0 80 24" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="invSpark" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0" stopColor="#047857" /><stop offset="1" stopColor="#047857" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <polyline points="0,20 8,18 16,15 24,16 32,12 40,10 48,11 56,8 64,6 72,4 80,2" fill="none" stroke="#047857" strokeWidth="1.5" />
+              <polyline points="0,20 8,18 16,15 24,16 32,12 40,10 48,11 56,8 64,6 72,4 80,2 80,24 0,24" fill="url(#invSpark)" opacity=".3" />
+            </svg>
+            <div className="mt-4 font-mono text-[11px] text-neutral-500 flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-100 text-brand-700 rounded-sm text-[10px] font-medium">↑ {stats.paidDelta}%</span>
+              <span>{stats.paidRatio}% du facturé · 30j</span>
+            </div>
+          </div>
+
+          <div className="px-7 py-8 border-r border-neutral-300">
+            <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-neutral-500 mb-4 flex items-center gap-2">
+              <span className="font-display italic text-[13px] text-terracotta-800 font-medium normal-case tracking-normal">iii.</span>
+              <span>À encaisser</span>
+            </div>
+            <div className="font-display font-light text-[64px] leading-[0.95] tracking-[-0.02em] text-neutral-900 tabular-nums">
+              {fmtK(stats.caPending)}<span className="text-[22px] text-neutral-500 font-normal italic ml-1">k€</span>
+            </div>
+            <div className="mt-4 font-mono text-[11px] text-neutral-500">
+              {stats.pendingCount} factures en cours
+            </div>
+          </div>
+
+          <div className="px-7 py-8">
+            <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-neutral-500 mb-4 flex items-center gap-2">
+              <span className="font-display italic text-[13px] text-terracotta-800 font-medium normal-case tracking-normal">iv.</span>
+              <span>En retard</span>
+            </div>
+            <div className="font-display font-light text-[64px] leading-[0.95] tracking-[-0.02em] text-[#881337] tabular-nums">
+              {fmtK(stats.caOverdue)}<span className="text-[22px] text-neutral-500 font-normal italic ml-1">k€</span>
+            </div>
+            <div className="mt-4 font-mono text-[11px] text-neutral-500 flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#fecdd3] text-[#881337] rounded-sm text-[10px] font-medium">↯ {overdueList.length} factures</span>
+              <span>&gt; 30 jours</span>
+            </div>
+          </div>
+        </div>
+
+        {/* BANDEAU ALERTE KRAFT (si impayés) */}
+        {oldestOverdue && (
+          <div className="relative bg-gradient-to-b from-terracotta-100/40 to-terracotta-100/80 border border-terracotta-600 border-l-[4px] border-l-terracotta-600 p-7 grid grid-cols-[auto_1fr_auto] gap-6 items-center mb-12">
+            <div className="absolute top-2.5 left-2.5 right-2.5 bottom-2.5 border border-dashed border-terracotta-600/20 pointer-events-none" />
+            <div className="w-14 h-14 border border-terracotta-600 flex items-center justify-center font-display text-[32px] text-terracotta-800 bg-white/40 relative z-10">!</div>
+            <div className="relative z-10">
+              <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-terracotta-800 mb-1.5">Alerte impayés · Action requise</div>
+              <div className="font-display text-xl font-medium text-neutral-900 mb-1">
+                {overdueList.length} facture{overdueList.length > 1 ? 's' : ''} en retard pour un montant total de {fmtMoney(overdueAmount)} € HT
+              </div>
+              <div className="font-display italic text-sm text-neutral-700">
+                La plus ancienne attend <b className="text-[#881337] font-medium">{oldestOverdue.d} jours</b> — <i>{oldestOverdue.invoice.clientName}, {oldestOverdue.invoice.clientCity}, facture {oldestOverdue.invoice.ref}</i>.
+              </div>
+            </div>
+            <button className="relative z-10 px-5 py-3 bg-terracotta-800 text-[#faf7f2] border-0 cursor-pointer font-mono text-[11px] tracking-[0.15em] uppercase rounded-sm hover:bg-[#881337] transition-colors">
+              Relancer les {overdueList.length} →
+            </button>
+          </div>
+        )}
+
+        {/* RUBAN ANNOTATIONS */}
+        <div className="grid grid-cols-4 py-5 border-t border-b border-neutral-300 mb-10">
+          <div className="px-7 border-r border-dashed border-neutral-300 flex flex-col gap-1.5">
+            <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-neutral-500">Taux de recouvrement</span>
+            <span className="font-display text-[22px] font-medium text-neutral-900 tabular-nums flex items-baseline gap-1.5">{stats.recoveryRate}<em className="text-xs text-neutral-500 italic font-normal">%</em></span>
+          </div>
+          <div className="px-7 border-r border-dashed border-neutral-300 flex flex-col gap-1.5">
+            <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-neutral-500">DSO moyen</span>
+            <span className="font-display text-[22px] font-medium text-neutral-900 tabular-nums flex items-baseline gap-1.5">{stats.dso}<em className="text-xs text-neutral-500 italic font-normal">jours</em></span>
+          </div>
+          <div className="px-7 border-r border-dashed border-neutral-300 flex flex-col gap-1.5">
+            <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-neutral-500">Relances envoyées · mois</span>
+            <span className="font-display text-[22px] font-medium text-neutral-900 tabular-nums">{stats.remindersSent}</span>
+          </div>
+          <div className="px-7 flex flex-col gap-1.5">
+            <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-neutral-500">Prochaine échéance</span>
+            <span className="font-display text-[22px] font-medium text-neutral-900">{stats.nextDue}</span>
+          </div>
+        </div>
+
+        {/* SECTION REGISTRE */}
+        <div className="flex items-baseline justify-between pb-5 border-b border-neutral-300 mb-0">
+          <div className="flex items-baseline gap-5">
+            <span className="font-display italic text-lg text-terracotta-800 font-normal">§ I</span>
+            <h2 className="font-display font-normal text-[32px] m-0 text-neutral-900 tracking-[-0.01em]">Registre des factures</h2>
+          </div>
+          <div className="font-display italic text-neutral-500 text-sm">
+            {invoices.length} pièces comptables · {new Set(invoices.map(i => i.clientName)).size} clients distincts
+          </div>
+        </div>
+
+        {/* FILTRES TABS */}
+        <div className="flex items-center justify-between gap-6 py-4 border-b border-neutral-300">
+          <div className="flex gap-1">
+            {tabs.map(t => (
+              <button key={t.k} onClick={() => setTab(t.k)}
+                className={`px-4 py-2 border border-transparent font-mono text-[11px] tracking-[0.1em] uppercase cursor-pointer flex items-center gap-2 rounded-sm transition-colors
+                  ${tab === t.k
+                    ? (t.danger ? 'bg-[#881337] text-[#faf7f2]' : 'bg-neutral-900 text-[#faf7f2]')
+                    : `bg-transparent ${t.danger ? 'text-[#881337]' : 'text-neutral-500'} hover:bg-[#efe6d5] hover:text-neutral-900`}`}>
+                {t.l} <span className="text-[10px] opacity-70 font-medium">{counts[t.k] || 0}</span>
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-3">
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="N° facture, client, chantier…"
+              className="px-3.5 py-2 border border-neutral-300 bg-[#faf7f2] font-mono text-[11px] w-60 text-neutral-900 outline-none focus:border-neutral-900" />
+            <button className="p-2 border border-neutral-300 bg-[#faf7f2] cursor-pointer text-neutral-500 hover:text-neutral-900 hover:border-neutral-900">↓</button>
+            <button className="p-2 border border-neutral-300 bg-[#faf7f2] cursor-pointer text-neutral-500 hover:text-neutral-900 hover:border-neutral-900">↺</button>
+          </div>
+        </div>
+
+        {/* TABLE */}
+        <table className="w-full border-collapse mt-0">
+          <thead>
+            <tr>
+              <th className="w-8 py-4 px-3" />
+              <th className="py-4 px-3 text-left font-mono text-[10px] tracking-[0.15em] uppercase text-neutral-500 font-medium border-b border-neutral-300 whitespace-nowrap">N° · Type</th>
+              <th className="py-4 px-3 text-left font-mono text-[10px] tracking-[0.15em] uppercase text-neutral-500 font-medium border-b border-neutral-300">Client · chantier</th>
+              <th className="py-4 px-3 text-left font-mono text-[10px] tracking-[0.15em] uppercase text-neutral-500 font-medium border-b border-neutral-300">Nature</th>
+              <th className="py-4 px-3 text-center font-mono text-[10px] tracking-[0.15em] uppercase text-neutral-500 font-medium border-b border-neutral-300">TVA</th>
+              <th className="py-4 px-3 text-right font-mono text-[10px] tracking-[0.15em] uppercase text-neutral-500 font-medium border-b border-neutral-300 whitespace-nowrap">Montant TTC</th>
+              <th className="py-4 px-3 text-left font-mono text-[10px] tracking-[0.15em] uppercase text-neutral-500 font-medium border-b border-neutral-300">Émise</th>
+              <th className="py-4 px-3 text-left font-mono text-[10px] tracking-[0.15em] uppercase text-neutral-500 font-medium border-b border-neutral-300">Échéance</th>
+              <th className="py-4 px-3 text-left font-mono text-[10px] tracking-[0.15em] uppercase text-neutral-500 font-medium border-b border-neutral-300">Relances</th>
+              <th className="py-4 px-3 text-left font-mono text-[10px] tracking-[0.15em] uppercase text-neutral-500 font-medium border-b border-neutral-300">Statut</th>
+              <th className="w-24 border-b border-neutral-300" />
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(inv => {
+              const st = STATUS[inv.status] || STATUS.draft;
+              const isOverdue = inv.status === 'overdue';
+              const sel = selected.has(inv.id);
+              const type = TYPE_PILL[inv.type] || TYPE_PILL.finale;
+              const sinceEmit = daysSince(inv.emittedDate);
+              const sinceDue = daysSince(inv.dueDate);
+              return (
+                <tr key={inv.id} onClick={() => navigate(`/invoices/${inv.id}`)}
+                  className={`border-b border-neutral-200 cursor-pointer transition-colors group
+                    ${isOverdue ? 'bg-[#fecdd3]/10 hover:bg-[#fecdd3]/20' : 'hover:bg-[#f5ede0]'}`}>
+                  <td className="py-4 px-3" onClick={e => { e.stopPropagation(); toggle(inv.id); }}>
+                    <span className={`w-4 h-4 border rounded-sm inline-block cursor-pointer relative align-top ${sel ? 'bg-neutral-900 border-neutral-900' : 'bg-[#faf7f2] border-neutral-400'}`}>
+                      {sel && <span className="absolute left-1 top-px w-1 h-2 border-[#faf7f2] border-solid border-r-[1.5px] border-b-[1.5px] rotate-45" />}
+                    </span>
+                  </td>
+                  <td className="py-4 px-3 align-top">
+                    <div className="font-mono text-[12px] font-medium text-neutral-900 tracking-[0.03em]">{inv.ref}</div>
+                    <div className="font-mono text-[10px] text-neutral-500 mt-0.5 uppercase tracking-[0.05em] font-normal">
+                      {inv.type === 'acompte' ? 'Acompte 30%' : inv.type === 'situation' ? `Situation n°${inv.situationNum || 1}` : type.label}
+                    </div>
+                  </td>
+                  <td className="py-4 px-3 align-top">
+                    <div className="flex items-start gap-3">
+                      <div className="w-[38px] h-[38px] flex-shrink-0 bg-[#efe6d5] border border-neutral-300 flex items-center justify-center font-display font-medium text-sm text-neutral-700 rounded-sm">{initials(inv.clientName)}</div>
+                      <div>
+                        <div className="font-display font-medium text-[15px] text-neutral-900 leading-tight">{inv.clientName}</div>
+                        <div className="font-mono text-[10px] text-neutral-500 tracking-wider uppercase mt-0.5">{inv.clientCity} · {inv.project}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-4 px-3 align-top">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 font-mono text-[9px] tracking-[0.1em] uppercase font-medium rounded-sm border ${type.cls}`}>{type.label}</span>
+                    {inv.retenue && (
+                      <div className="mt-1"><span className={`inline-flex items-center gap-1 px-2 py-0.5 font-mono text-[9px] tracking-[0.1em] uppercase font-medium rounded-sm border ${TYPE_PILL.retenue.cls}`}>Retenue 5%</span></div>
+                    )}
+                  </td>
+                  <td className="py-4 px-3 text-center align-top">
+                    <span className={`inline-flex px-1.5 py-0.5 font-mono text-[9px] font-medium border rounded-sm ${inv.tvaMulti ? 'text-terracotta-800 border-terracotta-200 bg-[#fff7ed]' : 'text-neutral-500 border-neutral-300 bg-[#faf7f2]'}`}>{inv.tvaLabel || '10%'}</span>
+                  </td>
+                  <td className="py-4 px-3 text-right align-top whitespace-nowrap">
+                    <div className="font-display font-medium text-base text-neutral-900 tabular-nums leading-[1.2]">{fmtMoney(inv.amountTTC)} €</div>
+                    <div className="font-mono text-[10px] text-neutral-500 mt-0.5 tracking-[0.03em]">HT · {fmtMoney(inv.amountHT)} €</div>
+                  </td>
+                  <td className="py-4 px-3 align-top">
+                    {inv.emittedDate ? (
+                      <div className="font-mono text-[11px] text-neutral-700">{fmtDate(inv.emittedDate)}<div className="text-[9px] text-neutral-500 mt-0.5 uppercase tracking-[0.1em]">Il y a {sinceEmit}j</div></div>
+                    ) : <div className="font-mono text-[11px] text-neutral-500">—<div className="text-[9px] mt-0.5 uppercase tracking-[0.1em]">Non émise</div></div>}
+                  </td>
+                  <td className="py-4 px-3 align-top">
+                    {inv.dueDate ? (
+                      <div className={`font-mono text-[11px] ${isOverdue ? 'text-[#881337]' : 'text-neutral-700'}`}>
+                        {fmtDate(inv.dueDate)}
+                        <div className={`text-[9px] mt-0.5 uppercase tracking-[0.1em] ${isOverdue ? 'text-[#881337] font-medium' : 'text-neutral-500'}`}>
+                          {isOverdue ? `↯ ${sinceDue}j de retard` : inv.status === 'paid' ? `Payée J+${inv.paidIn || 0}` : sinceDue < 0 ? `Dans ${Math.abs(sinceDue)}j` : sinceDue === 0 ? "Aujourd'hui" : `Il y a ${sinceDue}j`}
+                        </div>
+                      </div>
+                    ) : <div className="font-mono text-[11px] text-neutral-500">—</div>}
+                  </td>
+                  <td className="py-4 px-3 align-top">
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3].map(n => {
+                        const done = (inv.remindersDone || 0) >= n;
+                        const isNext = (inv.remindersDone || 0) === n - 1 && isOverdue;
+                        const isOver = isOverdue && n === 3 && (inv.remindersDone || 0) >= 3;
+                        return (
+                          <div key={n} title={`J+${n * 7 + (n - 1) * 7}`}
+                            className={`w-[18px] h-[18px] rounded-full border flex items-center justify-center font-mono text-[8px] font-semibold
+                              ${isOver ? 'bg-[#881337] text-[#faf7f2] border-[#881337]' :
+                                done ? 'bg-brand-600 text-[#faf7f2] border-brand-600' :
+                                isNext ? 'bg-amber-200 text-amber-900 border-amber-600 animate-pulse' :
+                                'bg-[#faf7f2] text-neutral-500 border-neutral-300'}`}>
+                            {done ? '✓' : isOver ? '!' : isNext ? '!' : n}
+                          </div>
+                        );
+                      })}
+                      <span className="font-mono text-[9px] text-neutral-500 uppercase tracking-[0.1em] ml-1">
+                        {inv.status === 'paid' ? 'Payée' : inv.status === 'draft' ? '—' : `${inv.remindersDone || 0}/3`}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="py-4 px-3 align-top">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 font-mono text-[10px] tracking-[0.1em] uppercase font-medium rounded-sm ${st.bg} ${st.fg}`}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                      {st.label}
+                    </span>
+                  </td>
+                  <td className="py-4 px-3 align-top opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex gap-1.5 justify-end">
+                      <span className="w-7 h-7 flex items-center justify-center border border-neutral-300 bg-[#faf7f2] cursor-pointer text-neutral-500 rounded-sm hover:text-neutral-900 hover:border-neutral-900">↗</span>
+                      <span className="w-7 h-7 flex items-center justify-center border border-neutral-300 bg-[#faf7f2] cursor-pointer text-neutral-500 rounded-sm hover:text-neutral-900 hover:border-neutral-900">⋯</span>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        {/* FOOTER NOTE */}
+        <div className="mt-12 pt-6 border-t border-dashed border-neutral-300 flex justify-between font-mono text-[10px] tracking-[0.1em] uppercase text-neutral-500">
+          <div>Affichage · {filtered.length} pièces sur {invoices.length}</div>
+          <div>Dernière synchro comptable · {new Date().toLocaleDateString('fr-FR')} · {new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</div>
+        </div>
+
+      </div>
+
+      {/* BULK BAR */}
+      {selected.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-neutral-900 text-[#faf7f2] px-5 py-3.5 flex items-center gap-5 rounded-sm shadow-[0_20px_40px_rgba(28,25,23,.3)] z-50 min-w-[520px]">
+          <span className="font-mono text-[11px] tracking-[0.15em] uppercase">
+            {selected.size} facture{selected.size > 1 ? 's' : ''} sélectionnée{selected.size > 1 ? 's' : ''}
+          </span>
+          <span className="w-px h-6 bg-white/20" />
+          <button className="px-3 py-1.5 bg-brand-600 border border-brand-600 text-[#faf7f2] font-mono text-[10px] tracking-[0.1em] uppercase cursor-pointer rounded-sm hover:opacity-90">↯ Relancer</button>
+          <button className="px-3 py-1.5 bg-transparent border border-white/30 text-[#faf7f2] font-mono text-[10px] tracking-[0.1em] uppercase cursor-pointer rounded-sm hover:bg-white/10">✓ Marquer payée</button>
+          <button className="px-3 py-1.5 bg-transparent border border-white/30 text-[#faf7f2] font-mono text-[10px] tracking-[0.1em] uppercase cursor-pointer rounded-sm hover:bg-white/10">↓ Exporter PDF</button>
+          <button className="px-3 py-1.5 bg-[#881337] border border-[#881337] text-[#faf7f2] font-mono text-[10px] tracking-[0.1em] uppercase cursor-pointer rounded-sm hover:opacity-90">× Annuler</button>
+          <span className="ml-2 cursor-pointer text-[18px] opacity-70 hover:opacity-100" onClick={() => setSelected(new Set())}>×</span>
+        </div>
       )}
-
-      <RecordPaymentModal
-        open={paymentModal.open}
-        onOpenChange={(open) => setPaymentModal((m) => ({ ...m, open }))}
-        invoice={paymentModal.invoice}
-        onSubmit={handleSubmitPayment}
-        isPending={recordPayment.isPending}
-      />
-
-      <ConfirmElement />
     </div>
   );
-}
+};
+
+// ---- FALLBACK -----------------------------------
+const FALLBACK = {
+  stats: {
+    caBilled: 284600, caPrev: 240300, caDelta: 18.4,
+    caPaid: 198000, paidDelta: 12, paidRatio: 69.7,
+    caPending: 62400, pendingCount: 14,
+    caOverdue: 24200,
+    recoveryRate: 94.2, dso: 32, remindersSent: 47, nextDue: 'lundi 17 fév.',
+    cashFlow: 173,
+  },
+  invoices: [
+    { id: 1, ref: 'FAC-2024-1287', type: 'situation', situationNum: 3, clientName: 'Famille Leclerc',    clientCity: 'Paris 15e',         project: 'rénovation complète',   tvaLabel: '10%',       amountHT: 11400, amountTTC: 12540, emittedDate: '2024-12-04', dueDate: '2025-01-04', remindersDone: 3, status: 'overdue' },
+    { id: 2, ref: 'FAC-2025-0042', type: 'finale',    clientName: 'SCI Duranton',        clientCity: 'Neuilly-sur-Seine',  project: 'extension',             tvaLabel: '5,5/10', tvaMulti: true, amountHT: 7530,  amountTTC: 8240,  emittedDate: '2025-01-02', dueDate: '2025-02-02', remindersDone: 2, status: 'overdue' },
+    { id: 3, ref: 'FAC-2025-0031', type: 'acompte',   clientName: 'M. & Mme Martinet',   clientCity: 'Versailles',         project: 'cuisine + SdB',         tvaLabel: '20%',       amountHT: 2833,  amountTTC: 3400,  emittedDate: '2025-01-20', dueDate: '2025-02-05', remindersDone: 1, status: 'overdue' },
+    { id: 4, ref: 'FAC-2025-0058', type: 'situation', situationNum: 2, clientName: 'Maison Bertrand',    clientCity: 'Paris 7e',          project: 'hôtel particulier',    tvaLabel: '10%',       amountHT: 26000, amountTTC: 28600, emittedDate: '2025-02-08', dueDate: '2025-03-10', remindersDone: 0, status: 'emitted' },
+    { id: 5, ref: 'FAC-2025-0057', type: 'finale',    retenue: true,   clientName: 'Famille Roussel',    clientCity: 'Boulogne',          project: 'rénovation intégrale', tvaLabel: '10%',       amountHT: 16755, amountTTC: 18430, emittedDate: '2025-02-07', dueDate: '2025-03-09', remindersDone: 0, status: 'emitted' },
+    { id: 6, ref: 'FAC-2025-0051', type: 'situation', situationNum: 1, clientName: 'M. Valentin Moreau', clientCity: 'Paris 16e',         project: 'SdB + cuisine',        tvaLabel: '10%',       amountHT: 8909,  amountTTC: 9800,  emittedDate: '2025-01-15', dueDate: '2025-02-14', paidIn: 0,  status: 'paid' },
+    { id: 7, ref: 'FAC-2025-0048', type: 'acompte',   clientName: 'Famille Kerviel',     clientCity: 'Saint-Cloud',        project: 'maison 180m²',          tvaLabel: '20%',       amountHT: 12000, amountTTC: 14400, emittedDate: '2025-01-10', dueDate: '2025-01-15', paidIn: 2,  status: 'paid' },
+    { id: 8, ref: 'FAC-2025-0062', type: 'acompte',   clientName: 'M. Dubois',           clientCity: 'Paris 11e',          project: 'loft 95m²',             tvaLabel: '20%',       amountHT: 8250,  amountTTC: 9900,  emittedDate: null,          dueDate: null,         remindersDone: 0, status: 'draft' },
+    { id: 9, ref: 'FAC-2025-0029', type: 'finale',    clientName: 'Mme Chastel',         clientCity: 'Paris 8e',          project: 'appartement haussmannien', tvaLabel: '5,5/10/20', tvaMulti: true, amountHT: 38009, amountTTC: 42800, emittedDate: '2025-01-04', dueDate: '2025-02-04', paidIn: 28, status: 'paid' },
+  ],
+};
+
+export default InvoicesList;
