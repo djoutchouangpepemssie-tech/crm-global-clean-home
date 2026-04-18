@@ -294,7 +294,7 @@ function KPICard({ title, value, sub, icon, color, bgColor, trend, alert, hexCol
           </div>
         )}
       </div>
-      <div className="text-2xl font-black text-neutral-100 mb-1" style={{sans-serif'}}>{value}</div>
+      <div className="text-2xl font-black text-neutral-100 mb-1">{value}</div>
       <p className="text-xs font-semibold text-neutral-500">{title}</p>
       {sub && <p className="text-[10px] text-neutral-600 mt-0.5">{sub}</p>}
     </div>

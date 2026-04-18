@@ -154,7 +154,6 @@ const AIInsights = ({ stats }) => {
       setLoading(false);
     }, 600);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stats]);
 
   // Badge priorité — palette atelier, pas d'emoji

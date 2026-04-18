@@ -104,7 +104,7 @@ const InterventionsMap = () => {
       {/* Header */}
       <div className="crm-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{, fontSize: 26, fontWeight: 800, color: '#f1f5f9', margin: 0 }}>
+          <h1 style={{ fontSize: 26, fontWeight: 800, color: '#f1f5f9', margin: 0 }}>
             Carte des Interventions
           </h1>
           <p style={{ color: '#78716c', fontSize: 13, marginTop: 4 }}>Vue géographique par zones — Paris & banlieue</p>
@@ -176,7 +176,7 @@ const InterventionsMap = () => {
       <div className="crm-grid" style={{ display: 'grid', gridTemplateColumns: selectedZone ? '1fr 380px' : '1fr', gap: 20 }}>
         {/* Zone Grid */}
         <div>
-          <h2 style={{, fontSize: 15, fontWeight: 700, color: '#78716c', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: '#78716c', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Zones Paris & Banlieue
           </h2>
           {loading ? (
@@ -262,7 +262,7 @@ const InterventionsMap = () => {
         {selectedZone && (
           <div className="bg-white border border-neutral-200 rounded-xl" style={{ height: 'fit-content', position: 'sticky', top: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <h3 style={{, fontSize: 14, fontWeight: 800, color: '#f1f5f9', margin: 0 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 800, color: '#f1f5f9', margin: 0 }}>
                 {selectedZone.label}
               </h3>
               <button onClick={() => setSelectedZone(null)} style={{ background: 'none', border: 'none', color: '#78716c', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>

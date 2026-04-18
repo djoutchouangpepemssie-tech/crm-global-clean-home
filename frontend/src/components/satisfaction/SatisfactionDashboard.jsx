@@ -128,7 +128,7 @@ const SatisfactionDashboard = () => {
       {/* Header */}
       <div className="crm-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{, fontSize: 26, fontWeight: 800, color: '#f1f5f9', margin: 0 }}>
+          <h1 style={{ fontSize: 26, fontWeight: 800, color: '#f1f5f9', margin: 0 }}>
             Satisfaction Client
           </h1>
           <p style={{ color: '#78716c', fontSize: 13, marginTop: 4 }}>NPS, CSAT et avis Google</p>
@@ -186,7 +186,7 @@ const SatisfactionDashboard = () => {
       <div className="crm-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
         {/* NPS Trend */}
         <div className="bg-white border border-neutral-200 rounded-xl">
-          <h3 style={{, fontSize: 14, fontWeight: 800, color: '#f1f5f9', marginBottom: 16 }}>Évolution NPS mensuel</h3>
+          <h3 style={{ fontSize: 14, fontWeight: 800, color: '#f1f5f9', marginBottom: 16 }}>Évolution NPS mensuel</h3>
           {trendData.length === 0 ? (
             <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#78716c', fontSize: 13 }}>Pas de données disponibles</div>
           ) : (
@@ -204,7 +204,7 @@ const SatisfactionDashboard = () => {
 
         {/* Per-intervenant */}
         <div className="bg-white border border-neutral-200 rounded-xl">
-          <h3 style={{, fontSize: 14, fontWeight: 800, color: '#f1f5f9', marginBottom: 16 }}>NPS par Intervenant</h3>
+          <h3 style={{ fontSize: 14, fontWeight: 800, color: '#f1f5f9', marginBottom: 16 }}>NPS par Intervenant</h3>
           {intervenants.length === 0 ? (
             <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#78716c', fontSize: 13 }}>Pas de données disponibles</div>
           ) : (
@@ -240,7 +240,7 @@ const SatisfactionDashboard = () => {
       <div className="crm-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20 }}>
         {/* Recent surveys */}
         <div className="bg-white border border-neutral-200 rounded-xl">
-          <h3 style={{, fontSize: 14, fontWeight: 800, color: '#f1f5f9', marginBottom: 16 }}>Dernières enquêtes</h3>
+          <h3 style={{ fontSize: 14, fontWeight: 800, color: '#f1f5f9', marginBottom: 16 }}>Dernières enquêtes</h3>
           {surveys.length === 0 ? (
             <p style={{ color: '#78716c', fontSize: 13, textAlign: 'center', padding: 30 }}>Aucune enquête disponible</p>
           ) : (
@@ -264,7 +264,7 @@ const SatisfactionDashboard = () => {
 
         {/* Google Review stats */}
         <div className="bg-white border border-neutral-200 rounded-xl">
-          <h3 style={{, fontSize: 14, fontWeight: 800, color: '#f1f5f9', marginBottom: 16 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 800, color: '#f1f5f9', marginBottom: 16 }}>
             Avis Google
           </h3>
           {googleStats ? (

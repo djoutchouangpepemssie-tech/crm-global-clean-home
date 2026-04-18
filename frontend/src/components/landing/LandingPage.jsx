@@ -395,7 +395,7 @@ const LandingPage = () => {
                     { val: '0', label: 'Engagement minimum', color: '#60a5fa' },
                   ].map((s, i) => (
                     <div key={i} className="p-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] text-center hover:border-white/[0.12] transition-all duration-300">
-                      <p className="text-3xl sm:text-4xl font-black mb-1.5" style={{, color: s.color }}>{s.val}</p>
+                      <p className="text-3xl sm:text-4xl font-black mb-1.5" style={{ color: s.color }}>{s.val}</p>
                       <p className="text-[11px] text-neutral-500 font-semibold uppercase tracking-wider">{s.label}</p>
                     </div>
                   ))}

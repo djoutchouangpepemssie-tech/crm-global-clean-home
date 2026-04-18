@@ -95,7 +95,7 @@ function injectStyles() {
       0%, 100% { text-shadow: 0 0 8px rgba(4,120,87,0.3); }
       50%      { text-shadow: 0 0 20px rgba(4,120,87,0.6); }
     }
-    .ct-bg-white border border-neutral-200 rounded-xl p-5 {
+    .ct-metric-card {
       background: linear-gradient(135deg, rgba(15,23,42,0.8), rgba(15,23,42,0.4));
       border: 1px solid rgba(255,255,255,0.06);
       border-radius: 16px;
@@ -105,7 +105,7 @@ function injectStyles() {
       transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       cursor: default;
     }
-    .ct-bg-white border border-neutral-200 rounded-xl p-5::before {
+    .ct-metric-card::before {
       content: '';
       position: absolute;
       top: 0; left: 0; right: 0;
@@ -114,12 +114,12 @@ function injectStyles() {
       opacity: 0;
       transition: opacity 0.4s;
     }
-    .ct-bg-white border border-neutral-200 rounded-xl p-5:hover {
+    .ct-metric-card:hover {
       border-color: rgba(4,120,87,0.2);
       transform: translateY(-2px);
       box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 24px rgba(4,120,87,0.08);
     }
-    .ct-bg-white border border-neutral-200 rounded-xl p-5:hover::before { opacity: 1; }
+    .ct-metric-card:hover::before { opacity: 1; }
 
     .ct-contract-card {
       background: linear-gradient(135deg, rgba(15,23,42,0.6), rgba(15,23,42,0.3));
@@ -379,7 +379,7 @@ function EmptyState({ search, filter, onReset, onCreate }) {
       }}>
         <FileText style={{ width: 36, height: 36, color: '#047857', opacity: 0.7 }} />
       </div>
-      <h3 style={{, fontSize: 18, fontWeight: 700,
+      <h3 style={{ fontSize: 18, fontWeight: 700,
         color: '#e2e8f0', margin: '0 0 8px'
       }}>
         {hasFilters ? 'Aucun contrat trouvé' : 'Pas encore de contrats'}
@@ -443,7 +443,7 @@ function ConfirmModal({ isOpen, onConfirm, onCancel, title, desc, confirmLabel, 
         }}>
           {Icon && <Icon style={{ width: 24, height: 24, color }} />}
         </div>
-        <h3 style={{, fontSize: 17, fontWeight: 700,
+        <h3 style={{ fontSize: 17, fontWeight: 700,
           color: 'var(--text-primary)', margin: '0 0 8px', textAlign: 'center'
         }}>{title}</h3>
         <p style={{ color: '#78716c', fontSize: 13, textAlign: 'center', margin: '0 0 24px', lineHeight: 1.5 }}>{desc}</p>
@@ -709,7 +709,7 @@ function ContractModal({ isOpen, editingId, form, setForm, onSave, onClose }) {
               <FileText style={{ width: 18, height: 18, color: '#d97706' }} />
             </div>
             <div>
-              <h2 style={{, fontSize: 17, fontWeight: 800,
+              <h2 style={{ fontSize: 17, fontWeight: 800,
                 color: 'var(--text-primary)', margin: 0
               }}>
                 {editingId ? 'Modifier le contrat' : 'Nouveau contrat'}
@@ -1066,7 +1066,7 @@ const ContractsList = () => {
             trendUp: true,
           },
         ].map((m, i) => (
-          <div key={i} className="ct-bg-white border border-neutral-200 rounded-xl p-5" style={{
+          <div key={i} className="ct-metric-card" style={{
             animation: `ct-slide-up 0.5s ease-out ${0.1 + i * 0.08}s both`,
           }}>
             <div style={{ position: 'absolute', top: -30, right: -30, width: 100, height: 100, borderRadius: '50%', background: `${m.color}08` }} />

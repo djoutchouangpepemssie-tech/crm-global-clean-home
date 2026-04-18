@@ -255,7 +255,7 @@ const EmptyState = ({ activeTab, onUpload }) => {
         }} />
       </div>
 
-      <h3 style={{, fontSize: 20, fontWeight: 800,
+      <h3 style={{ fontSize: 20, fontWeight: 800,
         color: '#e2e8f0', margin: '0 0 8px',
         background: 'linear-gradient(135deg, #e2e8f0, #78716c)',
         WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
@@ -316,7 +316,7 @@ const DeleteConfirmation = ({ docName, onConfirm, onCancel }) => (
       }}>
         <AlertTriangle style={{ width: 26, height: 26, color: '#c2410c' }} />
       </div>
-      <h3 style={{, fontSize: 17, fontWeight: 800,
+      <h3 style={{ fontSize: 17, fontWeight: 800,
         color: '#f1f5f9', margin: '0 0 8px', textAlign: 'center',
       }}>
         Supprimer ce document ?
@@ -702,7 +702,7 @@ const BeforeAfterModal = ({ data, onClose }) => {
               <ArrowLeftRight style={{ width: 20, height: 20, color: '#047857' }} />
             </div>
             <div>
-              <h3 style={{, color: '#f1f5f9', fontSize: 18, fontWeight: 800, margin: 0 }}>
+              <h3 style={{ color: '#f1f5f9', fontSize: 18, fontWeight: 800, margin: 0 }}>
                 Comparaison Avant / Après
               </h3>
               <p style={{ fontSize: 12, color: '#78716c', margin: '2px 0 0' }}>
@@ -832,7 +832,7 @@ const UploadBeforeAfterModal = ({ onClose, onUpload, uploading }) => {
             }}>
               <ArrowLeftRight style={{ width: 20, height: 20, color: '#d97706' }} />
             </div>
-            <h3 style={{, color: '#f1f5f9', fontSize: 17, fontWeight: 800, margin: 0 }}>
+            <h3 style={{ color: '#f1f5f9', fontSize: 17, fontWeight: 800, margin: 0 }}>
               Upload Avant / Après
             </h3>
           </div>
@@ -1098,7 +1098,7 @@ const DocumentsManager = () => {
               <FolderOpen style={{ width: 22, height: 22, color: '#d97706' }} />
             </div>
             <div>
-              <h1 style={{, fontSize: 26, fontWeight: 800,
+              <h1 style={{ fontSize: 26, fontWeight: 800,
                 margin: 0,
                 background: 'linear-gradient(135deg, #f1f5f9, #cbd5e1)',
                 WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',

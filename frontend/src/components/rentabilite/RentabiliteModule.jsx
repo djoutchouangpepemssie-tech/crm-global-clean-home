@@ -413,7 +413,7 @@ export default function RentabiliteModule() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <DollarSign className="w-5 h-5 text-brand-400" />
-            <h1 className="text-2xl font-bold text-neutral-100" style={{sans-serif"}}>Rentabilite</h1>
+            <h1 className="text-2xl font-bold text-neutral-100">Rentabilite</h1>
           </div>
           <p className="text-neutral-500 text-sm">Marges, zones, canaux et previsions IA pour maximiser votre profit</p>
         </div>
