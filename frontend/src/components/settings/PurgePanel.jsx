@@ -1,4 +1,4 @@
-/**
+﻿/**
  * PurgePanel — suppression catégorisée de données.
  *
  * Composant autonome extrait de SettingsPage.jsx (Vague 13).
@@ -100,15 +100,15 @@ export default function PurgePanel({ apiUrl }) {
     }
   };
 
-  if (loadingInfo) return <div className="flex justify-center py-6"><RefreshCw className="w-5 h-5 text-slate-500 animate-spin" /></div>;
+  if (loadingInfo) return <div className="flex justify-center py-6"><RefreshCw className="w-5 h-5 text-neutral-500 animate-spin" /></div>;
 
   const allKeys = Object.keys(categories);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-500">Sélectionnez les données à supprimer. Les comptes et paramètres sont conservés.</p>
-        <button onClick={selectAll} className="text-xs font-semibold text-violet-400 hover:text-violet-300 transition-colors">
+        <p className="text-xs text-neutral-500">Sélectionnez les données à supprimer. Les comptes et paramètres sont conservés.</p>
+        <button onClick={selectAll} className="text-xs font-semibold text-brand-600 hover:text-brand-700 transition-colors">
           {selected.size === allKeys.length ? 'Tout désélectionner' : 'Tout sélectionner'}
         </button>
       </div>
@@ -123,21 +123,21 @@ export default function PurgePanel({ apiUrl }) {
               onClick={() => toggleCategory(key)}
               className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
                 isSelected
-                  ? 'border-red-500/30 bg-red-500/10'
-                  : 'border-white/5 bg-white/2 hover:border-white/10'
+                  ? 'border-terracotta-200 bg-terracotta-50'
+                  : 'border-neutral-100 bg-neutral-50 hover:border-neutral-200'
               }`}
             >
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                isSelected ? 'bg-red-500/20' : 'bg-white/5'
+                isSelected ? 'bg-terracotta-100' : 'bg-white'
               }`}>
-                <IconComp className="w-4 h-4" style={{ color: isSelected ? '#ef4444' : '#64748b' }} />
+                <IconComp className="w-4 h-4" style={{ color: isSelected ? '#c2410c' : '#78716c' }} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className={`text-xs font-semibold ${isSelected ? 'text-red-400' : 'text-slate-300'}`}>{cat.label}</p>
-                <p className="text-[10px] text-slate-500">{cat.count} élément{cat.count !== 1 ? 's' : ''}</p>
+                <p className={`text-xs font-semibold ${isSelected ? 'text-terracotta-600' : 'text-neutral-300'}`}>{cat.label}</p>
+                <p className="text-[10px] text-neutral-500">{cat.count} élément{cat.count !== 1 ? 's' : ''}</p>
               </div>
               <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                isSelected ? 'border-red-500 bg-red-500' : 'border-white/20'
+                isSelected ? 'border-terracotta-500 bg-terracotta-500' : 'border-white/20'
               }`}>
                 {isSelected && <Check className="w-3 h-3 text-white" />}
               </div>
@@ -146,8 +146,8 @@ export default function PurgePanel({ apiUrl }) {
         })}
       </div>
       {selected.size > 0 && (
-        <div className="flex items-center justify-between p-3 rounded-xl border border-red-500/20 bg-red-500/5">
-          <p className="text-sm font-semibold text-red-400">
+        <div className="flex items-center justify-between p-3 rounded-xl border border-terracotta-200 bg-terracotta-50">
+          <p className="text-sm font-semibold text-terracotta-600">
             {selected.size} catégorie{selected.size > 1 ? 's' : ''} · {totalSelected} élément{totalSelected !== 1 ? 's' : ''}
           </p>
           <ActionButton variant="danger" size="sm" icon={Trash2} onClick={handlePurge} loading={purging}>

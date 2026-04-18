@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+﻿import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import axios from 'axios';
 import {
   useAllTeamMembers,
@@ -145,10 +145,10 @@ if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
 /* ═══════════════════════════════════════════════════════════════════
    HELPERS & CONSTANTS
    ═══════════════════════════════════════════════════════════════════ */
-const inputCls = "w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] text-slate-200 placeholder-slate-600 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/30 transition-all duration-300";
+const inputCls = "w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] text-neutral-200 placeholder-neutral-600 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500/30 transition-all duration-300";
 const Field = ({label, children}) => (
   <div>
-    <label className="block text-[11px] font-bold text-slate-400 mb-2 uppercase tracking-wider">{label}</label>
+    <label className="block text-[11px] font-bold text-neutral-400 mb-2 uppercase tracking-wider">{label}</label>
     {children}
   </div>
 );
@@ -163,12 +163,12 @@ const TAB_ICONS = {
 };
 
 const AVATAR_GRADIENTS = [
-  'linear-gradient(135deg, #10b981, #059669)',
-  'linear-gradient(135deg, #7c3aed, #4f46e5)',
+  'linear-gradient(135deg, #047857, #059669)',
+  'linear-gradient(135deg, #047857, #4f46e5)',
   'linear-gradient(135deg, #f59e0b, #d97706)',
   'linear-gradient(135deg, #60a5fa, #3b82f6)',
-  'linear-gradient(135deg, #f43f5e, #e11d48)',
-  'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+  'linear-gradient(135deg, #c2410c, #c2410c)',
+  'linear-gradient(135deg, #047857, #047857)',
   'linear-gradient(135deg, #14b8a6, #0d9488)',
 ];
 
@@ -179,16 +179,16 @@ const getAvatarGradient = (name) => {
 };
 
 const SKILL_COLORS = {
-  'Ménage': { bg: 'rgba(139,92,246,0.12)', text: '#a78bfa', border: 'rgba(139,92,246,0.25)' },
+  'Ménage': { bg: 'rgba(4,120,87,0.12)', text: '#047857', border: 'rgba(4,120,87,0.25)' },
   'Bureaux': { bg: 'rgba(96,165,250,0.12)', text: '#60a5fa', border: 'rgba(96,165,250,0.25)' },
   'Canapé': { bg: 'rgba(245,158,11,0.12)', text: '#fbbf24', border: 'rgba(245,158,11,0.25)' },
-  'Matelas': { bg: 'rgba(52,211,153,0.12)', text: '#34d399', border: 'rgba(52,211,153,0.25)' },
-  'Tapis': { bg: 'rgba(244,63,94,0.12)', text: '#fb7185', border: 'rgba(244,63,94,0.25)' },
+  'Matelas': { bg: 'rgba(4,120,87,0.12)', text: '#047857', border: 'rgba(4,120,87,0.25)' },
+  'Tapis': { bg: 'rgba(194,65,12,0.12)', text: '#fb7185', border: 'rgba(194,65,12,0.25)' },
   'Vitres': { bg: 'rgba(56,189,248,0.12)', text: '#38bdf8', border: 'rgba(56,189,248,0.25)' },
   'Fin de chantier': { bg: 'rgba(168,85,247,0.12)', text: '#c084fc', border: 'rgba(168,85,247,0.25)' },
 };
 
-const getSkillColor = (skill) => SKILL_COLORS[skill] || { bg: 'rgba(139,92,246,0.12)', text: '#a78bfa', border: 'rgba(139,92,246,0.25)' };
+const getSkillColor = (skill) => SKILL_COLORS[skill] || { bg: 'rgba(4,120,87,0.12)', text: '#047857', border: 'rgba(4,120,87,0.25)' };
 
 /* ═══════════════════════════════════════════════════════════════════
    SUB-COMPONENTS
@@ -259,7 +259,7 @@ const AnimatedCounter = ({ value, duration = 800, suffix = '', prefix = '' }) =>
 };
 
 // ── Circular Progress Ring ──
-const ProgressRing = ({ percent, size = 56, strokeWidth = 4, color = '#10b981', label }) => {
+const ProgressRing = ({ percent, size = 56, strokeWidth = 4, color = '#047857', label }) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (percent / 100) * circumference;
@@ -276,7 +276,7 @@ const ProgressRing = ({ percent, size = 56, strokeWidth = 4, color = '#10b981', 
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-xs font-black" style={{ color }}>{percent}%</span>
-        {label && <span className="text-[8px] text-slate-500 font-semibold">{label}</span>}
+        {label && <span className="text-[8px] text-neutral-500 font-semibold">{label}</span>}
       </div>
     </div>
   );
@@ -288,21 +288,21 @@ const EmptyState = ({ icon: Icon, title, description, action, actionLabel }) => 
     <div className="relative">
       <div className="w-24 h-24 rounded-3xl flex items-center justify-center iv-float"
         style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.1), rgba(5,150,105,0.05))', border: '1px solid rgba(16,185,129,0.15)' }}>
-        <Icon className="w-10 h-10 text-emerald-400/60" />
+        <Icon className="w-10 h-10 text-brand-600/60" />
       </div>
       <div className="absolute -top-2 -right-2 w-8 h-8 rounded-xl flex items-center justify-center"
-        style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(124,58,237,0.1))', border: '1px solid rgba(139,92,246,0.2)' }}>
-        <Sparkles className="w-4 h-4 text-violet-400" />
+        style={{ background: 'linear-gradient(135deg, rgba(4,120,87,0.2), rgba(124,58,237,0.1))', border: '1px solid rgba(4,120,87,0.2)' }}>
+        <Sparkles className="w-4 h-4 text-brand-600" />
       </div>
     </div>
     <div className="text-center space-y-2">
-      <p className="text-lg font-black text-slate-300" style={{ fontFamily: 'Manrope, sans-serif' }}>{title}</p>
-      <p className="text-sm text-slate-500 max-w-xs">{description}</p>
+      <p className="text-lg font-black text-neutral-300" style={{ fontFamily: 'Inter, sans-serif' }}>{title}</p>
+      <p className="text-sm text-neutral-500 max-w-xs">{description}</p>
     </div>
     {action && (
       <button onClick={action}
         className="flex items-center gap-2 px-6 py-3 text-white rounded-2xl text-sm font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
-        style={{ background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 8px 32px rgba(16,185,129,0.25)' }}>
+        style={{ background: 'linear-gradient(135deg, #047857, #059669)', boxShadow: '0 8px 32px rgba(16,185,129,0.25)' }}>
         <Plus className="w-4 h-4" /> {actionLabel || 'Ajouter'}
       </button>
     )}
@@ -312,8 +312,8 @@ const EmptyState = ({ icon: Icon, title, description, action, actionLabel }) => 
 // ── Filter Chip ──
 const FilterChip = ({ label, active, onClick, color = 'emerald' }) => {
   const colors = {
-    emerald: { active: 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300 shadow-emerald-500/10', inactive: 'border-white/[0.06] text-slate-500 hover:text-slate-300 hover:border-white/10 hover:bg-white/[0.03]' },
-    violet:  { active: 'border-violet-500/40 bg-violet-500/15 text-violet-300 shadow-violet-500/10',   inactive: 'border-white/[0.06] text-slate-500 hover:text-slate-300 hover:border-white/10 hover:bg-white/[0.03]' },
+    emerald: { active: 'border-brand-500/40 bg-brand-500/15 text-brand-300 shadow-brand-500/10', inactive: 'border-white/[0.06] text-neutral-500 hover:text-neutral-300 hover:border-neutral-200 hover:bg-white/[0.03]' },
+    violet:  { active: 'border-brand-500/40 bg-brand-500/15 text-brand-300 shadow-brand-500/10',   inactive: 'border-white/[0.06] text-neutral-500 hover:text-neutral-300 hover:border-neutral-200 hover:bg-white/[0.03]' },
   };
   const c = colors[color] || colors.emerald;
   return (
@@ -532,21 +532,21 @@ const IntervenantsManager = () => {
       <div className="flex justify-end -mt-4">
         <div className="flex items-center gap-2 flex-wrap">
           <button onClick={copyPortalLink}
-            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10 transition-all duration-300 hover:border-emerald-500/40">
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold border border-brand-200 text-brand-600 hover:bg-brand-50 transition-all duration-300 hover:border-brand-500/40">
             <Copy className="w-3.5 h-3.5" /> Lien portail
           </button>
           <a href="/intervenant" target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold border border-white/[0.08] text-slate-400 hover:bg-white/[0.04] transition-all duration-300">
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold border border-white/[0.08] text-neutral-400 hover:bg-white/[0.04] transition-all duration-300">
             <ExternalLink className="w-3.5 h-3.5" /> Portail
           </a>
           <button onClick={fetchData}
-            className="p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] transition-all duration-300 hover:rotate-90"
+            className="p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.06] transition-all duration-300 hover:rotate-90"
             style={{ transition: 'all 0.5s cubic-bezier(0.16,1,0.3,1)' }}>
             <RefreshCw className="w-4 h-4" />
           </button>
           <button onClick={() => setShowForm(true)}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all duration-300 hover:scale-105 hover:shadow-xl"
-            style={{ background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 4px 24px rgba(16,185,129,0.3)' }}>
+            style={{ background: 'linear-gradient(135deg, #047857, #059669)', boxShadow: '0 4px 24px rgba(16,185,129,0.3)' }}>
             <Plus className="w-4 h-4" /> Ajouter
           </button>
         </div>
@@ -555,10 +555,10 @@ const IntervenantsManager = () => {
       {/* ════════════════ STATS GLOBALES ANIMÉES ════════════════ */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {[
-          { label: 'Total agents', value: members.length, color: '#10b981', icon: Users, gradient: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(5,150,105,0.06))' },
+          { label: 'Total agents', value: members.length, color: '#047857', icon: Users, gradient: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(5,150,105,0.06))' },
           { label: 'En mission', value: globalStats.enCours, color: '#f59e0b', icon: Zap, gradient: 'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(217,119,6,0.06))' },
           { label: 'Missions ce mois', value: globalStats.ceMois, color: '#60a5fa', icon: Calendar, gradient: 'linear-gradient(135deg, rgba(96,165,250,0.12), rgba(59,130,246,0.06))' },
-          { label: 'Taux completion', value: globalStats.taux, color: '#a78bfa', icon: TrendingUp, gradient: 'linear-gradient(135deg, rgba(167,139,250,0.12), rgba(139,92,246,0.06))', suffix: '%' },
+          { label: 'Taux completion', value: globalStats.taux, color: '#047857', icon: TrendingUp, gradient: 'linear-gradient(135deg, rgba(4,120,87,0.12), rgba(4,120,87,0.06))', suffix: '%' },
         ].map((s, idx) => (
           <div key={s.label}
             className="relative overflow-hidden flex items-center gap-3 p-4 md:p-5 rounded-2xl border border-white/[0.06] iv-card-enter group"
@@ -568,10 +568,10 @@ const IntervenantsManager = () => {
               <s.icon className="w-5 h-5" style={{ color: s.color }} />
             </div>
             <div>
-              <p className="text-xl md:text-2xl font-black text-slate-100" style={{ fontFamily: 'Manrope, sans-serif' }}>
+              <p className="text-xl md:text-2xl font-black text-neutral-100" style={{ fontFamily: 'Inter, sans-serif' }}>
                 <AnimatedCounter value={s.suffix ? s.value : s.value} suffix={s.suffix || ''} />
               </p>
-              <p className="text-[10px] md:text-[11px] text-slate-500 font-semibold">{s.label}</p>
+              <p className="text-[10px] md:text-[11px] text-neutral-500 font-semibold">{s.label}</p>
             </div>
             {/* Decorative glow */}
             <div className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full opacity-20 blur-2xl"
@@ -584,13 +584,13 @@ const IntervenantsManager = () => {
       <div className="space-y-3">
         <div className="flex gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Rechercher un intervenant par nom, email, rôle..."
-              className="w-full pl-11 pr-4 py-3 bg-white/[0.03] border border-white/[0.08] text-slate-200 placeholder-slate-600 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/20 transition-all duration-300" />
+              className="w-full pl-11 pr-4 py-3 bg-white/[0.03] border border-white/[0.08] text-neutral-200 placeholder-neutral-600 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-200 transition-all duration-300" />
             {search && (
               <button onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-white/5 transition-all">
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg text-neutral-500 hover:text-neutral-300 hover:bg-white transition-all">
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
@@ -598,13 +598,13 @@ const IntervenantsManager = () => {
           <button onClick={() => setShowFilters(!showFilters)}
             className={`flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-bold border transition-all duration-300 ${
               showFilters || activeFiltersCount > 0
-                ? 'border-violet-500/30 bg-violet-500/10 text-violet-300'
-                : 'border-white/[0.08] text-slate-400 hover:bg-white/[0.04]'
+                ? 'border-brand-500/30 bg-brand-50 text-brand-300'
+                : 'border-white/[0.08] text-neutral-400 hover:bg-white/[0.04]'
             }`}>
             <SlidersHorizontal className="w-4 h-4" />
             <span className="hidden sm:inline">Filtres</span>
             {activeFiltersCount > 0 && (
-              <span className="ml-1 w-5 h-5 rounded-full bg-violet-500 text-white text-[10px] font-black flex items-center justify-center iv-badge-pop">
+              <span className="ml-1 w-5 h-5 rounded-full bg-brand-500 text-white text-[10px] font-black flex items-center justify-center iv-badge-pop">
                 {activeFiltersCount}
               </span>
             )}
@@ -616,8 +616,8 @@ const IntervenantsManager = () => {
           <div className="p-5 rounded-2xl border border-white/[0.06] space-y-4" style={{ background: 'var(--bg-muted)' }}>
             {/* Skills Filter */}
             <div>
-              <p className="text-[11px] font-bold text-slate-400 mb-2.5 uppercase tracking-wider flex items-center gap-2">
-                <Award className="w-3.5 h-3.5 text-violet-400" /> Compétences
+              <p className="text-[11px] font-bold text-neutral-400 mb-2.5 uppercase tracking-wider flex items-center gap-2">
+                <Award className="w-3.5 h-3.5 text-brand-600" /> Compétences
               </p>
               <div className="flex flex-wrap gap-2">
                 {SKILLS.map(s => (
@@ -630,8 +630,8 @@ const IntervenantsManager = () => {
             </div>
             {/* Zones Filter */}
             <div>
-              <p className="text-[11px] font-bold text-slate-400 mb-2.5 uppercase tracking-wider flex items-center gap-2">
-                <MapPin className="w-3.5 h-3.5 text-emerald-400" /> Zones d'intervention
+              <p className="text-[11px] font-bold text-neutral-400 mb-2.5 uppercase tracking-wider flex items-center gap-2">
+                <MapPin className="w-3.5 h-3.5 text-brand-600" /> Zones d'intervention
               </p>
               <div className="flex flex-wrap gap-2">
                 {ZONES.map(z => (
@@ -645,7 +645,7 @@ const IntervenantsManager = () => {
             {/* Clear filters */}
             {activeFiltersCount > 0 && (
               <button onClick={() => { setFilterSkills([]); setFilterZones([]); }}
-                className="text-xs font-bold text-red-400 hover:text-red-300 transition-colors flex items-center gap-1.5">
+                className="text-xs font-bold text-terracotta-600 hover:text-terracotta-500 transition-colors flex items-center gap-1.5">
                 <XCircle className="w-3.5 h-3.5" /> Réinitialiser les filtres
               </button>
             )}
@@ -655,18 +655,18 @@ const IntervenantsManager = () => {
         {/* Active filters summary */}
         {activeFiltersCount > 0 && !showFilters && (
           <div className="flex items-center gap-2 flex-wrap" style={{ animation: 'iv-fadeIn 0.3s ease' }}>
-            <span className="text-[10px] text-slate-500 font-semibold">Filtres actifs :</span>
+            <span className="text-[10px] text-neutral-500 font-semibold">Filtres actifs :</span>
             {filterSkills.map(s => (
               <span key={s} onClick={() => setFilterSkills(p => p.filter(x => x !== s))}
                 className="text-[10px] px-2.5 py-1 rounded-lg font-bold cursor-pointer transition-all hover:scale-105"
-                style={{ background: 'rgba(139,92,246,0.12)', color: '#a78bfa', border: '1px solid rgba(139,92,246,0.2)' }}>
+                style={{ background: 'rgba(4,120,87,0.12)', color: '#047857', border: '1px solid rgba(4,120,87,0.2)' }}>
                 {s} ✕
               </span>
             ))}
             {filterZones.map(z => (
               <span key={z} onClick={() => setFilterZones(p => p.filter(x => x !== z))}
                 className="text-[10px] px-2.5 py-1 rounded-lg font-bold cursor-pointer transition-all hover:scale-105"
-                style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)' }}>
+                style={{ background: 'rgba(16,185,129,0.12)', color: '#047857', border: '1px solid rgba(16,185,129,0.2)' }}>
                 📍 {z} ✕
               </span>
             ))}
@@ -697,7 +697,7 @@ const IntervenantsManager = () => {
         )
       ) : (
         <>
-          <p className="text-[11px] text-slate-600 font-semibold">{filtered.length} intervenant{filtered.length > 1 ? 's' : ''} trouvé{filtered.length > 1 ? 's' : ''}</p>
+          <p className="text-[11px] text-neutral-600 font-semibold">{filtered.length} intervenant{filtered.length > 1 ? 's' : ''} trouvé{filtered.length > 1 ? 's' : ''}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5">
             {filtered.map((member, idx) => {
               const stats = getMemberStats(member);
@@ -732,8 +732,8 @@ const IntervenantsManager = () => {
                         </div>
                         {isOnMission && (
                           <>
-                            <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-amber-400 border-2 border-slate-900 flex items-center justify-center">
-                              <Zap className="w-2.5 h-2.5 text-slate-900" />
+                            <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-amber-400 border-2 border-neutral-900 flex items-center justify-center">
+                              <Zap className="w-2.5 h-2.5 text-neutral-900" />
                             </div>
                             <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-amber-400/60" style={{ animation: 'iv-pulse-ring 2s ease-out infinite' }} />
                           </>
@@ -741,12 +741,12 @@ const IntervenantsManager = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="font-black text-slate-100 truncate text-[15px]">{member.name}</p>
+                          <p className="font-black text-neutral-100 truncate text-[15px]">{member.name}</p>
                           {(member.rating || 5) >= 5 && <Crown className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />}
                         </div>
-                        <p className="text-xs text-emerald-400 font-bold capitalize">{member.role || 'Technicien'}</p>
+                        <p className="text-xs text-brand-600 font-bold capitalize">{member.role || 'Technicien'}</p>
                         {member.team_name && (
-                          <p className="text-[10px] text-slate-600 flex items-center gap-1 mt-0.5">
+                          <p className="text-[10px] text-neutral-600 flex items-center gap-1 mt-0.5">
                             <Shield className="w-2.5 h-2.5" /> {member.team_name}
                           </p>
                         )}
@@ -759,7 +759,7 @@ const IntervenantsManager = () => {
                         )}
                         <div className="flex items-center gap-0.5">
                           {[1, 2, 3, 4, 5].map(s => (
-                            <Star key={s} className={`w-3 h-3 transition-all duration-300 ${s <= (member.rating || 5) ? 'fill-amber-400 text-amber-400' : 'text-slate-700'}`} />
+                            <Star key={s} className={`w-3 h-3 transition-all duration-300 ${s <= (member.rating || 5) ? 'fill-amber-400 text-amber-400' : 'text-neutral-700'}`} />
                           ))}
                         </div>
                       </div>
@@ -768,19 +768,19 @@ const IntervenantsManager = () => {
                     {/* Contact info */}
                     <div className="space-y-1.5 mb-4">
                       {member.email && (
-                        <div className="flex items-center gap-2.5 text-xs text-slate-500 group/email">
-                          <div className="w-6 h-6 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-                            <Mail className="w-3 h-3 text-blue-400" />
+                        <div className="flex items-center gap-2.5 text-xs text-neutral-500 group/email">
+                          <div className="w-6 h-6 rounded-lg bg-brand-50 flex items-center justify-center flex-shrink-0">
+                            <Mail className="w-3 h-3 text-brand-600" />
                           </div>
-                          <span className="truncate group-hover/email:text-blue-400 transition-colors">{member.email}</span>
+                          <span className="truncate group-hover/email:text-brand-600 transition-colors">{member.email}</span>
                         </div>
                       )}
                       {member.phone && (
-                        <div className="flex items-center gap-2.5 text-xs text-slate-500 group/phone">
-                          <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
-                            <Phone className="w-3 h-3 text-emerald-400" />
+                        <div className="flex items-center gap-2.5 text-xs text-neutral-500 group/phone">
+                          <div className="w-6 h-6 rounded-lg bg-brand-50 flex items-center justify-center flex-shrink-0">
+                            <Phone className="w-3 h-3 text-brand-600" />
                           </div>
-                          <a href={`tel:${member.phone}`} onClick={e => e.stopPropagation()} className="hover:text-emerald-400 transition-colors">{member.phone}</a>
+                          <a href={`tel:${member.phone}`} onClick={e => e.stopPropagation()} className="hover:text-brand-600 transition-colors">{member.phone}</a>
                         </div>
                       )}
                     </div>
@@ -790,11 +790,11 @@ const IntervenantsManager = () => {
                       {[
                         { label: "Aujourd'hui", value: stats.today, color: '#f59e0b' },
                         { label: "Ce mois", value: stats.thisMonth, color: '#60a5fa' },
-                        { label: "Total", value: stats.total, color: '#10b981' },
+                        { label: "Total", value: stats.total, color: '#047857' },
                       ].map((s, i) => (
                         <div key={s.label} className="text-center p-2.5 rounded-xl transition-all duration-300 hover:scale-105"
                           style={{ background: `${s.color}08`, border: `1px solid ${s.color}15` }}>
-                          <p className="text-lg font-black" style={{ color: s.color, fontFamily: 'Manrope, sans-serif' }}>
+                          <p className="text-lg font-black" style={{ color: s.color, fontFamily: 'Inter, sans-serif' }}>
                             {s.value}
                           </p>
                           <p className="text-[8px] font-bold uppercase tracking-wider" style={{ color: `${s.color}90` }}>{s.label}</p>
@@ -815,7 +815,7 @@ const IntervenantsManager = () => {
                           );
                         })}
                         {member.skills.length > 4 && (
-                          <span className="text-[10px] px-2 py-1 rounded-lg font-bold text-slate-500 bg-white/[0.04] border border-white/[0.06]">
+                          <span className="text-[10px] px-2 py-1 rounded-lg font-bold text-neutral-500 bg-white/[0.04] border border-white/[0.06]">
                             +{member.skills.length - 4}
                           </span>
                         )}
@@ -825,8 +825,8 @@ const IntervenantsManager = () => {
                     {/* Zones mini */}
                     {member.zones?.length > 0 && (
                       <div className="flex items-center gap-1.5 mb-4 overflow-hidden">
-                        <MapPin className="w-3 h-3 text-emerald-500/60 flex-shrink-0" />
-                        <p className="text-[10px] text-slate-500 truncate">
+                        <MapPin className="w-3 h-3 text-brand-500/60 flex-shrink-0" />
+                        <p className="text-[10px] text-neutral-500 truncate">
                           {member.zones.slice(0, 2).join(', ')}{member.zones.length > 2 ? ` +${member.zones.length - 2}` : ''}
                         </p>
                       </div>
@@ -835,15 +835,15 @@ const IntervenantsManager = () => {
                     {/* Actions - with smooth reveal */}
                     <div className="flex gap-2 pt-2 border-t border-white/[0.04] opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-400">
                       <button onClick={e => { e.stopPropagation(); setSelectedMember(member); setMemberTab('Messages'); }}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[11px] font-bold border border-emerald-500/15 text-emerald-400 hover:bg-emerald-500/10 transition-all duration-300">
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[11px] font-bold border border-brand-200 text-brand-600 hover:bg-brand-50 transition-all duration-300">
                         <MessageSquare className="w-3.5 h-3.5" /> Message
                       </button>
                       <button onClick={e => { e.stopPropagation(); setSelectedMember(member); setMemberTab('Missions'); }}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[11px] font-bold border border-blue-500/15 text-blue-400 hover:bg-blue-500/10 transition-all duration-300">
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[11px] font-bold border border-brand-200 text-brand-600 hover:bg-brand-50 transition-all duration-300">
                         <Calendar className="w-3.5 h-3.5" /> Missions
                       </button>
                       <button onClick={e => { e.stopPropagation(); setSelectedMember(member); setMemberTab('Performance'); }}
-                        className="flex items-center justify-center py-2.5 px-3 rounded-xl text-[11px] font-bold border border-violet-500/15 text-violet-400 hover:bg-violet-500/10 transition-all duration-300">
+                        className="flex items-center justify-center py-2.5 px-3 rounded-xl text-[11px] font-bold border border-brand-200 text-brand-600 hover:bg-brand-50 transition-all duration-300">
                         <BarChart2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -887,16 +887,16 @@ const IntervenantsManager = () => {
                         {(selectedMember.name || 'A').charAt(0).toUpperCase()}
                       </div>
                       {interventions.some(i => (i.assigned_agent_id === selectedMember.member_id || i.assigned_agent_name === selectedMember.name) && i.status === 'en_cours') && (
-                        <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-lg bg-amber-400 border-2 border-slate-900 flex items-center justify-center">
-                          <Zap className="w-3 h-3 text-slate-900" />
+                        <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-lg bg-amber-400 border-2 border-neutral-900 flex items-center justify-center">
+                          <Zap className="w-3 h-3 text-neutral-900" />
                         </div>
                       )}
                     </div>
                     <div>
-                      <h2 className="text-xl md:text-2xl font-black text-white tracking-tight" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                      <h2 className="text-xl md:text-2xl font-black text-white tracking-tight" style={{ fontFamily: 'Inter, sans-serif' }}>
                         {selectedMember.name}
                       </h2>
-                      <p className="text-sm text-emerald-300 font-bold capitalize flex items-center gap-1.5">
+                      <p className="text-sm text-brand-300 font-bold capitalize flex items-center gap-1.5">
                         {selectedMember.role || 'Technicien'}
                         {(selectedMember.rating || 5) >= 5 && <Crown className="w-3.5 h-3.5 text-amber-400" />}
                       </p>
@@ -904,15 +904,15 @@ const IntervenantsManager = () => {
                         {[1, 2, 3, 4, 5].map(s => (
                           <button key={s} onClick={() => rateAgent(s)}
                             className="transition-all duration-300 hover:scale-125">
-                            <Star className={`w-4 h-4 ${s <= (selectedMember.rating || 5) ? 'fill-amber-400 text-amber-400' : 'text-slate-600'}`} />
+                            <Star className={`w-4 h-4 ${s <= (selectedMember.rating || 5) ? 'fill-amber-400 text-amber-400' : 'text-neutral-600'}`} />
                           </button>
                         ))}
-                        <span className="text-xs text-slate-400 ml-2 font-bold">{selectedMember.rating || 5}/5</span>
+                        <span className="text-xs text-neutral-400 ml-2 font-bold">{selectedMember.rating || 5}/5</span>
                       </div>
                     </div>
                   </div>
                   <button onClick={closeModal}
-                    className="p-2.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-300">
+                    className="p-2.5 text-neutral-400 hover:text-white hover:bg-neutral-50 rounded-xl transition-all duration-300">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -926,8 +926,8 @@ const IntervenantsManager = () => {
                       <button key={tab} onClick={() => setMemberTab(tab)}
                         className={`px-4 py-2.5 rounded-xl text-xs font-bold flex-shrink-0 transition-all duration-300 flex items-center gap-2 ${
                           isActive
-                            ? 'bg-white/15 text-white shadow-lg backdrop-blur-sm'
-                            : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.06]'
+                            ? 'bg-neutral-800 text-white shadow-lg backdrop-blur-sm'
+                            : 'text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.06]'
                         }`}>
                         {TabIcon && <TabIcon className="w-3.5 h-3.5" />}
                         <span className="hidden sm:inline">{tab}</span>
@@ -948,8 +948,8 @@ const IntervenantsManager = () => {
                   <div className="grid grid-cols-2 gap-3">
                     {[
                       { label: 'Email', value: selectedMember.email, icon: Mail, color: '#60a5fa', gradient: 'rgba(96,165,250,0.08)' },
-                      { label: 'Téléphone', value: selectedMember.phone, icon: Phone, color: '#10b981', gradient: 'rgba(16,185,129,0.08)' },
-                      { label: 'Rôle', value: selectedMember.role || 'Technicien', icon: Briefcase, color: '#a78bfa', gradient: 'rgba(167,139,250,0.08)' },
+                      { label: 'Téléphone', value: selectedMember.phone, icon: Phone, color: '#047857', gradient: 'rgba(16,185,129,0.08)' },
+                      { label: 'Rôle', value: selectedMember.role || 'Technicien', icon: Briefcase, color: '#047857', gradient: 'rgba(4,120,87,0.08)' },
                       { label: 'Max missions/jour', value: selectedMember.max_missions_day || 4, icon: Zap, color: '#f59e0b', gradient: 'rgba(245,158,11,0.08)' },
                     ].map((item, i) => (
                       <div key={item.label} className="iv-cascade p-4 rounded-2xl border border-white/[0.06] group/card hover:border-white/[0.12] transition-all duration-300"
@@ -959,17 +959,17 @@ const IntervenantsManager = () => {
                             style={{ background: `${item.color}15`, border: `1px solid ${item.color}20` }}>
                             <item.icon className="w-3.5 h-3.5" style={{ color: item.color }} />
                           </div>
-                          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{item.label}</p>
+                          <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider">{item.label}</p>
                         </div>
-                        <p className="text-sm font-bold text-slate-200 truncate">{item.value || '—'}</p>
+                        <p className="text-sm font-bold text-neutral-200 truncate">{item.value || '—'}</p>
                       </div>
                     ))}
                   </div>
 
                   {/* Compétences */}
                   <div className="iv-cascade p-5 rounded-2xl border border-white/[0.06]" style={{ background: 'var(--bg-muted)', animationDelay: '0.32s' }}>
-                    <p className="text-[11px] font-bold text-slate-400 mb-3 uppercase tracking-wider flex items-center gap-2">
-                      <Award className="w-3.5 h-3.5 text-violet-400" /> Compétences
+                    <p className="text-[11px] font-bold text-neutral-400 mb-3 uppercase tracking-wider flex items-center gap-2">
+                      <Award className="w-3.5 h-3.5 text-brand-600" /> Compétences
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {selectedMember.skills?.length > 0 ? selectedMember.skills.map((s, i) => {
@@ -981,52 +981,52 @@ const IntervenantsManager = () => {
                           </span>
                         );
                       }) : (
-                        <p className="text-sm text-slate-600 italic">Aucune compétence renseignée</p>
+                        <p className="text-sm text-neutral-600 italic">Aucune compétence renseignée</p>
                       )}
                     </div>
                   </div>
 
                   {/* Zones */}
                   <div className="iv-cascade p-5 rounded-2xl border border-white/[0.06]" style={{ background: 'var(--bg-muted)', animationDelay: '0.4s' }}>
-                    <p className="text-[11px] font-bold text-slate-400 mb-3 uppercase tracking-wider flex items-center gap-2">
-                      <MapPin className="w-3.5 h-3.5 text-emerald-400" /> Zones d'intervention
+                    <p className="text-[11px] font-bold text-neutral-400 mb-3 uppercase tracking-wider flex items-center gap-2">
+                      <MapPin className="w-3.5 h-3.5 text-brand-600" /> Zones d'intervention
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {selectedMember.zones?.length > 0 ? selectedMember.zones.map((z, i) => (
                         <span key={z} className="iv-badge-pop text-xs px-3.5 py-1.5 rounded-xl font-bold"
-                          style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)', animationDelay: `${0.45 + i * 0.05}s` }}>
+                          style={{ background: 'rgba(16,185,129,0.1)', color: '#047857', border: '1px solid rgba(16,185,129,0.2)', animationDelay: `${0.45 + i * 0.05}s` }}>
                           📍 {z}
                         </span>
                       )) : (
-                        <p className="text-sm text-slate-600 italic">Aucune zone renseignée</p>
+                        <p className="text-sm text-neutral-600 italic">Aucune zone renseignée</p>
                       )}
                     </div>
                   </div>
 
                   {selectedMember.notes && (
                     <div className="iv-cascade p-5 rounded-2xl border border-white/[0.06]" style={{ background: 'var(--bg-muted)', animationDelay: '0.48s' }}>
-                      <p className="text-[11px] font-bold text-slate-400 mb-2 uppercase tracking-wider">📝 Notes</p>
-                      <p className="text-sm text-slate-300 leading-relaxed">{selectedMember.notes}</p>
+                      <p className="text-[11px] font-bold text-neutral-400 mb-2 uppercase tracking-wider">📝 Notes</p>
+                      <p className="text-sm text-neutral-300 leading-relaxed">{selectedMember.notes}</p>
                     </div>
                   )}
 
                   {/* Portal link */}
-                  <div className="iv-cascade p-5 rounded-2xl border border-emerald-500/15 iv-glow" style={{ background: 'rgba(16,185,129,0.04)', animationDelay: '0.56s' }}>
-                    <p className="text-xs font-bold text-emerald-300 mb-3 flex items-center gap-2">
+                  <div className="iv-cascade p-5 rounded-2xl border border-brand-200 iv-glow" style={{ background: 'rgba(16,185,129,0.04)', animationDelay: '0.56s' }}>
+                    <p className="text-xs font-bold text-brand-300 mb-3 flex items-center gap-2">
                       <ExternalLink className="w-3.5 h-3.5" /> Lien portail intervenant
                     </p>
                     <div className="flex items-center gap-2">
-                      <p className="text-xs text-slate-400 font-mono flex-1 truncate bg-black/20 px-3 py-2 rounded-xl">
+                      <p className="text-xs text-neutral-400 font-mono flex-1 truncate bg-black/20 px-3 py-2 rounded-xl">
                         {window.location.origin}/intervenant
                       </p>
                       <button onClick={copyPortalLink}
-                        className="px-4 py-2 rounded-xl text-xs font-bold text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/10 transition-all duration-300">
+                        className="px-4 py-2 rounded-xl text-xs font-bold text-brand-600 border border-brand-200 hover:bg-brand-50 transition-all duration-300">
                         Copier
                       </button>
                       {selectedMember.email && (
                         <button onClick={() => {
                           window.open(`mailto:${selectedMember.email}?subject=Votre accès portail Global Clean Home&body=Bonjour ${selectedMember.name},%0A%0AVoici votre lien portail intervenant : ${window.location.origin}/intervenant%0A%0AConnectez-vous avec votre email : ${selectedMember.email}%0A%0ACordialement,%0AEquipe Global Clean Home`);
-                        }} className="px-3 py-2 rounded-xl text-xs font-bold text-blue-400 border border-blue-500/20 hover:bg-blue-500/10 transition-all duration-300">
+                        }} className="px-3 py-2 rounded-xl text-xs font-bold text-brand-600 border border-brand-200 hover:bg-brand-50 transition-all duration-300">
                           <Mail className="w-3.5 h-3.5" />
                         </button>
                       )}
@@ -1048,13 +1048,13 @@ const IntervenantsManager = () => {
                           {[
                             { label: "Aujourd'hui", value: stats.today, color: '#f59e0b', icon: Target },
                             { label: 'Ce mois', value: stats.thisMonth, color: '#60a5fa', icon: Calendar },
-                            { label: 'Terminées', value: stats.done, color: '#10b981', icon: CheckCircle },
-                            { label: 'Total', value: stats.total, color: '#a78bfa', icon: BarChart2 },
+                            { label: 'Terminées', value: stats.done, color: '#047857', icon: CheckCircle },
+                            { label: 'Total', value: stats.total, color: '#047857', icon: BarChart2 },
                           ].map((s, i) => (
                             <div key={s.label} className="iv-cascade text-center p-4 rounded-2xl relative overflow-hidden"
                               style={{ background: `${s.color}08`, border: `1px solid ${s.color}15`, animationDelay: `${i * 0.08}s` }}>
                               <s.icon className="w-4 h-4 mx-auto mb-1.5 opacity-50" style={{ color: s.color }} />
-                              <p className="text-2xl font-black" style={{ color: s.color, fontFamily: 'Manrope, sans-serif' }}>
+                              <p className="text-2xl font-black" style={{ color: s.color, fontFamily: 'Inter, sans-serif' }}>
                                 <AnimatedCounter value={s.value} />
                               </p>
                               <p className="text-[9px] font-bold uppercase tracking-wider mt-0.5" style={{ color: `${s.color}90` }}>{s.label}</p>
@@ -1075,8 +1075,8 @@ const IntervenantsManager = () => {
                               const sc = {
                                 planifiée: { color: '#60a5fa', bg: 'rgba(96,165,250,0.1)', border: 'rgba(96,165,250,0.15)', icon: Clock },
                                 en_cours: { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.15)', icon: Zap },
-                                terminée: { color: '#10b981', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.15)', icon: CheckCircle },
-                                annulée: { color: '#f43f5e', bg: 'rgba(244,63,94,0.1)', border: 'rgba(244,63,94,0.15)', icon: XCircle },
+                                terminée: { color: '#047857', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.15)', icon: CheckCircle },
+                                annulée: { color: '#c2410c', bg: 'rgba(194,65,12,0.1)', border: 'rgba(194,65,12,0.15)', icon: XCircle },
                               }[intv.status] || { color: '#60a5fa', bg: 'rgba(96,165,250,0.1)', border: 'rgba(96,165,250,0.15)', icon: Clock };
                               const StatusIcon = sc.icon;
                               return (
@@ -1084,14 +1084,14 @@ const IntervenantsManager = () => {
                                   className="iv-cascade flex items-center gap-3 p-4 rounded-2xl border transition-all duration-300 hover:border-white/[0.12]"
                                   style={{ background: 'var(--bg-muted)', borderColor: 'var(--border-default)', animationDelay: `${idx * 0.05}s` }}>
                                   <div className="text-center w-12 flex-shrink-0 p-2 rounded-xl" style={{ background: 'var(--bg-muted)' }}>
-                                    <p className="text-lg font-black text-slate-200">{(intv.scheduled_date || '').slice(8, 10)}</p>
-                                    <p className="text-[9px] text-slate-500 font-bold">
+                                    <p className="text-lg font-black text-neutral-200">{(intv.scheduled_date || '').slice(8, 10)}</p>
+                                    <p className="text-[9px] text-neutral-500 font-bold">
                                       {['', 'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'][parseInt((intv.scheduled_date || '').slice(5, 7))] || ''}
                                     </p>
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-bold text-slate-200 truncate">{intv.title || intv.service_type}</p>
-                                    <p className="text-xs text-slate-500 truncate flex items-center gap-1">
+                                    <p className="text-sm font-bold text-neutral-200 truncate">{intv.title || intv.service_type}</p>
+                                    <p className="text-xs text-neutral-500 truncate flex items-center gap-1">
                                       <Clock className="w-3 h-3" /> {intv.scheduled_time}
                                       {intv.address && <><span className="mx-1">·</span><MapPin className="w-3 h-3" /> {intv.address}</>}
                                     </p>
@@ -1116,18 +1116,18 @@ const IntervenantsManager = () => {
               {memberTab === 'Disponibilités' && (
                 <div className="space-y-5">
                   <div className="iv-cascade p-5 rounded-2xl border border-white/[0.06]" style={{ background: 'var(--bg-muted)' }}>
-                    <p className="text-[11px] font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2">
-                      <Calendar className="w-3.5 h-3.5 text-emerald-400" /> Jours disponibles
+                    <p className="text-[11px] font-bold text-neutral-400 mb-4 uppercase tracking-wider flex items-center gap-2">
+                      <Calendar className="w-3.5 h-3.5 text-brand-600" /> Jours disponibles
                     </p>
                     <div className="grid grid-cols-7 gap-2">
                       {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((day, i) => {
                         const isAvail = (selectedMember.availability || [0, 1, 2, 3, 4]).includes ? (selectedMember.availability || [0, 1, 2, 3, 4]).includes(i) : true;
                         return (
                           <div key={day} className={`iv-cascade p-3 rounded-xl text-center border transition-all duration-300 hover:scale-105 ${
-                            isAvail ? 'border-emerald-500/25 bg-emerald-500/8' : 'border-white/[0.04] bg-white/[0.01] opacity-40'
+                            isAvail ? 'border-brand-500/25 bg-brand-500/8' : 'border-white/[0.04] bg-white/[0.01] opacity-40'
                           }`} style={{ animationDelay: `${i * 0.05}s` }}>
-                            <p className="text-[11px] font-black" style={{ color: isAvail ? '#10b981' : '#475569' }}>{day}</p>
-                            <div className={`w-2.5 h-2.5 rounded-full mx-auto mt-1.5 transition-all duration-300 ${isAvail ? 'bg-emerald-400 shadow-lg shadow-emerald-500/30' : 'bg-slate-700'}`} />
+                            <p className="text-[11px] font-black" style={{ color: isAvail ? '#047857' : '#78716c' }}>{day}</p>
+                            <div className={`w-2.5 h-2.5 rounded-full mx-auto mt-1.5 transition-all duration-300 ${isAvail ? 'bg-brand-400 shadow-lg shadow-brand-500/30' : 'bg-neutral-700'}`} />
                           </div>
                         );
                       })}
@@ -1135,7 +1135,7 @@ const IntervenantsManager = () => {
                   </div>
 
                   <div className="iv-cascade p-5 rounded-2xl border border-white/[0.06]" style={{ background: 'var(--bg-muted)', animationDelay: '0.1s' }}>
-                    <p className="text-[11px] font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2">
+                    <p className="text-[11px] font-bold text-neutral-400 mb-4 uppercase tracking-wider flex items-center gap-2">
                       <AlertCircle className="w-3.5 h-3.5 text-amber-400" /> Congés & Absences
                     </p>
                     <div className="space-y-2.5 mb-4">
@@ -1147,18 +1147,18 @@ const IntervenantsManager = () => {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs text-amber-300 font-bold">{c.start} → {c.end}</p>
-                            {c.reason && <p className="text-[10px] text-slate-500">{c.reason}</p>}
+                            {c.reason && <p className="text-[10px] text-neutral-500">{c.reason}</p>}
                           </div>
                           <button onClick={() => setCongés(p => p.filter(x => x.id !== c.id))}
-                            className="p-1.5 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all">
+                            className="p-1.5 rounded-lg text-terracotta-600 hover:text-terracotta-500 hover:bg-terracotta-50 transition-all">
                             <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       ))}
                       {congés.length === 0 && (
                         <div className="text-center py-6">
-                          <CheckCircle className="w-8 h-8 text-emerald-500/30 mx-auto mb-2" />
-                          <p className="text-xs text-slate-600">Aucun congé — Disponible ✨</p>
+                          <CheckCircle className="w-8 h-8 text-brand-500/30 mx-auto mb-2" />
+                          <p className="text-xs text-neutral-600">Aucun congé — Disponible ✨</p>
                         </div>
                       )}
                     </div>
@@ -1178,13 +1178,13 @@ const IntervenantsManager = () => {
               {/* ── DOCUMENTS ── */}
               {memberTab === 'Documents' && (
                 <div className="space-y-3">
-                  <p className="text-xs text-slate-500 mb-2">Documents RH de <span className="text-slate-300 font-bold">{selectedMember.name}</span></p>
+                  <p className="text-xs text-neutral-500 mb-2">Documents RH de <span className="text-neutral-300 font-bold">{selectedMember.name}</span></p>
 
                   {/* Progress bar */}
                   <div className="iv-cascade p-4 rounded-2xl border border-white/[0.06]" style={{ background: 'var(--bg-muted)' }}>
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Progression</p>
-                      <p className="text-xs font-bold text-emerald-400">
+                      <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">Progression</p>
+                      <p className="text-xs font-bold text-brand-600">
                         {(selectedMember.documents || []).length}/{DOCS.length} documents
                       </p>
                     </div>
@@ -1192,7 +1192,7 @@ const IntervenantsManager = () => {
                       <div className="h-full rounded-full iv-progress-fill"
                         style={{
                           width: `${((selectedMember.documents || []).length / DOCS.length) * 100}%`,
-                          background: 'linear-gradient(90deg, #10b981, #059669)',
+                          background: 'linear-gradient(90deg, #047857, #059669)',
                         }} />
                     </div>
                   </div>
@@ -1201,19 +1201,19 @@ const IntervenantsManager = () => {
                     const hasDoc = (selectedMember.documents || []).includes(doc);
                     return (
                       <div key={doc} className={`iv-cascade flex items-center gap-4 p-4 rounded-2xl border transition-all duration-300 hover:border-white/[0.12] ${
-                        hasDoc ? 'border-emerald-500/15 bg-emerald-500/[0.03]' : 'border-white/[0.06] bg-white/[0.02]'
+                        hasDoc ? 'border-brand-200 bg-brand-500/[0.03]' : 'border-white/[0.06] bg-white/[0.02]'
                       }`} style={{ animationDelay: `${idx * 0.06}s` }}>
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
-                          hasDoc ? 'bg-emerald-500/15' : 'bg-white/[0.04]'
+                          hasDoc ? 'bg-brand-500/15' : 'bg-white/[0.04]'
                         }`}>
-                          {hasDoc ? <CheckCircle className="w-5 h-5 text-emerald-400" /> : <FileText className="w-5 h-5 text-slate-600" />}
+                          {hasDoc ? <CheckCircle className="w-5 h-5 text-brand-600" /> : <FileText className="w-5 h-5 text-neutral-600" />}
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-bold text-slate-200">{doc}</p>
-                          <p className="text-[10px] text-slate-500 mt-0.5">{hasDoc ? '✅ Document reçu et vérifié' : '⏳ En attente de réception'}</p>
+                          <p className="text-sm font-bold text-neutral-200">{doc}</p>
+                          <p className="text-[10px] text-neutral-500 mt-0.5">{hasDoc ? '✅ Document reçu et vérifié' : '⏳ En attente de réception'}</p>
                         </div>
                         {hasDoc ? (
-                          <span className="text-[10px] font-bold px-3 py-1 rounded-lg bg-emerald-500/12 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                          <span className="text-[10px] font-bold px-3 py-1 rounded-lg bg-brand-500/12 text-brand-600 border border-brand-200 flex items-center gap-1">
                             <CheckCircle className="w-3 h-3" /> Reçu
                           </span>
                         ) : (
@@ -1251,7 +1251,7 @@ const IntervenantsManager = () => {
                         {/* Performance KPIs with rings */}
                         <div className="grid grid-cols-3 gap-4">
                           {[
-                            { label: 'Taux réussite', value: stats.onTime, suffix: '%', color: '#10b981', ring: true },
+                            { label: 'Taux réussite', value: stats.onTime, suffix: '%', color: '#047857', ring: true },
                             { label: 'Ce mois', value: stats.thisMonth, color: '#60a5fa', ring: false },
                             { label: 'Note', value: selectedMember.rating || 5, suffix: '/5', color: '#f59e0b', ring: false },
                           ].map((s, i) => (
@@ -1262,7 +1262,7 @@ const IntervenantsManager = () => {
                                   <ProgressRing percent={s.value} size={64} color={s.color} />
                                 </div>
                               ) : (
-                                <p className="text-3xl font-black mb-1" style={{ color: s.color, fontFamily: 'Manrope, sans-serif' }}>
+                                <p className="text-3xl font-black mb-1" style={{ color: s.color, fontFamily: 'Inter, sans-serif' }}>
                                   <AnimatedCounter value={typeof s.value === 'number' ? s.value : parseInt(s.value)} suffix={s.suffix || ''} />
                                 </p>
                               )}
@@ -1274,19 +1274,19 @@ const IntervenantsManager = () => {
 
                         {/* Monthly History - Premium bars */}
                         <div className="iv-cascade p-5 rounded-2xl border border-white/[0.06]" style={{ background: 'var(--bg-muted)', animationDelay: '0.3s' }}>
-                          <p className="text-[11px] font-bold text-slate-400 mb-5 uppercase tracking-wider flex items-center gap-2">
-                            <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> Historique mensuel
+                          <p className="text-[11px] font-bold text-neutral-400 mb-5 uppercase tracking-wider flex items-center gap-2">
+                            <TrendingUp className="w-3.5 h-3.5 text-brand-600" /> Historique mensuel
                           </p>
                           {Object.entries(byMonth).sort(([a], [b]) => b.localeCompare(a)).slice(0, 6).map(([month, data], idx) => {
                             const pct = Math.round((data.done / Math.max(data.total, 1)) * 100);
                             return (
                               <div key={month} className="flex items-center gap-3 mb-4 group/bar">
-                                <p className="text-xs text-slate-400 w-20 flex-shrink-0 font-bold">{month}</p>
+                                <p className="text-xs text-neutral-400 w-20 flex-shrink-0 font-bold">{month}</p>
                                 <div className="flex-1 h-3 bg-white/[0.04] rounded-full overflow-hidden relative">
                                   <div className="h-full rounded-full iv-progress-fill relative overflow-hidden"
                                     style={{
                                       width: `${pct}%`,
-                                      background: `linear-gradient(90deg, #10b981, #059669)`,
+                                      background: `linear-gradient(90deg, #047857, #059669)`,
                                       animationDelay: `${0.4 + idx * 0.1}s`,
                                     }}>
                                     {/* Shimmer effect */}
@@ -1299,8 +1299,8 @@ const IntervenantsManager = () => {
                                       }} />
                                   </div>
                                 </div>
-                                <p className="text-xs text-slate-400 w-20 text-right flex-shrink-0 font-bold group-hover/bar:text-emerald-400 transition-colors">
-                                  {data.done}/{data.total} <span className="text-[10px] text-slate-600">({pct}%)</span>
+                                <p className="text-xs text-neutral-400 w-20 text-right flex-shrink-0 font-bold group-hover/bar:text-brand-600 transition-colors">
+                                  {data.done}/{data.total} <span className="text-[10px] text-neutral-600">({pct}%)</span>
                                 </p>
                               </div>
                             );
@@ -1316,16 +1316,16 @@ const IntervenantsManager = () => {
                             <Crown className="w-4 h-4" /> Notation interne
                           </p>
                           <div className="flex items-center gap-4">
-                            <p className="text-sm text-slate-400">Note actuelle :</p>
+                            <p className="text-sm text-neutral-400">Note actuelle :</p>
                             <div className="flex items-center gap-1.5">
                               {[1, 2, 3, 4, 5].map(s => (
                                 <button key={s} onClick={() => rateAgent(s)}
                                   className="transition-all duration-300 hover:scale-125 active:scale-90">
-                                  <Star className={`w-7 h-7 ${s <= (selectedMember.rating || 5) ? 'fill-amber-400 text-amber-400 drop-shadow-lg' : 'text-slate-700 hover:text-slate-500'}`} />
+                                  <Star className={`w-7 h-7 ${s <= (selectedMember.rating || 5) ? 'fill-amber-400 text-amber-400 drop-shadow-lg' : 'text-neutral-700 hover:text-neutral-500'}`} />
                                 </button>
                               ))}
                             </div>
-                            <span className="text-lg font-black text-amber-400" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                            <span className="text-lg font-black text-amber-400" style={{ fontFamily: 'Inter, sans-serif' }}>
                               {selectedMember.rating || 5}/5
                             </span>
                           </div>
@@ -1353,17 +1353,17 @@ const IntervenantsManager = () => {
                         <div key={i} className={`iv-cascade flex ${isAdmin ? 'justify-end' : 'justify-start'}`}
                           style={{ animationDelay: `${i * 0.04}s` }}>
                           {!isAdmin && (
-                            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black text-emerald-400 mr-2 mt-auto flex-shrink-0"
+                            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black text-brand-600 mr-2 mt-auto flex-shrink-0"
                               style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.2)' }}>
                               {(selectedMember.name || 'A').charAt(0)}
                             </div>
                           )}
                           <div className={`max-w-[75%] px-4 py-3 rounded-2xl text-sm ${isAdmin ? 'rounded-br-lg' : 'rounded-bl-lg'}`}
                             style={isAdmin
-                              ? { background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', color: 'white', boxShadow: '0 4px 20px rgba(124,58,237,0.25)' }
+                              ? { background: 'linear-gradient(135deg, #047857, #4f46e5)', color: 'white', boxShadow: '0 4px 20px rgba(124,58,237,0.25)' }
                               : { background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-default)', color: '#e2e8f0' }}>
                             <p className="leading-relaxed">{msg.content}</p>
-                            <p className={`text-[10px] mt-1.5 ${isAdmin ? 'text-white/40' : 'text-slate-600'}`}>
+                            <p className={`text-[10px] mt-1.5 ${isAdmin ? 'text-white/40' : 'text-neutral-600'}`}>
                               {new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
@@ -1376,11 +1376,11 @@ const IntervenantsManager = () => {
                     <input value={newMsg} onChange={e => setNewMsg(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                       placeholder={`Message à ${selectedMember.name}...`}
-                      className="flex-1 px-4 py-3 rounded-2xl border text-sm text-slate-200 placeholder-slate-600 outline-none focus:ring-2 focus:ring-violet-500/30 transition-all duration-300"
+                      className="flex-1 px-4 py-3 rounded-2xl border text-sm text-neutral-200 placeholder-neutral-600 outline-none focus:ring-2 focus:ring-brand-500/30 transition-all duration-300"
                       style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'var(--border-default)' }} />
                     <button onClick={sendMessage} disabled={!newMsg.trim()}
                       className="w-12 h-12 rounded-2xl flex items-center justify-center text-white disabled:opacity-30 transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:hover:scale-100"
-                      style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', boxShadow: '0 4px 20px rgba(124,58,237,0.25)' }}>
+                      style={{ background: 'linear-gradient(135deg, #047857, #4f46e5)', boxShadow: '0 4px 20px rgba(124,58,237,0.25)' }}>
                       <Send className="w-4 h-4" />
                     </button>
                   </div>
@@ -1411,15 +1411,15 @@ const IntervenantsManager = () => {
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center"
                     style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.1))', border: '1px solid rgba(16,185,129,0.25)' }}>
-                    <UserCheck className="w-5 h-5 text-emerald-400" />
+                    <UserCheck className="w-5 h-5 text-brand-600" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-black text-slate-100" style={{ fontFamily: 'Manrope, sans-serif' }}>Nouvel intervenant</h3>
-                    <p className="text-[11px] text-slate-500">Ajouter un membre à l'équipe</p>
+                    <h3 className="text-lg font-black text-neutral-100" style={{ fontFamily: 'Inter, sans-serif' }}>Nouvel intervenant</h3>
+                    <p className="text-[11px] text-neutral-500">Ajouter un membre à l'équipe</p>
                   </div>
                 </div>
                 <button onClick={() => setShowForm(false)}
-                  className="p-2.5 text-slate-500 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-300">
+                  className="p-2.5 text-neutral-500 hover:text-white hover:bg-neutral-50 rounded-xl transition-all duration-300">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -1446,7 +1446,7 @@ const IntervenantsManager = () => {
                 <Field label="Rôle">
                   <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))} className={inputCls}>
                     {['technicien', 'senior', 'chef_equipe', 'responsable'].map(r => (
-                      <option key={r} value={r} className="bg-slate-800">
+                      <option key={r} value={r} className="bg-neutral-800">
                         {r.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
                       </option>
                     ))}
@@ -1467,7 +1467,7 @@ const IntervenantsManager = () => {
                       <button key={s} type="button"
                         onClick={() => setForm(p => ({ ...p, skills: p.skills.includes(s) ? p.skills.filter(x => x !== s) : [...p.skills, s] }))}
                         className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 border ${
-                          active ? 'scale-105 shadow-lg' : 'border-white/[0.06] text-slate-500 hover:text-slate-300 hover:border-white/10'
+                          active ? 'scale-105 shadow-lg' : 'border-white/[0.06] text-neutral-500 hover:text-neutral-300 hover:border-neutral-200'
                         }`}
                         style={active ? { background: c.bg, color: c.text, borderColor: c.border } : {}}>
                         {s}
@@ -1485,7 +1485,7 @@ const IntervenantsManager = () => {
                       <button key={z} type="button"
                         onClick={() => setForm(p => ({ ...p, zones: p.zones.includes(z) ? p.zones.filter(x => x !== z) : [...p.zones, z] }))}
                         className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 border ${
-                          active ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300 scale-105 shadow-lg' : 'border-white/[0.06] text-slate-500 hover:text-slate-300 hover:border-white/10'
+                          active ? 'border-brand-500/40 bg-brand-500/15 text-brand-300 scale-105 shadow-lg' : 'border-white/[0.06] text-neutral-500 hover:text-neutral-300 hover:border-neutral-200'
                         }`}>
                         📍 {z}
                       </button>
@@ -1500,8 +1500,8 @@ const IntervenantsManager = () => {
                   placeholder="Infos complémentaires..." className={`${inputCls} resize-none`} />
               </Field>
 
-              <div className="p-4 rounded-2xl border border-emerald-500/15" style={{ background: 'rgba(16,185,129,0.04)' }}>
-                <p className="text-xs text-emerald-400 flex items-center gap-2">
+              <div className="p-4 rounded-2xl border border-brand-200" style={{ background: 'rgba(16,185,129,0.04)' }}>
+                <p className="text-xs text-brand-600 flex items-center gap-2">
                   <Mail className="w-3.5 h-3.5" />
                   Un email de bienvenue avec le lien portail sera envoyé à <span className="font-bold">{form.email || "l'intervenant"}</span>.
                 </p>
@@ -1509,12 +1509,12 @@ const IntervenantsManager = () => {
 
               <div className="flex gap-3 pt-1">
                 <button type="button" onClick={() => setShowForm(false)}
-                  className="flex-1 px-4 py-3.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-slate-400 rounded-2xl text-sm font-bold transition-all duration-300">
+                  className="flex-1 px-4 py-3.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-neutral-400 rounded-2xl text-sm font-bold transition-all duration-300">
                   Annuler
                 </button>
                 <button type="submit"
                   className="flex-1 px-4 py-3.5 text-white rounded-2xl text-sm font-bold transition-all duration-300 hover:scale-[1.02] hover:shadow-xl flex items-center justify-center gap-2"
-                  style={{ background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 8px 32px rgba(16,185,129,0.25)' }}>
+                  style={{ background: 'linear-gradient(135deg, #047857, #059669)', boxShadow: '0 8px 32px rgba(16,185,129,0.25)' }}>
                   <UserCheck className="w-4 h-4" /> Créer l'intervenant
                 </button>
               </div>

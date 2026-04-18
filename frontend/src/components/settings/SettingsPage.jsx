@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+﻿import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import axios from 'axios';
 import {
@@ -88,7 +88,7 @@ const SettingsPage = () => {
   // Appearance state — synced with ThemeContext for visual keys
   const [appearance, setAppearanceRaw] = useState({
     theme: themePrefs.theme || 'dark',
-    accentColor: themePrefs.accentColor || '#8b5cf6',
+    accentColor: themePrefs.accentColor || '#047857',
     fontSize: themePrefs.fontSize || 'medium',
     density: themePrefs.density || 'comfortable',
     sidebarPosition: 'left',
@@ -168,10 +168,10 @@ const SettingsPage = () => {
   const [team, setTeam] = useState({
     members: [],
     roles: [
-      { id: 1, name: 'Admin', color: '#ef4444', permissions: 'all' },
-      { id: 2, name: 'Manager', color: '#8b5cf6', permissions: 'manage' },
+      { id: 1, name: 'Admin', color: '#c2410c', permissions: 'all' },
+      { id: 2, name: 'Manager', color: '#047857', permissions: 'manage' },
       { id: 3, name: 'Commercial', color: '#3b82f6', permissions: 'leads,quotes' },
-      { id: 4, name: 'Opérateur', color: '#10b981', permissions: 'planning,tasks' },
+      { id: 4, name: 'Opérateur', color: '#047857', permissions: 'planning,tasks' },
       { id: 5, name: 'Comptable', color: '#f59e0b', permissions: 'invoices,finance' },
     ],
     inviteEmail: '',
@@ -180,7 +180,7 @@ const SettingsPage = () => {
   });
   const [inviting, setInviting] = useState(false);
   const [editingRole, setEditingRole] = useState(null);
-  const [newRoleForm, setNewRoleForm] = useState({ name: '', color: '#8b5cf6', permissions: '' });
+  const [newRoleForm, setNewRoleForm] = useState({ name: '', color: '#047857', permissions: '' });
   const [showNewRoleForm, setShowNewRoleForm] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
 
@@ -233,7 +233,7 @@ const SettingsPage = () => {
   // Zone editing state
   const [editingZone, setEditingZone] = useState(null);
   const [showNewZoneForm, setShowNewZoneForm] = useState(false);
-  const [newZoneForm, setNewZoneForm] = useState({ name: '', zipCodes: '', color: '#8b5cf6', surcharge: 0 });
+  const [newZoneForm, setNewZoneForm] = useState({ name: '', zipCodes: '', color: '#047857', surcharge: 0 });
 
   // Scheduling state
   const [scheduling, setScheduling] = useState({
@@ -258,9 +258,9 @@ const SettingsPage = () => {
   const [zones, setZones] = useState({
     serviceRadius: 30,
     zones: [
-      { id: 1, name: 'Paris Centre', zipCodes: '75001-75009', color: '#8b5cf6', surcharge: 0 },
+      { id: 1, name: 'Paris Centre', zipCodes: '75001-75009', color: '#047857', surcharge: 0 },
       { id: 2, name: 'Paris Est', zipCodes: '75010-75012,75020', color: '#3b82f6', surcharge: 0 },
-      { id: 3, name: 'Banlieue Proche', zipCodes: '92,93,94', color: '#10b981', surcharge: 5 },
+      { id: 3, name: 'Banlieue Proche', zipCodes: '92,93,94', color: '#047857', surcharge: 5 },
       { id: 4, name: 'Grande Couronne', zipCodes: '77,78,91,95', color: '#f59e0b', surcharge: 15 },
     ],
     travelCostPerKm: 0.50,
@@ -719,7 +719,7 @@ const SettingsPage = () => {
       const res = await axios.post(`${API_URL}/settings/team/roles`, newRoleForm);
       const role = res.data.role;
       setTeam(prev => ({ ...prev, roles: [...prev.roles, role] }));
-      setNewRoleForm({ name: '', color: '#8b5cf6', permissions: '' });
+      setNewRoleForm({ name: '', color: '#047857', permissions: '' });
       setShowNewRoleForm(false);
       toast.success(`Rôle "${role.name}" créé !`);
     } catch (err) { toast.error(err.response?.data?.detail || 'Erreur'); }
@@ -819,7 +819,7 @@ const SettingsPage = () => {
       const res = await axios.post(`${API_URL}/settings/zones/add`, newZoneForm);
       const zone = res.data.zone;
       setZones(prev => ({ ...prev, zones: [...(prev.zones || []), zone] }));
-      setNewZoneForm({ name: '', zipCodes: '', color: '#8b5cf6', surcharge: 0 });
+      setNewZoneForm({ name: '', zipCodes: '', color: '#047857', surcharge: 0 });
       setShowNewZoneForm(false);
       toast.success(`Zone "${zone.name}" ajoutée !`);
     } catch (err) { toast.error(err.response?.data?.detail || 'Erreur'); }
@@ -859,14 +859,14 @@ const SettingsPage = () => {
   ──────────────────────────────────────────────── */
   const renderProfile = () => (
     <div className="space-y-6" data-testid="tab-profile">
-      <SectionCard title="Photo de profil" description="Votre avatar visible dans le CRM" icon={Camera} color="#8b5cf6">
+      <SectionCard title="Photo de profil" description="Votre avatar visible dans le CRM" icon={Camera} color="#047857">
         <div className="flex items-center gap-5">
           <div className="relative group">
             {profileData.avatar ? (
-              <img src={profileData.avatar} alt="Avatar" className="w-20 h-20 rounded-2xl object-cover ring-2 ring-violet-500/30" />
+              <img src={profileData.avatar} alt="Avatar" className="w-20 h-20 rounded-2xl object-cover ring-2 ring-brand-500/30" />
             ) : (
               <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-black text-white"
-                style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
+                style={{ background: 'linear-gradient(135deg, #047857, #047857)' }}>
                 {profileData.name?.[0]?.toUpperCase() || 'U'}
               </div>
             )}
@@ -892,12 +892,12 @@ const SettingsPage = () => {
             </label>
           </div>
           <div className="space-y-2">
-            <p className="text-xs text-slate-500">Survolez votre photo pour la modifier. JPG, PNG ou GIF. Max 5 Mo.</p>
+            <p className="text-xs text-neutral-500">Survolez votre photo pour la modifier. JPG, PNG ou GIF. Max 5 Mo.</p>
           </div>
         </div>
       </SectionCard>
 
-      <SectionCard title="Informations personnelles" description="Vos données de profil" icon={User} color="#8b5cf6">
+      <SectionCard title="Informations personnelles" description="Vos données de profil" icon={User} color="#047857">
         <FieldRow label="Nom complet" description="Affiché dans le CRM et les communications" horizontal={false}>
           <TextInput value={profileData.name} onChange={v => setProfileData(p => ({ ...p, name: v }))} icon={User} placeholder="Votre nom" />
         </FieldRow>
@@ -934,35 +934,35 @@ const SettingsPage = () => {
       <SectionCard title="Identité de l'entreprise" description="Informations légales et commerciales" icon={Building2} color="#f97316">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Nom commercial</label>
+            <label className="text-xs font-semibold text-neutral-400">Nom commercial</label>
             <TextInput value={companyData.name} onChange={v => setCompanyData(p => ({ ...p, name: v }))} icon={Building2} />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Raison sociale</label>
+            <label className="text-xs font-semibold text-neutral-400">Raison sociale</label>
             <TextInput value={companyData.legalName} onChange={v => setCompanyData(p => ({ ...p, legalName: v }))} />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">SIRET</label>
+            <label className="text-xs font-semibold text-neutral-400">SIRET</label>
             <TextInput value={companyData.siret} onChange={v => setCompanyData(p => ({ ...p, siret: v }))} placeholder="123 456 789 00012" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">N° TVA</label>
+            <label className="text-xs font-semibold text-neutral-400">N° TVA</label>
             <TextInput value={companyData.tva} onChange={v => setCompanyData(p => ({ ...p, tva: v }))} placeholder="FR12345678901" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Code APE / NAF</label>
+            <label className="text-xs font-semibold text-neutral-400">Code APE / NAF</label>
             <TextInput value={companyData.apeCode} onChange={v => setCompanyData(p => ({ ...p, apeCode: v }))} placeholder="8121Z" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Capital social</label>
+            <label className="text-xs font-semibold text-neutral-400">Capital social</label>
             <TextInput value={companyData.capitalSocial} onChange={v => setCompanyData(p => ({ ...p, capitalSocial: v }))} placeholder="10 000 €" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">RCS</label>
+            <label className="text-xs font-semibold text-neutral-400">RCS</label>
             <TextInput value={companyData.rcs} onChange={v => setCompanyData(p => ({ ...p, rcs: v }))} placeholder="Paris B 123 456 789" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Slogan</label>
+            <label className="text-xs font-semibold text-neutral-400">Slogan</label>
             <TextInput value={companyData.slogan} onChange={v => setCompanyData(p => ({ ...p, slogan: v }))} />
           </div>
         </div>
@@ -974,15 +974,15 @@ const SettingsPage = () => {
         </FieldRow>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Ville</label>
+            <label className="text-xs font-semibold text-neutral-400">Ville</label>
             <TextInput value={companyData.city} onChange={v => setCompanyData(p => ({ ...p, city: v }))} />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Code postal</label>
+            <label className="text-xs font-semibold text-neutral-400">Code postal</label>
             <TextInput value={companyData.zipCode} onChange={v => setCompanyData(p => ({ ...p, zipCode: v }))} placeholder="75012" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Pays</label>
+            <label className="text-xs font-semibold text-neutral-400">Pays</label>
             <SelectInput value={companyData.country} onChange={v => setCompanyData(p => ({ ...p, country: v }))}
               options={[
                 { value: 'France', label: '🇫🇷 France' },
@@ -995,15 +995,15 @@ const SettingsPage = () => {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Téléphone</label>
+            <label className="text-xs font-semibold text-neutral-400">Téléphone</label>
             <TextInput value={companyData.phone} onChange={v => setCompanyData(p => ({ ...p, phone: v }))} icon={Phone} placeholder="+33 1 23 45 67 89" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Email</label>
+            <label className="text-xs font-semibold text-neutral-400">Email</label>
             <TextInput value={companyData.email} onChange={v => setCompanyData(p => ({ ...p, email: v }))} icon={Mail} placeholder="contact@globalcleanhome.fr" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Site web</label>
+            <label className="text-xs font-semibold text-neutral-400">Site web</label>
             <TextInput value={companyData.website} onChange={v => setCompanyData(p => ({ ...p, website: v }))} icon={Globe} placeholder="https://globalcleanhome.fr" />
           </div>
         </div>
@@ -1011,11 +1011,11 @@ const SettingsPage = () => {
 
       <SectionCard title="Logo & Branding" description="Identité visuelle de l'entreprise" icon={Palette} color="#f97316">
         <div className="flex items-center gap-5">
-          <div className="relative group w-24 h-24 rounded-2xl border-2 border-dashed border-white/10 flex items-center justify-center bg-white/5 overflow-hidden">
+          <div className="relative group w-24 h-24 rounded-2xl border-2 border-dashed border-neutral-200 flex items-center justify-center bg-white overflow-hidden">
             {companyData.logo ? (
               <img src={companyData.logo} alt="Logo" className="w-full h-full object-contain rounded-2xl" />
             ) : (
-              <Upload className="w-6 h-6 text-slate-500" />
+              <Upload className="w-6 h-6 text-neutral-500" />
             )}
             <label className="absolute inset-0 rounded-2xl bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer">
               <Camera className="w-5 h-5 text-white" />
@@ -1030,7 +1030,7 @@ const SettingsPage = () => {
             {companyData.logo && (
               <ActionButton variant="ghost" size="sm" icon={Trash2} onClick={() => setCompanyData(p => ({ ...p, logo: '' }))}>Supprimer</ActionButton>
             )}
-            <p className="text-xs text-slate-500">PNG ou SVG, fond transparent recommandé. Min 256x256px.</p>
+            <p className="text-xs text-neutral-500">PNG ou SVG, fond transparent recommandé. Min 256x256px.</p>
           </div>
         </div>
       </SectionCard>
@@ -1042,7 +1042,7 @@ const SettingsPage = () => {
   ──────────────────────────────────────────────── */
   const renderAppearance = () => (
     <div className="space-y-6" data-testid="tab-appearance">
-      <SectionCard title="Thème" description="Apparence générale de l'interface" icon={Palette} color="#ec4899">
+      <SectionCard title="Thème" description="Apparence générale de l'interface" icon={Palette} color="#c2410c">
         <FieldRow label="Mode d'affichage" description="Choisissez le thème de couleur">
           <div className="flex gap-2">
             {[
@@ -1055,8 +1055,8 @@ const SettingsPage = () => {
                 onClick={() => setAppearance(p => ({ ...p, theme: t.value }))}
                 className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
                   appearance.theme === t.value
-                    ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30'
-                    : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
+                    ? 'bg-brand-500/20 text-brand-600 border border-brand-500/30'
+                    : 'bg-white text-neutral-400 border border-neutral-200 hover:bg-neutral-50'
                 }`}
               >
                 <t.icon className="w-4 h-4" />
@@ -1070,7 +1070,7 @@ const SettingsPage = () => {
           <ColorPicker
             value={appearance.accentColor}
             onChange={v => setAppearance(p => ({ ...p, accentColor: v }))}
-            presets={['#8b5cf6', '#6366f1', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#f97316', '#ef4444', '#ec4899', '#a855f7']}
+            presets={['#047857', '#6366f1', '#3b82f6', '#06b6d4', '#047857', '#f59e0b', '#f97316', '#c2410c', '#c2410c', '#a855f7']}
           />
         </FieldRow>
 
@@ -1102,7 +1102,7 @@ const SettingsPage = () => {
         </FieldRow>
       </SectionCard>
 
-      <SectionCard title="Régionalisation" description="Langue, format de date et devise" icon={Globe} color="#ec4899">
+      <SectionCard title="Régionalisation" description="Langue, format de date et devise" icon={Globe} color="#c2410c">
         <FieldRow label="Langue" horizontal={false}>
           <SelectInput value={appearance.language} onChange={v => setAppearance(p => ({ ...p, language: v }))} icon={Globe}
             options={[
@@ -1117,7 +1117,7 @@ const SettingsPage = () => {
         </FieldRow>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Format de date</label>
+            <label className="text-xs font-semibold text-neutral-400">Format de date</label>
             <SelectInput value={appearance.dateFormat} onChange={v => setAppearance(p => ({ ...p, dateFormat: v }))}
               options={[
                 { value: 'DD/MM/YYYY', label: 'DD/MM/YYYY (31/12/2026)' },
@@ -1126,7 +1126,7 @@ const SettingsPage = () => {
               ]} />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Format d'heure</label>
+            <label className="text-xs font-semibold text-neutral-400">Format d'heure</label>
             <SelectInput value={appearance.timeFormat} onChange={v => setAppearance(p => ({ ...p, timeFormat: v }))}
               options={[
                 { value: '24h', label: '24h (14:30)' },
@@ -1134,7 +1134,7 @@ const SettingsPage = () => {
               ]} />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Devise</label>
+            <label className="text-xs font-semibold text-neutral-400">Devise</label>
             <SelectInput value={appearance.currency} onChange={v => setAppearance(p => ({ ...p, currency: v }))}
               options={[
                 { value: 'EUR', label: '€ Euro (EUR)' },
@@ -1145,7 +1145,7 @@ const SettingsPage = () => {
               ]} />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Page d'accueil</label>
+            <label className="text-xs font-semibold text-neutral-400">Page d'accueil</label>
             <SelectInput value={appearance.startPage} onChange={v => setAppearance(p => ({ ...p, startPage: v }))}
               options={[
                 { value: '/dashboard', label: 'Dashboard' },
@@ -1165,16 +1165,16 @@ const SettingsPage = () => {
   ──────────────────────────────────────────────── */
   const renderNotifications = () => {
     const categories = [
-      { key: 'newLead', label: 'Nouveau lead', description: 'Quand un nouveau prospect arrive', icon: Users, color: '#8b5cf6' },
-      { key: 'quoteAccepted', label: 'Devis accepté', description: 'Quand un client accepte un devis', icon: FileText, color: '#10b981' },
+      { key: 'newLead', label: 'Nouveau lead', description: 'Quand un nouveau prospect arrive', icon: Users, color: '#047857' },
+      { key: 'quoteAccepted', label: 'Devis accepté', description: 'Quand un client accepte un devis', icon: FileText, color: '#047857' },
       { key: 'paymentReceived', label: 'Paiement reçu', description: 'Quand un paiement est enregistré', icon: CreditCard, color: '#f59e0b' },
       { key: 'taskDue', label: 'Tâche due', description: 'Rappel de tâche à échéance', icon: Clock, color: '#3b82f6' },
-      { key: 'ticketCreated', label: 'Nouveau ticket', description: 'Quand un ticket SAV est créé', icon: AlertTriangle, color: '#ef4444' },
+      { key: 'ticketCreated', label: 'Nouveau ticket', description: 'Quand un ticket SAV est créé', icon: AlertTriangle, color: '#c2410c' },
       { key: 'interventionReminder', label: 'Rappel intervention', description: 'Avant chaque intervention planifiée', icon: CalendarDays, color: '#06b6d4' },
       { key: 'weeklyReport', label: 'Rapport hebdo', description: 'Résumé de la semaine', icon: FileText, color: '#a855f7' },
-      { key: 'monthlyDigest', label: 'Digest mensuel', description: 'Récapitulatif du mois', icon: FileText, color: '#ec4899' },
+      { key: 'monthlyDigest', label: 'Digest mensuel', description: 'Récapitulatif du mois', icon: FileText, color: '#c2410c' },
       { key: 'systemAlerts', label: 'Alertes système', description: 'Maintenance et mises à jour', icon: AlertTriangle, color: '#f97316' },
-      { key: 'marketingUpdates', label: 'Marketing', description: 'Nouveautés et offres', icon: Megaphone, color: '#64748b' },
+      { key: 'marketingUpdates', label: 'Marketing', description: 'Nouveautés et offres', icon: Megaphone, color: '#78716c' },
     ];
 
     return (
@@ -1199,20 +1199,20 @@ const SettingsPage = () => {
 
         <SectionCard title="Préférences par catégorie" description="Personnalisez chaque type de notification" icon={Sliders} color="#f59e0b">
           <div className="space-y-1">
-            <div className="flex items-center gap-3 px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            <div className="flex items-center gap-3 px-3 py-2 text-[10px] font-bold text-neutral-500 uppercase tracking-wider">
               <span className="flex-1">Événement</span>
               <span className="w-14 text-center">Email</span>
               <span className="w-14 text-center">Push</span>
               <span className="w-14 text-center">SMS</span>
             </div>
             {categories.map(cat => (
-              <div key={cat.key} className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/3 transition-all border-t border-white/5 first:border-0">
+              <div key={cat.key} className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-neutral-50 transition-all border-t border-neutral-100 first:border-0">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${cat.color}15` }}>
                   <cat.icon className="w-4 h-4" style={{ color: cat.color }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-slate-300">{cat.label}</p>
-                  <p className="text-[10px] text-slate-500 truncate">{cat.description}</p>
+                  <p className="text-xs font-semibold text-neutral-300">{cat.label}</p>
+                  <p className="text-[10px] text-neutral-500 truncate">{cat.description}</p>
                 </div>
                 <div className="w-14 flex justify-center">
                   <Toggle size="sm" checked={notifications[cat.key]?.email || false} onChange={v => setNotifications(p => ({ ...p, [cat.key]: { ...p[cat.key], email: v } }))} />
@@ -1236,11 +1236,11 @@ const SettingsPage = () => {
             <>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-400">Début</label>
+                  <label className="text-xs font-semibold text-neutral-400">Début</label>
                   <TextInput type="time" value={notifications.quietStart} onChange={v => setNotifications(p => ({ ...p, quietStart: v }))} />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-400">Fin</label>
+                  <label className="text-xs font-semibold text-neutral-400">Fin</label>
                   <TextInput type="time" value={notifications.quietEnd} onChange={v => setNotifications(p => ({ ...p, quietEnd: v }))} />
                 </div>
               </div>
@@ -1259,7 +1259,7 @@ const SettingsPage = () => {
   ──────────────────────────────────────────────── */
   const renderSecurity = () => (
     <div className="space-y-6" data-testid="tab-security">
-      <SectionCard title="Mot de passe" description="Gérez votre mot de passe de connexion" icon={Lock} color="#ef4444">
+      <SectionCard title="Mot de passe" description="Gérez votre mot de passe de connexion" icon={Lock} color="#c2410c">
         <div className="space-y-4">
           <FieldRow label="Mot de passe actuel" horizontal={false}>
             <TextInput type="password" value={passwordForm.currentPassword} onChange={v => setPasswordForm(p => ({ ...p, currentPassword: v }))} icon={Lock} placeholder="••••••••" />
@@ -1276,14 +1276,14 @@ const SettingsPage = () => {
         </div>
       </SectionCard>
 
-      <SectionCard title="Authentification à deux facteurs" description="Ajoutez une couche de sécurité supplémentaire" icon={Shield} color="#ef4444" badge={security.twoFactorEnabled ? 'Activé' : 'Désactivé'}>
+      <SectionCard title="Authentification à deux facteurs" description="Ajoutez une couche de sécurité supplémentaire" icon={Shield} color="#c2410c" badge={security.twoFactorEnabled ? 'Activé' : 'Désactivé'}>
         {security.twoFactorEnabled ? (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
-              <Check className="w-5 h-5 text-emerald-400" />
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-brand-50 border border-brand-200">
+              <Check className="w-5 h-5 text-brand-600" />
               <div>
-                <p className="text-sm font-semibold text-emerald-400">2FA activée</p>
-                <p className="text-xs text-slate-500">Votre compte est protégé par un second facteur</p>
+                <p className="text-sm font-semibold text-brand-600">2FA activée</p>
+                <p className="text-xs text-neutral-500">Votre compte est protégé par un second facteur</p>
               </div>
             </div>
             <FieldRow label="Méthode 2FA">
@@ -1298,13 +1298,13 @@ const SettingsPage = () => {
           </div>
         ) : twoFASetup ? (
           <div className="space-y-4">
-            <div className="p-4 rounded-xl bg-violet-500/5 border border-violet-500/20">
-              <p className="text-sm font-bold text-violet-400 mb-2">📱 Scannez ce code avec votre app Authenticator</p>
+            <div className="p-4 rounded-xl bg-brand-50 border border-brand-200">
+              <p className="text-sm font-bold text-brand-600 mb-2">📱 Scannez ce code avec votre app Authenticator</p>
               <div className="p-4 bg-white rounded-xl w-fit mx-auto mb-3">
                 <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(twoFASetup.otpauth_uri)}`} alt="QR Code" className="w-48 h-48" />
               </div>
-              <p className="text-xs text-slate-500 mb-1">Ou entrez ce code manuellement :</p>
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-black/30 font-mono text-xs text-violet-300">
+              <p className="text-xs text-neutral-500 mb-1">Ou entrez ce code manuellement :</p>
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-black/30 font-mono text-xs text-brand-300">
                 <span className="flex-1 break-all select-all">{twoFASetup.secret}</span>
                 <ActionButton variant="ghost" size="sm" icon={Copy} onClick={() => copyToClipboard(twoFASetup.secret)} />
               </div>
@@ -1319,7 +1319,7 @@ const SettingsPage = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            <p className="text-xs text-slate-500">Protégez votre compte avec un second facteur d'authentification via une app comme Google Authenticator ou Authy.</p>
+            <p className="text-xs text-neutral-500">Protégez votre compte avec un second facteur d'authentification via une app comme Google Authenticator ou Authy.</p>
             <ActionButton variant="primary" size="sm" icon={Shield} onClick={handleSetup2FA} loading={settingUp2FA}>
               Configurer la 2FA
             </ActionButton>
@@ -1327,7 +1327,7 @@ const SettingsPage = () => {
         )}
       </SectionCard>
 
-      <SectionCard title="Politique de mot de passe" description="Règles pour les mots de passe de l'équipe" icon={Key} color="#ef4444">
+      <SectionCard title="Politique de mot de passe" description="Règles pour les mots de passe de l'équipe" icon={Key} color="#c2410c">
         <FieldRow label="Longueur minimum">
           <SelectInput value={String(security.passwordMinLength)} onChange={v => setSecurity(p => ({ ...p, passwordMinLength: parseInt(v) }))}
             options={[
@@ -1349,7 +1349,7 @@ const SettingsPage = () => {
         </FieldRow>
       </SectionCard>
 
-      <SectionCard title="Sessions & Appareils" description="Gérez vos sessions actives" icon={Monitor} color="#ef4444">
+      <SectionCard title="Sessions & Appareils" description="Gérez vos sessions actives" icon={Monitor} color="#c2410c">
         <FieldRow label="Expiration de session" description="Déconnexion automatique après inactivité">
           <SelectInput value={String(security.sessionTimeout)} onChange={v => setSecurity(p => ({ ...p, sessionTimeout: parseInt(v) }))}
             options={[
@@ -1379,38 +1379,38 @@ const SettingsPage = () => {
   ──────────────────────────────────────────────── */
   const renderTeam = () => (
     <div className="space-y-6" data-testid="tab-team">
-      <SectionCard title="Inviter un membre" description="Ajoutez de nouveaux collaborateurs" icon={Plus} color="#10b981">
+      <SectionCard title="Inviter un membre" description="Ajoutez de nouveaux collaborateurs" icon={Plus} color="#047857">
         <div className="flex gap-3">
           <TextInput className="flex-1" value={team.inviteEmail} onChange={v => setTeam(p => ({ ...p, inviteEmail: v }))} icon={Mail} placeholder="email@collaborateur.com" />
           <SelectInput value={team.inviteRole} onChange={v => setTeam(p => ({ ...p, inviteRole: v }))} className="w-40"
             options={team.roles.map(r => ({ value: r.name.toLowerCase(), label: r.name }))} />
           <ActionButton variant="primary" icon={Plus} onClick={handleInvite} loading={inviting}>Inviter</ActionButton>
         </div>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-neutral-500">
           {team.members?.length || 0}/{team.maxMembers || 25} membres utilisés sur votre plan
         </p>
       </SectionCard>
 
-      <SectionCard title="Rôles & Permissions" description="Configurez les droits d'accès" icon={Shield} color="#10b981" badge={`${team.roles.length} rôles`}>
+      <SectionCard title="Rôles & Permissions" description="Configurez les droits d'accès" icon={Shield} color="#047857" badge={`${team.roles.length} rôles`}>
         <div className="space-y-2">
           {team.roles.map(role => (
             <div key={role.id}>
               {editingRole === role.id ? (
-                <div className="p-4 rounded-xl border border-violet-500/30 bg-violet-500/5 space-y-3">
+                <div className="p-4 rounded-xl border border-brand-500/30 bg-brand-50 space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-slate-400">Nom</label>
+                      <label className="text-xs font-semibold text-neutral-400">Nom</label>
                       <TextInput value={role.name} onChange={v => setTeam(prev => ({ ...prev, roles: prev.roles.map(r => r.id === role.id ? { ...r, name: v } : r) }))} />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-slate-400">Permissions</label>
+                      <label className="text-xs font-semibold text-neutral-400">Permissions</label>
                       <TextInput value={role.permissions} onChange={v => setTeam(prev => ({ ...prev, roles: prev.roles.map(r => r.id === role.id ? { ...r, permissions: v } : r) }))} placeholder="leads,quotes,invoices" />
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-400">Couleur</label>
+                    <label className="text-xs font-semibold text-neutral-400">Couleur</label>
                     <ColorPicker value={role.color} onChange={v => setTeam(prev => ({ ...prev, roles: prev.roles.map(r => r.id === role.id ? { ...r, color: v } : r) }))}
-                      presets={['#ef4444', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#06b6d4', '#f97316']} />
+                      presets={['#c2410c', '#047857', '#3b82f6', '#047857', '#f59e0b', '#c2410c', '#06b6d4', '#f97316']} />
                   </div>
                   <div className="flex gap-2">
                     <ActionButton variant="primary" size="sm" icon={Save} onClick={() => handleUpdateRole(role.id, { name: role.name, color: role.color, permissions: role.permissions })}>Sauvegarder</ActionButton>
@@ -1419,11 +1419,11 @@ const SettingsPage = () => {
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-3 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-all group">
+                <div className="flex items-center gap-3 p-3 rounded-xl border border-neutral-100 hover:border-neutral-200 transition-all group">
                   <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: role.color }} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-200">{role.name}</p>
-                    <p className="text-[10px] text-slate-500">{role.permissions === 'all' ? 'Accès complet' : `Modules: ${role.permissions}`}</p>
+                    <p className="text-sm font-semibold text-neutral-200">{role.name}</p>
+                    <p className="text-[10px] text-neutral-500">{role.permissions === 'all' ? 'Accès complet' : `Modules: ${role.permissions}`}</p>
                   </div>
                   <ActionButton variant="ghost" size="sm" icon={Edit3} className="opacity-0 group-hover:opacity-100" onClick={() => setEditingRole(role.id)}>Modifier</ActionButton>
                 </div>
@@ -1432,22 +1432,22 @@ const SettingsPage = () => {
           ))}
 
           {showNewRoleForm ? (
-            <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 space-y-3">
-              <p className="text-sm font-bold text-emerald-400">Nouveau rôle</p>
+            <div className="p-4 rounded-xl border border-brand-200 bg-brand-50 space-y-3">
+              <p className="text-sm font-bold text-brand-600">Nouveau rôle</p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-400">Nom</label>
+                  <label className="text-xs font-semibold text-neutral-400">Nom</label>
                   <TextInput value={newRoleForm.name} onChange={v => setNewRoleForm(p => ({ ...p, name: v }))} placeholder="Ex: Superviseur" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-400">Permissions</label>
+                  <label className="text-xs font-semibold text-neutral-400">Permissions</label>
                   <TextInput value={newRoleForm.permissions} onChange={v => setNewRoleForm(p => ({ ...p, permissions: v }))} placeholder="leads,quotes,planning" />
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-400">Couleur</label>
+                <label className="text-xs font-semibold text-neutral-400">Couleur</label>
                 <ColorPicker value={newRoleForm.color} onChange={v => setNewRoleForm(p => ({ ...p, color: v }))}
-                  presets={['#ef4444', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#06b6d4', '#f97316']} />
+                  presets={['#c2410c', '#047857', '#3b82f6', '#047857', '#f59e0b', '#c2410c', '#06b6d4', '#f97316']} />
               </div>
               <div className="flex gap-2">
                 <ActionButton variant="primary" size="sm" icon={Plus} onClick={handleCreateRole}>Créer</ActionButton>
@@ -1460,29 +1460,29 @@ const SettingsPage = () => {
         </div>
       </SectionCard>
 
-      <SectionCard title="Membres de l'équipe" description="Tous les utilisateurs du CRM" icon={Users} color="#10b981">
+      <SectionCard title="Membres de l'équipe" description="Tous les utilisateurs du CRM" icon={Users} color="#047857">
         {loading ? (
           <div className="p-8 text-center">
-            <RefreshCw className="w-6 h-6 text-slate-500 mx-auto animate-spin" />
+            <RefreshCw className="w-6 h-6 text-neutral-500 mx-auto animate-spin" />
           </div>
         ) : team.members && team.members.length > 0 ? (
           <div className="space-y-2">
             {team.members.map(member => (
               <div key={member.user_id}>
                 {editingMember === member.user_id ? (
-                  <div className="p-4 rounded-xl border border-violet-500/30 bg-violet-500/5 space-y-3">
+                  <div className="p-4 rounded-xl border border-brand-500/30 bg-brand-50 space-y-3">
                     <div className="flex items-center gap-3">
                       {member.picture ? (
                         <img src={member.picture} alt={member.name} className="w-9 h-9 rounded-xl object-cover" />
                       ) : (
                         <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black text-white"
-                          style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
+                          style={{ background: 'linear-gradient(135deg, #047857, #047857)' }}>
                           {member.name?.[0]?.toUpperCase() || '?'}
                         </div>
                       )}
                       <div className="flex-1">
-                        <p className="text-sm font-semibold text-slate-200">{member.name}</p>
-                        <p className="text-[10px] text-slate-500">{member.email}</p>
+                        <p className="text-sm font-semibold text-neutral-200">{member.name}</p>
+                        <p className="text-[10px] text-neutral-500">{member.email}</p>
                       </div>
                     </div>
                     <FieldRow label="Rôle" horizontal={false}>
@@ -1495,23 +1495,23 @@ const SettingsPage = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-3 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-all group">
+                  <div className="flex items-center gap-3 p-3 rounded-xl border border-neutral-100 hover:border-neutral-200 transition-all group">
                     {member.picture ? (
                       <img src={member.picture} alt={member.name} className="w-9 h-9 rounded-xl object-cover" />
                     ) : (
                       <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black text-white"
-                        style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
+                        style={{ background: 'linear-gradient(135deg, #047857, #047857)' }}>
                         {member.name?.[0]?.toUpperCase() || '?'}
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-200">{member.name}</p>
-                      <p className="text-[10px] text-slate-500">{member.email}</p>
+                      <p className="text-sm font-semibold text-neutral-200">{member.name}</p>
+                      <p className="text-[10px] text-neutral-500">{member.email}</p>
                     </div>
-                    <Badge color="#8b5cf6">{member.role || 'Membre'}</Badge>
+                    <Badge color="#047857">{member.role || 'Membre'}</Badge>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <ActionButton variant="ghost" size="sm" icon={Edit3} onClick={() => setEditingMember(member.user_id)} />
-                      <ActionButton variant="ghost" size="sm" icon={Trash2} className="text-red-400"
+                      <ActionButton variant="ghost" size="sm" icon={Trash2} className="text-terracotta-600"
                         onClick={() => handleRemoveMember(member.user_id)} />
                     </div>
                   </div>
@@ -1521,9 +1521,9 @@ const SettingsPage = () => {
           </div>
         ) : (
           <div className="p-8 text-center">
-            <Users className="w-8 h-8 text-slate-500 mx-auto mb-2" />
-            <p className="text-sm text-slate-400">Les membres apparaîtront ici</p>
-            <p className="text-xs text-slate-500 mt-1">Invitez des collaborateurs via le formulaire ci-dessus</p>
+            <Users className="w-8 h-8 text-neutral-500 mx-auto mb-2" />
+            <p className="text-sm text-neutral-400">Les membres apparaîtront ici</p>
+            <p className="text-xs text-neutral-500 mt-1">Invitez des collaborateurs via le formulaire ci-dessus</p>
           </div>
         )}
       </SectionCard>
@@ -1535,8 +1535,8 @@ const SettingsPage = () => {
   ──────────────────────────────────────────────── */
   const renderBilling = () => {
     const plans = [
-      { id: 'starter', name: 'Starter', price: 29, features: ['5 utilisateurs', '1 000 leads', '5 Go stockage', 'Email support'], color: '#64748b' },
-      { id: 'pro', name: 'Pro', price: 79, features: ['25 utilisateurs', '5 000 leads', '10 Go stockage', 'Support prioritaire', 'API access', 'Workflows'], color: '#8b5cf6', popular: true },
+      { id: 'starter', name: 'Starter', price: 29, features: ['5 utilisateurs', '1 000 leads', '5 Go stockage', 'Email support'], color: '#78716c' },
+      { id: 'pro', name: 'Pro', price: 79, features: ['25 utilisateurs', '5 000 leads', '10 Go stockage', 'Support prioritaire', 'API access', 'Workflows'], color: '#047857', popular: true },
       { id: 'enterprise', name: 'Enterprise', price: 199, features: ['Illimité utilisateurs', 'Illimité leads', '100 Go stockage', 'Support dédié', 'SSO / SAML', 'Custom branding'], color: '#f97316' },
     ];
 
@@ -1548,23 +1548,23 @@ const SettingsPage = () => {
               <div key={plan.id}
                 className={`relative p-5 rounded-2xl border transition-all ${
                   billing.plan === plan.id
-                    ? 'border-violet-500/40 bg-violet-500/5'
-                    : 'border-white/8 bg-white/2 hover:border-white/15'
+                    ? 'border-brand-500/40 bg-brand-50'
+                    : 'border-neutral-200 bg-neutral-50 hover:border-neutral-300'
                 }`}>
                 {plan.popular && (
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-bold px-3 py-0.5 rounded-full bg-violet-600 text-white">
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-bold px-3 py-0.5 rounded-full bg-brand-600 text-white">
                     Populaire
                   </span>
                 )}
-                <h4 className="text-lg font-bold text-slate-100" style={{ fontFamily: 'Manrope, sans-serif' }}>{plan.name}</h4>
+                <h4 className="text-lg font-bold text-neutral-100" style={{ fontFamily: 'Inter, sans-serif' }}>{plan.name}</h4>
                 <div className="mt-2">
                   <span className="text-3xl font-black" style={{ color: plan.color }}>{plan.price}€</span>
-                  <span className="text-xs text-slate-500">/mois</span>
+                  <span className="text-xs text-neutral-500">/mois</span>
                 </div>
                 <ul className="mt-4 space-y-2">
                   {plan.features.map(f => (
-                    <li key={f} className="flex items-center gap-2 text-xs text-slate-400">
-                      <Check className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                    <li key={f} className="flex items-center gap-2 text-xs text-neutral-400">
+                      <Check className="w-3.5 h-3.5 text-brand-500 flex-shrink-0" />
                       {f}
                     </li>
                   ))}
@@ -1573,8 +1573,8 @@ const SettingsPage = () => {
                   onClick={() => handleChangePlan(plan.id)}
                   className={`w-full mt-4 py-2 rounded-xl text-xs font-bold transition-all ${
                     billing.plan === plan.id
-                      ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30 cursor-default'
-                      : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10 hover:text-white cursor-pointer'
+                      ? 'bg-brand-500/20 text-brand-600 border border-brand-500/30 cursor-default'
+                      : 'bg-white text-neutral-400 border border-neutral-200 hover:bg-neutral-50 hover:text-white cursor-pointer'
                   }`}
                 >
                   {billing.plan === plan.id ? '✓ Plan actuel' : plan.price > (plans.find(p => p.id === billing.plan)?.price || 0) ? 'Upgrade' : 'Downgrade'}
@@ -1586,19 +1586,19 @@ const SettingsPage = () => {
 
         <SectionCard title="Utilisation" description="Consommation de votre plan" icon={TrendingUp} color="#6366f1">
           {[
-            { label: 'Leads', used: billing.usage?.leads || 0, max: billing.usage?.maxLeads || 5000, color: '#8b5cf6' },
+            { label: 'Leads', used: billing.usage?.leads || 0, max: billing.usage?.maxLeads || 5000, color: '#047857' },
             { label: 'Stockage', used: billing.usage?.storage || 0, max: billing.usage?.maxStorage || 10, unit: 'Go', color: '#3b82f6' },
-            { label: 'Utilisateurs', used: billing.usage?.users || 0, max: billing.usage?.maxUsers || 25, color: '#10b981' },
+            { label: 'Utilisateurs', used: billing.usage?.users || 0, max: billing.usage?.maxUsers || 25, color: '#047857' },
           ].map(item => {
             const pct = (item.used / item.max) * 100;
             return (
-              <div key={item.label} className="py-3 border-t border-white/5 first:border-0">
+              <div key={item.label} className="py-3 border-t border-neutral-100 first:border-0">
                 <div className="flex justify-between text-xs mb-2">
-                  <span className="font-semibold text-slate-300">{item.label}</span>
-                  <span className="text-slate-500">{item.used}{item.unit ? ` ${item.unit}` : ''} / {item.max}{item.unit ? ` ${item.unit}` : ''}</span>
+                  <span className="font-semibold text-neutral-300">{item.label}</span>
+                  <span className="text-neutral-500">{item.used}{item.unit ? ` ${item.unit}` : ''} / {item.max}{item.unit ? ` ${item.unit}` : ''}</span>
                 </div>
-                <div className="h-2 rounded-full bg-white/5 overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(pct, 100)}%`, background: pct > 80 ? '#ef4444' : item.color }} />
+                <div className="h-2 rounded-full bg-white overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(pct, 100)}%`, background: pct > 80 ? '#c2410c' : item.color }} />
                 </div>
               </div>
             );
@@ -1606,14 +1606,14 @@ const SettingsPage = () => {
         </SectionCard>
 
         <SectionCard title="Moyen de paiement" description="Carte bancaire enregistrée" icon={CreditCard} color="#6366f1">
-          <div className="flex items-center justify-between p-4 rounded-xl border border-white/8 bg-white/3">
+          <div className="flex items-center justify-between p-4 rounded-xl border border-neutral-200 bg-neutral-50">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-7 rounded-lg bg-gradient-to-r from-blue-600 to-blue-400 flex items-center justify-center">
+              <div className="w-10 h-7 rounded-lg bg-gradient-to-r from-neutral-700 to-neutral-600 flex items-center justify-center">
                 <span className="text-white text-[8px] font-bold">{billing.cardBrand || 'CARD'}</span>
               </div>
               <div>
-                <p className="text-sm font-semibold text-slate-200">•••• •••• •••• {billing.cardLast4 || '????'}</p>
-                <p className="text-[10px] text-slate-500">Expire 12/2028</p>
+                <p className="text-sm font-semibold text-neutral-200">•••• •••• •••• {billing.cardLast4 || '????'}</p>
+                <p className="text-[10px] text-neutral-500">Expire 12/2028</p>
               </div>
             </div>
             <ActionButton variant="secondary" size="sm" icon={Edit3} onClick={() => toast.info('Redirection vers le portail de paiement Stripe...')}>Modifier</ActionButton>
@@ -1644,23 +1644,23 @@ const SettingsPage = () => {
       <SectionCard title="Configuration SMTP" description="Serveur d'envoi d'emails" icon={Mail} color="#06b6d4" collapsible defaultOpen={false}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Serveur SMTP</label>
+            <label className="text-xs font-semibold text-neutral-400">Serveur SMTP</label>
             <TextInput value={emailSettings.smtpHost} onChange={v => setEmailSettings(p => ({ ...p, smtpHost: v }))} placeholder="smtp.gmail.com" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Port</label>
+            <label className="text-xs font-semibold text-neutral-400">Port</label>
             <TextInput value={String(emailSettings.smtpPort)} onChange={v => setEmailSettings(p => ({ ...p, smtpPort: parseInt(v) || 587 }))} placeholder="587" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Utilisateur</label>
+            <label className="text-xs font-semibold text-neutral-400">Utilisateur</label>
             <TextInput value={emailSettings.smtpUser} onChange={v => setEmailSettings(p => ({ ...p, smtpUser: v }))} icon={User} />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Mot de passe</label>
+            <label className="text-xs font-semibold text-neutral-400">Mot de passe</label>
             <TextInput type="password" value={emailSettings.smtpPassword} onChange={v => setEmailSettings(p => ({ ...p, smtpPassword: v }))} icon={Lock} />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Chiffrement</label>
+            <label className="text-xs font-semibold text-neutral-400">Chiffrement</label>
             <SelectInput value={emailSettings.smtpEncryption} onChange={v => setEmailSettings(p => ({ ...p, smtpEncryption: v }))}
               options={[
                 { value: 'tls', label: 'TLS (recommandé)' },
@@ -1677,15 +1677,15 @@ const SettingsPage = () => {
       <SectionCard title="Expéditeur" description="Identité de l'envoi" icon={Mail} color="#06b6d4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Nom de l'expéditeur</label>
+            <label className="text-xs font-semibold text-neutral-400">Nom de l'expéditeur</label>
             <TextInput value={emailSettings.senderName} onChange={v => setEmailSettings(p => ({ ...p, senderName: v }))} />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Email de l'expéditeur</label>
+            <label className="text-xs font-semibold text-neutral-400">Email de l'expéditeur</label>
             <TextInput value={emailSettings.senderEmail} onChange={v => setEmailSettings(p => ({ ...p, senderEmail: v }))} icon={Mail} placeholder="contact@globalcleanhome.fr" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Répondre à</label>
+            <label className="text-xs font-semibold text-neutral-400">Répondre à</label>
             <TextInput value={emailSettings.replyTo} onChange={v => setEmailSettings(p => ({ ...p, replyTo: v }))} icon={Mail} placeholder="support@globalcleanhome.fr" />
           </div>
         </div>
@@ -1762,8 +1762,8 @@ const SettingsPage = () => {
                 onClick={() => setScheduling(p => ({ ...p, workDays: { ...p.workDays, [d.key]: !p.workDays[d.key] } }))}
                 className={`w-12 h-12 rounded-xl text-xs font-bold transition-all ${
                   scheduling.workDays?.[d.key]
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                    : 'bg-white/5 text-slate-500 border border-white/10'
+                    ? 'bg-brand-500/20 text-brand-600 border border-brand-500/30'
+                    : 'bg-white text-neutral-500 border border-neutral-200'
                 }`}
               >
                 {d.label}
@@ -1775,19 +1775,19 @@ const SettingsPage = () => {
         <SectionCard title="Horaires" description="Heures de travail et pauses" icon={Clock} color="#84cc16">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-400">Début journée</label>
+              <label className="text-xs font-semibold text-neutral-400">Début journée</label>
               <TextInput type="time" value={scheduling.workStart} onChange={v => setScheduling(p => ({ ...p, workStart: v }))} />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-400">Fin journée</label>
+              <label className="text-xs font-semibold text-neutral-400">Fin journée</label>
               <TextInput type="time" value={scheduling.workEnd} onChange={v => setScheduling(p => ({ ...p, workEnd: v }))} />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-400">Début pause</label>
+              <label className="text-xs font-semibold text-neutral-400">Début pause</label>
               <TextInput type="time" value={scheduling.breakStart} onChange={v => setScheduling(p => ({ ...p, breakStart: v }))} />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-400">Fin pause</label>
+              <label className="text-xs font-semibold text-neutral-400">Fin pause</label>
               <TextInput type="time" value={scheduling.breakEnd} onChange={v => setScheduling(p => ({ ...p, breakEnd: v }))} />
             </div>
           </div>
@@ -1867,7 +1867,7 @@ const SettingsPage = () => {
   ──────────────────────────────────────────────── */
   const renderZones = () => (
     <div className="space-y-6" data-testid="tab-zones">
-      <SectionCard title="Rayon de service" description="Zone géographique couverte" icon={MapPin} color="#f43f5e">
+      <SectionCard title="Rayon de service" description="Zone géographique couverte" icon={MapPin} color="#c2410c">
         <FieldRow label="Rayon maximum" description="Distance max autour du siège (km)">
           <div className="flex items-center gap-3">
             <input
@@ -1876,9 +1876,9 @@ const SettingsPage = () => {
               max="100"
               value={zones.serviceRadius}
               onChange={e => setZones(p => ({ ...p, serviceRadius: parseInt(e.target.value) }))}
-              className="w-32 accent-rose-500"
+              className="w-32 accent-terracotta-500"
             />
-            <span className="text-sm font-bold text-slate-200 w-12 text-right">{zones.serviceRadius} km</span>
+            <span className="text-sm font-bold text-neutral-200 w-12 text-right">{zones.serviceRadius} km</span>
           </div>
         </FieldRow>
         <FieldRow label="Coût déplacement" description="Par kilomètre au-delà du rayon gratuit">
@@ -1892,30 +1892,30 @@ const SettingsPage = () => {
         </FieldRow>
       </SectionCard>
 
-      <SectionCard title="Zones de tarification" description="Tarifs différenciés par zone" icon={Layers} color="#f43f5e" badge={`${zones.zones?.length || 0} zones`}>
+      <SectionCard title="Zones de tarification" description="Tarifs différenciés par zone" icon={Layers} color="#c2410c" badge={`${zones.zones?.length || 0} zones`}>
         <div className="space-y-3">
           {(zones.zones || []).map(zone => (
             <div key={zone.id}>
               {editingZone === zone.id ? (
-                <div className="p-4 rounded-xl border border-violet-500/30 bg-violet-500/5 space-y-3">
+                <div className="p-4 rounded-xl border border-brand-500/30 bg-brand-50 space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-slate-400">Nom</label>
+                      <label className="text-xs font-semibold text-neutral-400">Nom</label>
                       <TextInput value={zone.name} onChange={v => setZones(prev => ({ ...prev, zones: prev.zones.map(z => z.id === zone.id ? { ...z, name: v } : z) }))} />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-slate-400">Codes postaux</label>
+                      <label className="text-xs font-semibold text-neutral-400">Codes postaux</label>
                       <TextInput value={zone.zipCodes} onChange={v => setZones(prev => ({ ...prev, zones: prev.zones.map(z => z.id === zone.id ? { ...z, zipCodes: v } : z) }))} placeholder="75001-75009" />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-slate-400">Surcharge (€)</label>
+                      <label className="text-xs font-semibold text-neutral-400">Surcharge (€)</label>
                       <TextInput type="number" value={String(zone.surcharge)} onChange={v => setZones(prev => ({ ...prev, zones: prev.zones.map(z => z.id === zone.id ? { ...z, surcharge: parseFloat(v) || 0 } : z) }))} />
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-400">Couleur</label>
+                    <label className="text-xs font-semibold text-neutral-400">Couleur</label>
                     <ColorPicker value={zone.color} onChange={v => setZones(prev => ({ ...prev, zones: prev.zones.map(z => z.id === zone.id ? { ...z, color: v } : z) }))}
-                      presets={['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#f97316']} />
+                      presets={['#047857', '#3b82f6', '#047857', '#f59e0b', '#c2410c', '#c2410c', '#06b6d4', '#f97316']} />
                   </div>
                   <div className="flex gap-2">
                     <ActionButton variant="primary" size="sm" icon={Save} onClick={() => handleUpdateZone(zone.id, { name: zone.name, zipCodes: zone.zipCodes, color: zone.color, surcharge: zone.surcharge })}>Sauvegarder</ActionButton>
@@ -1924,13 +1924,13 @@ const SettingsPage = () => {
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-3 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-all group">
+                <div className="flex items-center gap-3 p-3 rounded-xl border border-neutral-100 hover:border-neutral-200 transition-all group">
                   <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: zone.color }} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-200">{zone.name}</p>
-                    <p className="text-[10px] text-slate-500">Codes postaux : {zone.zipCodes}</p>
+                    <p className="text-sm font-semibold text-neutral-200">{zone.name}</p>
+                    <p className="text-[10px] text-neutral-500">Codes postaux : {zone.zipCodes}</p>
                   </div>
-                  <span className={`text-xs font-bold ${zone.surcharge > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                  <span className={`text-xs font-bold ${zone.surcharge > 0 ? 'text-amber-400' : 'text-brand-600'}`}>
                     {zone.surcharge > 0 ? `+${zone.surcharge}€` : 'Gratuit'}
                   </span>
                   <ActionButton variant="ghost" size="sm" icon={Edit3} className="opacity-0 group-hover:opacity-100" onClick={() => setEditingZone(zone.id)} />
@@ -1940,26 +1940,26 @@ const SettingsPage = () => {
           ))}
 
           {showNewZoneForm ? (
-            <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 space-y-3">
-              <p className="text-sm font-bold text-emerald-400">Nouvelle zone</p>
+            <div className="p-4 rounded-xl border border-brand-200 bg-brand-50 space-y-3">
+              <p className="text-sm font-bold text-brand-600">Nouvelle zone</p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-400">Nom</label>
+                  <label className="text-xs font-semibold text-neutral-400">Nom</label>
                   <TextInput value={newZoneForm.name} onChange={v => setNewZoneForm(p => ({ ...p, name: v }))} placeholder="Ex: Banlieue Nord" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-400">Codes postaux</label>
+                  <label className="text-xs font-semibold text-neutral-400">Codes postaux</label>
                   <TextInput value={newZoneForm.zipCodes} onChange={v => setNewZoneForm(p => ({ ...p, zipCodes: v }))} placeholder="93,94" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-400">Surcharge (€)</label>
+                  <label className="text-xs font-semibold text-neutral-400">Surcharge (€)</label>
                   <TextInput type="number" value={String(newZoneForm.surcharge)} onChange={v => setNewZoneForm(p => ({ ...p, surcharge: parseFloat(v) || 0 }))} />
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-400">Couleur</label>
+                <label className="text-xs font-semibold text-neutral-400">Couleur</label>
                 <ColorPicker value={newZoneForm.color} onChange={v => setNewZoneForm(p => ({ ...p, color: v }))}
-                  presets={['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#f97316']} />
+                  presets={['#047857', '#3b82f6', '#047857', '#f59e0b', '#c2410c', '#c2410c', '#06b6d4', '#f97316']} />
               </div>
               <div className="flex gap-2">
                 <ActionButton variant="primary" size="sm" icon={Plus} onClick={handleAddZone}>Ajouter</ActionButton>
@@ -1987,12 +1987,12 @@ const SettingsPage = () => {
             { label: 'Préfixe contrat', key: 'contractPrefix', numKey: 'nextContractNumber' },
           ].map(item => (
             <div key={item.key} className="space-y-2">
-              <label className="text-xs font-semibold text-slate-400">{item.label}</label>
+              <label className="text-xs font-semibold text-neutral-400">{item.label}</label>
               <div className="flex gap-2">
                 <TextInput className="w-24" value={documents[item.key]} onChange={v => setDocuments(p => ({ ...p, [item.key]: v }))} />
                 <TextInput className="flex-1" type="number" value={String(documents[item.numKey])} onChange={v => setDocuments(p => ({ ...p, [item.numKey]: parseInt(v) || 0 }))} />
               </div>
-              <p className="text-[10px] text-slate-500">Prochain : {documents[item.key]}{documents[item.numKey]}</p>
+              <p className="text-[10px] text-neutral-500">Prochain : {documents[item.key]}{documents[item.numKey]}</p>
             </div>
           ))}
         </div>
@@ -2040,15 +2040,15 @@ const SettingsPage = () => {
       <SectionCard title="Coordonnées bancaires" description="Affichées sur les factures" icon={CreditCard} color="#a855f7" collapsible defaultOpen={false}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Banque</label>
+            <label className="text-xs font-semibold text-neutral-400">Banque</label>
             <TextInput value={documents.bankName} onChange={v => setDocuments(p => ({ ...p, bankName: v }))} placeholder="BNP Paribas" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">IBAN</label>
+            <label className="text-xs font-semibold text-neutral-400">IBAN</label>
             <TextInput value={documents.iban} onChange={v => setDocuments(p => ({ ...p, iban: v }))} placeholder="FR76 1234 5678 9012 3456 7890 123" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">BIC / SWIFT</label>
+            <label className="text-xs font-semibold text-neutral-400">BIC / SWIFT</label>
             <TextInput value={documents.bic} onChange={v => setDocuments(p => ({ ...p, bic: v }))} placeholder="BNPAFRPP" />
           </div>
         </div>
@@ -2096,15 +2096,15 @@ const SettingsPage = () => {
               return (
                 <div key={int.key}
                   className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${
-                    connected ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-white/8 bg-white/2 hover:border-white/15'
+                    connected ? 'border-brand-200 bg-brand-50' : 'border-neutral-200 bg-neutral-50 hover:border-neutral-300'
                   }`}>
                   <span className="text-2xl flex-shrink-0">{int.icon}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold text-slate-200">{int.name}</p>
-                      {connected && <Badge color="#10b981">Connecté</Badge>}
+                      <p className="text-sm font-bold text-neutral-200">{int.name}</p>
+                      {connected && <Badge color="#047857">Connecté</Badge>}
                     </div>
-                    <p className="text-[10px] text-slate-500">{int.desc}</p>
+                    <p className="text-[10px] text-neutral-500">{int.desc}</p>
                   </div>
                   <ActionButton
                     variant={connected ? 'danger' : 'secondary'}
@@ -2130,31 +2130,31 @@ const SettingsPage = () => {
   const renderApi = () => (
     <div className="space-y-6" data-testid="tab-api">
       {showNewKey && (
-        <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
+        <div className="p-4 rounded-xl border border-brand-500/30 bg-brand-50">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-bold text-emerald-400">🎉 Nouvelle clé API créée</p>
+            <p className="text-sm font-bold text-brand-600">🎉 Nouvelle clé API créée</p>
             <ActionButton variant="ghost" size="sm" icon={X} onClick={() => setShowNewKey(null)} />
           </div>
-          <p className="text-xs text-slate-400 mb-2">Copiez cette clé maintenant. Elle ne sera plus affichée.</p>
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-black/30 font-mono text-xs text-emerald-300">
+          <p className="text-xs text-neutral-400 mb-2">Copiez cette clé maintenant. Elle ne sera plus affichée.</p>
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-black/30 font-mono text-xs text-brand-300">
             <span className="flex-1 break-all">{showNewKey.key}</span>
             <ActionButton variant="ghost" size="sm" icon={Copy} onClick={() => copyToClipboard(showNewKey.key)}>Copier</ActionButton>
           </div>
         </div>
       )}
 
-      <SectionCard title="Clés API" description="Accédez au CRM via l'API REST" icon={Key} color="#64748b" badge={`${apiSettings.apiKeys?.length || 0} clés`}>
+      <SectionCard title="Clés API" description="Accédez au CRM via l'API REST" icon={Key} color="#78716c" badge={`${apiSettings.apiKeys?.length || 0} clés`}>
         <div className="space-y-3">
           {(apiSettings.apiKeys || []).map(key => (
-            <div key={key.key_id} className="flex items-center gap-3 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-all group">
-              <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${key.active ? 'bg-emerald-500' : 'bg-red-500'}`} />
+            <div key={key.key_id} className="flex items-center gap-3 p-3 rounded-xl border border-neutral-100 hover:border-neutral-200 transition-all group">
+              <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${key.active ? 'bg-brand-500' : 'bg-terracotta-500'}`} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-200">{key.name}</p>
-                <p className="text-[10px] text-slate-500 font-mono">{key.key_preview || '••••••••••••'}</p>
+                <p className="text-sm font-semibold text-neutral-200">{key.name}</p>
+                <p className="text-[10px] text-neutral-500 font-mono">{key.key_preview || '••••••••••••'}</p>
               </div>
               <div className="text-right hidden md:block">
-                <p className="text-[10px] text-slate-500">Créée le {key.created_at ? new Date(key.created_at).toLocaleDateString('fr-FR') : '—'}</p>
-                <p className="text-[10px] text-slate-500">Dernier usage : {key.last_used ? new Date(key.last_used).toLocaleDateString('fr-FR') : 'Jamais'}</p>
+                <p className="text-[10px] text-neutral-500">Créée le {key.created_at ? new Date(key.created_at).toLocaleDateString('fr-FR') : '—'}</p>
+                <p className="text-[10px] text-neutral-500">Dernier usage : {key.last_used ? new Date(key.last_used).toLocaleDateString('fr-FR') : 'Jamais'}</p>
               </div>
               <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <ActionButton variant="ghost" size="sm" icon={RefreshCw} onClick={() => handleRegenerateApiKey(key.key_id)} />
@@ -2169,7 +2169,7 @@ const SettingsPage = () => {
         </div>
       </SectionCard>
 
-      <SectionCard title="Webhooks" description="Recevez des événements en temps réel" icon={Zap} color="#64748b">
+      <SectionCard title="Webhooks" description="Recevez des événements en temps réel" icon={Zap} color="#78716c">
         <FieldRow label="URL du webhook" horizontal={false}>
           <TextInput value={apiSettings.webhookUrl} onChange={v => setApiSettings(p => ({ ...p, webhookUrl: v }))} icon={Link2} placeholder="https://votre-app.com/webhook" />
         </FieldRow>
@@ -2189,7 +2189,7 @@ const SettingsPage = () => {
                       : [...(p.webhookEvents || []), evt]
                   }))}
                   className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-semibold transition-all ${
-                    isActive ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30' : 'bg-white/5 text-slate-500 border border-white/10'
+                    isActive ? 'bg-brand-500/20 text-brand-600 border border-brand-500/30' : 'bg-white text-neutral-500 border border-neutral-200'
                   }`}
                 >
                   {evt}
@@ -2203,7 +2203,7 @@ const SettingsPage = () => {
         </FieldRow>
       </SectionCard>
 
-      <SectionCard title="Documentation API" description="Ressources pour les développeurs" icon={FileText} color="#64748b">
+      <SectionCard title="Documentation API" description="Ressources pour les développeurs" icon={FileText} color="#78716c">
         <div className="flex gap-3 flex-wrap">
           <ActionButton variant="secondary" size="sm" icon={ExternalLink} onClick={() => window.open(`${BACKEND_URL}/docs`, '_blank')}>Documentation</ActionButton>
           <ActionButton variant="secondary" size="sm" icon={ExternalLink} onClick={() => window.open(`${BACKEND_URL}/redoc`, '_blank')}>Swagger UI</ActionButton>
@@ -2240,10 +2240,10 @@ const SettingsPage = () => {
               { value: '365', label: '1 an' },
             ]} />
         </FieldRow>
-        <div className="flex items-center justify-between p-3 rounded-xl bg-white/3 border border-white/5">
+        <div className="flex items-center justify-between p-3 rounded-xl bg-neutral-50 border border-neutral-100">
           <div>
-            <p className="text-xs font-semibold text-slate-300">Dernière sauvegarde</p>
-            <p className="text-[10px] text-slate-500">
+            <p className="text-xs font-semibold text-neutral-300">Dernière sauvegarde</p>
+            <p className="text-[10px] text-neutral-500">
               {dataSettings.lastBackup ? new Date(dataSettings.lastBackup).toLocaleString('fr-FR') : 'Jamais'}
             </p>
           </div>
@@ -2282,10 +2282,10 @@ const SettingsPage = () => {
       </SectionCard>
 
       <SectionCard title="Import de données" description="Importez des données en masse" icon={Upload} color="#0ea5e9">
-        <div className="p-6 rounded-xl border-2 border-dashed border-white/10 text-center hover:border-violet-500/30 transition-all cursor-pointer">
-          <Upload className="w-8 h-8 text-slate-500 mx-auto mb-2" />
-          <p className="text-sm font-semibold text-slate-300">Glissez un fichier ici ou cliquez</p>
-          <p className="text-xs text-slate-500 mt-1">CSV, XLSX ou JSON — Max 50 Mo</p>
+        <div className="p-6 rounded-xl border-2 border-dashed border-neutral-200 text-center hover:border-brand-500/30 transition-all cursor-pointer">
+          <Upload className="w-8 h-8 text-neutral-500 mx-auto mb-2" />
+          <p className="text-sm font-semibold text-neutral-300">Glissez un fichier ici ou cliquez</p>
+          <p className="text-xs text-neutral-500 mt-1">CSV, XLSX ou JSON — Max 50 Mo</p>
         </div>
       </SectionCard>
 
@@ -2309,11 +2309,11 @@ const SettingsPage = () => {
         </FieldRow>
       </SectionCard>
 
-      <SectionCard title="Suppression de données" description="Supprimez par catégorie ou tout d'un coup" icon={AlertTriangle} color="#ef4444">
+      <SectionCard title="Suppression de données" description="Supprimez par catégorie ou tout d'un coup" icon={AlertTriangle} color="#c2410c">
         <PurgePanel apiUrl={API_URL} />
       </SectionCard>
 
-      <SectionCard title="Supprimer le compte" description="Action irréversible" icon={AlertTriangle} color="#ef4444">
+      <SectionCard title="Supprimer le compte" description="Action irréversible" icon={AlertTriangle} color="#c2410c">
         <DangerZone
           title="Supprimer le compte"
           description="Supprimer définitivement votre compte et toutes les données"
@@ -2397,9 +2397,9 @@ const SettingsPage = () => {
             { label: 'Base de données', value: 'MongoDB' },
             { label: 'CDN', value: 'Cloudflare' },
           ].map(info => (
-            <div key={info.label} className="p-3 rounded-xl bg-white/3 border border-white/5">
-              <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">{info.label}</p>
-              <p className="text-sm font-bold text-slate-200 mt-1">{info.value}</p>
+            <div key={info.label} className="p-3 rounded-xl bg-neutral-50 border border-neutral-100">
+              <p className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">{info.label}</p>
+              <p className="text-sm font-bold text-neutral-200 mt-1">{info.value}</p>
             </div>
           ))}
         </div>
@@ -2415,8 +2415,8 @@ const SettingsPage = () => {
       return (
         <div className="flex items-center justify-center py-24">
           <div className="text-center">
-            <RefreshCw className="w-8 h-8 text-violet-400 animate-spin mx-auto mb-3" />
-            <p className="text-sm text-slate-400">Chargement...</p>
+            <RefreshCw className="w-8 h-8 text-brand-600 animate-spin mx-auto mb-3" />
+            <p className="text-sm text-neutral-400">Chargement...</p>
           </div>
         </div>
       );
@@ -2447,28 +2447,28 @@ const SettingsPage = () => {
   return (
     <div className="flex flex-col lg:flex-row h-full min-h-0" style={{ background: 'var(--bg-app)' }}>
       {/* ── Left sidebar nav ── */}
-      <div className="lg:w-64 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-white/5 bg-white/[0.01]">
+      <div className="lg:w-64 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-neutral-100 bg-white/[0.01]">
         <div className="p-4 lg:p-5">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', boxShadow: '0 0 20px rgba(139,92,246,0.3)' }}>
+              style={{ background: 'linear-gradient(135deg, #047857, #047857)', boxShadow: '0 0 20px rgba(4,120,87,0.3)' }}>
               <Settings className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-black text-slate-100" style={{ fontFamily: 'Manrope, sans-serif' }}>Paramètres</h1>
-              <p className="text-[10px] text-slate-500 font-semibold">Configuration du CRM</p>
+              <h1 className="text-lg font-black text-neutral-100" style={{ fontFamily: 'Inter, sans-serif' }}>Paramètres</h1>
+              <p className="text-[10px] text-neutral-500 font-semibold">Configuration du CRM</p>
             </div>
           </div>
 
           {/* Search */}
           <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
             <input
               type="text"
               placeholder="Rechercher..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-2 rounded-xl text-xs text-slate-300 placeholder-slate-600 bg-white/5 border border-white/8 focus:outline-none focus:ring-1 focus:ring-violet-500/50 transition-all"
+              className="w-full pl-8 pr-3 py-2 rounded-xl text-xs text-neutral-300 placeholder-neutral-600 bg-white border border-neutral-200 focus:outline-none focus:ring-1 focus:ring-brand-500/50 transition-all"
             />
           </div>
 
@@ -2484,7 +2484,7 @@ const SettingsPage = () => {
                   className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
                     isActive
                       ? 'text-white'
-                      : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                      : 'text-neutral-500 hover:text-neutral-300 hover:bg-white'
                   }`}
                   style={isActive ? {
                     background: `linear-gradient(90deg, ${tab.color}22, ${tab.color}08)`,
@@ -2514,7 +2514,7 @@ const SettingsPage = () => {
                 </div>
               )}
               <div>
-                <h2 className="text-xl font-black text-slate-100" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                <h2 className="text-xl font-black text-neutral-100" style={{ fontFamily: 'Inter, sans-serif' }}>
                   {activeTabData?.label}
                 </h2>
               </div>

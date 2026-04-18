@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Composants réutilisables pour les pages Settings.
  *
  * Extraits de SettingsPage.jsx (lignes 26-199) pour être importables
@@ -7,14 +7,14 @@
 import React, { useState } from 'react';
 import { ChevronDown, RefreshCw, AlertTriangle } from 'lucide-react';
 
-export const SectionCard = ({ title, description, icon: Icon, children, color = '#8b5cf6', badge, collapsible = false, defaultOpen = true }) => {
+export const SectionCard = ({ title, description, icon: Icon, children, color = '#047857', badge, collapsible = false, defaultOpen = true }) => {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="rounded-2xl border border-white/8 overflow-hidden transition-all duration-200 hover:border-white/12"
+    <div className="rounded-2xl border border-neutral-200 overflow-hidden transition-all duration-200 hover:border-white/12"
       style={{ background: 'rgba(255,255,255,0.02)' }}>
       <button
         onClick={() => collapsible && setOpen(!open)}
-        className={`w-full flex items-center gap-4 p-5 ${collapsible ? 'cursor-pointer hover:bg-white/3' : 'cursor-default'} transition-all`}
+        className={`w-full flex items-center gap-4 p-5 ${collapsible ? 'cursor-pointer hover:bg-neutral-50' : 'cursor-default'} transition-all`}
       >
         <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
           style={{ background: `${color}15`, border: `1px solid ${color}25` }}>
@@ -22,17 +22,17 @@ export const SectionCard = ({ title, description, icon: Icon, children, color = 
         </div>
         <div className="flex-1 text-left min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-bold text-slate-100" style={{ fontFamily: 'Manrope, sans-serif' }}>{title}</h3>
+            <h3 className="text-sm font-bold text-neutral-100" style={{ fontFamily: 'Inter, sans-serif' }}>{title}</h3>
             {badge && (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: `${color}20`, color, border: `1px solid ${color}30` }}>
                 {badge}
               </span>
             )}
           </div>
-          {description && <p className="text-xs text-slate-500 mt-0.5 truncate">{description}</p>}
+          {description && <p className="text-xs text-neutral-500 mt-0.5 truncate">{description}</p>}
         </div>
         {collapsible && (
-          <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`w-4 h-4 text-neutral-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
         )}
       </button>
       {open && <div className="px-5 pb-5 pt-0 space-y-4">{children}</div>}
@@ -41,10 +41,10 @@ export const SectionCard = ({ title, description, icon: Icon, children, color = 
 };
 
 export const FieldRow = ({ label, description, children, horizontal = true }) => (
-  <div className={`${horizontal ? 'flex items-start justify-between gap-4' : 'space-y-2'} py-3 border-t border-white/5 first:border-t-0 first:pt-0`}>
+  <div className={`${horizontal ? 'flex items-start justify-between gap-4' : 'space-y-2'} py-3 border-t border-neutral-100 first:border-t-0 first:pt-0`}>
     <div className="min-w-0 flex-shrink-0" style={{ maxWidth: horizontal ? '55%' : '100%' }}>
-      <p className="text-sm font-medium text-slate-300">{label}</p>
-      {description && <p className="text-xs text-slate-500 mt-0.5">{description}</p>}
+      <p className="text-sm font-medium text-neutral-300">{label}</p>
+      {description && <p className="text-xs text-neutral-500 mt-0.5">{description}</p>}
     </div>
     <div className={`${horizontal ? 'flex-shrink-0' : 'w-full'}`}>{children}</div>
   </div>
@@ -62,7 +62,7 @@ export const Toggle = ({ checked, onChange, disabled = false, size = 'md' }) => 
       onClick={() => !disabled && onChange(!checked)}
       disabled={disabled}
       className={`relative inline-flex ${s.track} items-center rounded-full transition-all duration-200 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-      style={{ background: checked ? '#8b5cf6' : 'rgba(255,255,255,0.1)' }}
+      style={{ background: checked ? '#047857' : 'rgba(255,255,255,0.1)' }}
     >
       <span className={`inline-block ${s.thumb} transform rounded-full bg-white shadow-lg transition-transform duration-200 ${checked ? s.translate : 'translate-x-0.5'}`} />
     </button>
@@ -71,15 +71,15 @@ export const Toggle = ({ checked, onChange, disabled = false, size = 'md' }) => 
 
 export const TextInput = ({ value, onChange, placeholder, type = 'text', icon: Icon, disabled = false, className = '' }) => (
   <div className={`relative ${className}`}>
-    {Icon && <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />}
+    {Icon && <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none" />}
     <input
       type={type}
       value={value}
       onChange={e => onChange(e.target.value)}
       placeholder={placeholder}
       disabled={disabled}
-      className={`w-full ${Icon ? 'pl-9' : 'pl-3'} pr-3 py-2.5 rounded-xl text-sm text-slate-200 placeholder-slate-600
-                 bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/30
+      className={`w-full ${Icon ? 'pl-9' : 'pl-3'} pr-3 py-2.5 rounded-xl text-sm text-neutral-200 placeholder-neutral-600
+                 bg-white border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500/30
                  disabled:opacity-50 disabled:cursor-not-allowed transition-all`}
     />
   </div>
@@ -87,12 +87,12 @@ export const TextInput = ({ value, onChange, placeholder, type = 'text', icon: I
 
 export const SelectInput = ({ value, onChange, options, icon: Icon, className = '' }) => (
   <div className={`relative ${className}`}>
-    {Icon && <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none z-10" />}
+    {Icon && <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none z-10" />}
     <select
       value={value}
       onChange={e => onChange(e.target.value)}
-      className={`w-full ${Icon ? 'pl-9' : 'pl-3'} pr-8 py-2.5 rounded-xl text-sm text-slate-200
-                 bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-violet-500/40
+      className={`w-full ${Icon ? 'pl-9' : 'pl-3'} pr-8 py-2.5 rounded-xl text-sm text-neutral-200
+                 bg-white border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-brand-500/40
                  appearance-none cursor-pointer transition-all`}
       style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em' }}
     >
@@ -111,19 +111,19 @@ export const TextArea = ({ value, onChange, placeholder, rows = 3, className = '
     onChange={e => onChange(e.target.value)}
     placeholder={placeholder}
     rows={rows}
-    className={`w-full px-3 py-2.5 rounded-xl text-sm text-slate-200 placeholder-slate-600
-               bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/30
+    className={`w-full px-3 py-2.5 rounded-xl text-sm text-neutral-200 placeholder-neutral-600
+               bg-white border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500/30
                resize-none transition-all ${className}`}
   />
 );
 
 export const ActionButton = ({ children, variant = 'primary', size = 'md', icon: Icon, onClick, disabled = false, loading = false, className = '' }) => {
   const variants = {
-    primary: 'bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20',
-    secondary: 'bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10',
-    danger: 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20',
-    success: 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20',
-    ghost: 'hover:bg-white/5 text-slate-400',
+    primary: 'bg-brand-600 hover:bg-brand-500 text-white shadow-lg shadow-brand-500/20',
+    secondary: 'bg-white hover:bg-neutral-50 text-neutral-300 border border-neutral-200',
+    danger: 'bg-terracotta-50 hover:bg-terracotta-100 text-terracotta-600 border border-terracotta-200',
+    success: 'bg-brand-50 hover:bg-brand-500/20 text-brand-600 border border-brand-200',
+    ghost: 'hover:bg-white text-neutral-400',
   };
   const sizes = {
     sm: 'px-3 py-1.5 text-xs',
@@ -149,14 +149,14 @@ export const ColorPicker = ({ value, onChange, presets }) => (
       <button
         key={color}
         onClick={() => onChange(color)}
-        className={`w-7 h-7 rounded-lg transition-all duration-200 ${value === color ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900 scale-110' : 'hover:scale-110'}`}
+        className={`w-7 h-7 rounded-lg transition-all duration-200 ${value === color ? 'ring-2 ring-white ring-offset-2 ring-offset-white scale-110' : 'hover:scale-110'}`}
         style={{ background: color }}
       />
     ))}
   </div>
 );
 
-export const Badge = ({ children, color = '#8b5cf6' }) => (
+export const Badge = ({ children, color = '#047857' }) => (
   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: `${color}20`, color, border: `1px solid ${color}30` }}>
     {children}
   </span>
@@ -165,10 +165,10 @@ export const Badge = ({ children, color = '#8b5cf6' }) => (
 export const DangerZone = ({ title, description, buttonText, onConfirm, loading = false }) => {
   const [confirming, setConfirming] = useState(false);
   return (
-    <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-red-500/20 bg-red-500/5">
+    <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-terracotta-200 bg-terracotta-50">
       <div>
-        <p className="text-sm font-semibold text-red-400">{title}</p>
-        <p className="text-xs text-slate-500 mt-0.5">{description}</p>
+        <p className="text-sm font-semibold text-terracotta-600">{title}</p>
+        <p className="text-xs text-neutral-500 mt-0.5">{description}</p>
       </div>
       {confirming ? (
         <div className="flex items-center gap-2">
@@ -183,19 +183,19 @@ export const DangerZone = ({ title, description, buttonText, onConfirm, loading 
 };
 
 export const settingsTabs = [
-  { id: 'profile', label: 'Profil', icon: null, color: '#8b5cf6' },
+  { id: 'profile', label: 'Profil', icon: null, color: '#047857' },
   { id: 'company', label: 'Entreprise', icon: null, color: '#f97316' },
-  { id: 'appearance', label: 'Apparence', icon: null, color: '#ec4899' },
+  { id: 'appearance', label: 'Apparence', icon: null, color: '#c2410c' },
   { id: 'notifications', label: 'Notifications', icon: null, color: '#f59e0b' },
-  { id: 'security', label: 'Sécurité', icon: null, color: '#ef4444' },
-  { id: 'team', label: 'Équipe', icon: null, color: '#10b981' },
+  { id: 'security', label: 'Sécurité', icon: null, color: '#c2410c' },
+  { id: 'team', label: 'Équipe', icon: null, color: '#047857' },
   { id: 'billing', label: 'Facturation', icon: null, color: '#6366f1' },
   { id: 'email', label: 'Email & SMS', icon: null, color: '#06b6d4' },
   { id: 'scheduling', label: 'Planning', icon: null, color: '#84cc16' },
-  { id: 'zones', label: 'Zones', icon: null, color: '#f43f5e' },
+  { id: 'zones', label: 'Zones', icon: null, color: '#c2410c' },
   { id: 'documents', label: 'Documents', icon: null, color: '#a855f7' },
   { id: 'integrations', label: 'Intégrations', icon: null, color: '#eab308' },
-  { id: 'api', label: 'API', icon: null, color: '#64748b' },
+  { id: 'api', label: 'API', icon: null, color: '#78716c' },
   { id: 'data', label: 'Données', icon: null, color: '#0ea5e9' },
   { id: 'advanced', label: 'Avancé', icon: null, color: '#78716c' },
 ];

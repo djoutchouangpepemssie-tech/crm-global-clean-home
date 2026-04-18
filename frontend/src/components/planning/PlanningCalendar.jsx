@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+﻿import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
   useCalendar,
   useAllTeamMembers,
@@ -26,10 +26,10 @@ const DAYS_FULL_FR = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Di
 const HOURS = Array.from({length:13},(_,i)=>i+8);
 
 const STATUS = {
-  planifiée: { label:'Planifiée', color:'#818cf8', bg:'rgba(129,140,248,0.12)', border:'rgba(129,140,248,0.25)', dot:'bg-indigo-400', icon:'📋', gradient:'from-indigo-500/20 to-indigo-600/5' },
+  planifiée: { label:'Planifiée', color:'#818cf8', bg:'rgba(129,140,248,0.12)', border:'rgba(129,140,248,0.25)', dot:'bg-brand-400', icon:'📋', gradient:'from-brand-500/20 to-brand-600/5' },
   en_cours:  { label:'En cours',  color:'#fbbf24', bg:'rgba(251,191,36,0.12)', border:'rgba(251,191,36,0.25)', dot:'bg-amber-400 animate-pulse', icon:'⚡', gradient:'from-amber-500/20 to-amber-600/5' },
-  terminée:  { label:'Terminée',  color:'#34d399', bg:'rgba(52,211,153,0.12)', border:'rgba(52,211,153,0.25)', dot:'bg-emerald-400', icon:'✅', gradient:'from-emerald-500/20 to-emerald-600/5' },
-  annulée:   { label:'Annulée',   color:'#fb7185', bg:'rgba(251,113,133,0.12)', border:'rgba(251,113,133,0.25)', dot:'bg-rose-400', icon:'❌', gradient:'from-rose-500/20 to-rose-600/5' },
+  terminée:  { label:'Terminée',  color:'#047857', bg:'rgba(4,120,87,0.12)', border:'rgba(4,120,87,0.25)', dot:'bg-brand-400', icon:'✅', gradient:'from-brand-500/20 to-brand-600/5' },
+  annulée:   { label:'Annulée',   color:'#fb7185', bg:'rgba(251,113,133,0.12)', border:'rgba(251,113,133,0.25)', dot:'bg-terracotta-400', icon:'❌', gradient:'from-terracotta-500/20 to-terracotta-600/5' },
 };
 
 const SVC_ICONS = {'Ménage':'🏠','menage':'🏠','Canapé':'🛋️','canape':'🛋️','Matelas':'🛏️','matelas':'🛏️','Tapis':'🪣','tapis':'🪣','Bureaux':'🏢','bureaux':'🏢'};
@@ -54,9 +54,9 @@ const ZONE_ICONS = {
 
 // ── AGENT COLORS (unique per agent, high contrast) ──
 const AGENT_COLOR_PALETTE = [
-  { color: '#a78bfa', bg: 'rgba(167,139,250,0.15)', name: 'Violet' },
+  { color: '#047857', bg: 'rgba(4,120,87,0.15)', name: 'Violet' },
   { color: '#22d3ee', bg: 'rgba(34,211,238,0.15)', name: 'Cyan' },
-  { color: '#34d399', bg: 'rgba(52,211,153,0.15)', name: 'Emerald' },
+  { color: '#047857', bg: 'rgba(4,120,87,0.15)', name: 'Emerald' },
   { color: '#fbbf24', bg: 'rgba(251,191,36,0.15)', name: 'Amber' },
   { color: '#fb7185', bg: 'rgba(251,113,133,0.15)', name: 'Rose' },
   { color: '#f472b6', bg: 'rgba(244,114,182,0.15)', name: 'Pink' },
@@ -68,23 +68,23 @@ const AGENT_COLOR_PALETTE = [
   { color: '#60a5fa', bg: 'rgba(96,165,250,0.15)', name: 'Blue' },
 ];
 const getAgentColorObj = (agentId, members) => {
-  if (!agentId) return { color: '#64748b', bg: 'rgba(100,116,139,0.15)' };
+  if (!agentId) return { color: '#78716c', bg: 'rgba(100,116,139,0.15)' };
   const idx = members.findIndex(m => m.member_id === agentId);
-  return idx >= 0 ? AGENT_COLOR_PALETTE[idx % AGENT_COLOR_PALETTE.length] : { color: '#64748b', bg: 'rgba(100,116,139,0.15)' };
+  return idx >= 0 ? AGENT_COLOR_PALETTE[idx % AGENT_COLOR_PALETTE.length] : { color: '#78716c', bg: 'rgba(100,116,139,0.15)' };
 };
 const getAgentColor = (agentId, members) => getAgentColorObj(agentId, members).color;
 
 const ZONE_COLORS = {
-  'Paris 1-4':'#fb923c','Paris 5-8':'#a78bfa','Paris 9-12':'#22d3ee',
-  'Paris 13-16':'#34d399','Paris 17-20':'#fb7185','Banlieue Nord':'#fbbf24',
-  'Banlieue Sud':'#a3e635','Banlieue Est':'#f472b6','Banlieue Ouest':'#818cf8','Autre':'#64748b'
+  'Paris 1-4':'#fb923c','Paris 5-8':'#047857','Paris 9-12':'#22d3ee',
+  'Paris 13-16':'#047857','Paris 17-20':'#fb7185','Banlieue Nord':'#fbbf24',
+  'Banlieue Sud':'#a3e635','Banlieue Est':'#f472b6','Banlieue Ouest':'#818cf8','Autre':'#78716c'
 };
 
-const inputCls = "w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] text-slate-200 placeholder-slate-600 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/40 transition-all duration-300 hover:border-white/15 hover:bg-white/[0.06]";
+const inputCls = "w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] text-neutral-200 placeholder-neutral-600 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500/40 transition-all duration-300 hover:border-neutral-300 hover:bg-white/[0.06]";
 const Field = ({label,required,children}) => (
   <div className="group/field">
-    <label className="block text-xs font-semibold text-slate-400 mb-2 group-focus-within/field:text-violet-400 transition-colors duration-200">
-      {label}{required&&<span className="text-rose-400 ml-1">*</span>}
+    <label className="block text-xs font-semibold text-neutral-400 mb-2 group-focus-within/field:text-brand-600 transition-colors duration-200">
+      {label}{required&&<span className="text-terracotta-600 ml-1">*</span>}
     </label>
     {children}
   </div>
@@ -204,7 +204,7 @@ const InterventionCard = ({ intv, sc, hasConflict, agentColor, members, onClick,
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className={`group/card relative px-2.5 py-2 rounded-xl cursor-grab active:cursor-grabbing transition-all duration-300 border overflow-hidden
-          ${hasConflict ? 'ring-1 ring-rose-500/50 animate-border-pulse' : ''}
+          ${hasConflict ? 'ring-1 ring-terracotta-500/50 animate-border-pulse' : ''}
           ${isHovered ? 'scale-[1.03] shadow-lg z-10' : 'hover:scale-[1.02]'}`}
         style={{
           background: sc.bg,
@@ -219,20 +219,20 @@ const InterventionCard = ({ intv, sc, hasConflict, agentColor, members, onClick,
         <div className="flex items-center gap-1.5 ml-1">
           <span className="text-xs">{getSvcIcon(intv.service_type)}</span>
           <span className="text-[10px] font-bold tabular-nums" style={{ color: sc.color }}>{intv.scheduled_time}</span>
-          {hasConflict && <AlertTriangle className="w-3 h-3 text-rose-400 flex-shrink-0 animate-pulse" />}
+          {hasConflict && <AlertTriangle className="w-3 h-3 text-terracotta-600 flex-shrink-0 animate-pulse" />}
         </div>
-        <p className="text-[11px] font-semibold text-slate-200 truncate ml-1 mt-0.5">{intv.title || intv.service_type}</p>
+        <p className="text-[11px] font-semibold text-neutral-200 truncate ml-1 mt-0.5">{intv.title || intv.service_type}</p>
         {intv.assigned_agent_name && (
           <div className="flex items-center gap-1.5 mt-1 ml-1">
             <div className="w-2 h-2 rounded-full flex-shrink-0 ring-1 ring-black/20" style={{ background: agentColor }} />
-            <p className="text-[10px] text-slate-500 truncate">{intv.assigned_agent_name.split(' ')[0]}</p>
+            <p className="text-[10px] text-neutral-500 truncate">{intv.assigned_agent_name.split(' ')[0]}</p>
           </div>
         )}
 
         {/* Hover reveal actions */}
         <div className={`absolute top-1 right-1 transition-all duration-200 ${isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-1'}`}>
-          <div className="w-5 h-5 rounded-lg bg-white/10 backdrop-blur-sm flex items-center justify-center">
-            <Eye className="w-3 h-3 text-slate-400" />
+          <div className="w-5 h-5 rounded-lg bg-neutral-50 backdrop-blur-sm flex items-center justify-center">
+            <Eye className="w-3 h-3 text-neutral-400" />
           </div>
         </div>
       </div>
@@ -247,7 +247,7 @@ const InterventionCard = ({ intv, sc, hasConflict, agentColor, members, onClick,
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={`group/card relative p-4 rounded-2xl border cursor-pointer transition-all duration-300 overflow-hidden
-        ${hasConflict ? 'ring-1 ring-rose-500/40' : ''}
+        ${hasConflict ? 'ring-1 ring-terracotta-500/40' : ''}
         ${isHovered ? 'scale-[1.02] shadow-xl' : ''}`}
       style={{
         background: sc.bg,
@@ -274,17 +274,17 @@ const InterventionCard = ({ intv, sc, hasConflict, agentColor, members, onClick,
           </span>
         </div>
         {hasConflict && (
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/15 border border-rose-500/20">
-            <AlertTriangle className="w-3 h-3 text-rose-400 animate-pulse" />
-            <span className="text-[10px] font-bold text-rose-400">Conflit</span>
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-terracotta-500/15 border border-terracotta-200">
+            <AlertTriangle className="w-3 h-3 text-terracotta-600 animate-pulse" />
+            <span className="text-[10px] font-bold text-terracotta-600">Conflit</span>
           </div>
         )}
       </div>
 
-      <p className="font-bold text-slate-200 text-sm truncate mb-1.5">{intv.title || intv.service_type}</p>
-      {intv.lead_name && <p className="text-xs text-slate-400 truncate mb-1">👤 {intv.lead_name}</p>}
+      <p className="font-bold text-neutral-200 text-sm truncate mb-1.5">{intv.title || intv.service_type}</p>
+      {intv.lead_name && <p className="text-xs text-neutral-400 truncate mb-1">👤 {intv.lead_name}</p>}
       {intv.address && (
-        <p className="text-xs text-slate-500 truncate mb-1.5 flex items-center gap-1">
+        <p className="text-xs text-neutral-500 truncate mb-1.5 flex items-center gap-1">
           <MapPin className="w-3 h-3 flex-shrink-0" />{intv.address}
         </p>
       )}
@@ -292,7 +292,7 @@ const InterventionCard = ({ intv, sc, hasConflict, agentColor, members, onClick,
       <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-white/[0.06]">
         <span className="text-xs font-bold flex items-center gap-1.5" style={{ color: sc.color }}>
           <Clock className="w-3.5 h-3.5" />{intv.scheduled_time || '—'}
-          {intv.duration_hours ? <span className="text-slate-500 font-normal">({intv.duration_hours}h)</span> : ''}
+          {intv.duration_hours ? <span className="text-neutral-500 font-normal">({intv.duration_hours}h)</span> : ''}
         </span>
         {intv.assigned_agent_name && (
           <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg transition-all duration-200"
@@ -343,7 +343,7 @@ const ModalWrapper = ({ show, onClose, children, size = 'md' }) => {
         onClick={e => e.stopPropagation()}
       >
         {/* Top glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2/3 h-px bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2/3 h-px bg-gradient-to-r from-transparent via-brand-500/50 to-transparent" />
         <div className="p-6">{children}</div>
       </div>
     </div>
@@ -369,7 +369,7 @@ const StatusBadge = ({ status, size = 'sm' }) => {
 // ── ZONE BADGE ──
 const ZoneBadge = ({ address, size = 'sm' }) => {
   const zone = getZoneFromAddress(address);
-  const color = ZONE_COLORS[zone] || '#64748b';
+  const color = ZONE_COLORS[zone] || '#78716c';
   const icon = ZONE_ICONS[zone] || '📍';
 
   return (
@@ -716,11 +716,11 @@ const PlanningCalendar = () => {
 
         <div className="flex items-center gap-2 flex-wrap">
           <button onClick={exportWeekPDF}
-            className="group/btn flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl border border-white/[0.08] text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] hover:border-white/15 text-xs font-bold transition-all duration-300">
+            className="group/btn flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl border border-white/[0.08] text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.06] hover:border-neutral-300 text-xs font-bold transition-all duration-300">
             <Download className="w-3.5 h-3.5 group-hover/btn:translate-y-[1px] transition-transform duration-200"/> Export
           </button>
           <button onClick={handleRefresh}
-            className="group/btn p-2.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 border border-white/[0.06] hover:border-white/15 transition-all duration-300">
+            className="group/btn p-2.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 border border-white/[0.06] hover:border-neutral-300 transition-all duration-300">
             <RefreshCw className={`w-4 h-4 transition-transform duration-700 ${refreshing ? 'animate-spin' : 'group-hover/btn:rotate-90'}`}/>
           </button>
 
@@ -735,12 +735,12 @@ const PlanningCalendar = () => {
             ].map(({ v, i: Icon, label }) => (
               <button key={v} onClick={() => setView(v)}
                 className={`relative p-2.5 rounded-xl transition-all duration-300 group/view ${
-                  view === v ? 'text-white' : 'text-slate-500 hover:text-slate-300'
+                  view === v ? 'text-white' : 'text-neutral-500 hover:text-neutral-300'
                 }`}
                 title={label}>
                 {view === v && (
                   <div className="absolute inset-0 rounded-xl transition-all duration-300"
-                    style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', boxShadow: '0 4px 12px rgba(124,58,237,0.35)' }} />
+                    style={{ background: 'linear-gradient(135deg, #047857, #4f46e5)', boxShadow: '0 4px 12px rgba(124,58,237,0.35)' }} />
                 )}
                 <Icon className="w-3.5 h-3.5 relative z-10" />
               </button>
@@ -750,7 +750,7 @@ const PlanningCalendar = () => {
           <button onClick={() => { setEditMode(false); setShowForm(true); }}
             className="group/create flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-bold text-white transition-all duration-300 hover:scale-[1.03] active:scale-[0.98]"
             style={{
-              background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+              background: 'linear-gradient(135deg, #047857, #4f46e5)',
               boxShadow: '0 4px 20px rgba(124,58,237,0.35), inset 0 1px 0 rgba(255,255,255,0.15)'
             }}>
             <Plus className="w-4 h-4 group-hover/create:rotate-90 transition-transform duration-300" /> Planifier
@@ -763,7 +763,7 @@ const PlanningCalendar = () => {
         {[
           { k: 'planifiée', label: 'Planifiées', color: '#818cf8', icon: '📋' },
           { k: 'en_cours', label: 'En cours', color: '#fbbf24', icon: '⚡' },
-          { k: 'terminée', label: 'Terminées', color: '#34d399', icon: '✅' },
+          { k: 'terminée', label: 'Terminées', color: '#047857', icon: '✅' },
           { k: 'conflits', label: 'Conflits', color: '#fb7185', icon: '⚠️' },
         ].map((s, idx) => (
           <button key={s.k}
@@ -786,7 +786,7 @@ const PlanningCalendar = () => {
             <div className="relative z-10">
               <AnimatedNumber value={stats[s.k] || 0}
                 className="text-xl font-black block tabular-nums"
-                style={{ color: s.color, fontFamily: 'Manrope,Inter,sans-serif' }} />
+                style={{ color: s.color, fontFamily: 'Inter,sans-serif' }} />
               <p className="text-[10px] font-semibold tracking-wide" style={{ color: s.color + 'aa' }}>{s.label}</p>
             </div>
           </button>
@@ -795,12 +795,12 @@ const PlanningCalendar = () => {
         <div className="group/stat relative flex items-center gap-3 p-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden transition-all duration-300 hover:scale-[1.02]"
           style={{ animation: 'slideUpFade 0.4s ease forwards', animationDelay: '400ms', opacity: 0 }}>
           <div className="w-9 h-9 rounded-xl flex items-center justify-center relative"
-            style={{ background: 'linear-gradient(135deg, rgba(167,139,250,0.2), rgba(167,139,250,0.05))', border: '1px solid rgba(167,139,250,0.2)' }}>
-            <Users className="w-4 h-4 text-violet-400" />
+            style={{ background: 'linear-gradient(135deg, rgba(4,120,87,0.2), rgba(4,120,87,0.05))', border: '1px solid rgba(4,120,87,0.2)' }}>
+            <Users className="w-4 h-4 text-brand-600" />
           </div>
           <div>
-            <AnimatedNumber value={members.length} className="text-xl font-black text-slate-200 block" />
-            <p className="text-[10px] text-slate-500 font-semibold tracking-wide">Intervenants</p>
+            <AnimatedNumber value={members.length} className="text-xl font-black text-neutral-200 block" />
+            <p className="text-[10px] text-neutral-500 font-semibold tracking-wide">Intervenants</p>
           </div>
           {/* Mini agent dots */}
           <div className="absolute bottom-2 right-3 flex -space-x-1">
@@ -809,8 +809,8 @@ const PlanningCalendar = () => {
                 style={{ background: getAgentColor(m.member_id, members) }} />
             ))}
             {members.length > 4 && (
-              <div className="w-3 h-3 rounded-full bg-slate-700 ring-1 ring-black/30 flex items-center justify-center">
-                <span className="text-[6px] text-slate-400">+{members.length - 4}</span>
+              <div className="w-3 h-3 rounded-full bg-neutral-700 ring-1 ring-black/30 flex items-center justify-center">
+                <span className="text-[6px] text-neutral-400">+{members.length - 4}</span>
               </div>
             )}
           </div>
@@ -820,36 +820,36 @@ const PlanningCalendar = () => {
       {/* ── FILTRES ── */}
       <div className="flex flex-col sm:flex-row gap-3" style={{ animation: 'slideUpFade 0.4s ease forwards', animationDelay: '200ms', opacity: 0 }}>
         <div className="relative flex-1 group/search">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within/search:text-violet-400 transition-colors duration-200"/>
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 group-focus-within/search:text-brand-600 transition-colors duration-200"/>
           <input value={search} onChange={e=>setSearch(e.target.value)}
             placeholder="Rechercher intervention, client, adresse..."
-            className="w-full pl-11 pr-4 py-3 bg-white/[0.04] border border-white/[0.08] text-slate-200 placeholder-slate-600 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/30 hover:bg-white/[0.06] transition-all duration-300"/>
+            className="w-full pl-11 pr-4 py-3 bg-white/[0.04] border border-white/[0.08] text-neutral-200 placeholder-neutral-600 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500/30 hover:bg-white/[0.06] transition-all duration-300"/>
           {search && (
             <button onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-white/10 text-slate-500 transition-all">
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-neutral-50 text-neutral-500 transition-all">
               <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
         <select value={filterMember} onChange={e=>setFilterMember(e.target.value)}
-          className="px-4 py-3 bg-white/[0.04] border border-white/[0.08] text-slate-400 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/30 hover:bg-white/[0.06] transition-all duration-300 cursor-pointer">
-          <option value="" className="bg-slate-900">👷 Tous les agents</option>
+          className="px-4 py-3 bg-white/[0.04] border border-white/[0.08] text-neutral-400 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/30 hover:bg-white/[0.06] transition-all duration-300 cursor-pointer">
+          <option value="" className="bg-neutral-900">👷 Tous les agents</option>
           {memberStats.map(m=>(
-            <option key={m.member_id} value={m.member_id} className="bg-slate-900">
+            <option key={m.member_id} value={m.member_id} className="bg-neutral-900">
               {m.name} ({m.today} auj. · {m.missions} total)
             </option>
           ))}
         </select>
         <select value={filterZone} onChange={e=>setFilterZone(e.target.value)}
-          className="px-4 py-3 bg-white/[0.04] border border-white/[0.08] text-slate-400 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/30 hover:bg-white/[0.06] transition-all duration-300 cursor-pointer">
-          <option value="" className="bg-slate-900">📍 Toutes les zones</option>
-          {ZONES_PARIS.map(z=><option key={z} value={z} className="bg-slate-900">{ZONE_ICONS[z]||'📍'} {z}</option>)}
+          className="px-4 py-3 bg-white/[0.04] border border-white/[0.08] text-neutral-400 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/30 hover:bg-white/[0.06] transition-all duration-300 cursor-pointer">
+          <option value="" className="bg-neutral-900">📍 Toutes les zones</option>
+          {ZONES_PARIS.map(z=><option key={z} value={z} className="bg-neutral-900">{ZONE_ICONS[z]||'📍'} {z}</option>)}
         </select>
 
         {/* Clear filters */}
         {activeFilters > 0 && (
           <button onClick={() => { setFilterMember(''); setFilterStatus(''); setFilterZone(''); setSearch(''); }}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold text-violet-400 bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/20 transition-all duration-300">
+            className="flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold text-brand-600 bg-brand-50 border border-brand-200 hover:bg-brand-500/20 transition-all duration-300">
             <X className="w-3 h-3" /> {activeFilters} filtre{activeFilters > 1 ? 's' : ''}
           </button>
         )}
@@ -859,10 +859,10 @@ const PlanningCalendar = () => {
           <button onClick={()=>{
             if(['semaine','timeline'].includes(view)){const d=new Date(currentWeek);d.setDate(d.getDate()-7);setCurrentWeek(d);}
             else{const[y,m]=currentMonth.split('-').map(Number);const d=new Date(y,m-2,1);setCurrentMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);}
-          }} className="p-1.5 text-slate-500 hover:text-slate-300 hover:bg-white/10 rounded-xl transition-all duration-200">
+          }} className="p-1.5 text-neutral-500 hover:text-neutral-300 hover:bg-neutral-50 rounded-xl transition-all duration-200">
             <ChevronLeft className="w-4 h-4"/>
           </button>
-          <span className="text-xs font-bold text-slate-300 min-w-[140px] text-center tracking-wide">
+          <span className="text-xs font-bold text-neutral-300 min-w-[140px] text-center tracking-wide">
             {['semaine','timeline'].includes(view)
               ? `${weekDays[0].getDate()} – ${weekDays[6].getDate()} ${MONTHS_FR[weekDays[6].getMonth()]}`
               : `${MONTHS_FR[month-1]} ${year}`}
@@ -870,12 +870,12 @@ const PlanningCalendar = () => {
           <button onClick={()=>{
             if(['semaine','timeline'].includes(view)){const d=new Date(currentWeek);d.setDate(d.getDate()+7);setCurrentWeek(d);}
             else{const[y,m]=currentMonth.split('-').map(Number);const d=new Date(y,m,1);setCurrentMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);}
-          }} className="p-1.5 text-slate-500 hover:text-slate-300 hover:bg-white/10 rounded-xl transition-all duration-200">
+          }} className="p-1.5 text-neutral-500 hover:text-neutral-300 hover:bg-neutral-50 rounded-xl transition-all duration-200">
             <ChevronRight className="w-4 h-4"/>
           </button>
           <div className="w-px h-5 bg-white/[0.08] mx-1" />
           <button onClick={()=>{const n=new Date();setCurrentWeek(n);setCurrentMonth(`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`);}}
-            className="text-xs text-violet-400 hover:text-violet-300 font-bold px-2 py-1 rounded-lg hover:bg-violet-500/10 transition-all duration-200">
+            className="text-xs text-brand-600 hover:text-brand-700 font-bold px-2 py-1 rounded-lg hover:bg-brand-50 transition-all duration-200">
             Aujourd'hui
           </button>
         </div>
@@ -885,7 +885,7 @@ const PlanningCalendar = () => {
         <>
         {/* ── VUE TIMELINE ── */}
         {view==='timeline' && (
-          <div className="section-card overflow-x-auto" style={{ animation: 'fadeIn 0.4s ease forwards' }}>
+          <div className="bg-white border border-neutral-200 rounded-xl overflow-x-auto" style={{ animation: 'fadeIn 0.4s ease forwards' }}>
             <div className="min-w-[800px]">
               {/* Header jours */}
               <div className="grid gap-px sticky top-0 z-10" style={{gridTemplateColumns:`64px repeat(7, 1fr)`, background:'var(--bg-card)'}}>
@@ -894,11 +894,11 @@ const PlanningCalendar = () => {
                   const isToday = day.toISOString().slice(0,10)===today;
                   const dayIntvs = getIntvForDay(day);
                   return (
-                    <div key={i} className={`p-3 text-center border-b border-white/[0.06] transition-all duration-300 ${isToday?'bg-violet-500/[0.08]':''}`}>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{DAYS_FR[i]}</p>
-                      <p className={`text-xl font-black mt-0.5 ${isToday?'text-violet-400':'text-slate-300'}`}>{day.getDate()}</p>
+                    <div key={i} className={`p-3 text-center border-b border-white/[0.06] transition-all duration-300 ${isToday?'bg-brand-500/[0.08]':''}`}>
+                      <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider">{DAYS_FR[i]}</p>
+                      <p className={`text-xl font-black mt-0.5 ${isToday?'text-brand-600':'text-neutral-300'}`}>{day.getDate()}</p>
                       {dayIntvs.length > 0 && (
-                        <span className="inline-block mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-400">
+                        <span className="inline-block mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-brand-500/20 text-brand-600">
                           {dayIntvs.length}
                         </span>
                       )}
@@ -911,7 +911,7 @@ const PlanningCalendar = () => {
                 <div key={h} className="grid gap-px border-b border-white/[0.04] group/row hover:bg-white/[0.01] transition-colors duration-200"
                   style={{gridTemplateColumns:`64px repeat(7, 1fr)`}}>
                   <div className="p-3 text-right border-r border-white/[0.06]">
-                    <span className="text-[11px] text-slate-600 font-mono font-bold">{String(h).padStart(2,'0')}:00</span>
+                    <span className="text-[11px] text-neutral-600 font-mono font-bold">{String(h).padStart(2,'0')}:00</span>
                   </div>
                   {weekDays.map((day,di)=>{
                     const ds = day.toISOString().slice(0,10);
@@ -925,8 +925,8 @@ const PlanningCalendar = () => {
                     return (
                       <div key={di}
                         className={`min-h-[56px] p-1.5 border-l border-white/[0.04] relative transition-all duration-300
-                          ${isToday?'bg-violet-500/[0.03]':''}
-                          ${isDragTarget?'bg-emerald-500/[0.08] border-emerald-500/30 scale-[1.01]':''}`}
+                          ${isToday?'bg-brand-500/[0.03]':''}
+                          ${isDragTarget?'bg-brand-500/[0.08] border-brand-500/30 scale-[1.01]':''}`}
                         onDragOver={e=>{e.preventDefault();setDragOver(`${ds}-${h}`);}}
                         onDragLeave={()=>setDragOver(null)}
                         onDrop={e=>handleDrop(e,day)}>
@@ -946,8 +946,8 @@ const PlanningCalendar = () => {
                         })}
                         {/* Drop zone indicator */}
                         {isDragTarget && intvs.length === 0 && (
-                          <div className="absolute inset-2 rounded-xl border-2 border-dashed border-emerald-500/30 flex items-center justify-center">
-                            <Plus className="w-4 h-4 text-emerald-500/40" />
+                          <div className="absolute inset-2 rounded-xl border-2 border-dashed border-brand-500/30 flex items-center justify-center">
+                            <Plus className="w-4 h-4 text-brand-500/40" />
                           </div>
                         )}
                       </div>
@@ -961,7 +961,7 @@ const PlanningCalendar = () => {
 
         {/* ── VUE SEMAINE ── */}
         {view==='semaine' && (
-          <div className="section-card p-4 md:p-5 overflow-x-auto" style={{ animation: 'fadeIn 0.4s ease forwards' }}>
+          <div className="bg-white border border-neutral-200 rounded-xl p-4 md:p-5 overflow-x-auto" style={{ animation: 'fadeIn 0.4s ease forwards' }}>
             <div className="grid grid-cols-7 gap-3 min-w-[700px]">
               {weekDays.map((date,idx)=>{
                 const intvs = getIntvForDay(date);
@@ -974,15 +974,15 @@ const PlanningCalendar = () => {
                   <div key={idx}
                     className={`rounded-2xl p-3 border transition-all duration-500 min-h-[140px] relative group/day
                       ${isToday
-                        ? 'border-violet-500/40 shadow-lg'
+                        ? 'border-brand-500/40 shadow-lg'
                         : 'border-white/[0.06] hover:border-white/[0.12]'
                       }
-                      ${isDragTarget ? 'bg-emerald-500/[0.06] border-emerald-500/30 scale-[1.02]' : ''}`}
+                      ${isDragTarget ? 'bg-brand-500/[0.06] border-brand-500/30 scale-[1.02]' : ''}`}
                     style={{
                       background: isToday
-                        ? 'linear-gradient(180deg, rgba(139,92,246,0.08) 0%, rgba(139,92,246,0.02) 100%)'
+                        ? 'linear-gradient(180deg, rgba(4,120,87,0.08) 0%, rgba(4,120,87,0.02) 100%)'
                         : isDragTarget ? undefined : 'rgba(255,255,255,0.015)',
-                      boxShadow: isToday ? '0 8px 32px rgba(139,92,246,0.1), inset 0 1px 0 rgba(139,92,246,0.15)' : 'none',
+                      boxShadow: isToday ? '0 8px 32px rgba(4,120,87,0.1), inset 0 1px 0 rgba(4,120,87,0.15)' : 'none',
                       animation: `slideUpFade 0.4s ease forwards`,
                       animationDelay: `${idx * 60}ms`,
                       opacity: 0,
@@ -998,14 +998,14 @@ const PlanningCalendar = () => {
                     )}
 
                     <div className="text-center mb-3">
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">{DAYS_FR[idx]}</p>
+                      <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mb-1">{DAYS_FR[idx]}</p>
                       <div className={`text-xl font-black mx-auto w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-300 ${
                         isToday
                           ? 'text-white shadow-lg'
-                          : 'text-slate-300 hover:bg-white/[0.06]'
+                          : 'text-neutral-300 hover:bg-white/[0.06]'
                       }`}
                         style={isToday ? {
-                          background: 'linear-gradient(135deg, #7c3aed, #6366f1)',
+                          background: 'linear-gradient(135deg, #047857, #6366f1)',
                           boxShadow: '0 4px 16px rgba(124,58,237,0.4)'
                         } : {}}>
                         {date.getDate()}
@@ -1016,7 +1016,7 @@ const PlanningCalendar = () => {
                             <div key={ci} className="w-1.5 h-1.5 rounded-full transition-all duration-300"
                               style={{ background: (STATUS[i.status] || STATUS.planifiée).color }} />
                           ))}
-                          {intvs.length > 3 && <span className="text-[9px] text-slate-500 ml-0.5">+{intvs.length - 3}</span>}
+                          {intvs.length > 3 && <span className="text-[9px] text-neutral-500 ml-0.5">+{intvs.length - 3}</span>}
                         </div>
                       )}
                     </div>
@@ -1045,15 +1045,15 @@ const PlanningCalendar = () => {
                       style={{
                         background: 'linear-gradient(135deg, rgba(124,58,237,0.2), rgba(124,58,237,0.1))',
                         borderColor: 'rgba(124,58,237,0.3)',
-                        color: '#a78bfa'
+                        color: '#047857'
                       }}>
                       <Plus className="w-3.5 h-3.5" />
                     </button>
 
                     {/* Drop indicator */}
                     {isDragTarget && intvs.length === 0 && (
-                      <div className="absolute inset-3 top-16 rounded-xl border-2 border-dashed border-emerald-500/30 flex items-center justify-center transition-all duration-300">
-                        <span className="text-xs text-emerald-500/50 font-bold">Déposer ici</span>
+                      <div className="absolute inset-3 top-16 rounded-xl border-2 border-dashed border-brand-500/30 flex items-center justify-center transition-all duration-300">
+                        <span className="text-xs text-brand-500/50 font-bold">Déposer ici</span>
                       </div>
                     )}
                   </div>
@@ -1065,10 +1065,10 @@ const PlanningCalendar = () => {
 
         {/* ── VUE MOIS ── */}
         {view==='mois' && (
-          <div className="section-card p-4 md:p-5" style={{ animation: 'fadeIn 0.4s ease forwards' }}>
+          <div className="bg-white border border-neutral-200 rounded-xl p-4 md:p-5" style={{ animation: 'fadeIn 0.4s ease forwards' }}>
             <div className="grid grid-cols-7 gap-1 mb-3">
               {DAYS_FR.map(d => (
-                <div key={d} className="text-center text-[10px] font-bold text-slate-500 py-2.5 tracking-widest uppercase">{d}</div>
+                <div key={d} className="text-center text-[10px] font-bold text-neutral-500 py-2.5 tracking-widest uppercase">{d}</div>
               ))}
             </div>
             <div className="grid grid-cols-7 gap-1.5">
@@ -1082,11 +1082,11 @@ const PlanningCalendar = () => {
                   <div key={idx}
                     className={`min-h-[90px] rounded-2xl p-2 border transition-all duration-300 relative group/cell
                       ${!d ? 'opacity-0 pointer-events-none' : ''}
-                      ${isToday ? 'border-violet-500/40' : 'border-white/[0.05] hover:border-white/[0.12]'}
-                      ${isDragTarget ? 'bg-emerald-500/[0.06] border-emerald-500/30' : ''}`}
+                      ${isToday ? 'border-brand-500/40' : 'border-white/[0.05] hover:border-white/[0.12]'}
+                      ${isDragTarget ? 'bg-brand-500/[0.06] border-brand-500/30' : ''}`}
                     style={d ? {
                       background: isToday
-                        ? 'linear-gradient(180deg, rgba(139,92,246,0.06), transparent)'
+                        ? 'linear-gradient(180deg, rgba(4,120,87,0.06), transparent)'
                         : 'rgba(255,255,255,0.015)',
                       animation: `fadeIn 0.3s ease forwards`,
                       animationDelay: `${idx * 15}ms`,
@@ -1099,18 +1099,18 @@ const PlanningCalendar = () => {
                       <>
                         <div className="flex items-center justify-between mb-1.5">
                           <span className={`text-xs font-bold w-7 h-7 flex items-center justify-center rounded-lg transition-all duration-300 ${
-                            isToday ? 'text-white' : 'text-slate-400 group-hover/cell:bg-white/[0.06]'
+                            isToday ? 'text-white' : 'text-neutral-400 group-hover/cell:bg-white/[0.06]'
                           }`}
                             style={isToday ? {
-                              background: 'linear-gradient(135deg, #7c3aed, #6366f1)',
+                              background: 'linear-gradient(135deg, #047857, #6366f1)',
                               boxShadow: '0 2px 8px rgba(124,58,237,0.4)'
                             } : {}}>
                             {d}
                           </span>
                           <div className="flex items-center gap-1">
-                            {hasConflict && <AlertTriangle className="w-3 h-3 text-rose-400 animate-pulse"/>}
+                            {hasConflict && <AlertTriangle className="w-3 h-3 text-terracotta-600 animate-pulse"/>}
                             {intvs.length > 0 && (
-                              <span className="text-[9px] font-bold text-slate-500">{intvs.length}</span>
+                              <span className="text-[9px] font-bold text-neutral-500">{intvs.length}</span>
                             )}
                           </div>
                         </div>
@@ -1129,7 +1129,7 @@ const PlanningCalendar = () => {
                           })}
                           {intvs.length > 2 && (
                             <button onClick={() => { setView('semaine'); /* could navigate to that day */ }}
-                              className="text-[9px] text-violet-400 font-bold pl-1 hover:text-violet-300 transition-colors">
+                              className="text-[9px] text-brand-600 font-bold pl-1 hover:text-brand-700 transition-colors">
                               +{intvs.length-2} de plus
                             </button>
                           )}
@@ -1137,7 +1137,7 @@ const PlanningCalendar = () => {
                         {/* Quick add on hover */}
                         <button
                           onClick={() => { setForm(p=>({...p,scheduled_date:ds})); setEditMode(false); setShowForm(true); }}
-                          className="absolute bottom-1 right-1 w-5 h-5 rounded-lg bg-violet-500/20 hover:bg-violet-500/40 border border-violet-500/30 text-violet-400 flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-all duration-300">
+                          className="absolute bottom-1 right-1 w-5 h-5 rounded-lg bg-brand-500/20 hover:bg-brand-500/40 border border-brand-500/30 text-brand-600 flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-all duration-300">
                           <Plus className="w-2.5 h-2.5" />
                         </button>
                       </>
@@ -1155,19 +1155,19 @@ const PlanningCalendar = () => {
             <div className="flex items-center gap-3 mb-2 px-1">
               <div className="w-8 h-8 rounded-xl flex items-center justify-center"
                 style={{ background: 'linear-gradient(135deg, rgba(96,165,250,0.2), rgba(96,165,250,0.05))', border: '1px solid rgba(96,165,250,0.2)' }}>
-                <Navigation className="w-4 h-4 text-blue-400"/>
+                <Navigation className="w-4 h-4 text-brand-600"/>
               </div>
               <div>
-                <p className="text-sm font-bold text-slate-200">Interventions par zone</p>
-                <p className="text-[11px] text-slate-500">{groupByZone(filtered).length} zones actives · Optimisation trajet automatique</p>
+                <p className="text-sm font-bold text-neutral-200">Interventions par zone</p>
+                <p className="text-[11px] text-neutral-500">{groupByZone(filtered).length} zones actives · Optimisation trajet automatique</p>
               </div>
             </div>
 
             {groupByZone(filtered).map(([zone, zoneIntvs], zoneIdx) => {
-              const zoneColor = ZONE_COLORS[zone] || '#64748b';
+              const zoneColor = ZONE_COLORS[zone] || '#78716c';
               const zoneIcon = ZONE_ICONS[zone] || '📍';
               return (
-                <div key={zone} className="section-card overflow-hidden transition-all duration-300 hover:border-white/[0.12]"
+                <div key={zone} className="bg-white border border-neutral-200 rounded-xl overflow-hidden transition-all duration-300 hover:border-white/[0.12]"
                   style={{ animation: `slideUpFade 0.4s ease forwards`, animationDelay: `${zoneIdx * 80}ms`, opacity: 0 }}>
                   {/* Zone header */}
                   <div className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-4"
@@ -1177,10 +1177,10 @@ const PlanningCalendar = () => {
                       {zoneIcon}
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-sm font-bold text-slate-200">{zone}</h3>
-                      <p className="text-[11px] text-slate-500">{zoneIntvs.length} intervention{zoneIntvs.length > 1 ? 's' : ''}</p>
+                      <h3 className="text-sm font-bold text-neutral-200">{zone}</h3>
+                      <p className="text-[11px] text-neutral-500">{zoneIntvs.length} intervention{zoneIntvs.length > 1 ? 's' : ''}</p>
                     </div>
-                    <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20 font-bold flex items-center gap-1.5">
+                    <span className="text-[10px] text-brand-600 bg-brand-50 px-3 py-1.5 rounded-full border border-brand-200 font-bold flex items-center gap-1.5">
                       <TrendingUp className="w-3 h-3" /> Trajet optimisé
                     </span>
                   </div>
@@ -1197,20 +1197,20 @@ const PlanningCalendar = () => {
                             style={{ background: sc.bg, border: `1px solid ${sc.border}` }}>
                             {getSvcIcon(i.service_type)}
                             {i.assigned_agent_id && (
-                              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-slate-900"
+                              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-neutral-900"
                                 style={{ background: agentColor }} />
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-slate-200 truncate group-hover/zitem:text-white transition-colors">{i.title||i.service_type}</p>
+                            <p className="text-sm font-bold text-neutral-200 truncate group-hover/zitem:text-white transition-colors">{i.title||i.service_type}</p>
                             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                              <span className="text-xs text-slate-500 flex items-center gap-1">
+                              <span className="text-xs text-neutral-500 flex items-center gap-1">
                                 <Clock className="w-3 h-3" />{i.scheduled_date} · {i.scheduled_time||'—'}
                               </span>
-                              {i.lead_name && <span className="text-xs text-slate-500">· {i.lead_name}</span>}
+                              {i.lead_name && <span className="text-xs text-neutral-500">· {i.lead_name}</span>}
                             </div>
                             {i.address && (
-                              <p className="text-[11px] text-slate-600 truncate mt-0.5 flex items-center gap-1">
+                              <p className="text-[11px] text-neutral-600 truncate mt-0.5 flex items-center gap-1">
                                 <MapPin className="w-3 h-3 flex-shrink-0" />{i.address}
                               </p>
                             )}
@@ -1228,7 +1228,7 @@ const PlanningCalendar = () => {
                             <StatusBadge status={i.status} />
                           </div>
                           {/* Hover arrow */}
-                          <ChevronRight className="w-4 h-4 text-slate-700 group-hover/zitem:text-slate-400 group-hover/zitem:translate-x-1 transition-all duration-200 flex-shrink-0" />
+                          <ChevronRight className="w-4 h-4 text-neutral-700 group-hover/zitem:text-neutral-400 group-hover/zitem:translate-x-1 transition-all duration-200 flex-shrink-0" />
                         </div>
                       );
                     })}
@@ -1238,11 +1238,11 @@ const PlanningCalendar = () => {
             })}
 
             {groupByZone(filtered).length === 0 && (
-              <div className="flex flex-col items-center justify-center py-20 gap-4 section-card">
-                <div className="w-16 h-16 rounded-3xl bg-slate-800/50 flex items-center justify-center">
-                  <Navigation className="w-8 h-8 text-slate-600"/>
+              <div className="flex flex-col items-center justify-center py-20 gap-4 bg-white border border-neutral-200 rounded-xl">
+                <div className="w-16 h-16 rounded-3xl bg-neutral-800/50 flex items-center justify-center">
+                  <Navigation className="w-8 h-8 text-neutral-600"/>
                 </div>
-                <p className="text-slate-500 font-medium">Aucune intervention dans cette zone</p>
+                <p className="text-neutral-500 font-medium">Aucune intervention dans cette zone</p>
               </div>
             )}
           </div>
@@ -1256,14 +1256,14 @@ const PlanningCalendar = () => {
               const todayIntvs = filtered.filter(i=>(i.scheduled_date||'').startsWith(today));
               if (todayIntvs.length === 0) return null;
               return (
-                <div className="section-card overflow-hidden">
+                <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
                   <div className="px-5 py-3.5 border-b border-white/[0.06]"
-                    style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.06), transparent)' }}>
+                    style={{ background: 'linear-gradient(135deg, rgba(4,120,87,0.06), transparent)' }}>
                     <div className="flex items-center gap-2.5">
-                      <div className="w-2.5 h-2.5 rounded-full bg-violet-400 animate-pulse shadow-lg shadow-violet-500/30" />
-                      <p className="text-sm font-bold text-violet-300">Aujourd'hui</p>
-                      <span className="text-xs text-violet-400/60">·</span>
-                      <span className="text-xs text-violet-400/80 font-medium">{todayIntvs.length} intervention{todayIntvs.length > 1 ? 's' : ''}</span>
+                      <div className="w-2.5 h-2.5 rounded-full bg-brand-400 animate-pulse shadow-lg shadow-brand-500/30" />
+                      <p className="text-sm font-bold text-brand-300">Aujourd'hui</p>
+                      <span className="text-xs text-brand-600/60">·</span>
+                      <span className="text-xs text-brand-600/80 font-medium">{todayIntvs.length} intervention{todayIntvs.length > 1 ? 's' : ''}</span>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 md:p-5">
@@ -1288,15 +1288,15 @@ const PlanningCalendar = () => {
             })()}
 
             {/* Full sorted list */}
-            <div className="section-card divide-y divide-white/[0.04]">
+            <div className="bg-white border border-neutral-200 rounded-xl divide-y divide-white/[0.04]">
               {filtered.length===0 && (
                 <div className="flex flex-col items-center justify-center py-20 gap-4">
-                  <div className="w-16 h-16 rounded-3xl bg-slate-800/50 flex items-center justify-center">
-                    <CalendarDays className="w-8 h-8 text-slate-600"/>
+                  <div className="w-16 h-16 rounded-3xl bg-neutral-800/50 flex items-center justify-center">
+                    <CalendarDays className="w-8 h-8 text-neutral-600"/>
                   </div>
-                  <p className="text-slate-500 font-medium">Aucune intervention</p>
+                  <p className="text-neutral-500 font-medium">Aucune intervention</p>
                   <button onClick={() => { setEditMode(false); setShowForm(true); }}
-                    className="text-xs text-violet-400 hover:text-violet-300 font-bold flex items-center gap-1.5 transition-colors">
+                    className="text-xs text-brand-600 hover:text-brand-700 font-bold flex items-center gap-1.5 transition-colors">
                     <Plus className="w-3.5 h-3.5" /> Créer une intervention
                   </button>
                 </div>
@@ -1309,15 +1309,15 @@ const PlanningCalendar = () => {
                 return (
                   <div key={i.intervention_id||i.id}
                     className={`group/listitem flex items-center gap-4 p-4 md:p-5 cursor-pointer transition-all duration-300 hover:bg-white/[0.03]
-                      ${isInterventionToday ? 'bg-violet-500/[0.03]' : ''}`}
+                      ${isInterventionToday ? 'bg-brand-500/[0.03]' : ''}`}
                     style={{ animation: `fadeIn 0.3s ease forwards`, animationDelay: `${Math.min(idx * 30, 500)}ms`, opacity: 0 }}
                     onClick={()=>setSelected(i)}>
                     {/* Date column */}
                     <div className="flex-shrink-0 text-center w-14">
-                      <p className={`text-2xl font-black tabular-nums ${isInterventionToday ? 'text-violet-400' : 'text-slate-200'}`}>
+                      <p className={`text-2xl font-black tabular-nums ${isInterventionToday ? 'text-brand-600' : 'text-neutral-200'}`}>
                         {(i.scheduled_date||'').slice(8,10)}
                       </p>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                      <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider">
                         {MONTHS_FR[parseInt((i.scheduled_date||'').slice(5,7))-1]?.slice(0,3)}
                       </p>
                     </div>
@@ -1327,7 +1327,7 @@ const PlanningCalendar = () => {
                       style={{ background: sc.bg, border: `1px solid ${sc.border}` }}>
                       {getSvcIcon(i.service_type)}
                       {i.assigned_agent_id && (
-                        <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-slate-900 transition-all duration-200"
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-neutral-900 transition-all duration-200"
                           style={{ background: agentColor }} />
                       )}
                     </div>
@@ -1335,19 +1335,19 @@ const PlanningCalendar = () => {
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-bold text-slate-200 truncate group-hover/listitem:text-white transition-colors">{i.title||i.service_type}</p>
-                        {hasConflict && <AlertTriangle className="w-3.5 h-3.5 text-rose-400 flex-shrink-0 animate-pulse"/>}
+                        <p className="text-sm font-bold text-neutral-200 truncate group-hover/listitem:text-white transition-colors">{i.title||i.service_type}</p>
+                        {hasConflict && <AlertTriangle className="w-3.5 h-3.5 text-terracotta-600 flex-shrink-0 animate-pulse"/>}
                         <StatusBadge status={i.status} />
                         <ZoneBadge address={i.address} />
                       </div>
                       <div className="flex items-center gap-3 mt-1 flex-wrap">
-                        {i.lead_name && <span className="text-xs text-slate-500 flex items-center gap-1"><User className="w-3 h-3" />{i.lead_name}</span>}
+                        {i.lead_name && <span className="text-xs text-neutral-500 flex items-center gap-1"><User className="w-3 h-3" />{i.lead_name}</span>}
                         {i.scheduled_time && (
-                          <span className="text-xs text-slate-500 flex items-center gap-1">
+                          <span className="text-xs text-neutral-500 flex items-center gap-1">
                             <Clock className="w-3 h-3"/>{i.scheduled_time}{i.duration_hours?` (${i.duration_hours}h)`:''}
                           </span>
                         )}
-                        {i.address && <span className="text-xs text-slate-600 truncate flex items-center gap-1"><MapPin className="w-3 h-3 flex-shrink-0"/>{i.address}</span>}
+                        {i.address && <span className="text-xs text-neutral-600 truncate flex items-center gap-1"><MapPin className="w-3 h-3 flex-shrink-0"/>{i.address}</span>}
                         {i.assigned_agent_name && (
                           <span className="text-xs flex items-center gap-1.5">
                             <div className="w-2 h-2 rounded-full" style={{ background: agentColor }}/>
@@ -1361,21 +1361,21 @@ const PlanningCalendar = () => {
                     <div className="flex gap-2 opacity-0 group-hover/listitem:opacity-100 transition-all duration-300 flex-shrink-0">
                       {i.status==='planifiée' && (
                         <button onClick={e=>{e.stopPropagation();handleCheckInOut(i.intervention_id||i.id,'check_in');}}
-                          className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 hover:scale-110 transition-all duration-200"
+                          className="p-2 rounded-xl bg-brand-50 text-brand-600 border border-brand-200 hover:bg-brand-500/20 hover:scale-110 transition-all duration-200"
                           title="Démarrer">
                           <Play className="w-3.5 h-3.5"/>
                         </button>
                       )}
                       {i.status==='en_cours' && (
                         <button onClick={e=>{e.stopPropagation();handleCheckInOut(i.intervention_id||i.id,'check_out');}}
-                          className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 hover:scale-110 transition-all duration-200"
+                          className="p-2 rounded-xl bg-brand-50 text-brand-600 border border-brand-200 hover:bg-brand-500/20 hover:scale-110 transition-all duration-200"
                           title="Terminer">
                           <CheckCircle className="w-3.5 h-3.5"/>
                         </button>
                       )}
                     </div>
 
-                    <ChevronRight className="w-4 h-4 text-slate-700 group-hover/listitem:text-slate-400 group-hover/listitem:translate-x-1 transition-all duration-200 flex-shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-neutral-700 group-hover/listitem:text-neutral-400 group-hover/listitem:translate-x-1 transition-all duration-200 flex-shrink-0" />
                   </div>
                 );
               })}
@@ -1408,11 +1408,11 @@ const PlanningCalendar = () => {
                     )}
                   </div>
                   <div>
-                    <h3 className="text-lg font-black text-slate-100 tracking-tight">{selected.title || selected.service_type}</h3>
+                    <h3 className="text-lg font-black text-neutral-100 tracking-tight">{selected.title || selected.service_type}</h3>
                     <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                       <StatusBadge status={selected.status} size="lg" />
                       {hasConflict && (
-                        <span className="text-xs font-bold px-2.5 py-1 rounded-full text-rose-400 bg-rose-500/10 border border-rose-500/20 flex items-center gap-1">
+                        <span className="text-xs font-bold px-2.5 py-1 rounded-full text-terracotta-600 bg-terracotta-50 border border-terracotta-200 flex items-center gap-1">
                           <AlertTriangle className="w-3 h-3 animate-pulse" /> Conflit
                         </span>
                       )}
@@ -1421,7 +1421,7 @@ const PlanningCalendar = () => {
                   </div>
                 </div>
                 <button onClick={() => setSelected(null)}
-                  className="p-2.5 text-slate-500 hover:text-slate-300 hover:bg-white/[0.06] rounded-xl transition-all duration-200 hover:rotate-90">
+                  className="p-2.5 text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.06] rounded-xl transition-all duration-200 hover:rotate-90">
                   <X className="w-4 h-4"/>
                 </button>
               </div>
@@ -1429,13 +1429,13 @@ const PlanningCalendar = () => {
               {/* Info cards */}
               <div className="space-y-2.5 mb-6">
                 {[
-                  { icon: Clock, color: '#a78bfa', label: `${selected.scheduled_date || '—'} à ${selected.scheduled_time || '—'}${selected.duration_hours ? ` · ${selected.duration_hours}h` : ''}` },
+                  { icon: Clock, color: '#047857', label: `${selected.scheduled_date || '—'} à ${selected.scheduled_time || '—'}${selected.duration_hours ? ` · ${selected.duration_hours}h` : ''}` },
                   ...(selected.address ? [{ icon: MapPin, color: '#60a5fa', label: selected.address }] : []),
-                  ...(selected.lead_name ? [{ icon: Users, color: '#34d399', label: `${selected.lead_name}${selected.lead_phone ? ' · ' + selected.lead_phone : ''}` }] : []),
+                  ...(selected.lead_name ? [{ icon: Users, color: '#047857', label: `${selected.lead_name}${selected.lead_phone ? ' · ' + selected.lead_phone : ''}` }] : []),
                   ...(selected.assigned_agent_name ? [{ icon: User, color: agentColor, label: `Intervenant : ${selected.assigned_agent_name}` }] : []),
                 ].map((item, i) => (
                   <div key={i}
-                    className="group/info flex items-center gap-3.5 text-sm text-slate-400 p-3.5 rounded-2xl border transition-all duration-300 hover:bg-white/[0.04] hover:border-white/[0.1]"
+                    className="group/info flex items-center gap-3.5 text-sm text-neutral-400 p-3.5 rounded-2xl border transition-all duration-300 hover:bg-white/[0.04] hover:border-white/[0.1]"
                     style={{ background: 'var(--bg-muted)', borderColor: 'var(--border-default)',
                       animation: `slideUpFade 0.3s ease forwards`, animationDelay: `${i * 60}ms`, opacity: 0 }}>
                     <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover/info:scale-110"
@@ -1446,26 +1446,26 @@ const PlanningCalendar = () => {
                   </div>
                 ))}
                 {selected.description && (
-                  <div className="p-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] text-sm text-slate-400"
+                  <div className="p-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] text-sm text-neutral-400"
                     style={{ animation: 'slideUpFade 0.3s ease forwards', animationDelay: '240ms', opacity: 0 }}>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Notes</p>
+                    <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-2">Notes</p>
                     {selected.description}
                   </div>
                 )}
                 {selected.check_in && (
-                  <div className="p-3.5 rounded-2xl bg-emerald-500/[0.08] border border-emerald-500/20 text-xs text-emerald-400 flex items-center gap-2">
+                  <div className="p-3.5 rounded-2xl bg-brand-500/[0.08] border border-brand-200 text-xs text-brand-600 flex items-center gap-2">
                     <Play className="w-3.5 h-3.5" /> Check-in : {new Date(selected.check_in.time).toLocaleString('fr-FR')}
                   </div>
                 )}
                 {selected.check_out && (
-                  <div className="p-3.5 rounded-2xl bg-blue-500/[0.08] border border-blue-500/20 text-xs text-blue-400 flex items-center gap-2">
+                  <div className="p-3.5 rounded-2xl bg-brand-500/[0.08] border border-brand-200 text-xs text-brand-600 flex items-center gap-2">
                     <CheckCircle className="w-3.5 h-3.5" /> Check-out : {new Date(selected.check_out.time).toLocaleString('fr-FR')}
                   </div>
                 )}
                 {/* Google Maps link */}
                 {selected.address && (
                   <a href={`https://maps.google.com/?q=${encodeURIComponent(selected.address)}`} target="_blank" rel="noopener noreferrer"
-                    className="group/maps flex items-center gap-2.5 p-3.5 rounded-2xl bg-blue-500/[0.06] border border-blue-500/20 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-500/[0.1] transition-all duration-300">
+                    className="group/maps flex items-center gap-2.5 p-3.5 rounded-2xl bg-brand-500/[0.06] border border-brand-200 text-xs text-brand-600 hover:text-brand-700 hover:bg-brand-500/[0.1] transition-all duration-300">
                     <Navigation className="w-3.5 h-3.5 group-hover/maps:rotate-45 transition-transform duration-300" />
                     Ouvrir dans Google Maps
                     <ExternalLink className="w-3 h-3 ml-auto opacity-50 group-hover/maps:opacity-100 transition-opacity" />
@@ -1477,7 +1477,7 @@ const PlanningCalendar = () => {
               <div className="flex gap-2.5 flex-wrap pt-2 border-t border-white/[0.06]">
                 {/* Edit button */}
                 <button onClick={() => openEditForm(selected)}
-                  className="group/action flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-bold bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.15] text-slate-400 hover:text-slate-200 transition-all duration-300">
+                  className="group/action flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-bold bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.15] text-neutral-400 hover:text-neutral-200 transition-all duration-300">
                   <Edit3 className="w-4 h-4 group-hover/action:rotate-12 transition-transform duration-200" /> Modifier
                 </button>
 
@@ -1485,8 +1485,8 @@ const PlanningCalendar = () => {
                   <button onClick={() => handleCheckInOut(selected.intervention_id || selected.id, 'check_in')}
                     className="group/action flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-bold transition-all duration-300 hover:scale-[1.03]"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(52,211,153,0.15), rgba(52,211,153,0.05))',
-                      border: '1px solid rgba(52,211,153,0.25)', color: '#34d399'
+                      background: 'linear-gradient(135deg, rgba(4,120,87,0.15), rgba(4,120,87,0.05))',
+                      border: '1px solid rgba(4,120,87,0.25)', color: '#047857'
                     }}>
                     <Play className="w-4 h-4 group-hover/action:translate-x-0.5 transition-transform" /> Démarrer
                   </button>
@@ -1531,20 +1531,20 @@ const PlanningCalendar = () => {
                 border: `1px solid ${editMode ? 'rgba(96,165,250,0.3)' : 'rgba(124,58,237,0.3)'}`
               }}>
               {editMode
-                ? <Edit3 className="w-4.5 h-4.5 text-blue-400 relative z-10"/>
-                : <Plus className="w-4.5 h-4.5 text-violet-400 relative z-10"/>}
+                ? <Edit3 className="w-4.5 h-4.5 text-brand-600 relative z-10"/>
+                : <Plus className="w-4.5 h-4.5 text-brand-600 relative z-10"/>}
             </div>
             <div>
-              <h3 className="text-lg font-black text-slate-100 tracking-tight">
+              <h3 className="text-lg font-black text-neutral-100 tracking-tight">
                 {editMode ? 'Modifier l\'intervention' : 'Nouvelle intervention'}
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-neutral-500">
                 {editMode ? 'Mettez à jour les détails' : 'Planifiez une nouvelle mission'}
               </p>
             </div>
           </div>
           <button onClick={() => { setShowForm(false); setEditMode(false); }}
-            className="p-2.5 text-slate-500 hover:text-slate-300 hover:bg-white/[0.06] rounded-xl transition-all duration-200 hover:rotate-90">
+            className="p-2.5 text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.06] rounded-xl transition-all duration-200 hover:rotate-90">
             <X className="w-4 h-4"/>
           </button>
         </div>
@@ -1552,11 +1552,11 @@ const PlanningCalendar = () => {
         <form onSubmit={handleCreate} className="space-y-5">
           {/* Recherche Lead */}
           {!editMode && (
-            <div className="p-5 rounded-2xl border transition-all duration-300 hover:border-violet-500/30"
+            <div className="p-5 rounded-2xl border transition-all duration-300 hover:border-brand-500/30"
               style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.06), transparent)', border: '1px solid rgba(124,58,237,0.15)' }}>
               <div className="flex items-center gap-2 mb-3">
-                <Search className="w-4 h-4 text-violet-400" />
-                <p className="text-xs font-bold text-violet-300">Rechercher un client / lead</p>
+                <Search className="w-4 h-4 text-brand-600" />
+                <p className="text-xs font-bold text-brand-300">Rechercher un client / lead</p>
               </div>
               <div className="relative">
                 <input
@@ -1566,7 +1566,7 @@ const PlanningCalendar = () => {
                   placeholder="Nom du client, email ou ID lead..."
                   className={inputCls} />
                 {loadingLead && (
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
                 )}
                 {/* Suggestions dropdown */}
                 {leadSuggestions.length > 0 && (
@@ -1577,14 +1577,14 @@ const PlanningCalendar = () => {
                         className="group/lead w-full flex items-center gap-3 p-3.5 hover:bg-white/[0.05] transition-all duration-200 text-left border-b border-white/[0.05] last:border-0"
                         style={{ animation: `slideUpFade 0.2s ease forwards`, animationDelay: `${idx * 40}ms`, opacity: 0 }}>
                         <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
-                          style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.2), rgba(124,58,237,0.05))', color: '#a78bfa', border: '1px solid rgba(124,58,237,0.2)' }}>
+                          style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.2), rgba(124,58,237,0.05))', color: '#047857', border: '1px solid rgba(124,58,237,0.2)' }}>
                           {lead.name?.charAt(0).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-slate-200 truncate group-hover/lead:text-white transition-colors">{lead.name}</p>
-                          <p className="text-xs text-slate-500 truncate">{lead.service_type} · {lead.address || lead.email || ''}</p>
+                          <p className="text-sm font-bold text-neutral-200 truncate group-hover/lead:text-white transition-colors">{lead.name}</p>
+                          <p className="text-xs text-neutral-500 truncate">{lead.service_type} · {lead.address || lead.email || ''}</p>
                         </div>
-                        <span className="text-xs text-violet-400 font-bold opacity-0 group-hover/lead:opacity-100 transition-opacity flex items-center gap-1">
+                        <span className="text-xs text-brand-600 font-bold opacity-0 group-hover/lead:opacity-100 transition-opacity flex items-center gap-1">
                           Utiliser <ChevronRight className="w-3 h-3" />
                         </span>
                       </button>
@@ -1593,13 +1593,13 @@ const PlanningCalendar = () => {
                 )}
               </div>
               {form.lead_id && (
-                <div className="mt-3 flex items-center gap-3 p-2.5 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/20">
-                  <CheckCircle className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-                  <span className="text-xs text-emerald-400 font-mono flex-1">{form.lead_id}</span>
+                <div className="mt-3 flex items-center gap-3 p-2.5 rounded-xl bg-brand-500/[0.06] border border-brand-200">
+                  <CheckCircle className="w-3.5 h-3.5 text-brand-600 flex-shrink-0" />
+                  <span className="text-xs text-brand-600 font-mono flex-1">{form.lead_id}</span>
                   <button type="button" onClick={() => fetchLead(form.lead_id)}
-                    className="text-xs text-violet-400 hover:text-violet-300 font-bold transition-colors">Recharger</button>
+                    className="text-xs text-brand-600 hover:text-brand-700 font-bold transition-colors">Recharger</button>
                   <button type="button" onClick={() => setForm(p => ({...p, lead_id: ''}))}
-                    className="text-xs text-rose-400 hover:text-rose-300 transition-colors">
+                    className="text-xs text-terracotta-600 hover:text-terracotta-500 transition-colors">
                     <X className="w-3 h-3" />
                   </button>
                 </div>
@@ -1617,9 +1617,9 @@ const PlanningCalendar = () => {
             )}
             <Field label="Type de service">
               <select value={form.service_type} onChange={e => setForm(p => ({...p, service_type: e.target.value}))} className={inputCls}>
-                <option value="" className="bg-slate-900">Sélectionner...</option>
+                <option value="" className="bg-neutral-900">Sélectionner...</option>
                 {['Ménage', 'Bureaux', 'Canapé', 'Matelas', 'Tapis'].map(s => (
-                  <option key={s} value={s} className="bg-slate-900">{getSvcIcon(s)} {s}</option>
+                  <option key={s} value={s} className="bg-neutral-900">{getSvcIcon(s)} {s}</option>
                 ))}
               </select>
             </Field>
@@ -1651,9 +1651,9 @@ const PlanningCalendar = () => {
           </Field>
           {form.address && (
             <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl transition-all duration-300"
-              style={{ background: (ZONE_COLORS[getZoneFromAddress(form.address)] || '#64748b') + '10', border: `1px solid ${(ZONE_COLORS[getZoneFromAddress(form.address)] || '#64748b')}20` }}>
+              style={{ background: (ZONE_COLORS[getZoneFromAddress(form.address)] || '#78716c') + '10', border: `1px solid ${(ZONE_COLORS[getZoneFromAddress(form.address)] || '#78716c')}20` }}>
               <span className="text-sm">{ZONE_ICONS[getZoneFromAddress(form.address)] || '📍'}</span>
-              <span className="text-xs font-bold" style={{ color: ZONE_COLORS[getZoneFromAddress(form.address)] || '#64748b' }}>
+              <span className="text-xs font-bold" style={{ color: ZONE_COLORS[getZoneFromAddress(form.address)] || '#78716c' }}>
                 Zone détectée : {getZoneFromAddress(form.address)}
               </span>
             </div>
@@ -1676,12 +1676,12 @@ const PlanningCalendar = () => {
               background: agentAvail && !agentAvail.available
                 ? 'linear-gradient(135deg, rgba(251,113,133,0.04), transparent)'
                 : agentAvail?.available && form.assigned_agent_id
-                  ? 'linear-gradient(135deg, rgba(52,211,153,0.04), transparent)'
+                  ? 'linear-gradient(135deg, rgba(4,120,87,0.04), transparent)'
                   : 'var(--bg-muted)',
               borderColor: agentAvail && !agentAvail.available
                 ? 'rgba(251,113,133,0.2)'
                 : agentAvail?.available && form.assigned_agent_id
-                  ? 'rgba(52,211,153,0.2)'
+                  ? 'rgba(4,120,87,0.2)'
                   : 'var(--border-default)'
             }}>
             <Field label="👷 Assigner à un intervenant">
@@ -1690,13 +1690,13 @@ const PlanningCalendar = () => {
                   const m = members.find(x => x.member_id === e.target.value);
                   setForm(p => ({...p, assigned_agent_id: e.target.value, assigned_agent_name: m?.name || ''}));
                 }} className={inputCls}>
-                <option value="" className="bg-slate-900">— Non assigné —</option>
+                <option value="" className="bg-neutral-900">— Non assigné —</option>
                 {memberStats.map(m => {
                   const avail = form.scheduled_date && form.scheduled_time
                     ? checkAgentAvailability(m.member_id, form.scheduled_date, form.scheduled_time, form.duration_hours, interventions)
                     : { available: true };
                   return (
-                    <option key={m.member_id} value={m.member_id} className="bg-slate-900" disabled={!avail.available}>
+                    <option key={m.member_id} value={m.member_id} className="bg-neutral-900" disabled={!avail.available}>
                       {!avail.available ? '🚫 ' : '✅ '}{m.name} ({m.today} auj.)
                       {!avail.available ? ' — INDISPONIBLE' : ''}
                     </option>
@@ -1705,14 +1705,14 @@ const PlanningCalendar = () => {
               </select>
             </Field>
             {agentAvail && !agentAvail.available && (
-              <div className="mt-3 p-3.5 rounded-2xl text-xs text-rose-400 flex items-center gap-2.5 animate-fade-in"
+              <div className="mt-3 p-3.5 rounded-2xl text-xs text-terracotta-600 flex items-center gap-2.5 animate-fade-in"
                 style={{ background: 'rgba(251,113,133,0.08)', border: '1px solid rgba(251,113,133,0.15)' }}>
                 <AlertTriangle className="w-4 h-4 flex-shrink-0 animate-pulse" />
                 <span>{agentAvail.reason || `Conflit avec "${agentAvail.conflict?.title || 'une autre mission'}" à ${agentAvail.conflict?.scheduled_time}`}</span>
               </div>
             )}
             {agentAvail?.available && form.assigned_agent_id && (
-              <div className="mt-3 flex items-center gap-2 text-xs text-emerald-400 animate-fade-in">
+              <div className="mt-3 flex items-center gap-2 text-xs text-brand-600 animate-fade-in">
                 <CheckCircle className="w-3.5 h-3.5" />
                 <span className="font-medium">{form.assigned_agent_name} est disponible sur ce créneau</span>
               </div>
@@ -1734,18 +1734,18 @@ const PlanningCalendar = () => {
             <div className="p-5 rounded-2xl border border-white/[0.08] bg-white/[0.02] transition-all duration-300 hover:border-white/[0.12]">
               <div className="flex items-center gap-2.5 mb-4">
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-                  style={{ background: 'linear-gradient(135deg, rgba(167,139,250,0.2), rgba(167,139,250,0.05))', border: '1px solid rgba(167,139,250,0.2)' }}>
-                  <Repeat className="w-4 h-4 text-violet-400" />
+                  style={{ background: 'linear-gradient(135deg, rgba(4,120,87,0.2), rgba(4,120,87,0.05))', border: '1px solid rgba(4,120,87,0.2)' }}>
+                  <Repeat className="w-4 h-4 text-brand-600" />
                 </div>
-                <p className="text-xs font-bold text-slate-300">Récurrence automatique</p>
+                <p className="text-xs font-bold text-neutral-300">Récurrence automatique</p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Field label="Fréquence">
                   <select value={form.recurrence} onChange={e => setForm(p => ({...p, recurrence: e.target.value}))} className={inputCls}>
-                    <option value="none" className="bg-slate-900">Aucune</option>
-                    <option value="hebdo" className="bg-slate-900">Hebdomadaire</option>
-                    <option value="bi-hebdo" className="bg-slate-900">Bi-hebdomadaire</option>
-                    <option value="mensuel" className="bg-slate-900">Mensuel</option>
+                    <option value="none" className="bg-neutral-900">Aucune</option>
+                    <option value="hebdo" className="bg-neutral-900">Hebdomadaire</option>
+                    <option value="bi-hebdo" className="bg-neutral-900">Bi-hebdomadaire</option>
+                    <option value="mensuel" className="bg-neutral-900">Mensuel</option>
                   </select>
                 </Field>
                 {form.recurrence !== 'none' && (
@@ -1767,7 +1767,7 @@ const PlanningCalendar = () => {
 
           <div className="flex gap-3 pt-3">
             <button type="button" onClick={() => { setShowForm(false); setEditMode(false); }}
-              className="flex-1 px-4 py-3.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.15] text-slate-400 hover:text-slate-200 rounded-2xl text-sm font-bold transition-all duration-300">
+              className="flex-1 px-4 py-3.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.15] text-neutral-400 hover:text-neutral-200 rounded-2xl text-sm font-bold transition-all duration-300">
               Annuler
             </button>
             <button type="submit" disabled={agentAvail && !agentAvail.available}
@@ -1775,7 +1775,7 @@ const PlanningCalendar = () => {
               style={{
                 background: editMode
                   ? 'linear-gradient(135deg, #3b82f6, #2563eb)'
-                  : 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+                  : 'linear-gradient(135deg, #047857, #4f46e5)',
                 boxShadow: editMode
                   ? '0 4px 20px rgba(59,130,246,0.35), inset 0 1px 0 rgba(255,255,255,0.15)'
                   : '0 4px 20px rgba(124,58,237,0.35), inset 0 1px 0 rgba(255,255,255,0.15)'
