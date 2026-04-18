@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Sparkles, ArrowRight, Users, TrendingUp, Zap, BarChart3,
@@ -19,7 +19,7 @@ const WelcomePage = ({ user }) => {
       icon: Users,
       title: 'Gestion des Leads',
       description: 'Pipeline Kanban ultra-fluide, scoring IA, auto-enrichissement',
-      color: '#8b5cf6',
+      color: '#047857',
       link: '/leads',
       stats: '245 leads en cours'
     },
@@ -35,7 +35,7 @@ const WelcomePage = ({ user }) => {
       icon: CalendarDays,
       title: 'Planning & Interventions',
       description: 'Calendrier optimisé, géolocalisation, assignation auto',
-      color: '#10b981',
+      color: '#047857',
       link: '/planning',
       stats: '8 interventions demain'
     },
@@ -59,7 +59,7 @@ const WelcomePage = ({ user }) => {
       icon: Star,
       title: 'Centre IA',
       description: 'Scoring prédictif, suggestions, email generation, insights',
-      color: '#a78bfa',
+      color: '#d97706',
       link: '/ai',
       stats: 'IA en apprentissage...'
     }
@@ -73,10 +73,10 @@ const WelcomePage = ({ user }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950 overflow-hidden">
       {/* Animated background elements */}
       <div className="fixed inset-0 opacity-30 pointer-events-none">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-violet-600 rounded-full blur-3xl opacity-20 animate-pulse" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-brand-600 rounded-full blur-3xl opacity-20 animate-pulse" />
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-cyan-600 rounded-full blur-3xl opacity-20 animate-pulse" style={{ animationDelay: '1s' }} />
       </div>
 
@@ -85,15 +85,15 @@ const WelcomePage = ({ user }) => {
         {/* Header */}
         <header className="pt-8 px-6 sm:pt-12 sm:px-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-violet-600 to-purple-600">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-brand-600 to-brand-600">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white" style={{ fontFamily: 'Manrope' }}>
+            <h1 className="text-2xl sm:text-3xl font-black text-white" style={{ }}>
               Global Clean CRM
             </h1>
           </div>
-          <div className="text-sm text-slate-400">
-            Bienvenue, <span className="text-violet-400 font-bold">{user?.name || 'Utilisateur'}</span> 👋
+          <div className="text-sm text-neutral-400">
+            Bienvenue, <span className="text-brand-400 font-bold">{user?.name || 'Utilisateur'}</span> 👋
           </div>
         </header>
 
@@ -101,19 +101,19 @@ const WelcomePage = ({ user }) => {
         <main className="max-w-7xl mx-auto px-6 sm:px-8 py-12 sm:py-20">
           {/* Hero section */}
           <div className="text-center mb-16 sm:mb-24 animate-fade-in">
-            <h2 className="text-4xl sm:text-5xl font-black text-white mb-4" style={{ fontFamily: 'Manrope' }}>
+            <h2 className="text-4xl sm:text-5xl font-black text-white mb-4" style={{ }}>
               Bienvenue dans votre
               <br />
-              <span className="bg-gradient-to-r from-violet-400 via-purple-400 to-violet-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-brand-400 via-brand-400 to-brand-400 bg-clip-text text-transparent">
                 CRM Ultra-Premium
               </span>
             </h2>
-            <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto mb-8">
+            <p className="text-lg sm:text-xl text-neutral-400 max-w-2xl mx-auto mb-8">
               Gérez vos clients, leads, devis et interventions avec une plateforme hyper-moderne, rapide et intelligente.
             </p>
             <button
               onClick={() => navigate('/dashboard')}
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-2xl hover:shadow-violet-500/50"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-600 hover:from-brand-700 hover:to-brand-700 text-white font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-2xl hover:shadow-brand-500/50"
             >
               Commencer <ArrowRight className="w-5 h-5" />
             </button>
@@ -134,7 +134,7 @@ const WelcomePage = ({ user }) => {
                     className="group cursor-pointer animate-fade-in"
                     style={{ animationDelay: `${i * 100}ms` }}
                   >
-                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/10 to-white/5 border border-white/10 p-6 h-full hover:border-white/20 transition-all duration-300 hover:shadow-2xl hover:shadow-violet-500/20">
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/10 to-white/5 border border-neutral-200 p-6 h-full hover:border-neutral-200 transition-all duration-300 hover:shadow-2xl hover:shadow-brand-500/20">
                       {/* Top accent */}
                       <div
                         className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r"
@@ -153,16 +153,16 @@ const WelcomePage = ({ user }) => {
 
                       {/* Content */}
                       <h4 className="text-lg font-bold text-white mb-2">{feature.title}</h4>
-                      <p className="text-sm text-slate-400 mb-4">{feature.description}</p>
+                      <p className="text-sm text-neutral-400 mb-4">{feature.description}</p>
                       
                       {/* Stats */}
-                      <div className="text-xs font-bold text-slate-500 group-hover:text-slate-300 transition-colors">
+                      <div className="text-xs font-bold text-neutral-500 group-hover:text-neutral-300 transition-colors">
                         {feature.stats}
                       </div>
 
                       {/* Arrow */}
                       <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <ArrowRight className="w-5 h-5 text-slate-500 group-hover:translate-x-1 transition-transform" />
+                        <ArrowRight className="w-5 h-5 text-neutral-500 group-hover:translate-x-1 transition-transform" />
                       </div>
                     </div>
                   </div>
@@ -182,13 +182,13 @@ const WelcomePage = ({ user }) => {
                 return (
                   <div
                     key={i}
-                    className="flex flex-col items-center text-center p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-300 animate-fade-in"
+                    className="flex flex-col items-center text-center p-6 rounded-2xl bg-white border border-neutral-200 hover:bg-neutral-50 hover:border-neutral-200 transition-all duration-300 animate-fade-in"
                     style={{ animationDelay: `${i * 100}ms` }}
                   >
-                    <div className="p-3 rounded-xl bg-violet-600/20 mb-3">
-                      <Icon className="w-5 h-5 text-violet-400" />
+                    <div className="p-3 rounded-xl bg-brand-600/20 mb-3">
+                      <Icon className="w-5 h-5 text-brand-400" />
                     </div>
-                    <p className="text-xs sm:text-sm font-semibold text-slate-200">
+                    <p className="text-xs sm:text-sm font-semibold text-neutral-200">
                       {benefit.text}
                     </p>
                   </div>
@@ -198,23 +198,23 @@ const WelcomePage = ({ user }) => {
           </div>
 
           {/* CTA section */}
-          <div className="text-center py-12 px-6 rounded-3xl bg-gradient-to-r from-violet-600/20 to-purple-600/20 border border-violet-500/20 backdrop-blur-sm">
+          <div className="text-center py-12 px-6 rounded-3xl bg-gradient-to-r from-brand-600/20 to-brand-600/20 border border-brand-500/20 backdrop-blur-sm">
             <h3 className="text-2xl font-bold text-white mb-4">
               Prêt à transformer votre gestion client ?
             </h3>
-            <p className="text-slate-400 mb-6">
+            <p className="text-neutral-400 mb-6">
               Explorez tous les modules et découvrez la puissance de notre CRM ultra-moderne.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={() => navigate('/dashboard')}
-                className="px-8 py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold transition-all duration-200 transform hover:scale-105"
+                className="px-8 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold transition-all duration-200 transform hover:scale-105"
               >
                 Aller au Dashboard
               </button>
               <button
                 onClick={() => navigate('/leads')}
-                className="px-8 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold border border-white/20 transition-all duration-200 transform hover:scale-105"
+                className="px-8 py-3 rounded-xl bg-neutral-50 hover:bg-neutral-100 text-white font-bold border border-neutral-200 transition-all duration-200 transform hover:scale-105"
               >
                 Explorer les Leads
               </button>
@@ -223,7 +223,7 @@ const WelcomePage = ({ user }) => {
         </main>
 
         {/* Footer */}
-        <footer className="text-center py-8 text-slate-600 text-sm border-t border-white/5">
+        <footer className="text-center py-8 text-neutral-600 text-sm border-t border-neutral-100">
           <p>Global Clean Home © 2026 • CRM Ultra-Premium</p>
         </footer>
       </div>

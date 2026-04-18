@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Mail, Lock, User, AlertCircle, CheckCircle, Loader } from 'lucide-react';
@@ -152,7 +152,7 @@ export default function InvitationJoin() {
 
   if (step === 'loading') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-neutral-900 via-brand-900 to-neutral-900 flex items-center justify-center p-4">
         <div className="text-center">
           <Loader className="w-8 h-8 animate-spin text-white mx-auto mb-4" />
           <p className="text-white">Vérification de l'invitation...</p>
@@ -163,17 +163,17 @@ export default function InvitationJoin() {
 
   if (step === 'verify-email') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-neutral-900 via-brand-900 to-neutral-900 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">Vérifiez votre Email 📧</h1>
-            <p className="text-slate-400">Un code de 6 chiffres a été envoyé à {invitation?.email}</p>
+            <p className="text-neutral-400">Un code de 6 chiffres a été envoyé à {invitation?.email}</p>
           </div>
 
-          <div className="bg-slate-800/30 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+          <div className="bg-neutral-800/30 border border-neutral-200 rounded-2xl p-8 backdrop-blur-sm">
             <form onSubmit={handleVerifyEmail} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-neutral-300 mb-2">
                   Code de vérification
                 </label>
                 <input
@@ -182,16 +182,16 @@ export default function InvitationJoin() {
                   inputMode="numeric"
                   value={verificationCode}
                   onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
-                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-center text-2xl font-mono placeholder-slate-400 focus:outline-none focus:border-purple-500 transition-colors"
+                  className="w-full px-4 py-3 bg-neutral-700/50 border border-neutral-600 rounded-lg text-white text-center text-2xl font-mono placeholder-neutral-400 focus:outline-none focus:border-brand-500 transition-colors"
                   placeholder="000000"
                 />
-                {errors.code && <p className="text-xs text-red-400 mt-1">{errors.code}</p>}
+                {errors.code && <p className="text-xs text-terracotta-400 mt-1">{errors.code}</p>}
               </div>
 
               <button
                 type="submit"
                 disabled={loading || verificationCode.length !== 6}
-                className="w-full py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
+                className="w-full py-2 bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-500 hover:to-brand-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
@@ -205,11 +205,11 @@ export default function InvitationJoin() {
             </form>
 
             <div className="mt-6 text-center">
-              <p className="text-sm text-slate-400 mb-4">Vous n'avez pas reçu le code ?</p>
+              <p className="text-sm text-neutral-400 mb-4">Vous n'avez pas reçu le code ?</p>
               <button
                 onClick={handleResendCode}
                 disabled={loading}
-                className="text-purple-400 hover:text-purple-300 text-sm font-medium transition-colors disabled:opacity-50"
+                className="text-brand-400 hover:text-brand-300 text-sm font-medium transition-colors disabled:opacity-50"
               >
                 Renvoyer le code
               </button>
@@ -222,12 +222,12 @@ export default function InvitationJoin() {
 
   if (step === 'success') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
-        <div className="bg-slate-800/50 border border-emerald-500/30 rounded-2xl p-8 max-w-md w-full text-center">
-          <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
+      <div className="min-h-screen bg-gradient-to-br from-neutral-900 via-brand-900 to-neutral-900 flex items-center justify-center p-4">
+        <div className="bg-neutral-800/50 border border-brand-500/30 rounded-2xl p-8 max-w-md w-full text-center">
+          <CheckCircle className="w-16 h-16 text-brand-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-white mb-2">Bienvenue! 🎉</h1>
-          <p className="text-slate-300 mb-6">Votre compte a été créé avec succès.</p>
-          <p className="text-sm text-slate-400">Redirection vers le tableau de bord...</p>
+          <p className="text-neutral-300 mb-6">Votre compte a été créé avec succès.</p>
+          <p className="text-sm text-neutral-400">Redirection vers le tableau de bord...</p>
         </div>
       </div>
     );
@@ -235,14 +235,14 @@ export default function InvitationJoin() {
 
   if (step === 'error' || !invitation) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
-        <div className="bg-slate-800/50 border border-red-500/30 rounded-2xl p-8 max-w-md w-full text-center">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+      <div className="min-h-screen bg-gradient-to-br from-neutral-900 via-brand-900 to-neutral-900 flex items-center justify-center p-4">
+        <div className="bg-neutral-800/50 border border-terracotta-500/30 rounded-2xl p-8 max-w-md w-full text-center">
+          <AlertCircle className="w-16 h-16 text-terracotta-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-white mb-2">Invitation Invalide</h1>
-          <p className="text-slate-300 mb-6">L'invitation est expirée ou invalide.</p>
+          <p className="text-neutral-300 mb-6">L'invitation est expirée ou invalide.</p>
           <a
             href="/"
-            className="inline-block px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+            className="inline-block px-6 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg transition-colors"
           >
             Retour à l'accueil
           </a>
@@ -252,23 +252,23 @@ export default function InvitationJoin() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-900 via-brand-900 to-neutral-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Bienvenue! 👋</h1>
-          <p className="text-slate-400">Créez votre compte pour accéder au CRM</p>
+          <p className="text-neutral-400">Créez votre compte pour accéder au CRM</p>
         </div>
 
         {/* Card */}
-        <div className="bg-slate-800/30 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+        <div className="bg-neutral-800/30 border border-neutral-200 rounded-2xl p-8 backdrop-blur-sm">
           {/* Invitation Info */}
-          <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-4 mb-6">
-            <p className="text-sm text-slate-300">
+          <div className="bg-brand-500/10 border border-brand-500/20 rounded-lg p-4 mb-6">
+            <p className="text-sm text-neutral-300">
               <strong>Email:</strong> {invitation?.email}
             </p>
-            <p className="text-sm text-slate-300">
-              <strong>Rôle:</strong> <span className="text-purple-400 font-semibold capitalize">{invitation?.role}</span>
+            <p className="text-sm text-neutral-300">
+              <strong>Rôle:</strong> <span className="text-brand-400 font-semibold capitalize">{invitation?.role}</span>
             </p>
           </div>
 
@@ -276,7 +276,7 @@ export default function InvitationJoin() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Name */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-neutral-300 mb-2">
                 <User className="w-4 h-4 inline mr-2" />
                 Nom
               </label>
@@ -284,15 +284,15 @@ export default function InvitationJoin() {
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-purple-500 transition-colors"
+                className="w-full px-4 py-2 bg-neutral-700/50 border border-neutral-600 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:border-brand-500 transition-colors"
                 placeholder="Votre nom complet"
               />
-              {errors.name && <p className="text-xs text-red-400 mt-1">{errors.name}</p>}
+              {errors.name && <p className="text-xs text-terracotta-400 mt-1">{errors.name}</p>}
             </div>
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-neutral-300 mb-2">
                 <Lock className="w-4 h-4 inline mr-2" />
                 Mot de passe
               </label>
@@ -300,15 +300,15 @@ export default function InvitationJoin() {
                 type="password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-purple-500 transition-colors"
+                className="w-full px-4 py-2 bg-neutral-700/50 border border-neutral-600 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:border-brand-500 transition-colors"
                 placeholder="Min. 8 caractères"
               />
-              {errors.password && <p className="text-xs text-red-400 mt-1">{errors.password}</p>}
+              {errors.password && <p className="text-xs text-terracotta-400 mt-1">{errors.password}</p>}
             </div>
 
             {/* Confirm Password */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-neutral-300 mb-2">
                 <Lock className="w-4 h-4 inline mr-2" />
                 Confirmer le mot de passe
               </label>
@@ -316,16 +316,16 @@ export default function InvitationJoin() {
                 type="password"
                 value={formData.confirmPassword}
                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-purple-500 transition-colors"
+                className="w-full px-4 py-2 bg-neutral-700/50 border border-neutral-600 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:border-brand-500 transition-colors"
                 placeholder="Confirmer votre mot de passe"
               />
-              {errors.confirmPassword && <p className="text-xs text-red-400 mt-1">{errors.confirmPassword}</p>}
+              {errors.confirmPassword && <p className="text-xs text-terracotta-400 mt-1">{errors.confirmPassword}</p>}
             </div>
 
             {/* Error Message */}
             {errors.form && (
-              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
-                <p className="text-sm text-red-400">{errors.form}</p>
+              <div className="bg-terracotta-500/10 border border-terracotta-500/30 rounded-lg p-3">
+                <p className="text-sm text-terracotta-400">{errors.form}</p>
               </div>
             )}
 
@@ -333,7 +333,7 @@ export default function InvitationJoin() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
+              className="w-full py-2 bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-500 hover:to-brand-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -347,7 +347,7 @@ export default function InvitationJoin() {
           </form>
 
           {/* Footer */}
-          <p className="text-xs text-slate-400 text-center mt-6">
+          <p className="text-xs text-neutral-400 text-center mt-6">
             En créant un compte, vous acceptez nos conditions d'utilisation.
           </p>
         </div>
