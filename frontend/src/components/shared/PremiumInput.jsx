@@ -1,9 +1,5 @@
 import React, { useState } from 'react';
-
-/**
- * Premium Input Components
- * Ultra-smooth focus effects and animations
- */
+import { Search, AlertCircle, Check } from 'lucide-react';
 
 export const Input = ({
   label = null,
@@ -24,14 +20,14 @@ export const Input = ({
   return (
     <div className="w-full">
       {label && (
-        <label className="block text-xs font-bold text-slate-400 mb-2">
+        <label className="block text-[11px] font-mono uppercase tracking-[0.1em] text-neutral-500 mb-1.5">
           {label}
-          {required && <span className="text-red-400 ml-1">*</span>}
+          {required && <span className="text-terracotta-600 ml-1">*</span>}
         </label>
       )}
       <div className="relative">
         {Icon && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none">
             <Icon className="w-4 h-4" />
           </div>
         )}
@@ -44,33 +40,31 @@ export const Input = ({
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           className={`
-            w-full px-4 py-2.5 rounded-xl
-            bg-white/5 border border-white/10
-            text-slate-200 placeholder-slate-600
-            transition-all duration-200
+            w-full px-3.5 py-2.5 rounded-lg
+            bg-white border text-sm
+            text-neutral-900 placeholder-neutral-400
+            transition-all duration-150
             focus:outline-none
-            focus:ring-2 focus:ring-violet-500/50
-            focus:bg-white/8 focus:border-violet-500/50
-            disabled:opacity-50 disabled:cursor-not-allowed
+            ${error
+              ? 'border-terracotta-400 focus:ring-2 focus:ring-terracotta-500/20 focus:border-terracotta-500'
+              : 'border-neutral-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500'
+            }
+            disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-neutral-50
             ${Icon ? 'pl-10' : ''}
-            ${error ? 'border-red-500/50 focus:ring-red-500/50' : ''}
             ${className}
           `}
           {...props}
         />
       </div>
       {error && errorMessage && (
-        <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
-          <span>⚠️</span> {errorMessage}
+        <p className="text-xs text-terracotta-700 mt-1.5 flex items-center gap-1">
+          <AlertCircle className="w-3 h-3" /> {errorMessage}
         </p>
       )}
     </div>
   );
 };
 
-/**
- * Textarea - multi-line input
- */
 export const Textarea = ({
   label = null,
   placeholder = '',
@@ -82,43 +76,43 @@ export const Textarea = ({
   rows = 4,
   className = '',
   ...props
-}) => {
-  return (
-    <div className="w-full">
-      {label && (
-        <label className="block text-xs font-bold text-slate-400 mb-2">{label}</label>
-      )}
-      <textarea
-        placeholder={placeholder}
-        value={value}
-        onChange={onChange}
-        disabled={disabled}
-        rows={rows}
-        className={`
-          w-full px-4 py-2.5 rounded-xl
-          bg-white/5 border border-white/10
-          text-slate-200 placeholder-slate-600
-          transition-all duration-200
-          focus:outline-none
-          focus:ring-2 focus:ring-violet-500/50
-          focus:bg-white/8 focus:border-violet-500/50
-          disabled:opacity-50 disabled:cursor-not-allowed
-          resize-none
-          ${error ? 'border-red-500/50 focus:ring-red-500/50' : ''}
-          ${className}
-        `}
-        {...props}
-      />
-      {error && errorMessage && (
-        <p className="text-xs text-red-400 mt-1">{errorMessage}</p>
-      )}
-    </div>
-  );
-};
+}) => (
+  <div className="w-full">
+    {label && (
+      <label className="block text-[11px] font-mono uppercase tracking-[0.1em] text-neutral-500 mb-1.5">
+        {label}
+      </label>
+    )}
+    <textarea
+      placeholder={placeholder}
+      value={value}
+      onChange={onChange}
+      disabled={disabled}
+      rows={rows}
+      className={`
+        w-full px-3.5 py-2.5 rounded-lg
+        bg-white border text-sm
+        text-neutral-900 placeholder-neutral-400
+        transition-all duration-150
+        focus:outline-none
+        ${error
+          ? 'border-terracotta-400 focus:ring-2 focus:ring-terracotta-500/20 focus:border-terracotta-500'
+          : 'border-neutral-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500'
+        }
+        disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-neutral-50
+        resize-y
+        ${className}
+      `}
+      {...props}
+    />
+    {error && errorMessage && (
+      <p className="text-xs text-terracotta-700 mt-1.5 flex items-center gap-1">
+        <AlertCircle className="w-3 h-3" /> {errorMessage}
+      </p>
+    )}
+  </div>
+);
 
-/**
- * Select - dropdown input
- */
 export const Select = ({
   label = null,
   options = [],
@@ -127,159 +121,152 @@ export const Select = ({
   error = false,
   errorMessage = '',
   disabled = false,
-  placeholder = 'Sélectionnez une option...',
+  placeholder = 'Sélectionnez une option…',
   className = '',
   ...props
-}) => {
-  return (
-    <div className="w-full">
-      {label && (
-        <label className="block text-xs font-bold text-slate-400 mb-2">{label}</label>
-      )}
-      <select
-        value={value}
-        onChange={onChange}
-        disabled={disabled}
-        className={`
-          w-full px-4 py-2.5 rounded-xl appearance-none
-          bg-white/5 border border-white/10
-          text-slate-200
-          transition-all duration-200
-          focus:outline-none
-          focus:ring-2 focus:ring-violet-500/50
-          focus:bg-white/8 focus:border-violet-500/50
-          disabled:opacity-50 disabled:cursor-not-allowed
-          cursor-pointer
-          ${error ? 'border-red-500/50 focus:ring-red-500/50' : ''}
-          ${className}
-        `}
-        {...props}
-      >
-        <option value="">{placeholder}</option>
-        {options.map(opt => (
-          <option key={opt.value} value={opt.value} className="bg-slate-900">
-            {opt.label}
-          </option>
-        ))}
-      </select>
-      {error && errorMessage && (
-        <p className="text-xs text-red-400 mt-1">{errorMessage}</p>
-      )}
-    </div>
-  );
-};
+}) => (
+  <div className="w-full">
+    {label && (
+      <label className="block text-[11px] font-mono uppercase tracking-[0.1em] text-neutral-500 mb-1.5">
+        {label}
+      </label>
+    )}
+    <select
+      value={value}
+      onChange={onChange}
+      disabled={disabled}
+      className={`
+        w-full px-3.5 py-2.5 rounded-lg appearance-none
+        bg-white border text-sm
+        text-neutral-900
+        transition-all duration-150
+        focus:outline-none
+        ${error
+          ? 'border-terracotta-400 focus:ring-2 focus:ring-terracotta-500/20 focus:border-terracotta-500'
+          : 'border-neutral-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500'
+        }
+        disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-neutral-50
+        cursor-pointer
+        bg-no-repeat bg-right
+        pr-10
+        ${className}
+      `}
+      style={{
+        backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2378716C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
+        backgroundPosition: 'right 0.75rem center',
+        backgroundSize: '12px',
+      }}
+      {...props}
+    >
+      <option value="">{placeholder}</option>
+      {options.map(opt => (
+        <option key={opt.value} value={opt.value}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
+    {error && errorMessage && (
+      <p className="text-xs text-terracotta-700 mt-1.5">{errorMessage}</p>
+    )}
+  </div>
+);
 
-/**
- * Checkbox - for boolean inputs
- */
 export const Checkbox = ({
   label,
   checked = false,
   onChange = null,
   disabled = false,
   className = '',
-}) => {
-  return (
-    <label className={`flex items-center gap-3 cursor-pointer select-none ${className}`}>
-      <div className="relative">
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={onChange}
-          disabled={disabled}
-          className="sr-only"
-        />
-        <div className={`
-          w-5 h-5 rounded-lg border-2 transition-all duration-200
-          ${checked 
-            ? 'bg-violet-600 border-violet-600' 
-            : 'border-white/20 hover:border-white/40'
-          }
-          ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-        `}>
-          {checked && (
-            <svg className="w-3.5 h-3.5 text-white ml-0.5 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-          )}
-        </div>
+}) => (
+  <label className={`flex items-center gap-2.5 cursor-pointer select-none ${className}`}>
+    <div className="relative">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        disabled={disabled}
+        className="sr-only"
+      />
+      <div className={`
+        w-[18px] h-[18px] rounded border transition-all duration-150
+        flex items-center justify-center
+        ${checked
+          ? 'bg-brand-600 border-brand-600'
+          : 'bg-white border-neutral-300 hover:border-neutral-400'
+        }
+        ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+      `}>
+        {checked && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
       </div>
-      {label && <span className="text-sm text-slate-300">{label}</span>}
-    </label>
-  );
-};
+    </div>
+    {label && <span className="text-sm text-neutral-700">{label}</span>}
+  </label>
+);
 
-/**
- * Radio Group - for single selection from multiple options
- */
 export const RadioGroup = ({
   label,
   options = [],
   value = '',
   onChange = null,
   className = '',
-}) => {
-  return (
-    <div className={className}>
-      {label && (
-        <label className="block text-xs font-bold text-slate-400 mb-3">{label}</label>
-      )}
-      <div className="space-y-2">
-        {options.map(opt => (
-          <label key={opt.value} className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="radio"
-              name={label}
-              value={opt.value}
-              checked={value === opt.value}
-              onChange={onChange}
-              className="sr-only"
-            />
-            <div className={`
-              w-4 h-4 rounded-full border-2 transition-all
-              ${value === opt.value
-                ? 'bg-violet-600 border-violet-600'
-                : 'border-white/20 hover:border-white/40'
-              }
-            `} />
-            <span className="text-sm text-slate-300">{opt.label}</span>
-          </label>
-        ))}
-      </div>
+}) => (
+  <div className={className}>
+    {label && (
+      <label className="block text-[11px] font-mono uppercase tracking-[0.1em] text-neutral-500 mb-2.5">
+        {label}
+      </label>
+    )}
+    <div className="space-y-2">
+      {options.map(opt => (
+        <label key={opt.value} className="flex items-center gap-2.5 cursor-pointer">
+          <input
+            type="radio"
+            name={label}
+            value={opt.value}
+            checked={value === opt.value}
+            onChange={onChange}
+            className="sr-only"
+          />
+          <div className={`
+            w-[18px] h-[18px] rounded-full border-2 transition-all flex items-center justify-center
+            ${value === opt.value
+              ? 'border-brand-600'
+              : 'border-neutral-300 hover:border-neutral-400'
+            }
+          `}>
+            {value === opt.value && <div className="w-2 h-2 rounded-full bg-brand-600" />}
+          </div>
+          <span className="text-sm text-neutral-700">{opt.label}</span>
+        </label>
+      ))}
     </div>
-  );
-};
+  </div>
+);
 
-/**
- * Search Input - with icon and clear button
- */
 export const SearchInput = ({
   value = '',
   onChange = null,
   onClear = null,
-  placeholder = 'Rechercher...',
+  placeholder = 'Rechercher…',
   className = '',
-}) => {
-  return (
-    <div className={`relative ${className}`}>
-      <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-      </svg>
-      <input
-        type="text"
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
-      />
-      {value && onClear && (
-        <button
-          onClick={onClear}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-        >
-          ✕
-        </button>
-      )}
-    </div>
-  );
-};
+}) => (
+  <div className={`relative ${className}`}>
+    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+    <input
+      type="text"
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      className="w-full pl-10 pr-10 py-2.5 rounded-lg bg-white border border-neutral-200 text-sm text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all duration-150"
+    />
+    {value && onClear && (
+      <button
+        onClick={onClear}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 transition-colors text-sm"
+        aria-label="Effacer"
+      >
+        ✕
+      </button>
+    )}
+  </div>
+);

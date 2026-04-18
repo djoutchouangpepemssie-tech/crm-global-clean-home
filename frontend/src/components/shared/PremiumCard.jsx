@@ -1,28 +1,20 @@
 import React from 'react';
 
-/**
- * Premium Card Components
- * Ultra-modern glassmorphism with smooth animations
- */
-
 export const Card = ({
   children,
   className = '',
   hoverable = false,
-  gradient = false,
+  padded = true,
   noBorder = false,
 }) => (
   <div
     className={`
-      rounded-2xl p-5
-      ${gradient 
-        ? 'bg-gradient-to-br from-white/5 to-white/3' 
-        : 'bg-white/3'
-      }
-      ${!noBorder ? 'border border-white/10' : ''}
-      backdrop-blur-sm
-      transition-all duration-300
-      ${hoverable ? 'hover:bg-white/5 hover:border-white/20 hover:shadow-lg cursor-pointer hover:scale-[1.02]' : ''}
+      rounded-2xl ${padded ? 'p-5' : ''}
+      bg-white
+      ${!noBorder ? 'border border-neutral-200' : ''}
+      shadow-card
+      transition-all duration-200
+      ${hoverable ? 'hover:shadow-card-lg hover:border-neutral-300 cursor-pointer' : ''}
       ${className}
     `}
   >
@@ -30,9 +22,6 @@ export const Card = ({
   </div>
 );
 
-/**
- * KPI Card - for metrics and statistics
- */
 export const KPICard = ({
   label,
   value,
@@ -40,131 +29,119 @@ export const KPICard = ({
   icon: Icon = null,
   trend = null,
   sparkline = null,
-  color = '#8b5cf6',
+  tone = 'brand',
   className = '',
-}) => (
-  <Card className={`relative overflow-hidden group ${className}`}>
-    {/* Background glow */}
-    <div 
-      className="absolute -top-20 -right-20 w-40 h-40 rounded-full opacity-0 group-hover:opacity-20 transition-opacity duration-300"
-      style={{ background: color }}
-    />
-    
-    <div className="relative z-10">
-      {/* Header with icon and trend */}
+}) => {
+  const tones = {
+    brand:   { bg: 'bg-brand-50',      text: 'text-brand-700',      iconBg: 'bg-brand-100' },
+    accent:  { bg: 'bg-terracotta-50', text: 'text-terracotta-700', iconBg: 'bg-terracotta-100' },
+    amber:   { bg: 'bg-amber-50',      text: 'text-amber-700',      iconBg: 'bg-amber-100' },
+    neutral: { bg: 'bg-neutral-100',   text: 'text-neutral-800',    iconBg: 'bg-neutral-200' },
+  }[tone] || { bg: 'bg-brand-50', text: 'text-brand-700', iconBg: 'bg-brand-100' };
+
+  return (
+    <Card className={className}>
       <div className="flex items-start justify-between mb-3">
-        <div className="flex-1">
-          <p className="text-xs font-semibold text-slate-400 mb-1">{label}</p>
-          <div className="flex items-baseline gap-2">
-            <p 
-              className="text-3xl font-black" 
-              style={{ background: `linear-gradient(135deg, ${color}, #a78bfa)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
-            >
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-mono uppercase tracking-[0.1em] text-neutral-500 mb-2">
+            {label}
+          </p>
+          <div className="flex items-baseline gap-1.5">
+            <p className="font-display text-3xl font-semibold text-neutral-900 tabular-nums tracking-tight">
               {value}
             </p>
-            {unit && <span className="text-sm text-slate-500">{unit}</span>}
+            {unit && <span className="text-sm text-neutral-500 tabular-nums">{unit}</span>}
           </div>
         </div>
         {Icon && (
-          <div 
-            className="p-3 rounded-xl opacity-80 group-hover:opacity-100 transition-opacity"
-            style={{ background: `${color}20` }}
-          >
-            <Icon className="w-5 h-5" style={{ color }} />
+          <div className={`w-10 h-10 rounded-lg ${tones.iconBg} flex items-center justify-center flex-shrink-0`}>
+            <Icon className={`w-5 h-5 ${tones.text}`} strokeWidth={1.75} />
           </div>
         )}
       </div>
 
-      {/* Trend indicator */}
-      {trend && (
-        <div className={`text-xs font-bold flex items-center gap-1 ${trend > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-          <span>{trend > 0 ? '↑' : '↓'}</span>
-          {Math.abs(trend)}% vs dernier mois
+      {trend !== null && trend !== undefined && (
+        <div className={`text-xs font-semibold flex items-center gap-1 ${
+          trend > 0 ? 'text-brand-700' : trend < 0 ? 'text-terracotta-700' : 'text-neutral-500'
+        }`}>
+          <span>{trend > 0 ? '↑' : trend < 0 ? '↓' : '→'}</span>
+          <span className="tabular-nums">{Math.abs(trend)}%</span>
+          <span className="font-normal text-neutral-500">vs dernier mois</span>
         </div>
       )}
 
-      {/* Sparkline chart */}
-      {sparkline && (
-        <div className="mt-3 h-8 opacity-60 group-hover:opacity-100 transition-opacity">
-          {sparkline}
-        </div>
-      )}
-    </div>
-  </Card>
-);
+      {sparkline && <div className="mt-3 h-8">{sparkline}</div>}
+    </Card>
+  );
+};
 
-/**
- * Status Card - for items with status
- */
 export const StatusCard = ({
   title,
   description,
   status,
-  statusColor,
+  statusTone = 'neutral',
   statusLabel,
   footer = null,
   actions = null,
   hoverable = true,
-}) => (
-  <Card hoverable={hoverable} className="flex flex-col">
-    {/* Header */}
-    <div className="flex items-start justify-between mb-3">
-      <div className="flex-1">
-        <h3 className="font-bold text-slate-100 mb-1 line-clamp-2">{title}</h3>
-        <p className="text-xs text-slate-500 line-clamp-2">{description}</p>
-      </div>
-      {status && (
-        <div
-          className="px-2.5 py-1 rounded-full text-[10px] font-bold flex-shrink-0 ml-2"
-          style={{ 
-            background: `${statusColor}20`,
-            color: statusColor,
-            border: `1px solid ${statusColor}40`
-          }}
-        >
-          {statusLabel || status}
+}) => {
+  const toneClasses = {
+    brand:   'bg-brand-50 text-brand-700 ring-brand-200',
+    accent:  'bg-terracotta-50 text-terracotta-700 ring-terracotta-200',
+    amber:   'bg-amber-50 text-amber-700 ring-amber-200',
+    neutral: 'bg-neutral-100 text-neutral-700 ring-neutral-200',
+  }[statusTone] || 'bg-neutral-100 text-neutral-700 ring-neutral-200';
+
+  return (
+    <Card hoverable={hoverable} className="flex flex-col">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex-1 min-w-0">
+          <h3 className="font-display font-semibold text-neutral-900 mb-1 line-clamp-2 leading-tight">
+            {title}
+          </h3>
+          <p className="text-xs text-neutral-500 line-clamp-2 leading-relaxed">{description}</p>
         </div>
-      )}
-    </div>
-
-    {/* Footer */}
-    {footer && <div className="text-xs text-slate-600 mt-auto pt-3 border-t border-white/5">{footer}</div>}
-
-    {/* Actions */}
-    {actions && (
-      <div className="flex gap-2 mt-3 pt-3 border-t border-white/5">
-        {actions}
+        {status && (
+          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset flex-shrink-0 ml-2 ${toneClasses}`}>
+            {statusLabel || status}
+          </span>
+        )}
       </div>
-    )}
-  </Card>
-);
+      {footer && <div className="text-xs text-neutral-500 mt-auto pt-3 border-t border-neutral-200">{footer}</div>}
+      {actions && <div className="flex gap-2 mt-3 pt-3 border-t border-neutral-200">{actions}</div>}
+    </Card>
+  );
+};
 
-/**
- * Metric Row - for displaying metrics in a list
- */
 export const MetricRow = ({
   label,
   value,
   icon: Icon = null,
   unit = '',
   sparkline = null,
-  color = '#60a5fa',
-}) => (
-  <div className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors">
-    <div className="flex items-center gap-3 flex-1">
-      {Icon && <Icon className="w-5 h-5" style={{ color }} />}
-      <div>
-        <p className="text-xs text-slate-500">{label}</p>
-        <p className="text-sm font-bold text-slate-200">{value} {unit}</p>
-      </div>
-    </div>
-    {sparkline && <div className="ml-auto">{sparkline}</div>}
-  </div>
-);
+  tone = 'brand',
+}) => {
+  const toneColor = {
+    brand:   'text-brand-600',
+    accent:  'text-terracotta-600',
+    amber:   'text-amber-600',
+    neutral: 'text-neutral-600',
+  }[tone] || 'text-brand-600';
 
-/**
- * Avatar Card - for team members or contacts
- */
+  return (
+    <div className="flex items-center justify-between p-3 rounded-lg hover:bg-neutral-50 transition-colors">
+      <div className="flex items-center gap-3 flex-1">
+        {Icon && <Icon className={`w-5 h-5 ${toneColor}`} strokeWidth={1.75} />}
+        <div>
+          <p className="text-[11px] font-mono uppercase tracking-[0.08em] text-neutral-500">{label}</p>
+          <p className="text-sm font-semibold text-neutral-900 tabular-nums">{value} {unit}</p>
+        </div>
+      </div>
+      {sparkline && <div className="ml-auto">{sparkline}</div>}
+    </div>
+  );
+};
+
 export const AvatarCard = ({
   name,
   role,
@@ -172,58 +149,44 @@ export const AvatarCard = ({
   status,
   actions = null,
 }) => (
-  <Card className="flex items-center gap-3">
+  <Card className="flex items-center gap-3" padded>
     <div className="relative flex-shrink-0">
-      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold">
-        {avatar || name.charAt(0)}
+      <div className="w-11 h-11 rounded-full bg-brand-600 flex items-center justify-center text-white font-display font-semibold text-sm">
+        {avatar || name?.charAt(0)?.toUpperCase()}
       </div>
       {status && (
-        <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-slate-900 ${
-          status === 'online' ? 'bg-emerald-500' :
-          status === 'away' ? 'bg-yellow-500' :
-          'bg-slate-500'
+        <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full ring-2 ring-white ${
+          status === 'online' ? 'bg-brand-500' :
+          status === 'away'   ? 'bg-amber-500' :
+          'bg-neutral-400'
         }`} />
       )}
     </div>
     <div className="flex-1 min-w-0">
-      <p className="font-bold text-slate-100 text-sm">{name}</p>
-      <p className="text-xs text-slate-500">{role}</p>
+      <p className="font-semibold text-neutral-900 text-sm truncate">{name}</p>
+      <p className="text-xs text-neutral-500 truncate">{role}</p>
     </div>
     {actions && <div className="flex gap-1 flex-shrink-0">{actions}</div>}
   </Card>
 );
 
-/**
- * Timeline Card - for chronological events
- */
-export const TimelineCard = ({
-  items,
-  active = 0,
-}) => (
+export const TimelineCard = ({ items = [], active = 0 }) => (
   <Card>
     <div className="space-y-4">
       {items.map((item, i) => (
         <div key={i} className="flex gap-4">
-          {/* Timeline dot and line */}
           <div className="flex flex-col items-center">
-            <div 
-              className={`w-3 h-3 rounded-full ${
-                i <= active ? 'bg-violet-500' : 'bg-slate-700'
-              } ring-2 ring-slate-900`}
-            />
+            <div className={`w-3 h-3 rounded-full ring-2 ring-white ${
+              i <= active ? 'bg-brand-600' : 'bg-neutral-300'
+            }`} />
             {i < items.length - 1 && (
-              <div 
-                className={`w-0.5 h-12 ${
-                  i < active ? 'bg-violet-500' : 'bg-slate-700'
-                }`}
-              />
+              <div className={`w-0.5 h-12 ${i < active ? 'bg-brand-600' : 'bg-neutral-200'}`} />
             )}
           </div>
-          {/* Content */}
           <div className="pb-4">
-            <p className="text-sm font-bold text-slate-200">{item.label}</p>
+            <p className="text-sm font-semibold text-neutral-900">{item.label}</p>
             {item.description && (
-              <p className="text-xs text-slate-500 mt-1">{item.description}</p>
+              <p className="text-xs text-neutral-500 mt-1 leading-relaxed">{item.description}</p>
             )}
           </div>
         </div>

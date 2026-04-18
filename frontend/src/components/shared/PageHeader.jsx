@@ -60,6 +60,9 @@ function PageTabs({ tabs = [], onTabChange }) {
             transition:'color 0.15s ease',
             display:'flex', alignItems:'center', gap:'6px',
             whiteSpace:'nowrap',
+            fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+            letterSpacing: '0.02em',
+            textTransform: 'uppercase',
           }}
         >
           {tab.icon && <tab.icon size={14} />}
@@ -71,6 +74,8 @@ function PageTabs({ tabs = [], onTabChange }) {
               background: tab.active ? 'var(--brand)' : 'var(--bg-muted)',
               color: tab.active ? '#fff' : 'var(--text-muted)',
               borderRadius:'20px',
+              fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+              fontVariantNumeric: 'tabular-nums',
             }}>
               {tab.badge}
             </span>
@@ -96,16 +101,22 @@ export function PageHeader({ title, subtitle, breadcrumbs, actions=[], tabs, onT
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:'16px', flexWrap:'wrap' }}>
         <div style={{ minWidth:0, flex:1 }}>
           <h1 style={{
-            fontFamily:'var(--font-display)',
-            fontSize:'24px', fontWeight:'700',
+            fontFamily:'var(--font-display, "Fraunces", serif)',
+            fontSize:'28px', fontWeight:'600',
             color:'var(--text-primary)',
-            letterSpacing:'-0.02em', lineHeight:1.2,
+            letterSpacing:'-0.02em', lineHeight:1.15,
             margin:0,
           }}>
             {title}
           </h1>
           {subtitle && (
-            <p style={{ marginTop:'4px', fontSize:'13px', color:'var(--text-muted)', margin:'4px 0 0' }}>
+            <p style={{
+              marginTop:'6px', fontSize:'13px',
+              color:'var(--text-muted)',
+              margin:'6px 0 0',
+              fontFamily: 'var(--font-body, Inter, sans-serif)',
+              lineHeight: 1.5,
+            }}>
               {subtitle}
             </p>
           )}
@@ -121,18 +132,21 @@ export function PageHeader({ title, subtitle, breadcrumbs, actions=[], tabs, onT
                   disabled={action.disabled || action.loading}
                   style={{
                     display:'inline-flex', alignItems:'center', gap:'6px',
-                    padding:'8px 16px',
-                    background: isPrimary ? 'var(--brand)' : 'var(--bg-card)',
+                    padding:'9px 16px',
+                    background: isPrimary ? 'var(--brand, #047857)' : 'var(--bg-card)',
                     color: isPrimary ? '#fff' : 'var(--text-secondary)',
                     border: isPrimary ? 'none' : '1px solid var(--border-default)',
-                    borderRadius:'var(--radius-md)',
+                    borderRadius:'var(--radius-md, 8px)',
                     fontSize:'13px', fontWeight:'600',
                     cursor: action.disabled ? 'not-allowed' : 'pointer',
                     opacity: action.disabled ? 0.6 : 1,
-                    boxShadow: isPrimary ? '0 2px 8px rgba(99,102,241,0.25)' : 'var(--shadow-card)',
+                    boxShadow: isPrimary
+                      ? '0 2px 8px rgba(4, 120, 87, 0.24)'
+                      : 'var(--shadow-card)',
                     transition:'all 0.2s ease',
                     fontFamily:'var(--font-body)',
                     whiteSpace:'nowrap',
+                    letterSpacing: '-0.005em',
                   }}
                 >
                   {action.icon && <action.icon size={15} />}

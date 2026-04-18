@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Sparkles, Shield, Zap, BarChart3, Users, CheckCircle, ArrowRight, TrendingUp, Calendar } from 'lucide-react';
+import { Shield, Zap, BarChart3, Users, CheckCircle, ArrowRight, TrendingUp, Calendar } from 'lucide-react';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ||
   '839544566336-be9thftofd383siebap23mmpi9pdq6oa.apps.googleusercontent.com';
 
 const features = [
-  { icon: Users, text: 'Gestion leads & prospects', desc: 'Pipeline intelligent' },
-  { icon: BarChart3, text: 'Analytics en temps réel', desc: 'Tableaux de bord live' },
-  { icon: Zap, text: 'Devis & factures auto', desc: 'Génération en 1 clic' },
-  { icon: Calendar, text: 'Planning intervenants', desc: 'Planification optimisée' },
-  { icon: TrendingUp, text: 'Suivi rentabilité', desc: 'Marges & performance' },
-  { icon: Shield, text: 'Portail client intégré', desc: 'Espace dédié 24/7' },
+  { icon: Users,       text: 'Gestion leads & prospects', desc: 'Pipeline intelligent' },
+  { icon: BarChart3,   text: 'Analytics en temps réel',   desc: 'Tableaux de bord live' },
+  { icon: Zap,         text: 'Devis & factures auto',     desc: 'Génération en 1 clic' },
+  { icon: Calendar,    text: 'Planning intervenants',     desc: 'Planification optimisée' },
+  { icon: TrendingUp,  text: 'Suivi rentabilité',         desc: 'Marges & performance' },
+  { icon: Shield,      text: 'Portail client intégré',    desc: 'Espace dédié 24/7' },
 ];
 
 const Login = () => {
@@ -32,66 +32,69 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex " data-testid="login-page">
+    <div className="min-h-screen flex bg-neutral-50" data-testid="login-page">
 
-      {/* Left Panel - Premium */}
-      <div className="hidden lg:flex lg:w-[55%] relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-violet-950/60 via-slate-950 to-slate-950" />
+      {/* Panneau gauche — éditorial atelier */}
+      <div className="hidden lg:flex lg:w-[55%] relative overflow-hidden bg-neutral-900">
+        <div className="absolute inset-0"
+             style={{ background: 'radial-gradient(ellipse at 30% 20%, rgba(217,119,87,0.18) 0%, transparent 60%), radial-gradient(ellipse at 70% 80%, rgba(4,120,87,0.15) 0%, transparent 55%), #1A1814' }} />
 
-        {/* Animated gradient orbs */}
-        <div className="absolute top-1/4 left-1/3 w-[400px] h-[400px] bg-violet-600/[0.15] rounded-full blur-[150px] animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-[300px] h-[300px] bg-blue-600/[0.1] rounded-full blur-[120px] animate-pulse" style={{animationDelay: '1.5s'}} />
-        <div className="absolute top-2/3 left-1/6 w-[200px] h-[200px] bg-purple-600/[0.08] rounded-full blur-[100px] animate-pulse" style={{animationDelay: '3s'}} />
-
-        {/* Dot grid */}
-        <div className="absolute inset-0 opacity-[0.04]" style={{
-          backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.5) 1px, transparent 0)',
-          backgroundSize: '40px 40px'
+        <div className="absolute inset-0 opacity-[0.035]" style={{
+          backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(245,239,227,0.8) 1px, transparent 0)',
+          backgroundSize: '32px 32px'
         }} />
 
         <div className="relative z-10 flex flex-col justify-between p-12 xl:p-16 w-full">
+
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center shadow-lg shadow-violet-500/25">
-              <Sparkles className="w-5 h-5 text-white" />
+            <div className="w-11 h-11 rounded-lg bg-terracotta-600 flex items-center justify-center shadow-accent"
+                 style={{ boxShadow: 'inset 0 -2px 0 rgba(0,0,0,0.18)' }}>
+              <span className="font-display text-white text-lg font-semibold tracking-tight">G</span>
             </div>
-            <span className="text-white font-extrabold text-lg tracking-tight" style={{fontFamily: 'Manrope, sans-serif'}}>
-              <span className="text-violet-400">Global</span> Clean Home
-            </span>
+            <div>
+              <span className="font-display text-white text-lg font-semibold tracking-tight block leading-none">
+                Global Clean Home
+              </span>
+              <span className="font-mono text-neutral-400 text-[10px] uppercase tracking-[0.18em] block mt-1.5">
+                Atelier · CRM
+              </span>
+            </div>
           </div>
 
-          {/* Main content */}
+          {/* Contenu principal */}
           <div className={`transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
-            <div className="inline-flex items-center gap-2.5 px-4 py-2 bg-violet-500/10 border border-violet-500/20 rounded-full text-violet-300 text-xs font-semibold mb-8">
+
+            <div className="inline-flex items-center gap-2.5 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full mb-8">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-500" />
               </span>
-              CRM Professionnel
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-neutral-200 font-medium">
+                Plateforme professionnelle
+              </span>
             </div>
 
-            <h1 className="text-5xl xl:text-6xl font-black text-white mb-5 leading-[1.1]" style={{fontFamily: 'Manrope, sans-serif'}}>
+            <h1 className="font-display text-5xl xl:text-[64px] font-semibold text-white mb-6 leading-[1.05] tracking-[-0.025em]">
               Gérez votre
-              <span className="block bg-gradient-to-r from-violet-400 via-purple-400 to-blue-400 bg-clip-text text-transparent pb-1">
-                activité
-              </span>
-              simplement.
+              <br />
+              activité <em className="text-terracotta-300 not-italic font-medium" style={{ fontFamily: 'var(--font-display, "Fraunces", serif)', fontStyle: 'italic' }}>simplement.</em>
             </h1>
 
-            <p className="text-slate-400 text-lg leading-relaxed mb-10 max-w-md">
-              Suivez vos leads, créez des devis et fidélisez vos clients depuis une seule interface.
+            <p className="text-neutral-300 text-[15px] leading-relaxed mb-10 max-w-md">
+              Suivez vos leads, créez des devis et fidélisez vos clients depuis une seule interface, pensée pour la main-d'œuvre et la direction.
             </p>
 
-            {/* Features grid */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2.5">
               {features.map((f, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.05] hover:border-white/[0.1] transition-all group">
-                  <div className="w-9 h-9 rounded-lg bg-violet-500/10 border border-violet-500/15 flex items-center justify-center flex-shrink-0 group-hover:bg-violet-500/20 transition-colors">
-                    <f.icon className="w-4 h-4 text-violet-400" />
+                <div key={i}
+                     className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12] hover:bg-white/[0.05] transition-all duration-200">
+                  <div className="w-9 h-9 rounded-md bg-brand-500/15 border border-brand-400/20 flex items-center justify-center flex-shrink-0">
+                    <f.icon className="w-4 h-4 text-brand-300" strokeWidth={1.75} />
                   </div>
-                  <div>
-                    <span className="text-xs font-bold text-slate-300 block">{f.text}</span>
-                    <span className="text-[10px] text-slate-600">{f.desc}</span>
+                  <div className="min-w-0">
+                    <span className="text-[12px] font-semibold text-neutral-100 block truncate">{f.text}</span>
+                    <span className="text-[10px] text-neutral-400 block truncate">{f.desc}</span>
                   </div>
                 </div>
               ))}
@@ -99,69 +102,77 @@ const Login = () => {
           </div>
 
           {/* Stats */}
-          <div className="flex gap-10">
+          <div className="flex gap-10 pt-8 border-t border-white/5">
             {[
               { value: '2 500+', label: 'Clients gérés' },
-              { value: '98%', label: 'Satisfaction' },
-              { value: '< 2h', label: 'Réponse' },
+              { value: '98%',    label: 'Satisfaction' },
+              { value: '< 2h',   label: 'Réponse' },
             ].map((stat, i) => (
               <div key={i}>
-                <p className="text-2xl xl:text-3xl font-black text-white" style={{fontFamily: 'Manrope, sans-serif'}}>{stat.value}</p>
-                <p className="text-[11px] text-slate-500 mt-0.5 font-semibold uppercase tracking-wider">{stat.label}</p>
+                <p className="font-display text-2xl xl:text-3xl font-semibold text-white tabular-nums tracking-tight">
+                  {stat.value}
+                </p>
+                <p className="font-mono text-[10px] text-neutral-400 mt-1 uppercase tracking-[0.12em]">
+                  {stat.label}
+                </p>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Right Panel */}
-      <div className="flex-1 flex items-center justify-center p-6 md:p-10  relative">
-        <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-violet-600/[0.05] rounded-full blur-[100px]" />
+      {/* Panneau droit — clair */}
+      <div className="flex-1 flex items-center justify-center p-6 md:p-10 bg-neutral-50 relative">
 
-        <div className={`w-full max-w-sm relative z-10 transition-all duration-600 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
+        <div className={`w-full max-w-sm relative z-10 transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
 
-          {/* Mobile logo */}
+          {/* Logo mobile */}
           <div className="lg:hidden flex items-center gap-3 mb-12">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center shadow-lg shadow-violet-500/25">
-              <Sparkles className="w-5 h-5 text-white" />
+            <div className="w-11 h-11 rounded-lg bg-terracotta-600 flex items-center justify-center shadow-accent">
+              <span className="font-display text-white text-lg font-semibold">G</span>
             </div>
-            <span className="font-extrabold text-slate-200 text-lg" style={{fontFamily: 'Manrope, sans-serif'}}>
-              <span className="text-violet-400">Global</span> Clean Home
+            <span className="font-display text-neutral-900 text-lg font-semibold tracking-tight">
+              Global Clean Home
             </span>
           </div>
 
           <div className="mb-10">
-            <h1 className="text-3xl font-black text-white mb-2" style={{fontFamily: 'Manrope, sans-serif'}}>
-              Bon retour
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-neutral-500 mb-3">
+              Espace équipe
+            </p>
+            <h1 className="font-display text-4xl font-semibold text-neutral-900 mb-2 tracking-[-0.02em]">
+              Bon retour.
             </h1>
-            <p className="text-slate-400 text-sm">
-              Connectez-vous à votre espace CRM
+            <p className="text-neutral-600 text-sm leading-relaxed">
+              Connectez-vous à votre espace CRM avec votre compte Google professionnel.
             </p>
           </div>
 
           {authError === 'not_authorized' && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-3">
-              <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-red-400 text-xs font-bold">!</span>
+            <div className="mb-6 p-4 bg-terracotta-50 border border-terracotta-200 rounded-lg flex items-start gap-3">
+              <div className="w-5 h-5 rounded-full bg-terracotta-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-white text-xs font-bold">!</span>
               </div>
-              <p className="text-sm text-red-400">
+              <p className="text-sm text-terracotta-800">
                 Accès refusé. Ce CRM est réservé à l'équipe Global Clean Home.
               </p>
             </div>
           )}
 
-          {/* Login card */}
-          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-7 mb-6">
-            <p className="text-xs text-slate-500 text-center mb-5 font-medium">Connexion sécurisée via Google</p>
+          {/* Carte login */}
+          <div className="rounded-xl border border-neutral-200 bg-white p-7 mb-6 shadow-card">
+            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-neutral-500 text-center mb-5">
+              Connexion sécurisée via Google
+            </p>
 
             <button
               data-testid="google-login-button"
               onClick={handleLogin}
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-3 px-5 py-3.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-violet-500/40 rounded-xl transition-all duration-300 group disabled:opacity-50 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-violet-500/10"
+              className="w-full flex items-center justify-center gap-3 px-5 py-3.5 bg-white hover:bg-neutral-50 border border-neutral-300 hover:border-brand-500/40 rounded-lg transition-all duration-200 group disabled:opacity-50 hover:shadow-card-lg"
             >
               {isLoading ? (
-                <div className="w-5 h-5 border-2 border-violet-400/30 border-t-violet-400 rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" />
               ) : (
                 <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
@@ -170,50 +181,56 @@ const Login = () => {
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                 </svg>
               )}
-              <span className="text-sm font-bold text-slate-300 group-hover:text-white transition-colors">
-                {isLoading ? 'Connexion...' : 'Continuer avec Google'}
+              <span className="text-sm font-semibold text-neutral-800 group-hover:text-neutral-900 transition-colors">
+                {isLoading ? 'Connexion…' : 'Continuer avec Google'}
               </span>
-              {!isLoading && <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-violet-400 group-hover:translate-x-0.5 transition-all" />}
+              {!isLoading && <ArrowRight className="w-4 h-4 text-neutral-400 group-hover:text-brand-600 group-hover:translate-x-0.5 transition-all" />}
             </button>
           </div>
 
-          {/* Divider */}
+          {/* Séparateur */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-700"></div>
+              <div className="w-full border-t border-neutral-200" />
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="px-2  text-slate-600">Ou</span>
+            <div className="relative flex justify-center">
+              <span className="px-3 bg-neutral-50 font-mono text-[10px] uppercase tracking-[0.14em] text-neutral-400">
+                Ou
+              </span>
             </div>
           </div>
 
-          {/* Invitation link */}
-          <div className="p-4 bg-violet-500/5 border border-violet-500/30 rounded-xl text-center">
-            <p className="text-xs text-slate-500 mb-3">
+          {/* Invitation */}
+          <div className="p-4 bg-terracotta-50/60 border border-terracotta-200 rounded-lg text-center">
+            <p className="text-xs text-neutral-600 mb-2">
               Vous avez reçu une invitation par email ?
             </p>
             <a
               href="/auth/join"
-              className="inline-block text-sm font-semibold text-violet-400 hover:text-violet-300 transition-colors"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-terracotta-700 hover:text-terracotta-800 transition-colors"
             >
-              Rejoindre via invitation →
+              Rejoindre via invitation
+              <ArrowRight className="w-3.5 h-3.5" />
             </a>
           </div>
 
-          {/* Security badges */}
+          {/* Badges sécurité */}
           <div className="flex items-center justify-center gap-5 mt-8">
             {['Chiffrement SSL', 'Données sécurisées', 'Accès restreint'].map((item, i) => (
               <div key={i} className="flex items-center gap-1.5">
-                <CheckCircle className="w-3 h-3 text-green-500/70" />
-                <span className="text-[11px] text-slate-600 font-medium">{item}</span>
+                <CheckCircle className="w-3 h-3 text-brand-600" />
+                <span className="text-[11px] text-neutral-500 font-medium">{item}</span>
               </div>
             ))}
           </div>
 
-          {/* Back to landing */}
+          {/* Retour landing */}
           <div className="mt-8 text-center">
-            <button onClick={() => navigate('/')} className="text-xs text-slate-600 hover:text-violet-400 transition-colors font-medium">
-              Retour au site
+            <button
+              onClick={() => navigate('/')}
+              className="font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500 hover:text-terracotta-700 transition-colors"
+            >
+              ← Retour au site
             </button>
           </div>
         </div>

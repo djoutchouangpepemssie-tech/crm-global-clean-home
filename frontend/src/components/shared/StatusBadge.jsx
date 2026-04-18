@@ -1,192 +1,81 @@
 /**
  * StatusBadge — badges de statut unifiés par domaine métier.
- *
- * Aujourd'hui chaque page définit ses propres couleurs de statut.
- * Résultat : le statut "nouveau" est vert dans LeadsList et bleu dans
- * le Dashboard. Ce composant centralise tout.
+ * SKIN ATELIER v2.0 — émeraude / terracotta / amber / neutral (crème)
  *
  * Usage :
  *   <StatusBadge domain="lead" status="nouveau" />
  *   <StatusBadge domain="quote" status="envoyé" />
  *   <StatusBadge domain="invoice" status="payée" />
- *   <StatusBadge domain="task" status="pending" />
- *   <StatusBadge domain="intervention" status="en_cours" />
  */
 import React from 'react';
 
-// ── Définition centrale des statuts ──────────────────────────
+const P = {
+  brand:      'bg-brand-50 text-brand-700 ring-brand-200',
+  brandSoft:  'bg-brand-50 text-brand-600 ring-brand-200',
+  amber:      'bg-amber-50 text-amber-700 ring-amber-200',
+  terracotta: 'bg-terracotta-50 text-terracotta-700 ring-terracotta-200',
+  neutral:    'bg-neutral-100 text-neutral-600 ring-neutral-200',
+  neutralDim: 'bg-neutral-50 text-neutral-500 ring-neutral-200',
+  ink:        'bg-neutral-200 text-neutral-800 ring-neutral-300',
+};
 
 const STATUS_MAP = {
   lead: {
-    nouveau: {
-      label: 'Nouveau',
-      classes: 'bg-blue-50 text-blue-700 ring-blue-200',
-    },
-    contacté: {
-      label: 'Contacté',
-      classes: 'bg-amber-50 text-amber-700 ring-amber-200',
-    },
-    qualifié: {
-      label: 'Qualifié',
-      classes: 'bg-violet-50 text-violet-700 ring-violet-200',
-    },
-    devis_envoyé: {
-      label: 'Devis envoyé',
-      classes: 'bg-indigo-50 text-indigo-700 ring-indigo-200',
-    },
-    devis_accepté: {
-      label: 'Devis accepté',
-      classes: 'bg-teal-50 text-teal-700 ring-teal-200',
-    },
-    gagné: {
-      label: 'Gagné',
-      classes: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-    },
-    perdu: {
-      label: 'Perdu',
-      classes: 'bg-rose-50 text-rose-700 ring-rose-200',
-    },
-    archivé: {
-      label: 'Archivé',
-      classes: 'bg-slate-50 text-slate-600 ring-slate-200',
-    },
+    nouveau:        { label: 'Nouveau',        classes: P.ink },
+    contacté:       { label: 'Contacté',       classes: P.amber },
+    qualifié:       { label: 'Qualifié',       classes: P.ink },
+    devis_envoyé:   { label: 'Devis envoyé',   classes: P.amber },
+    devis_accepté:  { label: 'Devis accepté',  classes: P.brandSoft },
+    gagné:          { label: 'Gagné',          classes: P.brand },
+    perdu:          { label: 'Perdu',          classes: P.terracotta },
+    archivé:        { label: 'Archivé',        classes: P.neutralDim },
   },
   quote: {
-    brouillon: {
-      label: 'Brouillon',
-      classes: 'bg-slate-50 text-slate-600 ring-slate-200',
-    },
-    envoyé: {
-      label: 'Envoyé',
-      classes: 'bg-blue-50 text-blue-700 ring-blue-200',
-    },
-    accepté: {
-      label: 'Accepté',
-      classes: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-    },
-    refusé: {
-      label: 'Refusé',
-      classes: 'bg-rose-50 text-rose-700 ring-rose-200',
-    },
-    expiré: {
-      label: 'Expiré',
-      classes: 'bg-amber-50 text-amber-700 ring-amber-200',
-    },
+    brouillon: { label: 'Brouillon', classes: P.neutralDim },
+    envoyé:    { label: 'Envoyé',    classes: P.amber },
+    accepté:   { label: 'Accepté',   classes: P.brand },
+    refusé:    { label: 'Refusé',    classes: P.terracotta },
+    expiré:    { label: 'Expiré',    classes: P.terracotta },
   },
   invoice: {
-    en_attente: {
-      label: 'En attente',
-      classes: 'bg-amber-50 text-amber-700 ring-amber-200',
-    },
-    payée: {
-      label: 'Payée',
-      classes: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-    },
-    en_retard: {
-      label: 'En retard',
-      classes: 'bg-rose-50 text-rose-700 ring-rose-200',
-    },
-    annulée: {
-      label: 'Annulée',
-      classes: 'bg-slate-50 text-slate-600 ring-slate-200',
-    },
+    en_attente: { label: 'En attente', classes: P.amber },
+    payée:      { label: 'Payée',      classes: P.brand },
+    en_retard:  { label: 'En retard',  classes: P.terracotta },
+    annulée:    { label: 'Annulée',    classes: P.neutralDim },
   },
   task: {
-    pending: {
-      label: 'À faire',
-      classes: 'bg-amber-50 text-amber-700 ring-amber-200',
-    },
-    in_progress: {
-      label: 'En cours',
-      classes: 'bg-blue-50 text-blue-700 ring-blue-200',
-    },
-    completed: {
-      label: 'Terminée',
-      classes: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-    },
-    cancelled: {
-      label: 'Annulée',
-      classes: 'bg-slate-50 text-slate-600 ring-slate-200',
-    },
+    pending:     { label: 'À faire',   classes: P.amber },
+    in_progress: { label: 'En cours',  classes: P.ink },
+    completed:   { label: 'Terminée',  classes: P.brand },
+    cancelled:   { label: 'Annulée',   classes: P.neutralDim },
   },
   intervention: {
-    planifiée: {
-      label: 'Planifiée',
-      classes: 'bg-blue-50 text-blue-700 ring-blue-200',
-    },
-    en_cours: {
-      label: 'En cours',
-      classes: 'bg-violet-50 text-violet-700 ring-violet-200',
-    },
-    terminée: {
-      label: 'Terminée',
-      classes: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-    },
-    annulée: {
-      label: 'Annulée',
-      classes: 'bg-rose-50 text-rose-700 ring-rose-200',
-    },
+    planifiée: { label: 'Planifiée', classes: P.ink },
+    en_cours:  { label: 'En cours',  classes: P.amber },
+    terminée:  { label: 'Terminée',  classes: P.brand },
+    annulée:   { label: 'Annulée',   classes: P.terracotta },
   },
   booking: {
-    confirmed: {
-      label: 'Confirmé',
-      classes: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-    },
-    pending: {
-      label: 'En attente',
-      classes: 'bg-amber-50 text-amber-700 ring-amber-200',
-    },
-    cancelled: {
-      label: 'Annulé',
-      classes: 'bg-rose-50 text-rose-700 ring-rose-200',
-    },
-    completed: {
-      label: 'Terminé',
-      classes: 'bg-blue-50 text-blue-700 ring-blue-200',
-    },
+    confirmed: { label: 'Confirmé',   classes: P.brand },
+    pending:   { label: 'En attente', classes: P.amber },
+    cancelled: { label: 'Annulé',     classes: P.terracotta },
+    completed: { label: 'Terminé',    classes: P.ink },
   },
   contract: {
-    active: {
-      label: 'Actif',
-      classes: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-    },
-    paused: {
-      label: 'En pause',
-      classes: 'bg-amber-50 text-amber-700 ring-amber-200',
-    },
-    cancelled: {
-      label: 'Annulé',
-      classes: 'bg-rose-50 text-rose-700 ring-rose-200',
-    },
-    expired: {
-      label: 'Expiré',
-      classes: 'bg-slate-50 text-slate-600 ring-slate-200',
-    },
+    active:    { label: 'Actif',    classes: P.brand },
+    paused:    { label: 'En pause', classes: P.amber },
+    cancelled: { label: 'Annulé',   classes: P.terracotta },
+    expired:   { label: 'Expiré',   classes: P.neutralDim },
   },
   priority: {
-    low: {
-      label: 'Basse',
-      classes: 'bg-slate-50 text-slate-600 ring-slate-200',
-    },
-    medium: {
-      label: 'Moyenne',
-      classes: 'bg-blue-50 text-blue-700 ring-blue-200',
-    },
-    high: {
-      label: 'Haute',
-      classes: 'bg-amber-50 text-amber-700 ring-amber-200',
-    },
-    urgent: {
-      label: 'Urgent',
-      classes: 'bg-rose-50 text-rose-700 ring-rose-200',
-    },
+    low:    { label: 'Basse',   classes: P.neutralDim },
+    medium: { label: 'Moyenne', classes: P.ink },
+    high:   { label: 'Haute',   classes: P.amber },
+    urgent: { label: 'Urgent',  classes: P.terracotta },
   },
 };
 
-const FALLBACK = {
-  label: null,
-  classes: 'bg-slate-50 text-slate-600 ring-slate-200',
-};
+const FALLBACK = { label: null, classes: P.neutralDim };
 
 export function StatusBadge({ domain = 'lead', status, label: customLabel, size = 'sm', className = '' }) {
   const domainMap = STATUS_MAP[domain] || {};
@@ -211,7 +100,6 @@ export function StatusBadge({ domain = 'lead', status, label: customLabel, size 
   );
 }
 
-/** Récupérer juste la config (label + classes) sans rendre le composant */
 export function getStatusConfig(domain, status) {
   const domainMap = STATUS_MAP[domain] || {};
   return domainMap[status] || FALLBACK;

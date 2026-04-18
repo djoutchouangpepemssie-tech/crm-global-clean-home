@@ -1,12 +1,5 @@
 import React from 'react';
 
-/**
- * Premium Button Component
- * Variants: primary, secondary, danger, outline, ghost
- * Sizes: sm, md, lg
- * States: default, loading, disabled
- */
-
 export const PremiumButton = ({
   children,
   variant = 'primary',
@@ -21,47 +14,47 @@ export const PremiumButton = ({
 }) => {
   const variantClasses = {
     primary: `
-      bg-gradient-to-r from-violet-600 to-purple-600
-      hover:from-violet-700 hover:to-purple-700
+      bg-brand-600 hover:bg-brand-700
       text-white
-      shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50
-      border border-violet-500/20
+      shadow-sm hover:shadow-brand
+      border border-brand-700/10
     `,
     secondary: `
-      bg-white/10 hover:bg-white/15
-      text-slate-200 hover:text-white
-      border border-white/20 hover:border-white/30
-      backdrop-blur
+      bg-white hover:bg-neutral-50
+      text-neutral-700 hover:text-neutral-900
+      border border-neutral-200 hover:border-neutral-300
+      shadow-card
     `,
     danger: `
-      bg-red-600/20 hover:bg-red-600/30
-      text-red-400 hover:text-red-300
-      border border-red-500/30
+      bg-terracotta-600 hover:bg-terracotta-700
+      text-white
+      shadow-sm hover:shadow-accent
+      border border-terracotta-700/10
     `,
     outline: `
-      bg-transparent hover:bg-white/5
-      text-slate-300 hover:text-white
-      border border-slate-500/50 hover:border-slate-400
+      bg-transparent hover:bg-neutral-50
+      text-neutral-700 hover:text-neutral-900
+      border border-neutral-300 hover:border-neutral-400
     `,
     ghost: `
-      bg-transparent hover:bg-white/5
-      text-slate-400 hover:text-slate-200
+      bg-transparent hover:bg-neutral-100
+      text-neutral-600 hover:text-neutral-900
       border-0
     `,
   };
 
   const sizeClasses = {
-    sm: 'px-3 py-1.5 text-xs font-bold rounded-lg gap-1',
-    md: 'px-4 py-2.5 text-sm font-bold rounded-xl gap-2',
-    lg: 'px-6 py-3 text-base font-bold rounded-2xl gap-2',
+    sm: 'px-3 py-1.5 text-xs font-semibold rounded-md gap-1.5',
+    md: 'px-4 py-2.5 text-sm font-semibold rounded-lg gap-2',
+    lg: 'px-6 py-3 text-base font-semibold rounded-xl gap-2',
   };
 
   const baseClasses = `
     inline-flex items-center justify-center
     transition-all duration-200 ease-out
-    transform hover:scale-105 active:scale-95
-    disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100
-    focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:ring-offset-2 focus:ring-offset-slate-900
+    active:scale-[0.98]
+    disabled:opacity-50 disabled:cursor-not-allowed
+    focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white
     whitespace-nowrap
   `;
 
@@ -81,7 +74,7 @@ export const PremiumButton = ({
       {loading ? (
         <>
           <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-          {typeof children === 'string' ? `${children}...` : children}
+          {typeof children === 'string' ? `${children}…` : children}
         </>
       ) : (
         <>
@@ -93,18 +86,10 @@ export const PremiumButton = ({
   );
 };
 
-/**
- * Button Group - for multiple related buttons
- */
 export const ButtonGroup = ({ children, className = '' }) => (
-  <div className={`flex gap-2 flex-wrap ${className}`}>
-    {children}
-  </div>
+  <div className={`flex gap-2 flex-wrap ${className}`}>{children}</div>
 );
 
-/**
- * Icon Button - square compact button for icons
- */
 export const IconButton = ({
   icon: Icon,
   tooltip = '',
@@ -118,40 +103,36 @@ export const IconButton = ({
       disabled={disabled}
       onClick={onClick}
       className={`
-        p-2 rounded-lg
+        p-2 rounded-md
         transition-all duration-200
-        ${variant === 'ghost' 
-          ? 'hover:bg-white/10 text-slate-400 hover:text-slate-200' 
-          : 'bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300'
+        ${variant === 'ghost'
+          ? 'hover:bg-neutral-100 text-neutral-500 hover:text-neutral-900'
+          : 'bg-white hover:bg-neutral-50 border border-neutral-200 text-neutral-700 shadow-card'
         }
         disabled:opacity-50 disabled:cursor-not-allowed
-        focus:outline-none focus:ring-2 focus:ring-violet-500/50
+        focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50
       `}
       {...props}
     >
       <Icon className="w-5 h-5" />
     </button>
     {tooltip && (
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2
                       hidden group-hover:flex
-                      bg-slate-900 border border-white/10 rounded-lg px-2 py-1
-                      text-xs text-slate-300 whitespace-nowrap
-                      z-50 pointer-events-none">
+                      bg-neutral-900 rounded-md px-2 py-1
+                      text-xs text-neutral-50 whitespace-nowrap
+                      z-50 pointer-events-none shadow-card-lg">
         {tooltip}
       </div>
     )}
   </div>
 );
 
-/**
- * Floating Action Button
- */
 export const FAB = ({
   icon: Icon,
   label = '',
   onClick = null,
   variant = 'primary',
-  size = 'lg',
   className = '',
 }) => (
   <button
@@ -160,10 +141,10 @@ export const FAB = ({
       fixed bottom-8 right-8
       p-4 rounded-full
       ${variant === 'primary'
-        ? 'bg-gradient-to-br from-violet-600 to-purple-600 text-white shadow-2xl hover:shadow-violet-500/50'
-        : 'bg-white/10 text-white shadow-lg'
+        ? 'bg-brand-600 hover:bg-brand-700 text-white shadow-brand'
+        : 'bg-white text-neutral-700 shadow-card-lg border border-neutral-200'
       }
-      hover:scale-110 transition-all duration-200
+      hover:-translate-y-0.5 transition-all duration-200
       flex items-center gap-2
       z-40
       ${className}
@@ -171,6 +152,6 @@ export const FAB = ({
     title={label}
   >
     <Icon className="w-6 h-6" />
-    {label && <span className="text-sm font-bold hidden sm:inline">{label}</span>}
+    {label && <span className="text-sm font-semibold hidden sm:inline">{label}</span>}
   </button>
 );

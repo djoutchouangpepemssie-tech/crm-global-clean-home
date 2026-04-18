@@ -1,79 +1,60 @@
 import React from 'react';
 
-/**
- * Premium Loading Skeleton Components
- * Ultra-smooth animations and glassmorphism effects
- */
-
-export const SkeletonCard = ({ count = 3, variant = 'card' }) => (
+export const SkeletonCard = ({ count = 3 }) => (
   <div className="space-y-3">
     {[...Array(count)].map((_, i) => (
-      <div 
+      <div
         key={i}
-        className="animate-pulse bg-gradient-to-r from-white/5 via-white/10 to-white/5 
-                   rounded-2xl border border-white/5 p-5 min-h-[120px]"
-        style={{
-          animation: `shimmer 2s infinite`,
-          animationDelay: `${i * 100}ms`
-        }}
+        className="bg-white rounded-xl border border-neutral-200 p-5 min-h-[120px] relative overflow-hidden"
       >
-        <div className="space-y-2">
-          <div className="h-4 bg-white/10 rounded-lg w-3/4" />
-          <div className="h-3 bg-white/8 rounded-lg w-1/2" />
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-neutral-100 to-transparent animate-shimmer"
+             style={{ backgroundSize: '200% 100%' }} />
+        <div className="relative space-y-2.5">
+          <div className="h-4 bg-neutral-100 rounded w-3/4" />
+          <div className="h-3 bg-neutral-100 rounded w-1/2" />
+          <div className="h-3 bg-neutral-100 rounded w-5/6 mt-4" />
         </div>
       </div>
     ))}
-    <style>{`
-      @keyframes shimmer {
-        0%, 100% { opacity: 0.6; }
-        50% { opacity: 1; }
-      }
-    `}</style>
   </div>
 );
 
 export const SkeletonRow = ({ count = 5 }) => (
   <div className="space-y-2">
     {[...Array(count)].map((_, i) => (
-      <div 
+      <div
         key={i}
-        className="animate-pulse bg-white/3 rounded-xl h-12 border border-white/5"
-        style={{
-          animation: `pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite`,
-          animationDelay: `${i * 100}ms`
-        }}
+        className="bg-white rounded-lg h-12 border border-neutral-200 animate-pulse-soft"
+        style={{ animationDelay: `${i * 100}ms` }}
       />
     ))}
   </div>
 );
 
 export const SkeletonGrid = ({ cols = 4, rows = 2 }) => (
-  <div className={`grid grid-cols-${cols} gap-4`}>
+  <div className={`grid gap-4`} style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
     {[...Array(cols * rows)].map((_, i) => (
-      <div 
+      <div
         key={i}
-        className="animate-pulse bg-white/3 rounded-2xl aspect-square border border-white/5"
-        style={{
-          animation: `pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite`,
-          animationDelay: `${(i % cols) * 100}ms`
-        }}
+        className="bg-white rounded-xl aspect-square border border-neutral-200 animate-pulse-soft"
+        style={{ animationDelay: `${(i % cols) * 100}ms` }}
       />
     ))}
   </div>
 );
 
-export const SkeletonLine = () => (
-  <div className="animate-pulse bg-white/3 rounded-lg h-4 w-full" />
+export const SkeletonLine = ({ width = 'w-full' }) => (
+  <div className={`bg-neutral-100 rounded h-3 ${width} animate-pulse-soft`} />
 );
 
 export const LoadingDots = () => (
-  <div className="flex items-center gap-1">
+  <div className="flex items-center gap-1.5">
     {[0, 1, 2].map(i => (
       <div
         key={i}
-        className="w-2 h-2 rounded-full bg-violet-400"
+        className="w-2 h-2 rounded-full bg-brand-600"
         style={{
-          animation: `bounce 1.4s infinite`,
+          animation: `pulse-soft 1.4s ease-in-out infinite`,
           animationDelay: `${i * 0.2}s`
         }}
       />
@@ -81,22 +62,26 @@ export const LoadingDots = () => (
   </div>
 );
 
-export const PremiumEmptyState = ({ 
-  icon: Icon, 
+export const PremiumEmptyState = ({
+  icon: Icon,
   title = 'Aucune donnée',
-  description = 'Il n\'y a rien à afficher pour le moment',
+  description = "Il n'y a rien à afficher pour le moment.",
   action = null,
-  emoji = '📭'
 }) => (
-  <div className="flex flex-col items-center justify-center py-16 px-4">
-    <div className="text-6xl mb-4 opacity-40 animate-bounce">{emoji}</div>
-    {Icon && <Icon className="w-12 h-12 text-slate-500 mb-4 opacity-50" />}
-    <h3 className="text-lg font-bold text-slate-300 mb-2">{title}</h3>
-    <p className="text-sm text-slate-500 text-center max-w-sm mb-6">{description}</p>
+  <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+    {Icon && (
+      <div className="w-14 h-14 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center mb-4">
+        <Icon className="w-6 h-6 text-brand-600" strokeWidth={1.75} />
+      </div>
+    )}
+    <h3 className="font-display text-lg font-semibold text-neutral-900 mb-1.5 tracking-tight">{title}</h3>
+    <p className="text-sm text-neutral-500 max-w-sm mb-6 leading-relaxed">{description}</p>
     {action && (
-      <button className="px-6 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-bold
-                        hover:bg-violet-700 transition-all duration-200 transform hover:scale-105
-                        shadow-lg hover:shadow-violet-500/30">
+      <button
+        onClick={action.onClick}
+        className="px-5 py-2.5 rounded-lg bg-brand-600 text-white text-sm font-semibold
+                   hover:bg-brand-700 transition-all duration-200 shadow-sm hover:shadow-brand"
+      >
         {action.label}
       </button>
     )}
@@ -104,21 +89,25 @@ export const PremiumEmptyState = ({
 );
 
 export const PremiumError = ({
-  title = 'Une erreur s\'est produite',
-  description = 'Veuillez réessayer plus tard',
+  title = "Une erreur s'est produite",
+  description = 'Veuillez réessayer plus tard.',
   action = null,
-  emoji = '⚠️'
 }) => (
-  <div className="flex flex-col items-center justify-center py-16 px-4 
-                  bg-gradient-to-br from-red-500/5 via-transparent to-red-500/5
-                  border border-red-500/20 rounded-2xl">
-    <div className="text-6xl mb-4">{emoji}</div>
-    <h3 className="text-lg font-bold text-red-400 mb-2">{title}</h3>
-    <p className="text-sm text-slate-500 text-center max-w-sm mb-6">{description}</p>
+  <div className="flex flex-col items-center justify-center py-14 px-4 text-center
+                  bg-terracotta-50/50 border border-terracotta-200 rounded-2xl">
+    <div className="w-14 h-14 rounded-xl bg-terracotta-100 border border-terracotta-200 flex items-center justify-center mb-4">
+      <svg className="w-6 h-6 text-terracotta-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.75}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+      </svg>
+    </div>
+    <h3 className="font-display text-lg font-semibold text-terracotta-800 mb-1.5 tracking-tight">{title}</h3>
+    <p className="text-sm text-neutral-600 max-w-sm mb-6 leading-relaxed">{description}</p>
     {action && (
-      <button onClick={action.onClick}
-              className="px-6 py-2.5 rounded-xl bg-red-600 text-white text-sm font-bold
-                        hover:bg-red-700 transition-all duration-200 transform hover:scale-105">
+      <button
+        onClick={action.onClick}
+        className="px-5 py-2.5 rounded-lg bg-terracotta-600 text-white text-sm font-semibold
+                   hover:bg-terracotta-700 transition-all duration-200 shadow-sm"
+      >
         {action.label}
       </button>
     )}
@@ -126,22 +115,18 @@ export const PremiumError = ({
 );
 
 export const LoadingBar = () => (
-  <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-    <div className="h-full bg-gradient-to-r from-violet-500 via-purple-500 to-violet-500
-                   rounded-full animate-[shimmer_2s_infinite]"
-         style={{
-           backgroundSize: '200% 100%',
-           animation: 'shimmer 2s infinite'
-         }} />
+  <div className="w-full h-0.5 bg-neutral-100 rounded-full overflow-hidden">
+    <div className="h-full bg-brand-600 rounded-full animate-shimmer"
+         style={{ backgroundSize: '200% 100%' }} />
   </div>
 );
 
 export const PageLoader = () => (
-  <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm flex items-center justify-center z-50">
-    <div className="bg-slate-900 border border-white/10 rounded-2xl p-8 shadow-2xl">
+  <div className="fixed inset-0 bg-neutral-900/20 backdrop-blur-sm flex items-center justify-center z-50">
+    <div className="bg-white border border-neutral-200 rounded-xl p-8 shadow-card-xl">
       <div className="flex flex-col items-center gap-4">
         <LoadingDots />
-        <p className="text-sm text-slate-400">Chargement en cours...</p>
+        <p className="text-sm text-neutral-600 font-mono uppercase tracking-[0.08em]">Chargement…</p>
       </div>
     </div>
   </div>

@@ -10,20 +10,21 @@ export function EmptyState({ icon: Icon, title='Rien à afficher', description, 
       {Icon && (
         <div style={{
           width:'56px', height:'56px',
-          borderRadius:'var(--radius-lg)',
-          background:'var(--brand-light)',
-          border:'1px solid var(--brand-medium)',
+          borderRadius:'var(--radius-lg, 12px)',
+          background:'var(--brand-light, #ECFDF5)',
+          border:'1px solid var(--brand-medium, #A7F3D0)',
           display:'flex', alignItems:'center', justifyContent:'center',
           marginBottom:'16px',
         }}>
-          <Icon size={24} style={{ color:'var(--brand)' }} strokeWidth={1.75} />
+          <Icon size={24} style={{ color:'var(--brand, #047857)' }} strokeWidth={1.75} />
         </div>
       )}
       <h3 style={{
-        fontFamily:'var(--font-display)',
-        fontSize:'15px', fontWeight:'600',
+        fontFamily:'var(--font-display, "Fraunces", serif)',
+        fontSize:'17px', fontWeight:'600',
         color:'var(--text-primary)',
         margin:'0 0 8px',
+        letterSpacing: '-0.01em',
       }}>
         {title}
       </h3>
@@ -44,10 +45,10 @@ export function EmptyState({ icon: Icon, title='Rien à afficher', description, 
               disabled={secondaryAction.disabled}
               style={{
                 display:'inline-flex', alignItems:'center', gap:'6px',
-                padding:'8px 16px',
-                background:'var(--bg-card)',
-                border:'1px solid var(--border-default)',
-                borderRadius:'var(--radius-md)',
+                padding:'9px 16px',
+                background:'var(--bg-card, #FFFFFF)',
+                border:'1px solid var(--border-default, #E5E0D6)',
+                borderRadius:'var(--radius-md, 8px)',
                 fontSize:'13px', fontWeight:'500',
                 color:'var(--text-secondary)',
                 cursor:'pointer',
@@ -64,14 +65,14 @@ export function EmptyState({ icon: Icon, title='Rien à afficher', description, 
               disabled={action.disabled}
               style={{
                 display:'inline-flex', alignItems:'center', gap:'6px',
-                padding:'8px 16px',
-                background:'var(--brand)',
+                padding:'9px 16px',
+                background:'var(--brand, #047857)',
                 border:'none',
-                borderRadius:'var(--radius-md)',
+                borderRadius:'var(--radius-md, 8px)',
                 fontSize:'13px', fontWeight:'600',
                 color:'#fff',
                 cursor:'pointer',
-                boxShadow:'0 2px 8px rgba(99,102,241,0.25)',
+                boxShadow:'0 2px 8px rgba(4, 120, 87, 0.24)',
               }}
             >
               {action.icon && <action.icon size={14} />}
