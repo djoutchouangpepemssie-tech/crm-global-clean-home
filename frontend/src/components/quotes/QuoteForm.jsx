@@ -298,7 +298,7 @@ function Step1Client({ data, setData, leads }) {
       <h2 className="qf-display" style={{ fontSize: 22, marginBottom: 20, fontStyle: 'italic' }}>Sélectionner le client</h2>
       <div style={{ marginBottom: 16 }}>
         <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Prospect *</label>
-        <select className="qf-field" value={data.lead_id || ''} onChange={e => setData(d => ({ ...d, lead_id: parseInt(e.target.value) || null }))}>
+        <select className="qf-field" value={data.lead_id || ''} onChange={e => setData(d => ({ ...d, lead_id: e.target.value || null }))}>
           <option value="">— Choisir un prospect —</option>
           {leads.map(l => <option key={l.id} value={l.id}>{l.full_name} · {l.city || ''}</option>)}
         </select>
@@ -653,12 +653,53 @@ export default function QuoteForm() {
   const [groups, setGroups] = useState([newGroup('Prestations principales')]);
 
   useEffect(() => {
-    api.get('/leads').then(r => setLeads(r.data || DEMO_LEADS)).catch(() => setLeads(DEMO_LEADS));
+    api.get('/leads', { params: { page_size: 500 } })
+      .then(r => {
+        const raw = r.data?.items || r.data || [];
+        const mapped = (Array.isArray(raw) ? raw : []).map(l => ({
+          id: l.lead_id,
+          full_name: l.name || l.full_name || 'Inconnu',
+          city: l.address || l.city || '',
+          email: l.email || '',
+          phone: l.phone || '',
+        }));
+        setLeads(mapped.length ? mapped : DEMO_LEADS);
+      })
+      .catch(() => setLeads(DEMO_LEADS));
   }, []);
 
   useEffect(() => {
     if (!isEdit) return;
-    api.get(`/quotes/${id}`).then(r => { if (r.data) setFormData(prev => ({ ...prev, ...r.data })); }).catch(() => {});
+    api.get(`/quotes/${id}`).then(r => {
+      const q = r.data;
+      if (!q) return;
+      setFormData(prev => ({
+        ...prev,
+        lead_id: q.lead_id || null,
+        title: q.title || '',
+        description: q.details || '',
+        expiry_date: q.expiry_date || '',
+        payment_mode: q.payment_mode || 'virement',
+        payment_delay: q.payment_delay || '30 jours',
+        tva: String(q.tva_rate ?? 20),
+        discount: q.discount || 0,
+        notes: q.notes || '',
+      }));
+      if (q.line_items?.length) {
+        const groupMap = {};
+        q.line_items.forEach(item => {
+          const gname = item.group || 'Prestations principales';
+          if (!groupMap[gname]) groupMap[gname] = { id: Date.now() + Math.random(), name: gname, expanded: true, postes: [] };
+          const poste = newPoste(item.label || '');
+          poste.qty = item.qty || 1;
+          poste.unit = item.unit || 'forfait';
+          poste.price = item.price || 0;
+          groupMap[gname].postes.push(poste);
+        });
+        const rebuilt = Object.values(groupMap);
+        if (rebuilt.length) setGroups(rebuilt);
+      }
+    }).catch(() => {});
   }, [id, isEdit]);
 
   useEffect(() => {
@@ -676,11 +717,29 @@ export default function QuoteForm() {
   const handleSave = async (andSend = false) => {
     setSaving(true);
     const totalHT = groups.reduce((s, g) => s + g.postes.reduce((ps, p) => ps + (p.qty || 0) * (p.price || 0), 0), 0);
+    const tvaRate = parseFloat(formData.tva) || 20;
     const base = totalHT * (1 - (formData.discount || 0) / 100);
-    const tva = base * ((parseFloat(formData.tva) || 20) / 100);
-    const payload = { ...formData, amount: base + tva, groups, status: andSend ? 'envoyé' : 'brouillon' };
+    const amount = base * (1 + tvaRate / 100);
+    const line_items = groups.flatMap(g => g.postes.map(p => ({
+      group: g.name, label: p.label, qty: p.qty, unit: p.unit, price: p.price,
+    })));
+    const payload = {
+      lead_id: formData.lead_id,
+      service_type: formData.title || 'Autre',
+      title: formData.title,
+      amount,
+      details: formData.description || '',
+      expiry_date: formData.expiry_date || null,
+      payment_mode: formData.payment_mode,
+      payment_delay: formData.payment_delay,
+      tva_rate: tvaRate,
+      discount: formData.discount || 0,
+      notes: formData.notes || '',
+      line_items,
+      status: andSend ? 'envoyé' : 'brouillon',
+    };
     try {
-      if (isEdit) await api.put(`/quotes/${id}`, payload);
+      if (isEdit) await api.patch(`/quotes/${id}`, payload);
       else await api.post('/quotes', payload);
       navigate('/quotes');
     } catch {

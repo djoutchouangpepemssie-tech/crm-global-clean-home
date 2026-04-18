@@ -25,6 +25,37 @@ const TYPE_PILL = {
   avoir:     { label: 'Avoir',      cls: 'bg-[#fce7f3] text-[#9d174d] border-[#f472b6]' },
 };
 
+const BACKEND_STATUS = { 'en_attente': 'emitted', 'payée': 'paid', 'en_retard': 'overdue', 'annulée': 'cancelled' };
+
+function mapInvoice(i) {
+  const status = BACKEND_STATUS[i.status] || i.status || 'draft';
+  const amountHT = i.amount || 0;
+  const tvaRate = i.tva_rate ?? 0;
+  const amountTTC = amountHT * (1 + tvaRate / 100);
+  return {
+    id: i.invoice_id,
+    ref: i.invoice_number || (i.invoice_id || '').slice(-8).toUpperCase() || '—',
+    type: i.type || 'finale',
+    situationNum: i.situation_num || null,
+    retenue: i.retenue || false,
+    clientName: i.lead_name || 'Client inconnu',
+    clientCity: i.lead_city || '—',
+    project: i.project || '—',
+    tvaLabel: tvaRate ? `${tvaRate}%` : '0%',
+    tvaMulti: false,
+    amountHT,
+    amountTTC,
+    emittedDate: i.created_at || null,
+    dueDate: i.due_date || null,
+    paidIn: i.paid_at && i.created_at
+      ? Math.floor((new Date(i.paid_at) - new Date(i.created_at)) / 86400000)
+      : null,
+    remindersDone: i.reminders_done || 0,
+    status,
+    _raw: i,
+  };
+}
+
 const fmtMoney = (v) => new Intl.NumberFormat('fr-FR').format(Math.round(v || 0));
 const fmtK = (v) => (Math.round((v || 0) / 100) / 10).toLocaleString('fr-FR', { minimumFractionDigits: 1 });
 const fmtDate = (d) => {
@@ -49,9 +80,21 @@ const InvoicesList = () => {
 
   useEffect(() => {
     let alive = true;
-    api.get('/invoices').then(r => { if (alive) setData(r.data); })
-      .catch(() => { if (alive) setData(FALLBACK); })
-      .finally(() => { if (alive) setLoading(false); });
+    Promise.all([
+      api.get('/invoices', { params: { page_size: 200 } }),
+      api.get('/invoices/stats'),
+    ]).then(([invR, statsR]) => {
+      if (!alive) return;
+      const raw = invR.data?.items || invR.data || [];
+      setData({
+        invoices: (Array.isArray(raw) ? raw : []).map(mapInvoice),
+        stats: statsR.data || FALLBACK.stats,
+      });
+    }).catch(() => {
+      if (alive) setData(FALLBACK);
+    }).finally(() => {
+      if (alive) setLoading(false);
+    });
     return () => { alive = false; };
   }, []);
 

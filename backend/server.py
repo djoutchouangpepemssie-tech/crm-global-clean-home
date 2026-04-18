@@ -530,11 +530,22 @@ class TemplateCreate(BaseModel):
 class Quote(BaseModel):
     model_config = ConfigDict(extra="ignore")
     quote_id: str
+    quote_number: Optional[str] = None
     lead_id: Optional[str] = None
+    lead_name: Optional[str] = None
+    lead_city: Optional[str] = None
     service_type: str
     surface: Optional[float] = None
     amount: float
+    title: Optional[str] = None
     details: str
+    expiry_date: Optional[str] = None
+    payment_mode: Optional[str] = None
+    payment_delay: Optional[str] = None
+    tva_rate: Optional[float] = 0.0
+    discount: Optional[float] = 0.0
+    notes: Optional[str] = None
+    line_items: Optional[List[Dict[str, Any]]] = None
     status: str = "brouillon"  # brouillon, envoyé, accepté, refusé, expiré
     sent_at: Optional[datetime] = None
     opened_at: Optional[datetime] = None
@@ -546,10 +557,18 @@ class Quote(BaseModel):
 
 class QuoteCreate(BaseModel):
     lead_id: Optional[str] = None
-    service_type: str
+    service_type: Optional[str] = "Autre"
     surface: Optional[float] = None
-    amount: float
-    details: str
+    amount: float = 0.0
+    details: Optional[str] = ""
+    title: Optional[str] = None
+    expiry_date: Optional[str] = None
+    payment_mode: Optional[str] = None
+    payment_delay: Optional[str] = None
+    tva_rate: Optional[float] = 0.0
+    discount: Optional[float] = 0.0
+    notes: Optional[str] = None
+    line_items: Optional[List[Dict[str, Any]]] = None
 
     @field_validator("surface")
     @classmethod
@@ -567,8 +586,28 @@ class QuoteCreate(BaseModel):
 
     @field_validator("service_type")
     @classmethod
-    def validate_service_type_field(cls, v: str) -> str:
-        return validate_service_type(v)
+    def validate_service_type_field(cls, v: Optional[str]) -> str:
+        if not v or not v.strip():
+            return "Autre"
+        normalized = v.strip()
+        for allowed in SERVICE_TYPES:
+            if allowed.lower() == normalized.lower():
+                return allowed
+        return normalized[:100]
+
+
+class QuoteUpdate(BaseModel):
+    status: Optional[str] = None
+    notes: Optional[str] = None
+    amount: Optional[float] = None
+    details: Optional[str] = None
+    title: Optional[str] = None
+    expiry_date: Optional[str] = None
+    payment_mode: Optional[str] = None
+    payment_delay: Optional[str] = None
+    tva_rate: Optional[float] = None
+    discount: Optional[float] = None
+    line_items: Optional[List[Dict[str, Any]]] = None
 
 
 class Interaction(BaseModel):
@@ -1852,19 +1891,52 @@ async def delete_template(template_id: str, request: Request):
 # ============= QUOTES ENDPOINTS =============
 
 
+async def _next_quote_number() -> str:
+    """Génère un numéro de devis séquentiel D-YYYY-NNNN."""
+    year = datetime.now(timezone.utc).year
+    counter = await db.counters.find_one_and_update(
+        {"_id": f"quote_{year}"},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=True
+    )
+    n = counter.get("seq", 1)
+    return f"D-{year}-{n:04d}"
+
+
+def _extract_city_from_address(address: str) -> str:
+    if not address:
+        return ""
+    parts = [p.strip() for p in address.split(",")]
+    return parts[-1] if len(parts) > 1 else parts[0][:50]
+
+
 @api_router.post("/quotes", response_model=Quote)
 async def create_quote(input: QuoteCreate, request: Request):
-    """Create a new quote."""
+    """Crée un nouveau devis avec numéro auto-incrémenté."""
     user = await require_auth(request)
     now = datetime.now(timezone.utc)
     quote_id = f"quote_{uuid.uuid4().hex[:12]}"
+    quote_number = await _next_quote_number()
+
+    # Enrichir avec les infos du lead
+    lead_name = ""
+    lead_city = ""
+    if input.lead_id:
+        lead_doc = await db.leads.find_one({"lead_id": input.lead_id}, {"_id": 0, "name": 1, "address": 1})
+        if lead_doc:
+            lead_name = lead_doc.get("name", "")
+            lead_city = _extract_city_from_address(lead_doc.get("address", ""))
 
     quote = {
         "quote_id": quote_id,
+        "quote_number": quote_number,
         **input.model_dump(),
+        "lead_name": lead_name,
+        "lead_city": lead_city,
         "status": "brouillon",
         "created_at": now.isoformat(),
-        "created_by": user.user_id
+        "created_by": user.user_id,
     }
 
     await db.quotes.insert_one(quote)
@@ -1872,42 +1944,105 @@ async def create_quote(input: QuoteCreate, request: Request):
     await write_audit_log("quote", quote_id, "create", user.user_id, input.model_dump())
 
     quote_doc = await db.quotes.find_one({"quote_id": quote_id}, {"_id": 0})
-    if isinstance(quote_doc["created_at"], str):
+    if isinstance(quote_doc.get("created_at"), str):
         quote_doc["created_at"] = datetime.fromisoformat(quote_doc["created_at"])
 
     return Quote(**quote_doc)
+
+
+@api_router.get("/quotes/stats")
+async def get_quotes_stats(request: Request):
+    """Statistiques des devis pour QuotesList."""
+    await require_auth(request)
+
+    now = datetime.now(timezone.utc)
+    start_30d = (now - timedelta(days=30)).isoformat()
+
+    all_quotes = await db.quotes.find(
+        {"deleted_at": {"$exists": False}},
+        {"_id": 0, "amount": 1, "status": 1, "created_at": 1}
+    ).to_list(10000)
+
+    total = len(all_quotes)
+    pending  = [q for q in all_quotes if q.get("status") == "envoyé"]
+    accepted = [q for q in all_quotes if q.get("status") == "accepté"]
+    last_30  = [q for q in all_quotes if (q.get("created_at") or "") >= start_30d]
+
+    ca_pending  = sum(q.get("amount", 0) for q in pending)
+    taux_accept = round(len(accepted) / total * 100) if total > 0 else 0
+    panier_moy  = round(sum(q.get("amount", 0) for q in all_quotes) / total) if total > 0 else 0
+
+    return {
+        "ca_attente":       round(ca_pending, 2),
+        "total_30j":        len(last_30),
+        "taux_acceptation": taux_accept,
+        "panier_moyen":     panier_moy,
+        "total":            total,
+    }
 
 
 @api_router.get("/quotes")
 async def get_quotes(
     request: Request,
     lead_id: Optional[str] = None,
+    status: Optional[str] = None,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
     include_deleted: bool = Query(default=False),
 ):
-    """Get all quotes with pagination."""
+    """Liste paginée des devis, enrichie avec les infos du lead."""
     await require_auth(request)
 
-    query = {}
+    query: Dict[str, Any] = {}
     if not include_deleted:
         query["deleted_at"] = {"$exists": False}
     if lead_id:
         query["lead_id"] = lead_id
+    if status:
+        query["status"] = status
 
     total = await db.quotes.count_documents(query)
     skip = (page - 1) * page_size
-    quotes = await db.quotes.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(page_size).to_list(page_size)
+    quotes = await db.quotes.find(
+        query, {"_id": 0}
+    ).sort("created_at", -1).skip(skip).limit(page_size).to_list(page_size)
+
+    # Enrichir en masse avec les infos des leads
+    lead_ids_to_fetch = list({
+        q.get("lead_id") for q in quotes
+        if q.get("lead_id") and not q.get("lead_name")
+    })
+    leads_map: Dict[str, Any] = {}
+    if lead_ids_to_fetch:
+        leads_docs = await db.leads.find(
+            {"lead_id": {"$in": lead_ids_to_fetch}},
+            {"_id": 0, "lead_id": 1, "name": 1, "address": 1}
+        ).to_list(len(lead_ids_to_fetch))
+        for l in leads_docs:
+            leads_map[l["lead_id"]] = l
 
     for quote in quotes:
-        if isinstance(quote.get("created_at"), str):
-            quote["created_at"] = datetime.fromisoformat(quote["created_at"])
-        if quote.get("sent_at") and isinstance(quote["sent_at"], str):
-            quote["sent_at"] = datetime.fromisoformat(quote["sent_at"])
-        if quote.get("opened_at") and isinstance(quote["opened_at"], str):
-            quote["opened_at"] = datetime.fromisoformat(quote["opened_at"])
-        if quote.get("responded_at") and isinstance(quote["responded_at"], str):
-            quote["responded_at"] = datetime.fromisoformat(quote["responded_at"])
+        # Enrichir lead_name / lead_city si absents
+        if not quote.get("lead_name") and quote.get("lead_id") in leads_map:
+            lead = leads_map[quote["lead_id"]]
+            quote["lead_name"] = lead.get("name", "")
+            quote["lead_city"] = _extract_city_from_address(lead.get("address", ""))
+
+        # Rétrocompatibilité : champs absents dans anciennes entrées
+        quote.setdefault("quote_number", None)
+        quote.setdefault("lead_name", "")
+        quote.setdefault("lead_city", "")
+        quote.setdefault("title", None)
+        quote.setdefault("tva_rate", 0.0)
+        quote.setdefault("discount", 0.0)
+
+        # Normaliser les dates
+        for dt_field in ("created_at", "sent_at", "opened_at", "responded_at"):
+            if quote.get(dt_field) and isinstance(quote[dt_field], str):
+                try:
+                    quote[dt_field] = datetime.fromisoformat(quote[dt_field])
+                except ValueError:
+                    pass
 
     return {
         "items": quotes,
@@ -1947,6 +2082,31 @@ async def restore_quote(quote_id: str, request: Request):
         raise HTTPException(status_code=404, detail="Devis introuvable ou non supprimé")
     await write_audit_log("quote", quote_id, "restore", user.user_id)
     return {"message": "Devis restauré"}
+
+
+@api_router.patch("/quotes/{quote_id}")
+async def update_quote(quote_id: str, inp: QuoteUpdate, request: Request):
+    """Met à jour un devis (statut, montant, notes, conditions)."""
+    user = await require_auth(request)
+
+    update = {k: v for k, v in inp.model_dump().items() if v is not None}
+    if not update:
+        raise HTTPException(status_code=400, detail="Rien à mettre à jour")
+
+    result = await db.quotes.update_one(
+        {"quote_id": quote_id, "deleted_at": {"$exists": False}},
+        {"$set": update}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Devis introuvable")
+
+    await log_activity(user.user_id, "update_quote", "quote", quote_id, update)
+    await write_audit_log("quote", quote_id, "update", user.user_id, update)
+
+    doc = await db.quotes.find_one({"quote_id": quote_id}, {"_id": 0})
+    if doc and isinstance(doc.get("created_at"), str):
+        doc["created_at"] = datetime.fromisoformat(doc["created_at"])
+    return doc
 
 
 @api_router.post("/quotes/{quote_id}/send")
