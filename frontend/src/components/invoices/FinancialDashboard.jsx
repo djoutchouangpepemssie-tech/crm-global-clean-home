@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import BACKEND_URL from '../../config.js';
 const API_URL = BACKEND_URL + '/api';
 
-const COLORS = ['#8b5cf6','#60a5fa','#34d399','#f59e0b','#f43f5e','#06b6d4'];
+const COLORS = ['#047857','#d97706','#c2410c','#44403c','#a8a29e','#14532d'];
 
 // ── helpers ───────────────────────────────────
 const fmt = (v) =>
@@ -33,7 +33,7 @@ function Trend({ value, suffix = '%' }) {
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 3,
       fontSize: 11, fontWeight: 600,
-      color: up ? '#34d399' : '#f43f5e',
+      color: up ? '#047857' : '#c2410c',
     }}>
       <Icon style={{ width: 11, height: 11 }} />
       {up ? '+' : ''}{value}{suffix}
@@ -46,14 +46,14 @@ const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
     <div style={{
-      background: 'var(--bg-card)', border: '1px solid rgba(255,255,255,0.08)',
+      background: '#ffffff', border: '1px solid #e5e0d6',
       borderRadius: 8, padding: '10px 14px', minWidth: 140,
     }}>
-      {label && <p style={{ color: '#94a3b8', fontSize: 11, marginBottom: 6 }}>{label}</p>}
+      {label && <p style={{ color: '#78716c', fontSize: 11, marginBottom: 6 }}>{label}</p>}
       {payload.map((p, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: i < payload.length - 1 ? 4 : 0 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
-          <span style={{ color: '#94a3b8', fontSize: 10 }}>{p.name}: </span>
+          <span style={{ color: '#78716c', fontSize: 10 }}>{p.name}: </span>
           <span style={{ color: p.color, fontWeight: 700, fontSize: 12 }}>{fmt(p.value)}</span>
         </div>
       ))}
@@ -71,9 +71,9 @@ function KpiCard({ title, value, icon: Icon, color, bg, trend, trendSuffix, subt
         </div>
         {trend !== undefined && <Trend value={trend} suffix={trendSuffix} />}
       </div>
-      <p style={{ fontSize: 22, fontWeight: 800, color, fontFamily: 'Manrope,sans-serif', lineHeight: 1.2 }}>{value}</p>
-      <p style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>{title}</p>
-      {subtitle && <p style={{ fontSize: 10, color: '#334155', marginTop: 2 }}>{subtitle}</p>}
+      <p style={{ fontSize: 22, fontWeight: 700, color, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums' }}>{value}</p>
+      <p style={{ fontSize: 11, color: '#78716c', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{title}</p>
+      {subtitle && <p style={{ fontSize: 10, color: '#44403c', marginTop: 2 }}>{subtitle}</p>}
     </div>
   );
 }
@@ -86,16 +86,16 @@ function CashFlowBar({ income, expenses }) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <span style={{ fontSize: 12, color: '#34d399', fontWeight: 600 }}>Entrées {fmt(income)}</span>
-        <span style={{ fontSize: 12, color: '#f43f5e', fontWeight: 600 }}>Sorties {fmt(expenses)}</span>
+        <span style={{ fontSize: 12, color: '#047857', fontWeight: 600 }}>Entrées {fmt(income)}</span>
+        <span style={{ fontSize: 12, color: '#c2410c', fontWeight: 600 }}>Sorties {fmt(expenses)}</span>
       </div>
-      <div style={{ height: 10, borderRadius: 5, background: 'rgba(255,255,255,0.05)', overflow: 'hidden', display: 'flex' }}>
-        <div style={{ width: `${incomePct}%`, background: '#34d399', borderRadius: '5px 0 0 5px', transition: 'width 0.5s' }} />
-        <div style={{ flex: 1, background: '#f43f5e', borderRadius: '0 5px 5px 0' }} />
+      <div style={{ height: 10, borderRadius: 5, background: '#f5f0e8', overflow: 'hidden', display: 'flex' }}>
+        <div style={{ width: `${incomePct}%`, background: '#047857', borderRadius: '5px 0 0 5px', transition: 'width 0.5s' }} />
+        <div style={{ flex: 1, background: '#c2410c', borderRadius: '0 5px 5px 0' }} />
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
-        <span style={{ fontSize: 10, color: '#64748b' }}>{incomePct}% encaissé</span>
-        <span style={{ fontSize: 10, color: '#64748b' }}>{100 - incomePct}% en attente</span>
+        <span style={{ fontSize: 10, color: '#78716c' }}>{incomePct}% encaissé</span>
+        <span style={{ fontSize: 10, color: '#78716c' }}>{100 - incomePct}% en attente</span>
       </div>
     </div>
   );
@@ -133,7 +133,7 @@ const FinancialDashboard = () => {
     {
       title: 'Chiffre d\'affaires',
       value: fmt(totalRevenue),
-      icon: DollarSign, color: '#34d399', bg: 'rgba(52,211,153,0.1)',
+      icon: DollarSign, color: '#047857', bg: 'rgba(4,120,87,0.1)',
       trend: stats.revenue_trend, trendSuffix: '%',
       subtitle: `${paidCount} factures payées`,
     },
@@ -146,7 +146,7 @@ const FinancialDashboard = () => {
     {
       title: 'Taux de retard',
       value: `${overduePct}%`,
-      icon: AlertTriangle, color: overduePct > 20 ? '#f43f5e' : '#f59e0b', bg: 'rgba(244,63,94,0.1)',
+      icon: AlertTriangle, color: overduePct > 20 ? '#c2410c' : '#d97706', bg: 'rgba(194,65,12,0.1)',
       trend: stats.overdue_trend !== undefined ? -stats.overdue_trend : undefined,
       trendSuffix: '%',
       subtitle: `${fmt(totalOverdue)} en retard`,
@@ -154,7 +154,7 @@ const FinancialDashboard = () => {
     {
       title: 'Valeur moyenne',
       value: fmt(avgValue),
-      icon: TrendingUp, color: '#a78bfa', bg: 'rgba(167,139,250,0.1)',
+      icon: TrendingUp, color: '#d97706', bg: 'rgba(217,119,6,0.1)',
       trend: stats.avg_trend, trendSuffix: '%',
       subtitle: 'par facture payée',
     },
@@ -178,14 +178,14 @@ const FinancialDashboard = () => {
       <div className="flex justify-end -mt-4 mb-4">
         <div className="flex items-center gap-2">
           <a href={`${API_URL}/exports/financial/pdf?period=${period}`} data-testid="export-financial-pdf"
-            className="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-slate-200 rounded-lg transition-all text-sm font-medium">
+            className="flex items-center gap-2 px-3 py-2 bg-white hover:bg-neutral-50 border border-neutral-200 text-neutral-600 hover:text-neutral-900 rounded-lg transition-all text-sm font-medium">
             <Download className="w-4 h-4" /> PDF
           </a>
-          <div className="flex gap-1 bg-white/5 border border-white/5 rounded-lg p-1" data-testid="period-selector">
+          <div className="flex gap-1 bg-neutral-100 border border-neutral-200 rounded-lg p-1" data-testid="period-selector">
             {['7d','30d','90d'].map(p => (
               <button key={p} data-testid={`period-${p}`} onClick={() => setPeriod(p)}
                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                  period === p ? 'bg-violet-600 text-white' : 'text-slate-500 hover:text-slate-300'
+                  period === p ? 'bg-brand-600 text-white' : 'text-neutral-500 hover:text-neutral-900'
                 }`}>
                 {p === '7d' ? '7j' : p === '30d' ? '30j' : '90j'}
               </button>
@@ -200,8 +200,8 @@ const FinancialDashboard = () => {
       </div>
 
       {/* Cash Flow */}
-      <div className="section-card p-5">
-        <h3 className="text-sm font-semibold text-slate-200 mb-4" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="bg-white border border-neutral-200 rounded-xl p-5">
+        <h3 className="text-sm font-semibold text-neutral-900 mb-4 flex items-center gap-2">
           <span>💰</span> Flux de trésorerie
         </h3>
         <CashFlowBar income={totalRevenue} expenses={totalPending + totalOverdue} />
@@ -210,50 +210,50 @@ const FinancialDashboard = () => {
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Revenue + Cumulative */}
-        <div className="section-card p-5">
-          <h3 className="text-sm font-semibold text-slate-200 mb-1">Revenus par jour</h3>
-          <p className="text-xs text-slate-600 mb-4">Barres = journalier · Ligne = cumulatif</p>
+        <div className="bg-white border border-neutral-200 rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-neutral-900 mb-1">Revenus par jour</h3>
+          <p className="text-xs text-neutral-500 mb-4">Barres = journalier · Ligne = cumulatif</p>
           {composedData.length === 0 ? (
-            <div className="flex items-center justify-center h-[220px] text-slate-600 text-sm">Aucune donnée</div>
+            <div className="flex items-center justify-center h-[220px] text-neutral-400 text-sm">Aucune donnée</div>
           ) : (
             <ResponsiveContainer width="100%" height={240}>
               <ComposedChart data={composedData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                 <defs>
                   <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.6}/>
-                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.1}/>
+                    <stop offset="5%" stopColor="#047857" stopOpacity={0.5}/>
+                    <stop offset="95%" stopColor="#047857" stopOpacity={0.05}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default, rgba(0,0,0,0.06))" />
-                <XAxis dataKey="date" stroke="#475569" style={{fontSize:9}} tickLine={false} axisLine={false}
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e0d6" />
+                <XAxis dataKey="date" stroke="#78716c" style={{fontSize:9}} tickLine={false} axisLine={false}
                   interval="preserveStartEnd" tickFormatter={v => v?.slice(5) || v} />
-                <YAxis yAxisId="left" stroke="#475569" style={{fontSize:9}} tickLine={false} axisLine={false}
+                <YAxis yAxisId="left" stroke="#78716c" style={{fontSize:9}} tickLine={false} axisLine={false}
                   width={38} tickFormatter={fmtShort} />
-                <YAxis yAxisId="right" orientation="right" stroke="#475569" style={{fontSize:9}} tickLine={false}
+                <YAxis yAxisId="right" orientation="right" stroke="#78716c" style={{fontSize:9}} tickLine={false}
                   axisLine={false} width={42} tickFormatter={fmtShort} />
                 <Tooltip content={<CustomTooltip />} />
-                <Legend wrapperStyle={{fontSize:10,color:'#64748b',paddingTop:8}} />
+                <Legend wrapperStyle={{fontSize:10,color:'#78716c',paddingTop:8}} />
                 <Bar yAxisId="left" dataKey="revenue" name="Journalier" fill="url(#revenueGrad)"
-                  stroke="#8b5cf6" strokeWidth={1} radius={[4,4,0,0]} barSize={18} />
+                  stroke="#047857" strokeWidth={1} radius={[4,4,0,0]} barSize={18} />
                 <Line yAxisId="right" type="monotone" dataKey="cumulative" name="Cumulatif"
-                  stroke="#34d399" strokeWidth={2} dot={false} strokeDasharray="4 2" />
+                  stroke="#d97706" strokeWidth={2} dot={false} strokeDasharray="4 2" />
               </ComposedChart>
             </ResponsiveContainer>
           )}
         </div>
 
         {/* Revenue by service */}
-        <div className="section-card p-5">
-          <h3 className="text-sm font-semibold text-slate-200 mb-4">Revenus par service</h3>
+        <div className="bg-white border border-neutral-200 rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-neutral-900 mb-4">Revenus par service</h3>
           {serviceData.length === 0 ? (
-            <div className="flex items-center justify-center h-[240px] text-slate-600 text-sm">Aucune donnée</div>
+            <div className="flex items-center justify-center h-[240px] text-neutral-400 text-sm">Aucune donnée</div>
           ) : (
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={serviceData} margin={{ top: 4, right: 4, bottom: 20, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default, rgba(0,0,0,0.06))" />
-                <XAxis dataKey="name" stroke="#475569" style={{fontSize:9}} tickLine={false} axisLine={false}
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e0d6" />
+                <XAxis dataKey="name" stroke="#78716c" style={{fontSize:9}} tickLine={false} axisLine={false}
                   angle={-20} textAnchor="end" height={44} interval={0} />
-                <YAxis stroke="#475569" style={{fontSize:9}} tickLine={false} axisLine={false}
+                <YAxis stroke="#78716c" style={{fontSize:9}} tickLine={false} axisLine={false}
                   width={38} tickFormatter={fmtShort} />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="revenue" name="Revenus" radius={[6,6,0,0]} barSize={32}>
@@ -266,24 +266,24 @@ const FinancialDashboard = () => {
       </div>
 
       {/* Recent transactions */}
-      <div className="section-card p-5">
-        <h3 className="text-sm font-semibold text-slate-200 mb-4">Transactions récentes</h3>
+      <div className="bg-white border border-neutral-200 rounded-xl p-5">
+        <h3 className="text-sm font-semibold text-neutral-900 mb-4">Transactions récentes</h3>
         {(stats?.recent_transactions || []).length === 0 ? (
-          <p className="text-slate-600 text-center py-8 text-sm">Aucune transaction</p>
+          <p className="text-neutral-400 text-center py-8 text-sm">Aucune transaction</p>
         ) : (
           <div className="space-y-2">
             {(stats?.recent_transactions || []).map((tx, idx) => (
-              <div key={idx} className="flex items-center justify-between p-3 bg-white/3 hover:bg-white/5 rounded-lg transition-all gap-3">
+              <div key={idx} className="flex items-center justify-between p-3 bg-neutral-50 hover:bg-neutral-100 rounded-lg transition-all gap-3">
                 <div className="min-w-0">
-                  <p className="font-mono text-xs text-slate-400 truncate">{tx.transaction_id}</p>
-                  <p className="text-[10px] text-slate-600 mt-0.5">Facture: {tx.invoice_id}</p>
+                  <p className="font-mono text-xs text-neutral-500 truncate">{tx.transaction_id}</p>
+                  <p className="text-[10px] text-neutral-400 mt-0.5">Facture: {tx.invoice_id}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="font-bold text-sm text-slate-200">{fmt(tx.amount)}</p>
+                  <p className="font-bold text-sm text-neutral-900 tabular-nums">{fmt(tx.amount)}</p>
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                    tx.payment_status === 'paid'      ? 'bg-green-500/15 text-green-400' :
-                    tx.payment_status === 'initiated' ? 'bg-amber-500/15 text-amber-400' :
-                    'bg-red-500/15 text-red-400'
+                    tx.payment_status === 'paid'      ? 'bg-brand-50 text-brand-700' :
+                    tx.payment_status === 'initiated' ? 'bg-amber-50 text-amber-700' :
+                    'bg-terracotta-50 text-terracotta-700'
                   }`}>
                     {tx.payment_status === 'paid' ? 'Payé' : tx.payment_status === 'initiated' ? 'Initié' : tx.payment_status}
                   </span>

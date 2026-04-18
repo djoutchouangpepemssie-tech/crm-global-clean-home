@@ -284,14 +284,14 @@ export default function InvoiceForm() {
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           {/* Bloc Client */}
-          <div className="rounded-xl border border-slate-200 section-card/30 p-6">
-            <h3 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
-              <User className="w-4 h-4 text-violet-600" />
+          <div className="rounded-xl border border-neutral-200 bg-white p-6">
+            <h3 className="text-sm font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+              <User className="w-4 h-4 text-brand-600" />
               Client
             </h3>
 
             <div className="mb-4">
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
+              <label className="block text-[11px] font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.1em]">
                 Lead associé (optionnel)
               </label>
               <DropdownMenu>
@@ -315,7 +315,7 @@ export default function InvoiceForm() {
                     <DropdownMenuItem key={l.lead_id} onClick={() => handleSelectLead(l.lead_id)}>
                       <div className="flex flex-col items-start">
                         <span className="text-sm">{l.name}</span>
-                        <span className="text-xs text-slate-500">{l.email}</span>
+                        <span className="text-xs text-neutral-500">{l.email}</span>
                       </div>
                     </DropdownMenuItem>
                   ))}
@@ -325,8 +325,8 @@ export default function InvoiceForm() {
 
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
-                  Nom <span className="text-rose-500">*</span>
+                <label className="block text-[11px] font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.1em]">
+                  Nom <span className="text-terracotta-500">*</span>
                 </label>
                 <Input
                   value={client.name}
@@ -335,7 +335,7 @@ export default function InvoiceForm() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
+                <label className="block text-[11px] font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.1em]">
                   Email
                 </label>
                 <Input
@@ -346,7 +346,7 @@ export default function InvoiceForm() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
+                <label className="block text-[11px] font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.1em]">
                   Téléphone
                 </label>
                 <Input
@@ -357,7 +357,7 @@ export default function InvoiceForm() {
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
+                <label className="block text-[11px] font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.1em]">
                   Adresse
                 </label>
                 <Input
@@ -370,14 +370,14 @@ export default function InvoiceForm() {
           </div>
 
           {/* Bloc Service + Échéance */}
-          <div className="rounded-xl border border-slate-200 section-card/30 p-6">
-            <h3 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
-              <Tag className="w-4 h-4 text-violet-600" />
+          <div className="rounded-xl border border-neutral-200 bg-white p-6">
+            <h3 className="text-sm font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+              <Tag className="w-4 h-4 text-brand-600" />
               Prestation & échéance
             </h3>
             <div className="grid sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
+                <label className="block text-[11px] font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.1em]">
                   Service
                 </label>
                 <DropdownMenu>
@@ -397,7 +397,7 @@ export default function InvoiceForm() {
                 </DropdownMenu>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
+                <label className="block text-[11px] font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.1em]">
                   Surface (m²)
                 </label>
                 <Input
@@ -408,7 +408,7 @@ export default function InvoiceForm() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
+                <label className="block text-[11px] font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.1em]">
                   <Calendar className="w-3 h-3 inline mr-1" />
                   Échéance
                 </label>
@@ -422,10 +422,10 @@ export default function InvoiceForm() {
           </div>
 
           {/* Bloc Lignes */}
-          <div className="rounded-xl border border-slate-200 section-card/30 p-6">
+          <div className="rounded-xl border border-neutral-200 bg-white p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-violet-600" />
+              <h3 className="text-sm font-semibold text-neutral-900 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-brand-600" />
                 Lignes de prestations
               </h3>
               <Button size="sm" variant="outline" onClick={addLine}>
@@ -443,7 +443,7 @@ export default function InvoiceForm() {
                 return (
                   <div
                     key={line.id}
-                    className="grid grid-cols-12 gap-2 items-start pb-3 border-b border-slate-200 last:border-0 last:pb-0"
+                    className="grid grid-cols-12 gap-2 items-start pb-3 border-b border-neutral-200 last:border-0 last:pb-0"
                   >
                     <div className="col-span-12 sm:col-span-5">
                       <Input
@@ -508,14 +508,14 @@ export default function InvoiceForm() {
                       />
                     </div>
                     <div className="col-span-2 sm:col-span-1 flex items-center justify-end gap-1">
-                      <span className="text-xs font-mono text-slate-600 whitespace-nowrap">
+                      <span className="text-xs font-mono text-neutral-600 whitespace-nowrap">
                         {lineHT.toFixed(0)} €
                       </span>
                       {lines.length > 1 && (
                         <button
                           type="button"
                           onClick={() => removeLine(line.id)}
-                          className="p-1 rounded hover:bg-rose-50 text-rose-500"
+                          className="p-1 rounded hover:bg-terracotta-50 text-terracotta-500"
                           aria-label="Supprimer la ligne"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -529,13 +529,13 @@ export default function InvoiceForm() {
           </div>
 
           {/* Bloc Notes */}
-          <div className="rounded-xl border border-slate-200 section-card/30 p-6">
-            <h3 className="text-sm font-semibold text-slate-900 mb-4">
+          <div className="rounded-xl border border-neutral-200 bg-white p-6">
+            <h3 className="text-sm font-semibold text-neutral-900 mb-4">
               Notes & conditions
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
+                <label className="block text-[11px] font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.1em]">
                   Conditions de paiement
                 </label>
                 <Input
@@ -545,7 +545,7 @@ export default function InvoiceForm() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
+                <label className="block text-[11px] font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.1em]">
                   Notes / mentions
                 </label>
                 <Textarea
@@ -562,15 +562,15 @@ export default function InvoiceForm() {
 
         {/* Colonne droite : récapitulatif */}
         <div>
-          <div className="rounded-xl border border-slate-200 section-card/30 p-6 sticky top-6">
-            <h3 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
-              <Calculator className="w-4 h-4 text-violet-600" />
+          <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-card sticky top-6">
+            <h3 className="text-sm font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+              <Calculator className="w-4 h-4 text-brand-600" />
               Récapitulatif
             </h3>
 
             <div className="space-y-3 mb-4">
               <div>
-                <label className="block text-xs text-slate-600 mb-1">
+                <label className="block text-[11px] font-mono text-neutral-500 mb-1 uppercase tracking-[0.1em]">
                   Remise globale (%)
                 </label>
                 <Input
@@ -583,7 +583,7 @@ export default function InvoiceForm() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-slate-600 mb-1">
+                <label className="block text-[11px] font-mono text-neutral-500 mb-1 uppercase tracking-[0.1em]">
                   Régime TVA
                 </label>
                 <DropdownMenu>
@@ -604,49 +604,49 @@ export default function InvoiceForm() {
               </div>
             </div>
 
-            <div className="border-t border-slate-200 pt-4 space-y-2">
+            <div className="border-t border-neutral-200 pt-4 space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-600">Sous-total HT</span>
+                <span className="text-neutral-600">Sous-total HT</span>
                 <span className="font-medium">
                   {totals.subTotalHT.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                 </span>
               </div>
               {Number(globalDiscountPercent) > 0 && (
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600">
+                  <span className="text-neutral-600">
                     Remise globale ({globalDiscountPercent}%)
                   </span>
-                  <span className="text-rose-600">
+                  <span className="text-terracotta-600">
                     −{(totals.subTotalHT - totals.ht).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                   </span>
                 </div>
               )}
               <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-600">Total HT</span>
+                <span className="text-neutral-600">Total HT</span>
                 <span className="font-medium">
                   {totals.ht.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                 </span>
               </div>
               {tvaRate > 0 && (
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600">TVA ({tvaRate}%)</span>
+                  <span className="text-neutral-600">TVA ({tvaRate}%)</span>
                   <span className="font-medium">
                     {totals.tva.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                   </span>
                 </div>
               )}
-              <div className="flex items-center justify-between pt-3 border-t border-slate-200">
-                <span className="text-sm font-semibold text-slate-900">
+              <div className="flex items-center justify-between pt-3 border-t border-neutral-200">
+                <span className="text-sm font-semibold text-neutral-900">
                   Total TTC
                 </span>
-                <span className="text-xl font-bold text-slate-900">
+                <span className="text-xl font-bold text-neutral-900 tabular-nums font-display">
                   {totals.ttc.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                 </span>
               </div>
             </div>
 
             {tvaRate === 0 && (
-              <p className="mt-3 text-[11px] text-slate-500 italic">
+              <p className="mt-3 text-[11px] text-neutral-500 italic">
                 TVA non applicable, art. 293 B du CGI.
               </p>
             )}

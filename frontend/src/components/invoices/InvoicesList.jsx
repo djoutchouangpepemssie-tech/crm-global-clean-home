@@ -105,18 +105,18 @@ function daysOverdue(inv) {
 // ── KPI card ─────────────────────────────────────────────────────
 function KpiCard({ icon: Icon, label, value, accent = 'violet', sub }) {
   const accents = {
-    violet: 'from-violet-500/10 to-violet-500/5 ring-violet-200 text-violet-600',
-    blue: 'from-blue-500/10 to-blue-500/5 ring-blue-200 text-blue-600',
-    emerald: 'from-emerald-500/10 to-emerald-500/5 ring-emerald-200 text-emerald-600',
-    amber: 'from-amber-500/10 to-amber-500/5 ring-amber-200 text-amber-600',
-    rose: 'from-rose-500/10 to-rose-500/5 ring-rose-200 text-rose-600',
+    violet: 'bg-brand-50 ring-brand-200 text-brand-700',
+    blue: 'bg-neutral-100 ring-neutral-200 text-neutral-700',
+    emerald: 'bg-brand-50 ring-brand-200 text-brand-700',
+    amber: 'bg-amber-50 ring-amber-200 text-amber-700',
+    rose: 'bg-terracotta-50 ring-terracotta-200 text-terracotta-700',
   };
   return (
-    <div className={`rounded-xl bg-gradient-to-br ${accents[accent]} ring-1 p-4 animate-fade-in-up`}>
+    <div className={`rounded-xl bg-white border border-neutral-200 shadow-card ${accents[accent]} ring-1 p-4 animate-fade-in-up`}>
       <Icon className="w-5 h-5 mb-3" />
-      <div className="text-2xl font-bold text-slate-900 tracking-tight">{value}</div>
-      <div className="text-xs text-slate-600 mt-1">{label}</div>
-      {sub && <div className="text-[11px] text-slate-500 mt-0.5">{sub}</div>}
+      <div className="text-2xl font-bold text-neutral-900 tracking-tight tabular-nums">{value}</div>
+      <div className="text-[11px] font-mono uppercase tracking-[0.1em] text-neutral-500 mt-1">{label}</div>
+      {sub && <div className="text-[11px] text-neutral-400 mt-0.5">{sub}</div>}
     </div>
   );
 }
@@ -124,19 +124,19 @@ function KpiCard({ icon: Icon, label, value, accent = 'violet', sub }) {
 // ── Skeleton ─────────────────────────────────────────────────────
 function InvoicesSkeleton() {
   return (
-    <div className="rounded-xl border border-slate-200 overflow-hidden section-card/30">
+    <div className="rounded-xl border border-neutral-200 overflow-hidden bg-white">
       {Array.from({ length: 6 }).map((_, i) => (
         <div
           key={i}
-          className="flex items-center gap-4 px-4 py-3 border-b border-slate-200 last:border-b-0"
+          className="flex items-center gap-4 px-4 py-3 border-b border-neutral-200 last:border-b-0"
         >
-          <div className="h-4 w-4 bg-slate-200 rounded animate-pulse" />
+          <div className="h-4 w-4 bg-neutral-200 rounded animate-pulse" />
           <div className="flex-1 space-y-2">
-            <div className="h-4 w-32 bg-slate-200 rounded animate-pulse" />
-            <div className="h-3 w-24 /60 rounded animate-pulse" />
+            <div className="h-4 w-32 bg-neutral-200 rounded animate-pulse" />
+            <div className="h-3 w-24 bg-neutral-100 rounded animate-pulse" />
           </div>
-          <div className="h-5 w-20 /60 rounded animate-pulse" />
-          <div className="h-5 w-16 /60 rounded animate-pulse" />
+          <div className="h-5 w-20 bg-neutral-100 rounded animate-pulse" />
+          <div className="h-5 w-16 bg-neutral-100 rounded animate-pulse" />
         </div>
       ))}
     </div>
@@ -156,10 +156,10 @@ function InvoiceRow({ invoice, isSelected, onToggle, onView, onRecordPayment, on
     <div
       onClick={onView}
       className={`
-        group flex items-center gap-4 px-4 py-3 border-b border-slate-200 last:border-b-0
+        group flex items-center gap-4 px-4 py-3 border-b border-neutral-200 last:border-b-0
         cursor-pointer transition-colors animate-fade-in-up
-        ${isSelected ? 'bg-violet-50/50' : 'hover:bg-slate-50'}
-        ${overdue && status === 'en_attente' ? 'bg-rose-50/30' : ''}
+        ${isSelected ? 'bg-brand-50/50' : 'hover:bg-neutral-50'}
+        ${overdue && status === 'en_attente' ? 'bg-terracotta-50/30' : ''}
       `}
       style={{ animationDelay: `${idx * 20}ms` }}
     >
@@ -171,23 +171,23 @@ function InvoiceRow({ invoice, isSelected, onToggle, onView, onRecordPayment, on
         {/* Référence + client */}
         <div className="col-span-12 sm:col-span-4 min-w-0">
           <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
-            <span className="text-xs font-mono text-slate-500">
+            <FileText className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+            <span className="text-xs font-mono text-neutral-500">
               {invoice.reference || invoice.invoice_number || (invoice.invoice_id ? invoice.invoice_id.slice(0, 8) : '—')}
             </span>
           </div>
-          <div className="font-semibold text-slate-900 truncate mt-0.5">
+          <div className="font-semibold text-neutral-900 truncate mt-0.5">
             {invoice.lead_name || invoice.client_name || 'Sans client'}
           </div>
         </div>
 
         {/* Montant + payé */}
         <div className="col-span-6 sm:col-span-3">
-          <div className="text-sm font-bold text-slate-900">
+          <div className="text-sm font-bold text-neutral-900">
             {amount.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €
           </div>
           {paid > 0 && paid < amount && (
-            <div className="text-xs text-slate-500">
+            <div className="text-xs text-neutral-500">
               {paid.toLocaleString('fr-FR')} payés · {reste.toLocaleString('fr-FR')} reste
             </div>
           )}
@@ -197,7 +197,7 @@ function InvoiceRow({ invoice, isSelected, onToggle, onView, onRecordPayment, on
         <div className="col-span-6 sm:col-span-2" onClick={(e) => e.stopPropagation()}>
           <StatusBadge domain="invoice" status={status} />
           {overdue && status === 'en_attente' && daysLate > 0 && (
-            <div className="text-[11px] text-rose-600 font-semibold mt-0.5 flex items-center gap-1">
+            <div className="text-[11px] text-terracotta-600 font-semibold mt-0.5 flex items-center gap-1">
               <AlertTriangle className="w-3 h-3" />
               +{daysLate}j
             </div>
@@ -205,7 +205,7 @@ function InvoiceRow({ invoice, isSelected, onToggle, onView, onRecordPayment, on
         </div>
 
         {/* Échéance */}
-        <div className="col-span-6 sm:col-span-2 text-xs text-slate-500">
+        <div className="col-span-6 sm:col-span-2 text-xs text-neutral-500">
           {invoice.due_date ? shortDate(invoice.due_date) : relativeTime(invoice.created_at)}
         </div>
 
@@ -218,7 +218,7 @@ function InvoiceRow({ invoice, isSelected, onToggle, onView, onRecordPayment, on
             <button
               type="button"
               onClick={onRecordPayment}
-              className="p-1.5 rounded hover:bg-emerald-50 text-emerald-600"
+              className="p-1.5 rounded hover:bg-brand-50 text-brand-600"
               aria-label="Enregistrer paiement"
             >
               <CreditCard className="w-4 h-4" />
@@ -228,7 +228,7 @@ function InvoiceRow({ invoice, isSelected, onToggle, onView, onRecordPayment, on
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="p-1.5 rounded hover:bg-slate-100 text-slate-500"
+                className="p-1.5 rounded hover:bg-neutral-100 text-neutral-500"
                 aria-label="Plus"
               >
                 <ChevronDown className="w-4 h-4" />
@@ -250,7 +250,7 @@ function InvoiceRow({ invoice, isSelected, onToggle, onView, onRecordPayment, on
                   Ouvrir le lead
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={onDelete} className="text-rose-600 focus:text-rose-600">
+              <DropdownMenuItem onClick={onDelete} className="text-terracotta-600 focus:text-terracotta-600">
                 <Trash2 className="w-3.5 h-3.5 mr-2" />
                 Supprimer
               </DropdownMenuItem>
@@ -290,13 +290,13 @@ function RecordPaymentModal({ open, onOpenChange, invoice, onSubmit, isPending }
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Enregistrer un paiement</DialogTitle>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-neutral-500 mt-1">
             Facture : {invoice.reference || invoice.invoice_id?.slice(0, 8)} · {amount.toLocaleString('fr-FR')} €
           </p>
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
+            <label className="block text-[11px] font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.1em]">
               Montant (€)
             </label>
             <Input
@@ -307,7 +307,7 @@ function RecordPaymentModal({ open, onOpenChange, invoice, onSubmit, isPending }
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
+            <label className="block text-[11px] font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.1em]">
               Méthode
             </label>
             <DropdownMenu>
@@ -327,7 +327,7 @@ function RecordPaymentModal({ open, onOpenChange, invoice, onSubmit, isPending }
             </DropdownMenu>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
+            <label className="block text-[11px] font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.1em]">
               Référence (optionnel)
             </label>
             <Input
@@ -337,7 +337,7 @@ function RecordPaymentModal({ open, onOpenChange, invoice, onSubmit, isPending }
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
+            <label className="block text-[11px] font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.1em]">
               Notes
             </label>
             <Textarea
@@ -363,7 +363,7 @@ function RecordPaymentModal({ open, onOpenChange, invoice, onSubmit, isPending }
               })
             }
             disabled={isPending || Number(formAmount) <= 0}
-            className="bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white"
+            className="bg-brand-600 hover:bg-brand-700 text-white"
           >
             {isPending ? 'Enregistrement…' : 'Enregistrer'}
           </Button>
@@ -600,8 +600,8 @@ export default function InvoicesList() {
           className={`
             flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ease-snappy
             ${status === '' && !smartFilter
-              ? 'bg-slate-800 text-white   shadow-sm'
-              : 'section-card/40 text-slate-600 border border-slate-200 hover:border-slate-300'}
+              ? 'bg-neutral-900 text-white shadow-sm'
+              : 'bg-white text-neutral-600 border border-neutral-200 hover:border-neutral-300'}
           `}
         >
           <FileText className="w-3.5 h-3.5" />
@@ -620,8 +620,8 @@ export default function InvoicesList() {
               className={`
                 flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ease-snappy
                 ${active
-                  ? 'bg-slate-800 text-white   shadow-sm'
-                  : 'section-card/40 text-slate-600 border border-slate-200 hover:border-slate-300'}
+                  ? 'bg-neutral-900 text-white shadow-sm'
+                  : 'bg-white text-neutral-600 border border-neutral-200 hover:border-neutral-300'}
               `}
             >
               <StatusBadge domain="invoice" status={s} size="xs" className="-ml-1 pointer-events-none" />
@@ -634,7 +634,7 @@ export default function InvoicesList() {
       {/* Barre recherche */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         <div className="relative flex-1 min-w-[240px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
           <Input
             ref={searchInputRef}
             type="text"
@@ -647,14 +647,14 @@ export default function InvoicesList() {
             <button
               type="button"
               onClick={() => setSearch('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-slate-100"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-neutral-100"
             >
-              <X className="w-3.5 h-3.5 text-slate-400" />
+              <X className="w-3.5 h-3.5 text-neutral-400" />
             </button>
           )}
         </div>
         {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={resetFilters} className="gap-1 text-slate-500">
+          <Button variant="ghost" size="sm" onClick={resetFilters} className="gap-1 text-neutral-500">
             <X className="w-3.5 h-3.5" />
             Réinitialiser
           </Button>
@@ -680,7 +680,7 @@ export default function InvoicesList() {
           }
         />
       ) : (
-        <div className="rounded-xl border border-slate-200 overflow-hidden section-card/30">
+        <div className="rounded-xl border border-neutral-200 overflow-hidden bg-white">
           {filteredInvoices.map((inv, idx) => (
             <InvoiceRow
               key={inv.invoice_id}
@@ -700,20 +700,20 @@ export default function InvoicesList() {
       {/* Bulk actions */}
       {selectedIds.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-fade-in-up">
-          <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-slate-800 text-white  shadow-card-xl ring-1 ring-slate-700/50">
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-neutral-900 text-white shadow-card-xl ring-1 ring-neutral-700/50">
             <span className="text-sm font-medium">
               {selectedIds.size} {selectedIds.size > 1 ? 'factures sélectionnées' : 'facture sélectionnée'}
             </span>
-            <div className="w-px h-5 bg-slate-700" />
+            <div className="w-px h-5 bg-neutral-700" />
             <button
               type="button"
               onClick={handleBulkDelete}
-              className="text-sm font-medium text-rose-300 hover:opacity-80 transition-opacity flex items-center gap-1"
+              className="text-sm font-medium text-terracotta-300 hover:opacity-80 transition-opacity flex items-center gap-1"
             >
               <Trash2 className="w-4 h-4" />
               Supprimer
             </button>
-            <div className="w-px h-5 bg-slate-700" />
+            <div className="w-px h-5 bg-neutral-700" />
             <button
               type="button"
               onClick={() => setSelectedIds(new Set())}
