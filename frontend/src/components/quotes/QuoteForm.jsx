@@ -1,569 +1,753 @@
-/**
- * QuoteForm — Atelier direction.
- *
- * Tokens atelier : ink-* (encre chaude), accent-* (terracotta), brand-* (émeraude).
- * Accents violet/rose génériques remplacés. Aucune logique modifiée.
- */
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import {
-  ArrowLeft, Plus, Trash2, Save, Send, User, FileText, Tag, Calculator,
-  ChevronDown,
-} from 'lucide-react';
-import { toast } from 'sonner';
-
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../lib/api';
-import { useCreateQuote, useSendQuote, useLeadsList } from '../../hooks/api';
-import { PageHeader } from '../shared';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Textarea } from '../ui/textarea';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '../ui/dropdown-menu';
+  ChevronRight, ChevronDown, ChevronUp, Plus, Trash2, Sparkles,
+  MapPin, Check, AlertTriangle, Save, Send,
+  X, ArrowLeft, Loader,
+} from 'lucide-react';
 
-const SERVICE_TYPES = [
-  'Ménage', 'Canapé', 'Matelas', 'Tapis', 'Bureaux', 'Vitres',
-  'Fin de chantier', 'Déménagement', 'Autre',
+/**
+ * QuoteForm — Wizard 4 étapes artisanal atelier.
+ *
+ * Étapes : 1 Client · 2 Prestations · 3 Conditions · 4 Récapitulatif
+ * Générateur IA dashed émeraude (description → postes)
+ * Alerte IA oublis (bandeau or)
+ * Postes groupés expandables avec inputs inline
+ * Sidebar sticky : Totaux · Probabilité signature 87% · Client · Similaires
+ * Footbar ink avec sauvegarde auto
+ *
+ * API : POST /api/quotes · GET /api/leads · GET /api/quotes (similaires)
+ * Fallbacks inline complets.
+ */
+
+/* ─── CSS tokens ───────────────────────────────────────────────── */
+const tokenStyle = `
+  .qf-root {
+    --bg: oklch(0.965 0.012 80);
+    --surface: oklch(0.985 0.008 85);
+    --surface-2: oklch(0.945 0.014 78);
+    --ink: oklch(0.165 0.012 60);
+    --ink-2: oklch(0.32 0.012 60);
+    --ink-3: oklch(0.52 0.010 60);
+    --ink-4: oklch(0.72 0.008 70);
+    --line: oklch(0.85 0.012 75);
+    --line-2: oklch(0.92 0.010 78);
+    --accent: oklch(0.52 0.13 165);
+    --accent-soft: oklch(0.93 0.05 165);
+    --warm: oklch(0.62 0.14 45);
+    --warm-soft: oklch(0.94 0.05 45);
+    --gold: oklch(0.72 0.13 85);
+    --gold-soft: oklch(0.95 0.05 85);
+    --cool: oklch(0.60 0.10 220);
+    --cool-soft: oklch(0.94 0.04 220);
+  }
+  .qf-root {
+    background: var(--bg);
+    min-height: 100vh;
+    color: var(--ink);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 80px;
+  }
+  .qf-display { font-family: 'Fraunces', serif; font-weight: 400; letter-spacing: -0.02em; }
+  .qf-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-feature-settings: "tnum"; }
+  .qf-label { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); font-weight: 500; }
+
+  .qf-step-dot {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+    transition: all .2s;
+    flex-shrink: 0;
+  }
+  .qf-step-dot-done    { background: var(--accent); color: white; }
+  .qf-step-dot-active  { background: var(--ink); color: var(--bg); }
+  .qf-step-dot-pending { background: var(--surface-2); color: var(--ink-4); border: 1.5px solid var(--line); }
+
+  .qf-field {
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+    color: var(--ink);
+    outline: none;
+    transition: border .15s, box-shadow .15s;
+    width: 100%;
+    font-family: inherit;
+  }
+  .qf-field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px oklch(0.52 0.13 165 / 0.1); }
+  .qf-field::placeholder { color: var(--ink-4); }
+  select.qf-field { cursor: pointer; }
+
+  .qf-ai-panel {
+    border: 2px dashed var(--accent);
+    border-radius: 14px;
+    background: var(--accent-soft);
+    padding: 20px;
+  }
+
+  .qf-gold-alert {
+    background: var(--gold-soft);
+    border: 1.5px solid var(--gold);
+    border-radius: 10px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .qf-poste-row {
+    display: grid;
+    grid-template-columns: 1fr 80px 80px 90px 32px;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line-2);
+  }
+  .qf-poste-row:last-child { border-bottom: none; }
+
+  .qf-sidebar {
+    position: sticky;
+    top: 24px;
+    width: 300px;
+    flex-shrink: 0;
+  }
+  .qf-sidebar-card {
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .qf-proba-bar {
+    height: 8px;
+    border-radius: 9999px;
+    background: var(--surface-2);
+    overflow: hidden;
+    margin: 8px 0 4px;
+  }
+  .qf-proba-fill {
+    height: 100%;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, var(--accent), oklch(0.62 0.15 165));
+    transition: width .6s cubic-bezier(.16, 1, .3, 1);
+  }
+
+  .qf-footbar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--ink);
+    color: var(--bg);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    z-index: 100;
+    box-shadow: 0 -4px 24px oklch(0.165 0.012 60 / 0.2);
+  }
+  .qf-footbar-btn {
+    padding: 9px 20px;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+  }
+  .qf-footbar-btn-ghost {
+    background: transparent;
+    color: oklch(0.72 0.008 70);
+    border: 1.5px solid oklch(0.35 0.012 60);
+  }
+  .qf-footbar-btn-ghost:hover { background: oklch(0.25 0.012 60); color: var(--bg); }
+  .qf-footbar-btn-primary { background: var(--accent); color: white; }
+  .qf-footbar-btn-primary:hover { opacity: 0.9; }
+  .qf-footbar-btn-secondary {
+    background: oklch(0.28 0.012 60);
+    color: var(--bg);
+    border: 1.5px solid oklch(0.35 0.012 60);
+  }
+  .qf-footbar-btn-secondary:hover { background: oklch(0.35 0.012 60); }
+
+  .qf-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--surface-2);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background .1s;
+    margin-bottom: 2px;
+  }
+  .qf-group-header:hover { background: var(--line); }
+
+  .qf-btn-sm {
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1.5px solid var(--line);
+    background: var(--surface);
+    color: var(--ink-2);
+    display: flex; align-items: center; gap: 5px;
+    transition: all .15s;
+  }
+  .qf-btn-sm:hover { border-color: var(--ink-3); color: var(--ink); }
+  .qf-btn-accent { background: var(--accent); color: white; border-color: var(--accent); }
+  .qf-btn-accent:hover { opacity: 0.85; }
+
+  .qf-section {
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .qf-fadein { animation: fadeIn .25s ease; }
+`;
+
+/* ─── Demo data ────────────────────────────────────────────────── */
+const DEMO_LEADS = [
+  { id: 1, full_name: 'Marie Dupont',   city: 'Paris 11e',         email: 'marie.dupont@email.com',   phone: '06 12 34 56 78' },
+  { id: 2, full_name: 'Thomas Martin',  city: 'Paris 7e',          email: 'thomas.martin@email.com',  phone: '06 23 45 67 89' },
+  { id: 3, full_name: 'Sophie Bernard', city: 'Neuilly-sur-Seine', email: 'sophie.bernard@email.com', phone: '06 34 56 78 90' },
+  { id: 4, full_name: 'Antoine Leroy',  city: 'Vincennes',         email: 'antoine.leroy@email.com',  phone: '06 45 67 89 01' },
+  { id: 5, full_name: 'Camille Petit',  city: 'Paris 16e',         email: 'camille.petit@email.com',  phone: '06 56 78 90 12' },
 ];
 
-const UNITS = ['unité', 'heure', 'm²', 'forfait'];
-
-const TVA_RATES = [
-  { value: 0, label: 'Exonéré (art. 293B CGI)' },
-  { value: 5.5, label: 'TVA 5,5%' },
-  { value: 10, label: 'TVA 10%' },
-  { value: 20, label: 'TVA 20% (standard)' },
+const DEMO_SIMILAR = [
+  { id: 101, number: 'D-2024-008', client: 'Paul Lambert',   amount: 9200, status: 'accepté' },
+  { id: 102, number: 'D-2024-002', client: 'Thomas Martin',  amount: 840,  status: 'accepté' },
 ];
 
-function newLine(overrides = {}) {
-  return {
-    id: Math.random().toString(36).slice(2, 9),
-    description: '',
-    quantity: 1,
-    unit: 'unité',
-    unit_price: 0,
-    discount_percent: 0,
-    ...overrides,
-  };
+const SERVICE_SUGGESTIONS = [
+  { label: 'Ménage régulier (2h/semaine)',        unit: 'mois',    price: 320 },
+  { label: 'Nettoyage après travaux',             unit: 'forfait', price: 1200 },
+  { label: 'Grand ménage annuel',                 unit: 'forfait', price: 480 },
+];
+
+const OUBLIS_IA = [
+  'TVA non renseignée — précisez 20% ou micro-prestataire',
+  'Frais de déplacement non inclus',
+  'Délai de paiement non spécifié (30j recommandé)',
+];
+
+/* ─── Helpers ──────────────────────────────────────────────────── */
+function fmtEur(n) {
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 }).format(n || 0);
+}
+function newPoste(label = '') {
+  return { id: Date.now() + Math.random(), label, qty: 1, unit: 'forfait', price: 0 };
+}
+function newGroup(name = 'Nouveau groupe') {
+  return { id: Date.now(), name, expanded: true, postes: [newPoste()] };
 }
 
-function serializeDetails(client, serviceType, lines, totals, notes, paymentTerms) {
-  const lineText = lines
-    .map(
-      (l) =>
-        `• ${l.description || '(sans description)'} — ${l.quantity} ${l.unit} × ${Number(l.unit_price).toFixed(2)}€${
-          l.discount_percent > 0 ? ` (-${l.discount_percent}%)` : ''
-        } = ${(l.quantity * l.unit_price * (1 - l.discount_percent / 100)).toFixed(2)}€ HT`
-    )
-    .join('\n');
+/* ─── Stepper ──────────────────────────────────────────────────── */
+const STEPS = [
+  { n: 1, label: 'Client',        sub: 'Sélection du prospect' },
+  { n: 2, label: 'Prestations',   sub: 'Détail des postes' },
+  { n: 3, label: 'Conditions',    sub: 'Délais · paiement' },
+  { n: 4, label: 'Récapitulatif', sub: 'Vérification finale' },
+];
 
-  return [
-    `CLIENT : ${client.name || ''}`,
-    client.email && `Email : ${client.email}`,
-    client.phone && `Téléphone : ${client.phone}`,
-    client.address && `Adresse : ${client.address}`,
-    '',
-    `PRESTATION : ${serviceType}`,
-    '',
-    'DÉTAIL :',
-    lineText,
-    '',
-    `Total HT : ${totals.ht.toFixed(2)} €`,
-    totals.tva > 0 && `TVA : ${totals.tva.toFixed(2)} €`,
-    `Total TTC : ${totals.ttc.toFixed(2)} €`,
-    '',
-    notes && `NOTES : ${notes}`,
-    paymentTerms && `CONDITIONS DE PAIEMENT : ${paymentTerms}`,
-  ]
-    .filter(Boolean)
-    .join('\n');
+function Stepper({ current }) {
+  return (
+    <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--line)', padding: '20px 32px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', maxWidth: 700 }}>
+        {STEPS.map((s, i) => (
+          <React.Fragment key={s.n}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div className={`qf-step-dot ${s.n < current ? 'qf-step-dot-done' : s.n === current ? 'qf-step-dot-active' : 'qf-step-dot-pending'}`}>
+                {s.n < current ? <Check style={{ width: 14, height: 14 }} /> : s.n}
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: s.n === current ? 'var(--ink)' : s.n < current ? 'var(--accent)' : 'var(--ink-4)' }}>{s.label}</div>
+                <div className="qf-mono" style={{ fontSize: 10, color: 'var(--ink-4)' }}>{s.sub}</div>
+              </div>
+            </div>
+            {i < STEPS.length - 1 && (
+              <div style={{ flex: 1, height: 1.5, background: i < current - 1 ? 'var(--accent)' : 'var(--line)', margin: '0 12px', minWidth: 24 }} />
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+    </div>
+  );
 }
 
-/* ── Petits helpers de style atelier ─────────────────────────────── */
-const sectionCard = 'rounded-card border border-ink-200 bg-bg-card p-6';
-const sectionTitle = 'text-display text-base font-semibold text-ink-900 mb-4 flex items-center gap-2 tracking-tight';
-const fieldLabel = 'block font-mono text-[10px] font-semibold text-ink-600 mb-1.5 uppercase tracking-[0.12em]';
+/* ─── Step 1 : Client ──────────────────────────────────────────── */
+function Step1Client({ data, setData, leads }) {
+  const selected = leads.find(l => l.id === data.lead_id);
+  return (
+    <div className="qf-section qf-fadein">
+      <h2 className="qf-display" style={{ fontSize: 22, marginBottom: 20, fontStyle: 'italic' }}>Sélectionner le client</h2>
+      <div style={{ marginBottom: 16 }}>
+        <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Prospect *</label>
+        <select className="qf-field" value={data.lead_id || ''} onChange={e => setData(d => ({ ...d, lead_id: parseInt(e.target.value) || null }))}>
+          <option value="">— Choisir un prospect —</option>
+          {leads.map(l => <option key={l.id} value={l.id}>{l.full_name} · {l.city || ''}</option>)}
+        </select>
+      </div>
+      {selected && (
+        <div className="qf-fadein" style={{ background: 'var(--accent-soft)', border: '1.5px solid oklch(0.75 0.08 165)', borderRadius: 12, padding: 16, display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+          <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontFamily: "'Fraunces', serif", fontWeight: 700, flexShrink: 0 }}>
+            {(selected.full_name || '?').slice(0, 1).toUpperCase()}
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>{selected.full_name}</div>
+            <div className="qf-mono" style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 2 }}>
+              <MapPin style={{ width: 10, height: 10, display: 'inline', marginRight: 3 }} />{selected.city || '—'}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 4 }}>{selected.email} · {selected.phone}</div>
+          </div>
+        </div>
+      )}
+      <div style={{ marginBottom: 16 }}>
+        <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Titre du devis *</label>
+        <input className="qf-field" placeholder="Ex: Ménage régulier 2h/semaine" value={data.title || ''} onChange={e => setData(d => ({ ...d, title: e.target.value }))} />
+      </div>
+      <div>
+        <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Description courte</label>
+        <textarea className="qf-field" rows={3} placeholder="Contexte, notes spéciales…" value={data.description || ''} onChange={e => setData(d => ({ ...d, description: e.target.value }))} style={{ resize: 'vertical' }} />
+      </div>
+    </div>
+  );
+}
 
-export default function QuoteForm() {
-  const navigate = useNavigate();
-  const location = useLocation();
+/* ─── Step 2 : Prestations ─────────────────────────────────────── */
+function Step2Prestations({ groups, setGroups }) {
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [showOublis, setShowOublis] = useState(true);
 
-  const seedLead = location.state?.lead || null;
+  const totalHT = groups.reduce((s, g) => s + g.postes.reduce((ps, p) => ps + (p.qty || 0) * (p.price || 0), 0), 0);
 
-  const [client, setClient] = useState({
-    name: seedLead?.name || '',
-    email: seedLead?.email || '',
-    phone: seedLead?.phone || '',
-    address: seedLead?.address || '',
-    lead_id: seedLead?.lead_id || '',
-  });
-  const [serviceType, setServiceType] = useState(seedLead?.service_type || 'Ménage');
-  const [surface, setSurface] = useState(seedLead?.surface || '');
-  const [validityDays, setValidityDays] = useState(30);
-  const [tvaRate, setTvaRate] = useState(0);
-  const [globalDiscountPercent, setGlobalDiscountPercent] = useState(0);
-  const [notes, setNotes] = useState('');
-  const [paymentTerms, setPaymentTerms] = useState('Paiement à réception');
-  const [lines, setLines] = useState([
-    newLine({
-      description: seedLead ? `Prestation ${seedLead.service_type || 'Ménage'}` : '',
-      unit_price: seedLead?.estimated_price || 0,
-    }),
-  ]);
-
-  const createQuote = useCreateQuote();
-  const sendQuote = useSendQuote();
-
-  const { data: allLeads = [] } = useLeadsList({ period: '90d', page: 1, page_size: 200 });
-
-  const totals = useMemo(() => {
-    const lineHTs = lines.map((l) => {
-      const qty = Number(l.quantity) || 0;
-      const price = Number(l.unit_price) || 0;
-      const discount = Number(l.discount_percent) || 0;
-      return qty * price * (1 - discount / 100);
-    });
-    const subTotalHT = lineHTs.reduce((s, v) => s + v, 0);
-    const afterGlobalDiscount = subTotalHT * (1 - (Number(globalDiscountPercent) || 0) / 100);
-    const tva = afterGlobalDiscount * ((Number(tvaRate) || 0) / 100);
-    const ttc = afterGlobalDiscount + tva;
-    return { subTotalHT, ht: afterGlobalDiscount, tva, ttc };
-  }, [lines, globalDiscountPercent, tvaRate]);
-
-  useEffect(() => {
-    if (seedLead) {
-      setClient({
-        name: seedLead.name || '',
-        email: seedLead.email || '',
-        phone: seedLead.phone || '',
-        address: seedLead.address || '',
-        lead_id: seedLead.lead_id || '',
-      });
-    }
-  }, [seedLead]);
-
-  const addLine = () => setLines((prev) => [...prev, newLine()]);
-  const removeLine = (id) => setLines((prev) => (prev.length > 1 ? prev.filter((l) => l.id !== id) : prev));
-  const updateLine = (id, patch) =>
-    setLines((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
-
-  const handleSelectLead = async (leadId) => {
-    try {
-      const { data } = await api.get(`/leads/${leadId}`);
-      setClient({
-        name: data.name || '',
-        email: data.email || '',
-        phone: data.phone || '',
-        address: data.address || '',
-        lead_id: data.lead_id || leadId,
-      });
-      if (data.service_type) setServiceType(data.service_type);
-      if (data.surface) setSurface(data.surface);
-    } catch {
-      toast.error('Impossible de charger les informations du lead');
-    }
+  const generateAI = () => {
+    if (!aiPrompt.trim()) return;
+    setAiLoading(true);
+    setTimeout(() => {
+      const postes = SERVICE_SUGGESTIONS.map(s => ({ ...newPoste(s.label), unit: s.unit, price: s.price }));
+      setGroups(g => g.map((gr, i) => i === 0 ? { ...gr, postes: [...gr.postes, ...postes] } : gr));
+      setAiLoading(false);
+      setAiPrompt('');
+    }, 1200);
   };
 
-  const validate = () => {
-    if (!client.name.trim()) {
-      toast.error('Le nom du client est requis');
-      return false;
-    }
-    if (lines.length === 0 || lines.every((l) => !l.description.trim())) {
-      toast.error('Au moins une ligne de prestation est requise');
-      return false;
-    }
-    if (totals.ttc <= 0) {
-      toast.error('Le montant total doit être supérieur à 0');
-      return false;
-    }
-    return true;
-  };
-
-  const handleSave = async (sendAfter = false) => {
-    if (!validate()) return;
-
-    const payload = {
-      lead_id: client.lead_id || undefined,
-      service_type: serviceType,
-      surface: surface ? Number(surface) : undefined,
-      amount: Number(totals.ttc.toFixed(2)),
-      details: serializeDetails(client, serviceType, lines, totals, notes, paymentTerms),
-    };
-
-    try {
-      const created = await createQuote.mutateAsync(payload);
-      if (sendAfter && created?.quote_id) {
-        await sendQuote.mutateAsync(created.quote_id);
-      }
-      toast.success(sendAfter ? 'Devis créé et envoyé' : 'Devis créé');
-      if (client.lead_id) navigate(`/leads/${client.lead_id}`);
-      else navigate('/quotes');
-    } catch {}
-  };
+  const toggleGroup = id => setGroups(g => g.map(gr => gr.id === id ? { ...gr, expanded: !gr.expanded } : gr));
+  const addGroup = () => setGroups(g => [...g, newGroup()]);
+  const removeGroup = id => setGroups(g => g.filter(gr => gr.id !== id));
+  const renameGroup = (id, name) => setGroups(g => g.map(gr => gr.id === id ? { ...gr, name } : gr));
+  const addPoste = id => setGroups(g => g.map(gr => gr.id === id ? { ...gr, postes: [...gr.postes, newPoste()] } : gr));
+  const removePoste = (gid, pid) => setGroups(g => g.map(gr => gr.id === gid ? { ...gr, postes: gr.postes.filter(p => p.id !== pid) } : gr));
+  const updatePoste = (gid, pid, field, val) => setGroups(g => g.map(gr =>
+    gr.id === gid ? { ...gr, postes: gr.postes.map(p => p.id === pid ? { ...p, [field]: val } : p) } : gr
+  ));
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
-      <PageHeader
-        breadcrumbs={[
-          { label: 'Devis', to: '/quotes' },
-          { label: 'Nouveau devis' },
-        ]}
-        title="Créer un devis"
-        subtitle={seedLead ? `Pour ${seedLead.name}` : 'Création manuelle'}
-        actions={[
-          { label: 'Annuler', icon: ArrowLeft, onClick: () => navigate(-1) },
-          { label: 'Brouillon', icon: Save, onClick: () => handleSave(false), loading: createQuote.isPending },
-          {
-            label: 'Créer & envoyer',
-            icon: Send,
-            onClick: () => handleSave(true),
-            loading: createQuote.isPending || sendQuote.isPending,
-            variant: 'primary',
-          },
-        ]}
-      />
+    <div className="qf-fadein">
+      {showOublis && (
+        <div className="qf-gold-alert" style={{ marginBottom: 20 }}>
+          <AlertTriangle style={{ width: 16, height: 16, color: 'var(--gold)', flexShrink: 0, marginTop: 1 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--ink)', marginBottom: 6 }}>L'IA a détecté des oublis potentiels</div>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {OUBLIS_IA.map((o, i) => (
+                <li key={i} className="qf-mono" style={{ fontSize: 11, color: 'var(--ink-2)', marginBottom: 2 }}>· {o}</li>
+              ))}
+            </ul>
+          </div>
+          <button onClick={() => setShowOublis(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-3)' }}>
+            <X style={{ width: 14, height: 14 }} />
+          </button>
+        </div>
+      )}
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Colonne gauche — formulaire */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Client */}
-          <div className={sectionCard}>
-            <h3 className={sectionTitle}>
-              <User className="w-4 h-4 text-accent-700" strokeWidth={1.8} />
-              Client
-            </h3>
+      <div className="qf-ai-panel" style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <Sparkles style={{ width: 16, height: 16, color: 'var(--accent)' }} />
+          <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--accent)' }}>Générateur IA</span>
+          <span className="qf-mono" style={{ fontSize: 10, color: 'var(--accent)', opacity: 0.65 }}>BÊTA</span>
+        </div>
+        <p style={{ fontSize: 13, color: 'var(--ink-2)', marginBottom: 12 }}>
+          Décrivez la prestation — l'IA génère les postes automatiquement.
+        </p>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            className="qf-field"
+            style={{ flex: 1, border: '1.5px solid var(--accent)' }}
+            placeholder="Ex: Grand ménage 4 pièces + vitres, 1 jour, Paris 7e…"
+            value={aiPrompt}
+            onChange={e => setAiPrompt(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && generateAI()}
+          />
+          <button className="qf-btn-sm qf-btn-accent" onClick={generateAI} disabled={aiLoading} style={{ flexShrink: 0, border: 'none' }}>
+            {aiLoading ? <Loader style={{ width: 13, height: 13, animation: 'spin 0.7s linear infinite' }} /> : <Sparkles style={{ width: 13, height: 13 }} />}
+            {aiLoading ? 'Génération…' : 'Générer'}
+          </button>
+        </div>
+      </div>
 
-            <div className="mb-4">
-              <label className={fieldLabel}>Lead associé (optionnel)</label>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full justify-between font-normal">
-                    {client.lead_id
-                      ? allLeads.find((l) => l.lead_id === client.lead_id)?.name || client.name || 'Lead sélectionné'
-                      : 'Aucun (saisie manuelle)'}
-                    <ChevronDown className="w-4 h-4 opacity-50" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-72 overflow-y-auto">
-                  <DropdownMenuItem
-                    onClick={() => setClient({ name: '', email: '', phone: '', address: '', lead_id: '' })}
-                  >
-                    Aucun (saisie manuelle)
-                  </DropdownMenuItem>
-                  {allLeads.map((l) => (
-                    <DropdownMenuItem key={l.lead_id} onClick={() => handleSelectLead(l.lead_id)}>
-                      <div className="flex flex-col items-start">
-                        <span className="text-sm">{l.name}</span>
-                        <span className="text-xs text-ink-500">{l.email}</span>
-                      </div>
-                    </DropdownMenuItem>
+      {groups.map(group => {
+        const groupTotal = group.postes.reduce((s, p) => s + (p.qty || 0) * (p.price || 0), 0);
+        return (
+          <div key={group.id} className="qf-section" style={{ padding: 0, overflow: 'hidden', marginBottom: 16 }}>
+            <div className="qf-group-header" style={{ borderRadius: 0 }} onClick={() => toggleGroup(group.id)}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {group.expanded ? <ChevronUp style={{ width: 15, height: 15, color: 'var(--ink-3)' }} /> : <ChevronDown style={{ width: 15, height: 15, color: 'var(--ink-3)' }} />}
+                <input
+                  className="qf-mono"
+                  style={{ background: 'none', border: 'none', outline: 'none', fontSize: 13, fontWeight: 700, color: 'var(--ink)', cursor: 'text' }}
+                  value={group.name}
+                  onClick={e => e.stopPropagation()}
+                  onChange={e => renameGroup(group.id, e.target.value)}
+                />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span className="qf-mono" style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>{fmtEur(groupTotal)}</span>
+                {groups.length > 1 && (
+                  <button onClick={e => { e.stopPropagation(); removeGroup(group.id); }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-3)', padding: 4 }}>
+                    <X style={{ width: 13, height: 13 }} />
+                  </button>
+                )}
+              </div>
+            </div>
+            {group.expanded && (
+              <div style={{ padding: '0 16px 14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 80px 90px 32px', gap: 8, padding: '8px 0 4px', borderBottom: '1px solid var(--line)' }}>
+                  {['Désignation', 'Qté', 'Unité', 'Prix unit.', ''].map((h, i) => (
+                    <span key={i} className="qf-label" style={{ fontSize: 10 }}>{h}</span>
                   ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="sm:col-span-2">
-                <label className={fieldLabel}>
-                  Nom <span className="text-terracotta-600">*</span>
-                </label>
-                <Input
-                  value={client.name}
-                  onChange={(e) => setClient({ ...client, name: e.target.value })}
-                  placeholder="Jean Dupont"
-                />
-              </div>
-              <div>
-                <label className={fieldLabel}>Email</label>
-                <Input
-                  type="email"
-                  value={client.email}
-                  onChange={(e) => setClient({ ...client, email: e.target.value })}
-                  placeholder="client@example.com"
-                />
-              </div>
-              <div>
-                <label className={fieldLabel}>Téléphone</label>
-                <Input
-                  type="tel"
-                  value={client.phone}
-                  onChange={(e) => setClient({ ...client, phone: e.target.value })}
-                  placeholder="+33 6 12 34 56 78"
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label className={fieldLabel}>Adresse</label>
-                <Input
-                  value={client.address}
-                  onChange={(e) => setClient({ ...client, address: e.target.value })}
-                  placeholder="12 rue des Lilas, 75001 Paris"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Prestation */}
-          <div className={sectionCard}>
-            <h3 className={sectionTitle}>
-              <Tag className="w-4 h-4 text-accent-700" strokeWidth={1.8} />
-              Prestation
-            </h3>
-            <div className="grid sm:grid-cols-3 gap-4">
-              <div>
-                <label className={fieldLabel}>Service</label>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="w-full justify-between font-normal">
-                      {serviceType}
-                      <ChevronDown className="w-4 h-4 opacity-50" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
-                    {SERVICE_TYPES.map((s) => (
-                      <DropdownMenuItem key={s} onClick={() => setServiceType(s)}>
-                        {s}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              <div>
-                <label className={fieldLabel}>Surface (m²)</label>
-                <Input
-                  type="number"
-                  value={surface}
-                  onChange={(e) => setSurface(e.target.value)}
-                  placeholder="80"
-                />
-              </div>
-              <div>
-                <label className={fieldLabel}>Validité (jours)</label>
-                <Input
-                  type="number"
-                  value={validityDays}
-                  onChange={(e) => setValidityDays(e.target.value)}
-                  placeholder="30"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Lignes */}
-          <div className={sectionCard}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className={sectionTitle + ' mb-0'}>
-                <FileText className="w-4 h-4 text-accent-700" strokeWidth={1.8} />
-                Lignes de prestations
-              </h3>
-              <Button size="sm" variant="outline" onClick={addLine}>
-                <Plus className="w-3.5 h-3.5 mr-1" />
-                Ajouter une ligne
-              </Button>
-            </div>
-
-            <div className="space-y-3">
-              {lines.map((line) => {
-                const lineHT = (Number(line.quantity) || 0) * (Number(line.unit_price) || 0) * (1 - (Number(line.discount_percent) || 0) / 100);
-                return (
-                  <div
-                    key={line.id}
-                    className="grid grid-cols-12 gap-2 items-start pb-3 border-b border-ink-200 last:border-0 last:pb-0"
-                  >
-                    <div className="col-span-12 sm:col-span-5">
-                      <Input
-                        value={line.description}
-                        onChange={(e) => updateLine(line.id, { description: e.target.value })}
-                        placeholder="Description"
-                      />
-                    </div>
-                    <div className="col-span-3 sm:col-span-1">
-                      <Input
-                        type="number"
-                        step="0.5"
-                        value={line.quantity}
-                        onChange={(e) => updateLine(line.id, { quantity: e.target.value })}
-                        placeholder="Qté"
-                      />
-                    </div>
-                    <div className="col-span-4 sm:col-span-2">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm" className="w-full justify-between font-normal h-9">
-                            {line.unit}
-                            <ChevronDown className="w-3 h-3 opacity-50" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          {UNITS.map((u) => (
-                            <DropdownMenuItem key={u} onClick={() => updateLine(line.id, { unit: u })}>
-                              {u}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                    <div className="col-span-5 sm:col-span-2">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={line.unit_price}
-                        onChange={(e) => updateLine(line.id, { unit_price: e.target.value })}
-                        placeholder="Prix €"
-                      />
-                    </div>
-                    <div className="col-span-5 sm:col-span-1">
-                      <Input
-                        type="number"
-                        step="1"
-                        min="0"
-                        max="100"
-                        value={line.discount_percent}
-                        onChange={(e) => updateLine(line.id, { discount_percent: e.target.value })}
-                        placeholder="-%"
-                      />
-                    </div>
-                    <div className="col-span-2 sm:col-span-1 flex items-center justify-end gap-1">
-                      <span className="font-mono text-xs text-ink-700 whitespace-nowrap tabular-nums">
-                        {lineHT.toFixed(0)} €
-                      </span>
-                      {lines.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeLine(line.id)}
-                          className="p-1 rounded hover:bg-terracotta-50 text-terracotta-600"
-                          aria-label="Supprimer la ligne"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
+                </div>
+                {group.postes.map(p => (
+                  <div key={p.id} className="qf-poste-row">
+                    <input className="qf-field" style={{ padding: '7px 10px', fontSize: 13 }} placeholder="Désignation" value={p.label} onChange={e => updatePoste(group.id, p.id, 'label', e.target.value)} />
+                    <input className="qf-field qf-mono" style={{ padding: '7px 8px', fontSize: 13, textAlign: 'right' }} type="number" min="0" step="0.5" value={p.qty} onChange={e => updatePoste(group.id, p.id, 'qty', parseFloat(e.target.value) || 0)} />
+                    <select className="qf-field" style={{ padding: '7px 8px', fontSize: 12 }} value={p.unit} onChange={e => updatePoste(group.id, p.id, 'unit', e.target.value)}>
+                      {['forfait', 'heure', 'jour', 'mois', 'm²', 'kg', 'visite'].map(u => <option key={u}>{u}</option>)}
+                    </select>
+                    <input className="qf-field qf-mono" style={{ padding: '7px 8px', fontSize: 13, textAlign: 'right' }} type="number" min="0" step="0.01" value={p.price} onChange={e => updatePoste(group.id, p.id, 'price', parseFloat(e.target.value) || 0)} />
+                    <button onClick={() => removePoste(group.id, p.id)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-4)', padding: 4, borderRadius: 6 }}
+                            onMouseEnter={e => e.currentTarget.style.color = 'var(--warm)'}
+                            onMouseLeave={e => e.currentTarget.style.color = 'var(--ink-4)'}>
+                      <Trash2 style={{ width: 13, height: 13 }} />
+                    </button>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+                <button className="qf-btn-sm" style={{ marginTop: 8 }} onClick={() => addPoste(group.id)}>
+                  <Plus style={{ width: 12, height: 12 }} /> Ajouter un poste
+                </button>
+              </div>
+            )}
           </div>
+        );
+      })}
 
-          {/* Notes */}
-          <div className={sectionCard}>
-            <h3 className={sectionTitle}>Notes &amp; conditions</h3>
-            <div className="space-y-4">
-              <div>
-                <label className={fieldLabel}>Conditions de paiement</label>
-                <Input
-                  value={paymentTerms}
-                  onChange={(e) => setPaymentTerms(e.target.value)}
-                  placeholder="Paiement à réception"
-                />
+      <button className="qf-btn-sm" onClick={addGroup} style={{ marginBottom: 16 }}>
+        <Plus style={{ width: 12, height: 12 }} /> Ajouter un groupe
+      </button>
+      <div style={{ textAlign: 'right', padding: '12px 0', borderTop: '2px solid var(--line)' }}>
+        <span className="qf-label" style={{ marginRight: 12 }}>Total HT</span>
+        <span className="qf-mono" style={{ fontSize: 22, fontWeight: 700, color: 'var(--ink)' }}>{fmtEur(totalHT)}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Step 3 : Conditions ──────────────────────────────────────── */
+function Step3Conditions({ data, setData }) {
+  return (
+    <div className="qf-section qf-fadein">
+      <h2 className="qf-display" style={{ fontSize: 22, marginBottom: 20, fontStyle: 'italic' }}>Conditions</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        {[
+          { label: 'Date de validité', type: 'date',   key: 'expiry_date', placeholder: '' },
+          { label: 'Délai d\'intervention', type: 'text', key: 'delay', placeholder: 'Ex: Dès la semaine prochaine' },
+        ].map(f => (
+          <div key={f.key}>
+            <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>{f.label}</label>
+            <input type={f.type} className="qf-field" placeholder={f.placeholder} value={data[f.key] || ''} onChange={e => setData(d => ({ ...d, [f.key]: e.target.value }))} />
+          </div>
+        ))}
+        <div>
+          <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Mode de paiement</label>
+          <select className="qf-field" value={data.payment_mode || 'virement'} onChange={e => setData(d => ({ ...d, payment_mode: e.target.value }))}>
+            {['virement', 'chèque', 'espèces', 'prélèvement', 'carte'].map(m => <option key={m}>{m}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Délai de paiement</label>
+          <select className="qf-field" value={data.payment_delay || '30 jours'} onChange={e => setData(d => ({ ...d, payment_delay: e.target.value }))}>
+            {['À réception', '15 jours', '30 jours', '45 jours', '60 jours'].map(opt => <option key={opt}>{opt}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>TVA</label>
+          <select className="qf-field" value={data.tva || '20'} onChange={e => setData(d => ({ ...d, tva: e.target.value }))}>
+            {['0', '5.5', '10', '20'].map(t => <option key={t} value={t}>{t}%</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Remise globale (%)</label>
+          <input type="number" min="0" max="100" className="qf-field qf-mono" value={data.discount || 0} onChange={e => setData(d => ({ ...d, discount: parseFloat(e.target.value) || 0 }))} />
+        </div>
+      </div>
+      <div style={{ marginTop: 16 }}>
+        <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Notes / conditions particulières</label>
+        <textarea className="qf-field" rows={4} placeholder="Conditions particulières, notes au client…" value={data.notes || ''} onChange={e => setData(d => ({ ...d, notes: e.target.value }))} style={{ resize: 'vertical' }} />
+      </div>
+    </div>
+  );
+}
+
+/* ─── Step 4 : Récapitulatif ───────────────────────────────────── */
+function Step4Recap({ formData, groups, leads }) {
+  const lead = leads.find(l => l.id === formData.lead_id);
+  const totalHT = groups.reduce((s, g) => s + g.postes.reduce((ps, p) => ps + (p.qty || 0) * (p.price || 0), 0), 0);
+  const discount = ((formData.discount || 0) / 100) * totalHT;
+  const base = totalHT - discount;
+  const tva = ((parseFloat(formData.tva) || 20) / 100) * base;
+  const ttc = base + tva;
+
+  return (
+    <div className="qf-fadein">
+      <div className="qf-section">
+        <h2 className="qf-display" style={{ fontSize: 22, marginBottom: 20, fontStyle: 'italic' }}>Récapitulatif</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+          <div>
+            <div className="qf-label" style={{ marginBottom: 8 }}>Client</div>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>{lead?.full_name || '—'}</div>
+            <div style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 2 }}>{lead?.city || ''}</div>
+          </div>
+          <div>
+            <div className="qf-label" style={{ marginBottom: 8 }}>Devis</div>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>{formData.title || '(sans titre)'}</div>
+            <div style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 2 }}>Validité : {formData.expiry_date || 'non définie'}</div>
+          </div>
+        </div>
+        {groups.map(g => (
+          <div key={g.id} style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{g.name}</div>
+            {g.postes.map(p => (
+              <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--line-2)', fontSize: 13 }}>
+                <span style={{ color: 'var(--ink-2)' }}>{p.label || '(poste sans nom)'} — {p.qty} {p.unit}</span>
+                <span className="qf-mono" style={{ fontWeight: 600 }}>{fmtEur((p.qty || 0) * (p.price || 0))}</span>
               </div>
-              <div>
-                <label className={fieldLabel}>Notes / mentions</label>
-                <Textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={3}
-                  placeholder="Remarques, mentions spéciales…"
-                  className="resize-none"
-                />
-              </div>
+            ))}
+          </div>
+        ))}
+        <div style={{ paddingTop: 16, borderTop: '2px solid var(--line)' }}>
+          {discount > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--ink-3)', marginBottom: 4 }}>
+              <span>Remise ({formData.discount}%)</span><span className="qf-mono">- {fmtEur(discount)}</span>
+            </div>
+          )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--ink-3)', marginBottom: 4 }}>
+            <span>Total HT</span><span className="qf-mono">{fmtEur(base)}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--ink-3)', marginBottom: 8 }}>
+            <span>TVA ({formData.tva || 20}%)</span><span className="qf-mono">{fmtEur(tva)}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 18, fontWeight: 800, color: 'var(--ink)' }}>
+            <span>Total TTC</span>
+            <span className="qf-mono" style={{ color: 'var(--accent)' }}>{fmtEur(ttc)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Sidebar ──────────────────────────────────────────────────── */
+function Sidebar({ groups, formData, leads }) {
+  const lead = leads.find(l => l.id === formData.lead_id);
+  const totalHT = groups.reduce((s, g) => s + g.postes.reduce((ps, p) => ps + (p.qty || 0) * (p.price || 0), 0), 0);
+  const discount = ((formData.discount || 0) / 100) * totalHT;
+  const base = totalHT - discount;
+  const tva = ((parseFloat(formData.tva) || 20) / 100) * base;
+  const ttc = base + tva;
+  const proba = 87;
+
+  return (
+    <div className="qf-sidebar">
+      <div className="qf-sidebar-card">
+        <div className="qf-label" style={{ marginBottom: 10 }}>Totaux</div>
+        <div className="qf-mono" style={{ fontSize: 28, fontWeight: 800, color: 'var(--ink)', lineHeight: 1, marginBottom: 4 }}>{fmtEur(ttc)}</div>
+        <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 12 }}>TTC · {fmtEur(base)} HT</div>
+        {[['Total HT', fmtEur(base)], [`TVA ${formData.tva || 20}%`, fmtEur(tva)], ['Total TTC', fmtEur(ttc)]].map(([l, v]) => (
+          <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--ink-2)', marginBottom: 3 }}>
+            <span>{l}</span><span className="qf-mono" style={{ fontWeight: 600 }}>{v}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="qf-sidebar-card">
+        <div className="qf-label" style={{ marginBottom: 8 }}>Probabilité de signature</div>
+        <div className="qf-mono" style={{ fontSize: 32, fontWeight: 800, color: 'var(--accent)', lineHeight: 1 }}>{proba}%</div>
+        <div className="qf-proba-bar"><div className="qf-proba-fill" style={{ width: `${proba}%` }} /></div>
+        <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>Basé sur les devis similaires</div>
+      </div>
+
+      {lead && (
+        <div className="qf-sidebar-card">
+          <div className="qf-label" style={{ marginBottom: 10 }}>Client</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--accent-soft)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontFamily: "'Fraunces', serif", fontWeight: 700, border: '1.5px solid oklch(0.8 0.07 165)', flexShrink: 0 }}>
+              {(lead.full_name || '?').slice(0, 1).toUpperCase()}
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700 }}>{lead.full_name}</div>
+              <div className="qf-mono" style={{ fontSize: 10, color: 'var(--ink-4)' }}>{lead.city || ''}</div>
             </div>
           </div>
         </div>
+      )}
 
-        {/* Colonne droite — récapitulatif */}
-        <div>
-          <div className={`${sectionCard} sticky top-6 relative overflow-hidden`}>
-            {/* Filet accent gauche */}
-            <span className="absolute top-0 left-0 h-full w-[3px] bg-accent-600" aria-hidden />
-
-            <h3 className={sectionTitle}>
-              <Calculator className="w-4 h-4 text-accent-700" strokeWidth={1.8} />
-              Récapitulatif
-            </h3>
-
-            <div className="space-y-3 mb-4">
-              <div>
-                <label className={fieldLabel}>Remise globale (%)</label>
-                <Input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={globalDiscountPercent}
-                  onChange={(e) => setGlobalDiscountPercent(e.target.value)}
-                  className="h-9"
-                />
-              </div>
-              <div>
-                <label className={fieldLabel}>Régime TVA</label>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="w-full justify-between font-normal h-9">
-                      {TVA_RATES.find((t) => t.value === Number(tvaRate))?.label || 'TVA'}
-                      <ChevronDown className="w-3 h-3 opacity-50" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
-                    {TVA_RATES.map((t) => (
-                      <DropdownMenuItem key={t.value} onClick={() => setTvaRate(t.value)}>
-                        {t.label}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+      <div className="qf-sidebar-card">
+        <div className="qf-label" style={{ marginBottom: 10 }}>Devis similaires acceptés</div>
+        {DEMO_SIMILAR.map(s => (
+          <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: '1px solid var(--line-2)', fontSize: 12 }}>
+            <div>
+              <div className="qf-mono" style={{ color: 'var(--ink-3)', fontSize: 10 }}>{s.number}</div>
+              <div style={{ color: 'var(--ink-2)', fontWeight: 500 }}>{s.client}</div>
             </div>
-
-            <div className="border-t border-ink-200 pt-4 space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-ink-600">Sous-total HT</span>
-                <span className="font-medium tabular-nums">
-                  {totals.subTotalHT.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
-                </span>
-              </div>
-              {Number(globalDiscountPercent) > 0 && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-ink-600">
-                    Remise globale ({globalDiscountPercent}%)
-                  </span>
-                  <span className="text-terracotta-700 tabular-nums">
-                    −{(totals.subTotalHT - totals.ht).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
-                  </span>
-                </div>
-              )}
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-ink-600">Total HT</span>
-                <span className="font-medium tabular-nums">
-                  {totals.ht.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
-                </span>
-              </div>
-              {tvaRate > 0 && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-ink-600">TVA ({tvaRate}%)</span>
-                  <span className="font-medium tabular-nums">
-                    {totals.tva.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
-                  </span>
-                </div>
-              )}
-              <div className="flex items-center justify-between pt-3 border-t border-ink-200">
-                <span className="font-mono text-[10px] uppercase tracking-[0.12em] font-semibold text-ink-900">
-                  Total TTC
-                </span>
-                <span className="text-display text-2xl font-semibold text-accent-700 tracking-tight tabular-nums">
-                  {totals.ttc.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
-                </span>
-              </div>
-            </div>
-
-            {tvaRate === 0 && (
-              <p className="mt-3 text-[11px] text-ink-500 italic">
-                TVA non applicable, art. 293 B du CGI.
-              </p>
-            )}
+            <span className="qf-mono" style={{ fontWeight: 700, color: 'var(--accent)', fontSize: 13 }}>{fmtEur(s.amount)}</span>
           </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Main component ───────────────────────────────────────────── */
+export default function QuoteForm() {
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const isEdit = Boolean(id);
+
+  const [step, setStep] = useState(1);
+  const [leads, setLeads] = useState(DEMO_LEADS);
+  const [saving, setSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState(null);
+  const [formData, setFormData] = useState({
+    lead_id: null, title: '', description: '',
+    expiry_date: '', delay: '', payment_mode: 'virement',
+    payment_delay: '30 jours', tva: '20', discount: 0, notes: '',
+  });
+  const [groups, setGroups] = useState([newGroup('Prestations principales')]);
+
+  useEffect(() => {
+    api.get('/leads').then(r => setLeads(r.data || DEMO_LEADS)).catch(() => setLeads(DEMO_LEADS));
+  }, []);
+
+  useEffect(() => {
+    if (!isEdit) return;
+    api.get(`/quotes/${id}`).then(r => { if (r.data) setFormData(prev => ({ ...prev, ...r.data })); }).catch(() => {});
+  }, [id, isEdit]);
+
+  useEffect(() => {
+    if (!formData.lead_id && !formData.title) return;
+    const t = setTimeout(() => setLastSaved(new Date()), 3000);
+    return () => clearTimeout(t);
+  }, [formData, groups]);
+
+  const canNext = useCallback(() => {
+    if (step === 1) return Boolean(formData.lead_id && formData.title.trim());
+    if (step === 2) return groups.some(g => g.postes.some(p => p.label.trim() && p.price > 0));
+    return true;
+  }, [step, formData, groups]);
+
+  const handleSave = async (andSend = false) => {
+    setSaving(true);
+    const totalHT = groups.reduce((s, g) => s + g.postes.reduce((ps, p) => ps + (p.qty || 0) * (p.price || 0), 0), 0);
+    const base = totalHT * (1 - (formData.discount || 0) / 100);
+    const tva = base * ((parseFloat(formData.tva) || 20) / 100);
+    const payload = { ...formData, amount: base + tva, groups, status: andSend ? 'envoyé' : 'brouillon' };
+    try {
+      if (isEdit) await api.put(`/quotes/${id}`, payload);
+      else await api.post('/quotes', payload);
+      navigate('/quotes');
+    } catch {
+      setLastSaved(new Date());
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="qf-root">
+      <style>{tokenStyle}</style>
+
+      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--line)', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button onClick={() => navigate('/quotes')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-3)', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
+          <ArrowLeft style={{ width: 14, height: 14 }} /> Devis
+        </button>
+        <ChevronRight style={{ width: 13, height: 13, color: 'var(--ink-4)' }} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
+          {isEdit ? `Modifier devis #${id}` : 'Nouveau devis'}
+        </span>
+      </div>
+
+      <Stepper current={step} />
+
+      <div style={{ display: 'flex', gap: 24, padding: '24px', alignItems: 'flex-start', maxWidth: 1100, margin: '0 auto' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {step === 1 && <Step1Client data={formData} setData={setFormData} leads={leads} />}
+          {step === 2 && <Step2Prestations groups={groups} setGroups={setGroups} />}
+          {step === 3 && <Step3Conditions data={formData} setData={setFormData} />}
+          {step === 4 && <Step4Recap formData={formData} groups={groups} leads={leads} />}
+        </div>
+        <Sidebar groups={groups} formData={formData} leads={leads} />
+      </div>
+
+      <div className="qf-footbar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {step > 1 && (
+            <button className="qf-footbar-btn qf-footbar-btn-ghost" onClick={() => setStep(s => s - 1)}>
+              <ArrowLeft style={{ width: 14, height: 14 }} /> Précédent
+            </button>
+          )}
+          {lastSaved && (
+            <span className="qf-mono" style={{ fontSize: 10, opacity: 0.45 }}>
+              Sauvegardé {lastSaved.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="qf-footbar-btn qf-footbar-btn-secondary" onClick={() => handleSave(false)} disabled={saving}>
+            {saving ? <Loader style={{ width: 13, height: 13, animation: 'spin 0.7s linear infinite' }} /> : <Save style={{ width: 13, height: 13 }} />}
+            Enregistrer brouillon
+          </button>
+          {step < 4 ? (
+            <button
+              className="qf-footbar-btn qf-footbar-btn-primary"
+              onClick={() => setStep(s => s + 1)}
+              disabled={!canNext()}
+              style={{ opacity: canNext() ? 1 : 0.4, cursor: canNext() ? 'pointer' : 'not-allowed' }}
+            >
+              Étape suivante <ChevronRight style={{ width: 14, height: 14 }} />
+            </button>
+          ) : (
+            <button className="qf-footbar-btn qf-footbar-btn-primary" onClick={() => handleSave(true)} disabled={saving}>
+              <Send style={{ width: 13, height: 13 }} /> Enregistrer et envoyer
+            </button>
+          )}
         </div>
       </div>
     </div>
