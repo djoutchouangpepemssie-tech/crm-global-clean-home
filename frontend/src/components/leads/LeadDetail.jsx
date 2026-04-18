@@ -1,21 +1,7 @@
 /**
- * LeadDetail — Vague 1.
- *
- * Refonte complète, branchée sur React Query.
- *
- * Features :
- *   - PageHeader avec breadcrumbs + actions rapides + onglets
- *   - Score circulaire + infos contact + tracking UTM
- *   - 5 onglets : Vue d'ensemble, Timeline, Devis, Tâches, Notes
- *   - Timeline unifiée (interactions + devis + tâches) triée chrono
- *   - Changement de statut inline avec state machine
- *   - Ajout d'interaction rapide (note, appel, email, relance)
- *   - Envoi de devis en un clic (avec confirmation)
- *   - Notes persistées via PATCH /leads/{id}
- *   - Quick actions : Appeler, Email, WhatsApp, Créer devis
- *
- * Toutes les mutations utilisent les hooks React Query qui invalident
- * automatiquement les caches dépendants (dashboard, liste leads, etc.)
+ * LeadDetail — ATELIER direction
+ * Crème / Fraunces / émeraude (brand) / terracotta (accent)
+ * Logique 100% préservée.
  */
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -28,70 +14,45 @@ import {
 import { toast } from 'sonner';
 
 import {
-  useLead,
-  useUpdateLead,
-  useQuotesByLead,
-  useTasksByLead,
-  useSendQuote,
-  useInteractionsByLead,
-  useCreateInteraction,
+  useLead, useUpdateLead, useQuotesByLead, useTasksByLead,
+  useSendQuote, useInteractionsByLead, useCreateInteraction,
 } from '../../hooks/api';
 import { PageHeader, StatusBadge, EmptyState, useConfirm } from '../shared';
 import { relativeTime, shortDateTime, shortDate } from '../../lib/dates';
-import {
-  getAllowedNextStatuses,
-  LEAD_STATUS_LABELS,
-} from '../../lib/leadStatus';
+import { getAllowedNextStatuses, LEAD_STATUS_LABELS } from '../../lib/leadStatus';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 import BACKEND_URL from '../../config.js';
 
-// ── Score circulaire SVG ─────────────────────────────────────────
-function ScoreCircle({ score = 0, size = 120 }) {
+// ── Score circulaire (palette atelier) ──────────────────────────
+function ScoreCircle({ score = 0, size = 140 }) {
   const s = Math.min(100, Math.max(0, score));
-  const radius = (size - 16) / 2;
+  const radius = (size - 20) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (s / 100) * circumference;
-  const color = s < 30 ? '#f43f5e' : s < 60 ? '#f59e0b' : s < 80 ? '#34d399' : '#22d3ee';
+  // Froid → Tiède → Chaud → Brûlant : encre → amber → terracotta → émeraude
+  const color = s < 30 ? '#64748b' : s < 60 ? '#d97706' : s < 80 ? '#c2410c' : '#047857';
   const label = s < 30 ? 'Froid' : s < 60 ? 'Tiède' : s < 80 ? 'Chaud' : 'Brûlant';
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke="currentColor"
-          strokeWidth="8"
-          fill="none"
-          style={{color:"var(--border-strong)"}}
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={color}
-          strokeWidth="8"
-          fill="none"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
+        <circle cx={size/2} cy={size/2} r={radius}
+          stroke="#e5e0d6" strokeWidth="8" fill="none" />
+        <circle cx={size/2} cy={size/2} r={radius}
+          stroke={color} strokeWidth="8" fill="none"
+          strokeDasharray={circumference} strokeDashoffset={offset}
           strokeLinecap="round"
-          style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.22, 0.61, 0.36, 1)' }}
-        />
+          style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.22, 0.61, 0.36, 1)' }} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-3xl font-bold" style={{color:"var(--text-primary)"}}>{s}</span>
-        <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color }}>
+        <span className="font-display font-semibold text-4xl text-neutral-900 leading-none">{s}</span>
+        <span className="text-[10px] uppercase tracking-[0.15em] font-mono mt-1" style={{ color }}>
           {label}
         </span>
       </div>
@@ -99,37 +60,33 @@ function ScoreCircle({ score = 0, size = 120 }) {
   );
 }
 
-// ── Bloc d'info contact ──────────────────────────────────────────
+// ── Info row ────────────────────────────────────────────────────
 function InfoRow({ icon: Icon, label, value, href }) {
   if (!value) return null;
   const content = (
     <div className="flex items-start gap-3 py-2.5 text-sm">
-      <Icon className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+      <Icon className="w-4 h-4 text-neutral-400 flex-shrink-0 mt-0.5" />
       <div className="min-w-0 flex-1">
-        <div className="text-xs text-slate-500">{label}</div>
-        <div className="text-slate-900 truncate">{value}</div>
+        <div className="text-[10px] uppercase tracking-[0.08em] font-mono text-neutral-500">{label}</div>
+        <div className="text-neutral-900 truncate mt-0.5">{value}</div>
       </div>
     </div>
   );
   return href ? (
-    <a href={href} className="block hover:bg-slate-50 rounded-lg -mx-2 px-2 transition-colors">
-      {content}
-    </a>
-  ) : (
-    content
-  );
+    <a href={href} className="block hover:bg-neutral-50 rounded-lg -mx-2 px-2 transition-colors">{content}</a>
+  ) : content;
 }
 
-// ── Item de timeline ─────────────────────────────────────────────
+// ── Timeline item (palette atelier) ─────────────────────────────
 function TimelineItem({ item }) {
   const icons = {
-    note: { Icon: FileText, color: 'text-slate-500 ' },
-    appel: { Icon: Phone, color: 'text-blue-600 bg-blue-50' },
-    email: { Icon: Mail, color: 'text-violet-600 bg-violet-50' },
-    sms: { Icon: MessageSquare, color: 'text-emerald-600 bg-emerald-50' },
-    relance: { Icon: Sparkles, color: 'text-amber-600 bg-amber-50' },
-    quote: { Icon: FileText, color: 'text-indigo-600 bg-indigo-50' },
-    task: { Icon: CheckSquare, color: 'text-teal-600 bg-teal-50' },
+    note:    { Icon: FileText,      color: 'text-neutral-600 bg-neutral-100' },
+    appel:   { Icon: Phone,         color: 'text-brand-700 bg-brand-50' },
+    email:   { Icon: Mail,          color: 'text-neutral-700 bg-neutral-100' },
+    sms:     { Icon: MessageSquare, color: 'text-brand-700 bg-brand-50' },
+    relance: { Icon: Sparkles,      color: 'text-terracotta-700 bg-terracotta-50' },
+    quote:   { Icon: FileText,      color: 'text-terracotta-700 bg-terracotta-50' },
+    task:    { Icon: CheckSquare,   color: 'text-brand-700 bg-brand-50' },
   };
   const { Icon, color } = icons[item.type] || icons.note;
 
@@ -139,25 +96,23 @@ function TimelineItem({ item }) {
         <div className={`w-8 h-8 rounded-full flex items-center justify-center ring-4 ring-white ${color}`}>
           <Icon className="w-4 h-4" />
         </div>
-        <div className="flex-1 w-px bg-slate-200 mt-1" />
+        <div className="flex-1 w-px bg-neutral-200 mt-1" />
       </div>
       <div className="flex-1 min-w-0 pb-6">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-semibold text-slate-900">
-            {item.title}
-          </span>
+          <span className="text-sm font-semibold text-neutral-900">{item.title}</span>
           {item.badge && (
-            <span className="text-xs px-1.5 py-0.5 rounded  text-slate-600">
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 font-mono uppercase tracking-wider">
               {item.badge}
             </span>
           )}
         </div>
         {item.description && (
-          <p className="text-sm text-slate-600 mt-1 leading-relaxed whitespace-pre-wrap">
+          <p className="text-sm text-neutral-600 mt-1 leading-relaxed whitespace-pre-wrap">
             {item.description}
           </p>
         )}
-        <div className="text-xs text-slate-400 mt-1.5">
+        <div className="text-xs text-neutral-400 mt-1.5 font-mono">
           {relativeTime(item.date)} · {shortDateTime(item.date)}
         </div>
       </div>
@@ -165,7 +120,12 @@ function TimelineItem({ item }) {
   );
 }
 
-// ── Composant principal ──────────────────────────────────────────
+// Helper : classe bouton primaire atelier
+const primaryBtn = "bg-neutral-900 hover:bg-neutral-800 text-white";
+
+// ══════════════════════════════════════════════════════════════
+// Main
+// ══════════════════════════════════════════════════════════════
 export default function LeadDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -176,38 +136,27 @@ export default function LeadDetail() {
   const [notesDirty, setNotesDirty] = useState(false);
   const [newInteraction, setNewInteraction] = useState({ type: 'note', content: '' });
 
-  // Queries
   const { data: lead, isLoading, error } = useLead(id);
   const { data: interactions = [] } = useInteractionsByLead(id);
   const { data: quotes = [] } = useQuotesByLead(id);
   const { data: tasks = [] } = useTasksByLead(id);
 
-  // Mutations
   const updateLead = useUpdateLead();
   const createInteraction = useCreateInteraction();
   const sendQuote = useSendQuote();
 
-  // Sync notes quand le lead charge (et pas pendant qu'on édite)
   useEffect(() => {
-    if (lead?.notes !== undefined && !notesDirty) {
-      setNotes(lead.notes || '');
-    }
+    if (lead?.notes !== undefined && !notesDirty) setNotes(lead.notes || '');
   }, [lead?.notes, notesDirty]);
 
-  // Timeline unifiée (interactions + devis + tâches triés chrono)
   const timeline = useMemo(() => {
     const items = [];
     interactions.forEach((i) => {
       items.push({
         id: `i-${i.interaction_id || i.id}`,
         type: i.type || 'note',
-        title: ({
-          note: 'Note ajoutée',
-          appel: 'Appel enregistré',
-          email: 'Email envoyé',
-          sms: 'SMS envoyé',
-          relance: 'Relance effectuée',
-        })[i.type] || 'Interaction',
+        title: ({ note: 'Note ajoutée', appel: 'Appel enregistré', email: 'Email envoyé',
+                  sms: 'SMS envoyé', relance: 'Relance effectuée' })[i.type] || 'Interaction',
         description: i.content,
         date: i.created_at,
       });
@@ -235,8 +184,6 @@ export default function LeadDetail() {
     return items.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
   }, [interactions, quotes, tasks]);
 
-  // ── Handlers ──────────────────────────────────────────────────
-
   const handleStatusChange = async (nextStatus) => {
     await updateLead.mutateAsync({ leadId: id, payload: { status: nextStatus } });
     toast.success(`Statut changé en "${LEAD_STATUS_LABELS[nextStatus]}"`);
@@ -252,32 +199,24 @@ export default function LeadDetail() {
     e.preventDefault();
     if (!newInteraction.content.trim()) return;
     await createInteraction.mutateAsync({
-      lead_id: id,
-      type: newInteraction.type,
-      content: newInteraction.content.trim(),
+      lead_id: id, type: newInteraction.type, content: newInteraction.content.trim(),
     });
     setNewInteraction({ type: 'note', content: '' });
   };
 
-  const handleCreateQuote = () => {
-    navigate('/quotes/new', { state: { lead } });
-  };
+  const handleCreateQuote = () => navigate('/quotes/new', { state: { lead } });
 
   const handleSendQuote = async (quoteId) => {
     const ok = await confirm({
       title: 'Envoyer ce devis par email ?',
       description: `Le devis sera envoyé à ${lead?.email || "l'adresse du client"}.`,
-      confirmText: 'Envoyer',
-      variant: 'info',
+      confirmText: 'Envoyer', variant: 'info',
     });
     if (ok) await sendQuote.mutateAsync(quoteId);
   };
 
   const handleWhatsApp = async () => {
-    if (!lead?.phone) {
-      toast.error('Aucun numéro de téléphone enregistré');
-      return;
-    }
+    if (!lead?.phone) { toast.error('Aucun numéro de téléphone enregistré'); return; }
     try {
       const res = await axios.post(
         `${BACKEND_URL}/api/whatsapp/send`,
@@ -290,15 +229,13 @@ export default function LeadDetail() {
     }
   };
 
-  // ── Render ────────────────────────────────────────────────────
-
   if (isLoading) {
     return (
       <div className="p-6 max-w-6xl mx-auto animate-pulse">
-        <div className="h-8 w-40 bg-slate-200 rounded mb-6" />
+        <div className="h-8 w-40 bg-neutral-200 rounded mb-6" />
         <div className="grid lg:grid-cols-3 gap-6">
-          <div className="h-64 bg-slate-100 rounded-xl lg:col-span-2" />
-          <div className="h-64 bg-slate-100 rounded-xl" />
+          <div className="h-64 bg-neutral-100 rounded-xl lg:col-span-2" />
+          <div className="h-64 bg-neutral-100 rounded-xl" />
         </div>
       </div>
     );
@@ -322,10 +259,7 @@ export default function LeadDetail() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
       <PageHeader
-        breadcrumbs={[
-          { label: 'Leads', to: '/leads' },
-          { label: lead.name || 'Détail' },
-        ]}
+        breadcrumbs={[{ label: 'Leads', to: '/leads' }, { label: lead.name || 'Détail' }]}
         title={lead.name || 'Sans nom'}
         subtitle={
           <div className="flex items-center gap-2 flex-wrap mt-2">
@@ -333,21 +267,15 @@ export default function LeadDetail() {
             {allowedNext.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="sm" variant="ghost" className="h-6 px-2 text-xs">
-                    Changer…
-                  </Button>
+                  <Button size="sm" variant="ghost" className="h-6 px-2 text-xs">Changer…</Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-56">
-                  <DropdownMenuLabel className="text-xs">
+                  <DropdownMenuLabel className="text-xs font-mono uppercase tracking-wider text-neutral-500">
                     Transitions autorisées
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {allowedNext.map((s) => (
-                    <DropdownMenuItem
-                      key={s}
-                      onClick={() => handleStatusChange(s)}
-                      className="gap-2"
-                    >
+                    <DropdownMenuItem key={s} onClick={() => handleStatusChange(s)} className="gap-2">
                       <StatusBadge domain="lead" status={s} size="xs" />
                       {LEAD_STATUS_LABELS[s]}
                     </DropdownMenuItem>
@@ -355,10 +283,8 @@ export default function LeadDetail() {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-            <span className="text-xs text-slate-500">·</span>
-            <span className="text-xs text-slate-500">
-              Créé {relativeTime(lead.created_at)}
-            </span>
+            <span className="text-xs text-neutral-400">·</span>
+            <span className="text-xs text-neutral-500">Créé {relativeTime(lead.created_at)}</span>
           </div>
         }
         actions={[
@@ -377,12 +303,12 @@ export default function LeadDetail() {
         onTabChange={setActiveTab}
       />
 
-      {/* ── Onglet Vue d'ensemble ──────────────────────────────── */}
+      {/* ─── Onglet Vue d'ensemble ─── */}
       {activeTab === 'overview' && (
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <div className="rounded-xl border border-slate-200 section-card/30 p-6">
-              <h3 className="text-sm font-semibold text-slate-900 mb-4">
+            <div className="rounded-xl border border-neutral-200 bg-white p-6">
+              <h3 className="text-[11px] font-mono uppercase tracking-[0.1em] text-neutral-500 mb-4">
                 Informations de contact
               </h3>
               <div className="grid sm:grid-cols-2 gap-x-6">
@@ -395,9 +321,9 @@ export default function LeadDetail() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-200 section-card/30 p-6">
-              <h3 className="text-sm font-semibold text-slate-900 mb-4">
-                Tracking & acquisition
+            <div className="rounded-xl border border-neutral-200 bg-white p-6">
+              <h3 className="text-[11px] font-mono uppercase tracking-[0.1em] text-neutral-500 mb-4">
+                Tracking &amp; acquisition
               </h3>
               <div className="grid sm:grid-cols-2 gap-x-6">
                 <InfoRow icon={Globe} label="Source" value={lead.source} />
@@ -406,39 +332,37 @@ export default function LeadDetail() {
                 <InfoRow icon={Tag} label="UTM medium" value={lead.utm_medium} />
               </div>
               {!lead.source && !lead.utm_source && (
-                <p className="text-xs text-slate-400 italic">Aucune donnée de tracking enregistrée</p>
+                <p className="text-xs text-neutral-400 italic mt-2">Aucune donnée de tracking enregistrée</p>
               )}
             </div>
 
             {lead.message && (
-              <div className="rounded-xl border border-slate-200 section-card/30 p-6">
-                <h3 className="text-sm font-semibold text-slate-900 mb-2">
+              <div className="rounded-xl border border-neutral-200 bg-brand-50/30 p-6">
+                <h3 className="text-[11px] font-mono uppercase tracking-[0.1em] text-neutral-500 mb-2">
                   Message initial
                 </h3>
-                <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">
-                  {lead.message}
+                <p className="text-sm text-neutral-700 whitespace-pre-wrap leading-relaxed font-display">
+                  « {lead.message} »
                 </p>
               </div>
             )}
           </div>
 
           <div className="space-y-6">
-            <div className="rounded-xl border border-slate-200 section-card/30 p-6 flex flex-col items-center">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-4">
+            <div className="rounded-xl border border-neutral-200 bg-white p-6 flex flex-col items-center">
+              <h3 className="text-[11px] font-mono uppercase tracking-[0.1em] text-neutral-500 mb-4">
                 Score de prospection
               </h3>
               <ScoreCircle score={lead.score || 0} />
               {lead.probability !== undefined && (
                 <div className="w-full mt-6">
                   <div className="flex items-center justify-between text-xs mb-1.5">
-                    <span className="text-slate-500">Probabilité de closing</span>
-                    <span className="font-semibold text-slate-900">
-                      {lead.probability}%
-                    </span>
+                    <span className="text-neutral-500">Probabilité de closing</span>
+                    <span className="font-semibold text-neutral-900 tabular-nums">{lead.probability}%</span>
                   </div>
-                  <div className="h-1.5  rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-violet-500 to-pink-500 rounded-full transition-all duration-700 ease-standard"
+                      className="h-full bg-brand-600 rounded-full transition-all duration-700"
                       style={{ width: `${lead.probability}%` }}
                     />
                   </div>
@@ -446,15 +370,15 @@ export default function LeadDetail() {
               )}
             </div>
 
-            <div className="rounded-xl border border-slate-200 section-card/30 p-6">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
+            <div className="rounded-xl border border-neutral-200 bg-white p-6">
+              <h3 className="text-[11px] font-mono uppercase tracking-[0.1em] text-neutral-500 mb-3">
                 Dernière activité
               </h3>
-              <div className="flex items-center gap-2 text-sm text-slate-900">
-                <Clock className="w-4 h-4 text-slate-400" />
+              <div className="flex items-center gap-2 text-sm text-neutral-900">
+                <Clock className="w-4 h-4 text-neutral-400" />
                 {relativeTime(lead.updated_at || lead.created_at)}
               </div>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-neutral-500 mt-1 font-mono">
                 {shortDateTime(lead.updated_at || lead.created_at)}
               </p>
             </div>
@@ -462,11 +386,11 @@ export default function LeadDetail() {
         </div>
       )}
 
-      {/* ── Onglet Timeline ─────────────────────────────────────── */}
+      {/* ─── Onglet Timeline ─── */}
       {activeTab === 'timeline' && (
-        <div className="rounded-xl border border-slate-200 section-card/30 p-6">
-          <form onSubmit={handleAddInteraction} className="mb-6 pb-6 border-b border-slate-200">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+        <div className="rounded-xl border border-neutral-200 bg-white p-6">
+          <form onSubmit={handleAddInteraction} className="mb-6 pb-6 border-b border-neutral-200">
+            <label className="block text-[11px] font-mono uppercase tracking-[0.1em] text-neutral-500 mb-2">
               Ajouter une interaction
             </label>
             <div className="flex gap-2 mb-2 flex-wrap">
@@ -475,12 +399,10 @@ export default function LeadDetail() {
                   key={t}
                   type="button"
                   onClick={() => setNewInteraction((s) => ({ ...s, type: t }))}
-                  className={`
-                    px-3 py-1.5 rounded-full text-xs font-medium transition-colors capitalize
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors capitalize
                     ${newInteraction.type === t
-                      ? 'bg-slate-800 text-white  '
-                      : ' text-slate-600 hover:bg-slate-200'}
-                  `}
+                      ? 'bg-neutral-900 text-white'
+                      : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'}`}
                 >
                   {t}
                 </button>
@@ -497,7 +419,7 @@ export default function LeadDetail() {
                 type="submit"
                 size="sm"
                 disabled={!newInteraction.content.trim() || createInteraction.isPending}
-                className="bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700 text-white"
+                className={primaryBtn}
               >
                 <Send className="w-3.5 h-3.5 mr-1" />
                 Ajouter
@@ -514,28 +436,19 @@ export default function LeadDetail() {
             />
           ) : (
             <div className="space-y-0">
-              {timeline.map((item) => (
-                <TimelineItem key={item.id} item={item} />
-              ))}
+              {timeline.map((item) => <TimelineItem key={item.id} item={item} />)}
             </div>
           )}
         </div>
       )}
 
-      {/* ── Onglet Devis ────────────────────────────────────────── */}
+      {/* ─── Onglet Devis ─── */}
       {activeTab === 'quotes' && (
-        <div className="rounded-xl border border-slate-200 section-card/30 p-6">
+        <div className="rounded-xl border border-neutral-200 bg-white p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-slate-900">
-              Devis liés ({quotes.length})
-            </h3>
-            <Button
-              size="sm"
-              onClick={handleCreateQuote}
-              className="bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700 text-white"
-            >
-              <Plus className="w-3.5 h-3.5 mr-1" />
-              Nouveau devis
+            <h3 className="text-sm font-semibold text-neutral-900">Devis liés ({quotes.length})</h3>
+            <Button size="sm" onClick={handleCreateQuote} className={primaryBtn}>
+              <Plus className="w-3.5 h-3.5 mr-1" />Nouveau devis
             </Button>
           </div>
           {quotes.length === 0 ? (
@@ -551,25 +464,25 @@ export default function LeadDetail() {
               {quotes.map((q) => (
                 <div
                   key={q.quote_id}
-                  className="flex items-center justify-between p-4 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors"
+                  className="flex items-center justify-between p-4 rounded-lg border border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50 transition-colors"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-slate-900">
-                        {q.service_type || 'Devis'}
-                      </span>
+                      <span className="font-semibold text-neutral-900">{q.service_type || 'Devis'}</span>
                       <StatusBadge domain="quote" status={q.status} size="xs" />
                     </div>
-                    <div className="text-sm text-slate-500 mt-0.5">
-                      {q.amount ? `${Number(q.amount).toLocaleString('fr-FR')} € HT` : 'Montant non défini'}
+                    <div className="text-sm text-neutral-500 mt-0.5">
+                      <span className="font-mono tabular-nums text-neutral-900">
+                        {q.amount ? `${Number(q.amount).toLocaleString('fr-FR')} €` : 'Montant non défini'}
+                      </span>
+                      {q.amount && <span className="text-xs text-neutral-400"> HT</span>}
                       {' · '}
                       {relativeTime(q.created_at)}
                     </div>
                   </div>
                   {q.status === 'brouillon' && (
                     <Button size="sm" variant="outline" onClick={() => handleSendQuote(q.quote_id)}>
-                      <Send className="w-3.5 h-3.5 mr-1" />
-                      Envoyer
+                      <Send className="w-3.5 h-3.5 mr-1" />Envoyer
                     </Button>
                   )}
                 </div>
@@ -579,12 +492,10 @@ export default function LeadDetail() {
         </div>
       )}
 
-      {/* ── Onglet Tâches ───────────────────────────────────────── */}
+      {/* ─── Onglet Tâches ─── */}
       {activeTab === 'tasks' && (
-        <div className="rounded-xl border border-slate-200 section-card/30 p-6">
-          <h3 className="text-sm font-semibold text-slate-900 mb-4">
-            Tâches ({tasks.length})
-          </h3>
+        <div className="rounded-xl border border-neutral-200 bg-white p-6">
+          <h3 className="text-sm font-semibold text-neutral-900 mb-4">Tâches ({tasks.length})</h3>
           {tasks.length === 0 ? (
             <EmptyState
               icon={CheckSquare}
@@ -595,29 +506,18 @@ export default function LeadDetail() {
           ) : (
             <div className="space-y-2">
               {tasks.map((t) => (
-                <div
-                  key={t.task_id || t.id}
-                  className="flex items-start gap-3 p-3 rounded-lg border border-slate-200"
-                >
-                  <CheckSquare
-                    className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
-                      t.status === 'completed' ? 'text-emerald-500' : 'text-slate-400'
-                    }`}
-                  />
+                <div key={t.task_id || t.id} className="flex items-start gap-3 p-3 rounded-lg border border-neutral-200">
+                  <CheckSquare className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                    t.status === 'completed' ? 'text-brand-600' : 'text-neutral-400'
+                  }`} />
                   <div className="min-w-0 flex-1">
                     <div className={`text-sm font-medium ${
-                      t.status === 'completed' ? 'line-through text-slate-400' : 'text-slate-900'
+                      t.status === 'completed' ? 'line-through text-neutral-400' : 'text-neutral-900'
                     }`}>
                       {t.title}
                     </div>
-                    {t.description && (
-                      <p className="text-xs text-slate-500 mt-0.5">{t.description}</p>
-                    )}
-                    {t.due_date && (
-                      <p className="text-xs text-slate-400 mt-1">
-                        Échéance {relativeTime(t.due_date)}
-                      </p>
-                    )}
+                    {t.description && <p className="text-xs text-neutral-500 mt-0.5">{t.description}</p>}
+                    {t.due_date && <p className="text-xs text-neutral-400 mt-1 font-mono">Échéance {relativeTime(t.due_date)}</p>}
                   </div>
                   <StatusBadge domain="task" status={t.status} size="xs" />
                 </div>
@@ -627,36 +527,25 @@ export default function LeadDetail() {
         </div>
       )}
 
-      {/* ── Onglet Notes ────────────────────────────────────────── */}
+      {/* ─── Onglet Notes ─── */}
       {activeTab === 'notes' && (
-        <div className="rounded-xl border border-slate-200 section-card/30 p-6">
+        <div className="rounded-xl border border-neutral-200 bg-white p-6">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-slate-900">
-              Notes privées
-            </h3>
+            <h3 className="text-sm font-semibold text-neutral-900">Notes privées</h3>
             {notesDirty && (
-              <Button
-                size="sm"
-                onClick={handleSaveNotes}
-                disabled={updateLead.isPending}
-                className="bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700 text-white"
-              >
-                <Save className="w-3.5 h-3.5 mr-1" />
-                Enregistrer
+              <Button size="sm" onClick={handleSaveNotes} disabled={updateLead.isPending} className={primaryBtn}>
+                <Save className="w-3.5 h-3.5 mr-1" />Enregistrer
               </Button>
             )}
           </div>
           <Textarea
             value={notes}
-            onChange={(e) => {
-              setNotes(e.target.value);
-              setNotesDirty(true);
-            }}
+            onChange={(e) => { setNotes(e.target.value); setNotesDirty(true); }}
             placeholder="Ajoutez vos notes sur ce lead…"
             rows={10}
-            className="resize-none"
+            className="resize-none font-display"
           />
-          <p className="text-xs text-slate-400 mt-2">
+          <p className="text-xs text-neutral-400 mt-2 italic">
             Ces notes sont visibles uniquement par votre équipe.
           </p>
         </div>
