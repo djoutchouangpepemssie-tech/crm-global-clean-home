@@ -1,67 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
-
+/* Atelier v2.0 — CSS vars mirror */
 :root {
-  --font-display: 'Inter', -apple-system, sans-serif;
+  --brand: #059669; --brand-hover: #047857;
+  --brand-light: rgba(5,150,105,0.10); --brand-medium: rgba(5,150,105,0.18);
+  --bg-app: #F5F2EB; --bg-card: #FBFAF6; --bg-muted: #ECE7DC;
+  --bg-sidebar: #1A1814; --bg-input: #FFFFFF;
+  --text-primary: #26241F; --text-secondary: #544E43; --text-muted: #8A8175;
+  --border-default: rgba(38,36,31,0.08); --border-strong: rgba(38,36,31,0.14);
+  --font-display: 'Fraunces', 'Instrument Serif', Georgia, serif;
   --font-body: 'Inter', -apple-system, sans-serif;
-  --radius-xs: 8px; --radius-sm: 12px; --radius-md: 16px;
-  --radius-lg: 24px; --radius-xl: 32px; --radius-full: 9999px;
-  --transition-fast: 150ms cubic-bezier(0.4,0,0.2,1);
-  --transition-base: 250ms cubic-bezier(0.4,0,0.2,1);
-}
-
-:root, [data-theme="dark"] {
-  --bg-base: #0F0F10; --bg-elevated: #1A1A1C; --bg-card: #212124;
-  --bg-card-hover: #26262A; --bg-input: #2A2A2E; --bg-muted: #1A1A1C;
-  --bg-app: #0F0F10; --bg-sidebar: #131316;
-  --surface-peach: #F4C2A1; --surface-lavender: #D4C5F9;
-  --surface-mint: #B8E6D0; --surface-butter: #F5E6A8;
-  --text-primary: #FAFAFA; --text-secondary: #A1A1A6;
-  --text-muted: #6B6B72; --text-on-pastel: #1A1A1C;
-  --brand: #F5E6A8; --brand-hover: #F0DA85;
-  --brand-light: rgba(245,230,168,0.12); --brand-medium: rgba(245,230,168,0.20);
-  --accent-success: #6DD8B0; --accent-danger: #E8826F;
-  --accent-warning: #F5C96E; --accent-info: #82B8F5;
-  --border-default: rgba(255,255,255,0.06); --border-strong: rgba(255,255,255,0.10);
-  --border-input: rgba(255,255,255,0.08); --border-focus: rgba(245,230,168,0.40);
-  --shadow-card: 0 1px 0 rgba(255,255,255,0.04) inset, 0 4px 24px rgba(0,0,0,0.40);
-  --shadow-card-hover: 0 1px 0 rgba(255,255,255,0.06) inset, 0 8px 32px rgba(0,0,0,0.50);
-  --shadow-dropdown: 0 24px 48px rgba(0,0,0,0.60), 0 1px 0 rgba(255,255,255,0.06) inset;
-  --shadow-button: 0 2px 8px rgba(245,230,168,0.20);
-  --background: 240 6% 6%; --foreground: 0 0% 98%;
-  --card: 240 5% 13%; --card-foreground: 0 0% 98%;
-  --popover: 240 5% 13%; --popover-foreground: 0 0% 98%;
-  --primary: 47 87% 81%; --primary-foreground: 240 6% 10%;
-  --secondary: 240 5% 20%; --secondary-foreground: 0 0% 98%;
-  --muted: 240 5% 15%; --muted-foreground: 240 4% 55%;
-  --accent: 47 87% 81%; --accent-foreground: 240 6% 10%;
-  --destructive: 12 73% 68%; --destructive-foreground: 0 0% 98%;
-  --border: 240 5% 14%; --input: 240 5% 17%; --ring: 47 87% 81%; --radius: 1rem;
-}
-
-[data-theme="light"] {
-  --bg-base: #F5F4F0; --bg-elevated: #FFFFFF; --bg-card: #FFFFFF;
-  --bg-card-hover: #F9F8F5; --bg-input: #F0EEE8; --bg-muted: #F0EEE8;
-  --bg-app: #F5F4F0; --bg-sidebar: #131316;
-  --surface-peach: #F4A875; --surface-lavender: #B8A3F0;
-  --surface-mint: #7DD4AA; --surface-butter: #EDD55A;
-  --text-primary: #1A1A1C; --text-secondary: #5A5A62;
-  --text-muted: #9A9AA2; --text-on-pastel: #1A1A1C;
-  --brand: #D4A820; --brand-hover: #C09818;
-  --brand-light: rgba(212,168,32,0.10); --brand-medium: rgba(212,168,32,0.18);
-  --accent-success: #2A9E72; --accent-danger: #C85540;
-  --accent-warning: #C4920A; --accent-info: #2878C8;
-  --border-default: rgba(0,0,0,0.07); --border-strong: rgba(0,0,0,0.12);
-  --border-input: rgba(0,0,0,0.10); --border-focus: rgba(212,168,32,0.40);
-  --shadow-card: 0 1px 0 rgba(255,255,255,0.80) inset, 0 2px 8px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04);
-  --shadow-card-hover: 0 1px 0 rgba(255,255,255,0.80) inset, 0 4px 16px rgba(0,0,0,0.08);
-  --shadow-dropdown: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
-  --shadow-button: 0 2px 8px rgba(212,168,32,0.20);
-  --background: 40 20% 96%; --foreground: 240 6% 10%;
-  --card: 0 0% 100%; --card-foreground: 240 6% 10%;
-  --primary: 43 80% 48%; --primary-foreground: 0 0% 100%;
-  --secondary: 40 12% 92%; --secondary-foreground: 240 6% 20%;
-  --muted: 40 12% 92%; --muted-foreground: 240 4% 46%;
-  --accent: 43 80% 48%; --accent-foreground: 0 0% 100%;
-  --destructive: 12 73% 52%; --destructive-foreground: 0 0% 100%;
-  --border: 40 12% 88%; --input: 40 12% 90%; --ring: 43 80% 48%; --radius: 1rem;
+  --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-full: 9999px;
 }
