@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Activity as ActivityIcon, RefreshCw, Filter } from 'lucide-react';
 import { formatDateTime } from '../../lib/utils';
@@ -9,17 +9,17 @@ const API_URL = BACKEND_URL + '/api';
 const ACTION_CONFIG = {
   'create_lead': { label: 'Lead créé', color: '#60a5fa', bg: 'rgba(96,165,250,0.1)', emoji: '👤' },
   'update_lead': { label: 'Lead mis à jour', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', emoji: '✏️' },
-  'create_quote': { label: 'Devis créé', color: '#a78bfa', bg: 'rgba(167,139,250,0.1)', emoji: '📄' },
+  'create_quote': { label: 'Devis créé', color: '#d97706', bg: 'rgba(167,139,250,0.1)', emoji: '📄' },
   'send_quote': { label: 'Devis envoyé', color: '#c084fc', bg: 'rgba(192,132,252,0.1)', emoji: '📤' },
   'create_interaction': { label: 'Interaction', color: '#06b6d4', bg: 'rgba(6,182,212,0.1)', emoji: '💬' },
-  'create_task': { label: 'Tâche créée', color: '#34d399', bg: 'rgba(52,211,153,0.1)', emoji: '✅' },
-  'complete_task': { label: 'Tâche complétée', color: '#34d399', bg: 'rgba(52,211,153,0.1)', emoji: '🎉' },
+  'create_task': { label: 'Tâche créée', color: '#047857', bg: 'rgba(4,120,87,0.1)', emoji: '✅' },
+  'complete_task': { label: 'Tâche complétée', color: '#047857', bg: 'rgba(4,120,87,0.1)', emoji: '🎉' },
   'create_invoice': { label: 'Facture créée', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', emoji: '🧾' },
-  'payment_received': { label: 'Paiement reçu', color: '#34d399', bg: 'rgba(52,211,153,0.1)', emoji: '💰' },
+  'payment_received': { label: 'Paiement reçu', color: '#047857', bg: 'rgba(4,120,87,0.1)', emoji: '💰' },
 };
 
 const getActionConfig = (action) => ACTION_CONFIG[action] || { 
-  label: action, color: '#94a3b8', bg: 'rgba(148,163,184,0.1)', emoji: '📋' 
+  label: action, color: '#78716c', bg: 'rgba(148,163,184,0.1)', emoji: '📋' 
 };
 
 const ActivityLog = () => {
@@ -51,14 +51,14 @@ const ActivityLog = () => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <ActivityIcon className="w-5 h-5 text-violet-400" />
-            <h1 className="text-2xl font-bold text-slate-100" style={{fontFamily:'Manrope,sans-serif'}}>Journal</h1>
+            <ActivityIcon className="w-5 h-5 text-brand-400" />
+            <h1 className="text-2xl font-bold text-neutral-100" style={{}}>Journal</h1>
           </div>
-          <p className="text-slate-500 text-sm">
-            <span className="text-violet-400 font-semibold">{filtered.length}</span> activité(s) enregistrée(s)
+          <p className="text-neutral-500 text-sm">
+            <span className="text-brand-400 font-semibold">{filtered.length}</span> activité(s) enregistrée(s)
           </p>
         </div>
-        <button onClick={fetchLogs} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-slate-200 transition-all border border-white/5">
+        <button onClick={fetchLogs} className="p-2 rounded-lg bg-white hover:bg-neutral-50 text-neutral-400 hover:text-neutral-200 transition-all border border-neutral-100">
           <RefreshCw className="w-4 h-4" />
         </button>
       </div>
@@ -67,7 +67,7 @@ const ActivityLog = () => {
       <div className="flex gap-2 mb-4 flex-wrap">
         <button onClick={() => setFilter('')}
           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-            !filter ? 'bg-violet-600 text-white' : 'bg-white/5 border border-white/10 text-slate-400 hover:text-slate-200'
+            !filter ? 'bg-brand-600 text-white' : 'bg-white border border-neutral-200 text-neutral-400 hover:text-neutral-200'
           }`}>
           Toutes
         </button>
@@ -76,7 +76,7 @@ const ActivityLog = () => {
           return (
             <button key={action} onClick={() => setFilter(action === filter ? '' : action)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                filter === action ? 'text-white' : 'bg-white/5 border border-white/10 text-slate-400 hover:text-slate-200'
+                filter === action ? 'text-white' : 'bg-white border border-neutral-200 text-neutral-400 hover:text-neutral-200'
               }`}
               style={filter === action ? {background:cfg.color} : {}}>
               {cfg.emoji} {cfg.label}
@@ -86,15 +86,15 @@ const ActivityLog = () => {
       </div>
 
       {/* Log list */}
-      <div className="section-card overflow-hidden" data-testid="activity-list">
+      <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden" data-testid="activity-list">
         {loading ? (
           <div className="p-6 space-y-3">
             {[...Array(6)].map((_, i) => <div key={i} className="skeleton h-16 rounded-lg" />)}
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16">
-            <ActivityIcon className="w-12 h-12 text-slate-700 mx-auto mb-3" />
-            <p className="text-slate-500 font-medium">Aucune activité enregistrée</p>
+            <ActivityIcon className="w-12 h-12 text-neutral-700 mx-auto mb-3" />
+            <p className="text-neutral-500 font-medium">Aucune activité enregistrée</p>
           </div>
         ) : (
           <div className="divide-y divide-white/5">
@@ -102,7 +102,7 @@ const ActivityLog = () => {
               const cfg = getActionConfig(log.action);
               return (
                 <div key={log.log_id || idx} data-testid={`activity-log-${log.log_id}`}
-                  className="flex items-start gap-4 p-4 hover:bg-white/3 transition-all group animate-fade-in"
+                  className="flex items-start gap-4 p-4 hover:bg-neutral-100 transition-all group animate-fade-in"
                   style={{animationDelay:`${Math.min(idx * 20, 300)}ms`}}>
                   
                   {/* Icon */}
@@ -120,23 +120,23 @@ const ActivityLog = () => {
                           {cfg.label}
                         </span>
                         {log.entity_type && (
-                          <span className="text-xs text-slate-500 bg-white/5 px-2 py-0.5 rounded font-mono">
+                          <span className="text-xs text-neutral-500 bg-white px-2 py-0.5 rounded font-mono">
                             {log.entity_type}
                           </span>
                         )}
                       </div>
-                      <span className="text-xs text-slate-600 flex-shrink-0">{formatDateTime(log.created_at)}</span>
+                      <span className="text-xs text-neutral-600 flex-shrink-0">{formatDateTime(log.created_at)}</span>
                     </div>
                     
                     {log.entity_id && (
-                      <p className="text-xs text-slate-500 font-mono mb-1 truncate">
+                      <p className="text-xs text-neutral-500 font-mono mb-1 truncate">
                         ID: {log.entity_id}
                       </p>
                     )}
 
                     {log.details && Object.keys(log.details).length > 0 && (
-                      <div className="mt-2 p-2.5 bg-black/20 rounded-lg border border-white/5">
-                        <pre className="text-[10px] text-slate-400 font-mono overflow-x-auto leading-relaxed">
+                      <div className="mt-2 p-2.5 bg-black/20 rounded-lg border border-neutral-100">
+                        <pre className="text-[10px] text-neutral-400 font-mono overflow-x-auto leading-relaxed">
                           {JSON.stringify(log.details, null, 2)}
                         </pre>
                       </div>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+﻿import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { PageHeader } from '../shared';
 import axios from 'axios';
 import { useDocumentsList, useDeleteDocument } from '../../hooks/api';
@@ -17,10 +17,10 @@ const API_URL = BACKEND_URL + '/api';
 
 /* ─── Constants ─── */
 const TABS = [
-  { id: 'all', label: 'Tous', icon: Grid, color: '#a78bfa' },
+  { id: 'all', label: 'Tous', icon: Grid, color: '#d97706' },
   { id: 'photo', label: 'Photos', icon: FileImage, color: '#f472b6' },
   { id: 'document', label: 'Documents', icon: FileText, color: '#38bdf8' },
-  { id: 'before_after', label: 'Avant/Après', icon: ArrowLeftRight, color: '#34d399' },
+  { id: 'before_after', label: 'Avant/Après', icon: ArrowLeftRight, color: '#047857' },
 ];
 
 const ENTITY_TYPES = [
@@ -32,14 +32,14 @@ const ENTITY_TYPES = [
 ];
 
 const FILE_TYPE_CONFIG = {
-  pdf: { icon: FileText, color: '#ef4444', bg: 'rgba(239,68,68,0.12)', label: 'PDF' },
+  pdf: { icon: FileText, color: '#c2410c', bg: 'rgba(194,65,12,0.12)', label: 'PDF' },
   doc: { icon: FileText, color: '#3b82f6', bg: 'rgba(59,130,246,0.12)', label: 'DOC' },
   docx: { icon: FileText, color: '#3b82f6', bg: 'rgba(59,130,246,0.12)', label: 'DOCX' },
   xls: { icon: FileSpreadsheet, color: '#22c55e', bg: 'rgba(34,197,94,0.12)', label: 'XLS' },
   xlsx: { icon: FileSpreadsheet, color: '#22c55e', bg: 'rgba(34,197,94,0.12)', label: 'XLSX' },
   zip: { icon: FileArchive, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', label: 'ZIP' },
   rar: { icon: FileArchive, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', label: 'RAR' },
-  default: { icon: File, color: '#64748b', bg: 'rgba(100,116,139,0.12)', label: 'FILE' },
+  default: { icon: File, color: '#78716c', bg: 'rgba(100,116,139,0.12)', label: 'FILE' },
 };
 
 const isImage = (file) => /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(file.filename || file.name || '');
@@ -85,12 +85,12 @@ const STYLES = `
     100% { background-position: 200% 0; }
   }
   @keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 20px rgba(139,92,246,0.15); }
-    50% { box-shadow: 0 0 40px rgba(139,92,246,0.35), 0 0 80px rgba(139,92,246,0.15); }
+    0%, 100% { box-shadow: 0 0 20px rgba(4,120,87,0.15); }
+    50% { box-shadow: 0 0 40px rgba(4,120,87,0.35), 0 0 80px rgba(4,120,87,0.15); }
   }
   @keyframes dropzone-glow {
-    0%, 100% { border-color: rgba(139,92,246,0.5); box-shadow: inset 0 0 30px rgba(139,92,246,0.08); }
-    50% { border-color: rgba(139,92,246,0.9); box-shadow: inset 0 0 60px rgba(139,92,246,0.15), 0 0 30px rgba(139,92,246,0.2); }
+    0%, 100% { border-color: rgba(4,120,87,0.5); box-shadow: inset 0 0 30px rgba(4,120,87,0.08); }
+    50% { border-color: rgba(4,120,87,0.9); box-shadow: inset 0 0 60px rgba(4,120,87,0.15), 0 0 30px rgba(4,120,87,0.2); }
   }
   @keyframes progress-stripe {
     0% { background-position: 0 0; }
@@ -117,18 +117,18 @@ const STYLES = `
   
   .doc-card:hover .doc-card-overlay { opacity: 1 !important; }
   .doc-card:hover .doc-card-thumb img { transform: scale(1.08); }
-  .doc-card:hover { transform: translateY(-4px) !important; box-shadow: 0 12px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(139,92,246,0.2) !important; }
+  .doc-card:hover { transform: translateY(-4px) !important; box-shadow: 0 12px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(4,120,87,0.2) !important; }
   
   .filter-tab:hover { background: rgba(255,255,255,0.06) !important; }
-  .filter-tab.active { background: rgba(139,92,246,0.15) !important; }
+  .filter-tab.active { background: rgba(4,120,87,0.15) !important; }
   
   .action-btn { transition: all 0.2s cubic-bezier(0.4,0,0.2,1) !important; }
   .action-btn:hover { transform: translateY(-1px) scale(1.05) !important; }
   .action-btn:active { transform: translateY(0) scale(0.97) !important; }
   
-  .premium-input:focus { border-color: rgba(139,92,246,0.5) !important; box-shadow: 0 0 0 3px rgba(139,92,246,0.1) !important; }
+  .premium-input:focus { border-color: rgba(4,120,87,0.5) !important; box-shadow: 0 0 0 3px rgba(4,120,87,0.1) !important; }
   
-  .upload-zone:hover { border-color: rgba(139,92,246,0.3) !important; background: rgba(139,92,246,0.03) !important; }
+  .upload-zone:hover { border-color: rgba(4,120,87,0.3) !important; background: rgba(4,120,87,0.03) !important; }
   
   @media (max-width: 640px) {
     .docs-header { flex-direction: column !important; align-items: flex-start !important; }
@@ -175,27 +175,27 @@ const CardSkeleton = ({ index }) => (
 /* ─── Upload Progress Bar ─── */
 const UploadProgressBar = ({ progress, fileName }) => (
   <div style={{
-    background: 'rgba(139,92,246,0.06)',
-    border: '1px solid rgba(139,92,246,0.15)',
+    background: 'rgba(4,120,87,0.06)',
+    border: '1px solid rgba(4,120,87,0.15)',
     borderRadius: 12,
     padding: '12px 16px',
     animation: 'slideInUp 0.3s ease-out',
   }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <CloudUpload style={{ width: 14, height: 14, color: '#a78bfa' }} />
+        <CloudUpload style={{ width: 14, height: 14, color: '#d97706' }} />
         <span style={{ fontSize: 12, fontWeight: 600, color: '#cbd5e1', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {fileName}
         </span>
       </div>
-      <span style={{ fontSize: 11, fontWeight: 700, color: '#a78bfa' }}>{Math.round(progress)}%</span>
+      <span style={{ fontSize: 11, fontWeight: 700, color: '#d97706' }}>{Math.round(progress)}%</span>
     </div>
     <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
       <div style={{
         height: '100%',
         width: `${progress}%`,
         borderRadius: 4,
-        background: 'linear-gradient(90deg, #7c3aed, #a78bfa, #7c3aed)',
+        background: 'linear-gradient(90deg, #047857, #d97706, #047857)',
         backgroundSize: '40px 100%',
         animation: progress < 100 ? 'progress-stripe 0.8s linear infinite' : 'none',
         transition: 'width 0.3s ease-out',
@@ -225,7 +225,7 @@ const EmptyState = ({ activeTab, onUpload }) => {
         {/* Blobs background */}
         <div style={{
           position: 'absolute', inset: -20,
-          background: 'radial-gradient(circle at 30% 40%, rgba(139,92,246,0.12) 0%, transparent 60%), radial-gradient(circle at 70% 60%, rgba(244,114,182,0.08) 0%, transparent 60%)',
+          background: 'radial-gradient(circle at 30% 40%, rgba(4,120,87,0.12) 0%, transparent 60%), radial-gradient(circle at 70% 60%, rgba(244,114,182,0.08) 0%, transparent 60%)',
           borderRadius: '50%',
           animation: 'blob 8s ease-in-out infinite',
         }} />
@@ -234,8 +234,8 @@ const EmptyState = ({ activeTab, onUpload }) => {
           width: 100, height: 100,
           margin: '20px auto 0',
           borderRadius: 28,
-          background: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(139,92,246,0.05))',
-          border: '1px solid rgba(139,92,246,0.2)',
+          background: 'linear-gradient(135deg, rgba(4,120,87,0.15), rgba(4,120,87,0.05))',
+          border: '1px solid rgba(4,120,87,0.2)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           animation: 'float 4s ease-in-out infinite',
           backdropFilter: 'blur(10px)',
@@ -245,7 +245,7 @@ const EmptyState = ({ activeTab, onUpload }) => {
         {/* Sparkle decorations */}
         <Sparkles style={{
           position: 'absolute', top: 10, right: 15,
-          width: 18, height: 18, color: '#a78bfa', opacity: 0.6,
+          width: 18, height: 18, color: '#d97706', opacity: 0.6,
           animation: 'float 3s ease-in-out infinite 0.5s',
         }} />
         <Sparkles style={{
@@ -255,15 +255,14 @@ const EmptyState = ({ activeTab, onUpload }) => {
         }} />
       </div>
 
-      <h3 style={{
-        fontFamily: 'Manrope, sans-serif', fontSize: 20, fontWeight: 800,
+      <h3 style={{, fontSize: 20, fontWeight: 800,
         color: '#e2e8f0', margin: '0 0 8px',
-        background: 'linear-gradient(135deg, #e2e8f0, #94a3b8)',
+        background: 'linear-gradient(135deg, #e2e8f0, #78716c)',
         WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
       }}>
         {config.title}
       </h3>
-      <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 24px', lineHeight: 1.5 }}>
+      <p style={{ color: '#78716c', fontSize: 14, margin: '0 0 24px', lineHeight: 1.5 }}>
         {config.subtitle}
       </p>
       <button
@@ -271,7 +270,7 @@ const EmptyState = ({ activeTab, onUpload }) => {
         className="action-btn"
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 8,
-          background: 'linear-gradient(135deg, #7c3aed, #8b5cf6)',
+          background: 'linear-gradient(135deg, #047857, #047857)',
           border: 'none', color: '#fff', borderRadius: 12,
           padding: '12px 28px', fontSize: 14, fontWeight: 700,
           cursor: 'pointer', boxShadow: '0 4px 20px rgba(124,58,237,0.3)',
@@ -303,31 +302,30 @@ const DeleteConfirmation = ({ docName, onConfirm, onCancel }) => (
         width: '100%', maxWidth: 380,
         background: 'linear-gradient(180deg, var(--bg-card), var(--bg-app))',
         borderRadius: 20, padding: 28,
-        border: '1px solid rgba(244,63,94,0.2)',
+        border: '1px solid rgba(194,65,12,0.2)',
         boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
         animation: 'modalSlideUp 0.3s cubic-bezier(0.16,1,0.3,1)',
       }}
     >
       <div style={{
         width: 56, height: 56, borderRadius: 16,
-        background: 'rgba(244,63,94,0.1)',
-        border: '1px solid rgba(244,63,94,0.2)',
+        background: 'rgba(194,65,12,0.1)',
+        border: '1px solid rgba(194,65,12,0.2)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         margin: '0 auto 16px',
       }}>
-        <AlertTriangle style={{ width: 26, height: 26, color: '#f43f5e' }} />
+        <AlertTriangle style={{ width: 26, height: 26, color: '#c2410c' }} />
       </div>
-      <h3 style={{
-        fontFamily: 'Manrope, sans-serif', fontSize: 17, fontWeight: 800,
+      <h3 style={{, fontSize: 17, fontWeight: 800,
         color: '#f1f5f9', margin: '0 0 8px', textAlign: 'center',
       }}>
         Supprimer ce document ?
       </h3>
       <p style={{
-        fontSize: 13, color: '#64748b', textAlign: 'center', margin: '0 0 24px',
+        fontSize: 13, color: '#78716c', textAlign: 'center', margin: '0 0 24px',
         lineHeight: 1.5,
       }}>
-        <strong style={{ color: '#94a3b8' }}>{docName}</strong> sera supprimé définitivement. Cette action est irréversible.
+        <strong style={{ color: '#78716c' }}>{docName}</strong> sera supprimé définitivement. Cette action est irréversible.
       </p>
       <div style={{ display: 'flex', gap: 10 }}>
         <button
@@ -336,7 +334,7 @@ const DeleteConfirmation = ({ docName, onConfirm, onCancel }) => (
           style={{
             flex: 1, background: 'rgba(255,255,255,0.06)',
             border: '1px solid rgba(255,255,255,0.1)',
-            color: '#94a3b8', borderRadius: 12,
+            color: '#78716c', borderRadius: 12,
             padding: '11px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
           }}
         >
@@ -347,10 +345,10 @@ const DeleteConfirmation = ({ docName, onConfirm, onCancel }) => (
           className="action-btn"
           style={{
             flex: 1,
-            background: 'linear-gradient(135deg, #e11d48, #f43f5e)',
+            background: 'linear-gradient(135deg, #c2410c, #c2410c)',
             border: 'none', color: '#fff', borderRadius: 12,
             padding: '11px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-            boxShadow: '0 4px 15px rgba(244,63,94,0.3)',
+            boxShadow: '0 4px 15px rgba(194,65,12,0.3)',
           }}
         >
           <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
@@ -412,27 +410,27 @@ const PremiumFileCard = ({ doc, index, onPreview, onBeforeAfter, onDownload, onD
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 10 }}>
             <div style={{
               width: 56, height: 56, borderRadius: 16,
-              background: 'linear-gradient(135deg, rgba(52,211,153,0.15), rgba(52,211,153,0.05))',
-              border: '1px solid rgba(52,211,153,0.2)',
+              background: 'linear-gradient(135deg, rgba(4,120,87,0.15), rgba(4,120,87,0.05))',
+              border: '1px solid rgba(4,120,87,0.2)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <ArrowLeftRight style={{ width: 26, height: 26, color: '#34d399' }} />
+              <ArrowLeftRight style={{ width: 26, height: 26, color: '#047857' }} />
             </div>
-            <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Avant / Après</span>
+            <span style={{ fontSize: 11, color: '#78716c', fontWeight: 600 }}>Avant / Après</span>
           </div>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 10 }}>
             <div style={{
               width: 56, height: 56, borderRadius: 16,
               background: fileConfig?.bg || 'rgba(100,116,139,0.12)',
-              border: `1px solid ${fileConfig?.color || '#64748b'}22`,
+              border: `1px solid ${fileConfig?.color || '#78716c'}22`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <FileIcon style={{ width: 26, height: 26, color: fileConfig?.color || '#64748b' }} />
+              <FileIcon style={{ width: 26, height: 26, color: fileConfig?.color || '#78716c' }} />
             </div>
             <span style={{
               fontSize: 10, fontWeight: 800, letterSpacing: '0.1em',
-              color: fileConfig?.color || '#64748b', textTransform: 'uppercase',
+              color: fileConfig?.color || '#78716c', textTransform: 'uppercase',
             }}>
               {fileConfig?.label || getFileExt(name).toUpperCase()}
             </span>
@@ -488,7 +486,7 @@ const PremiumFileCard = ({ doc, index, onPreview, onBeforeAfter, onDownload, onD
           display: 'flex', gap: 6, animation: 'slideInLeft 0.4s ease-out',
         }}>
           <span style={{
-            background: ba ? 'rgba(52,211,153,0.85)' : img ? 'rgba(244,114,182,0.85)' : 'rgba(56,189,248,0.85)',
+            background: ba ? 'rgba(4,120,87,0.85)' : img ? 'rgba(244,114,182,0.85)' : 'rgba(56,189,248,0.85)',
             backdropFilter: 'blur(8px)',
             color: '#fff', borderRadius: 8, padding: '3px 10px',
             fontSize: 10, fontWeight: 800, letterSpacing: '0.03em',
@@ -503,7 +501,7 @@ const PremiumFileCard = ({ doc, index, onPreview, onBeforeAfter, onDownload, onD
           <span style={{
             position: 'absolute', top: 10, right: 10,
             background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
-            color: '#94a3b8', borderRadius: 6, padding: '2px 8px',
+            color: '#78716c', borderRadius: 6, padding: '2px 8px',
             fontSize: 9, fontWeight: 700,
           }}>
             {formatFileSize(doc.size)}
@@ -516,7 +514,6 @@ const PremiumFileCard = ({ doc, index, onPreview, onBeforeAfter, onDownload, onD
         <p style={{
           fontSize: 13, fontWeight: 700, color: '#e2e8f0', margin: 0,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          fontFamily: 'Manrope, sans-serif',
         }} title={name}>
           {name}
         </p>
@@ -525,15 +522,15 @@ const PremiumFileCard = ({ doc, index, onPreview, onBeforeAfter, onDownload, onD
         }}>
           {doc.entity_type && (
             <span style={{
-              fontSize: 10, fontWeight: 700, color: '#8b5cf6',
-              background: 'rgba(139,92,246,0.1)', borderRadius: 5,
+              fontSize: 10, fontWeight: 700, color: '#047857',
+              background: 'rgba(4,120,87,0.1)', borderRadius: 5,
               padding: '1px 7px', textTransform: 'uppercase', letterSpacing: '0.05em',
             }}>
               {doc.entity_type}
             </span>
           )}
           {doc.created_at && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: '#475569' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: '#78716c' }}>
               <Clock style={{ width: 10, height: 10 }} />
               {new Date(doc.created_at).toLocaleDateString('fr-FR')}
             </span>
@@ -548,8 +545,8 @@ const PremiumFileCard = ({ doc, index, onPreview, onBeforeAfter, onDownload, onD
               onClick={() => onPreview({ url, name })}
               style={{
                 flex: 1, height: 34, borderRadius: 9,
-                background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.15)',
-                color: '#a78bfa', cursor: 'pointer',
+                background: 'rgba(4,120,87,0.08)', border: '1px solid rgba(4,120,87,0.15)',
+                color: '#d97706', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                 fontSize: 11, fontWeight: 600,
               }}
@@ -564,8 +561,8 @@ const PremiumFileCard = ({ doc, index, onPreview, onBeforeAfter, onDownload, onD
               onClick={() => onBeforeAfter(doc)}
               style={{
                 flex: 1, height: 34, borderRadius: 9,
-                background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.15)',
-                color: '#34d399', cursor: 'pointer',
+                background: 'rgba(4,120,87,0.08)', border: '1px solid rgba(4,120,87,0.15)',
+                color: '#047857', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                 fontSize: 11, fontWeight: 600,
               }}
@@ -592,8 +589,8 @@ const PremiumFileCard = ({ doc, index, onPreview, onBeforeAfter, onDownload, onD
             onClick={(e) => { e.stopPropagation(); onDelete(doc.id, name); }}
             style={{
               width: 34, height: 34, borderRadius: 9,
-              background: 'rgba(244,63,94,0.06)', border: '1px solid rgba(244,63,94,0.12)',
-              color: '#f43f5e', cursor: 'pointer',
+              background: 'rgba(194,65,12,0.06)', border: '1px solid rgba(194,65,12,0.12)',
+              color: '#c2410c', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               flexShrink: 0,
             }}
@@ -659,8 +656,8 @@ const PreviewModal = ({ preview, onClose }) => {
           display: 'inline-flex', alignItems: 'center', gap: 8,
           margin: '16px auto 0', width: 'fit-content',
         }}>
-          <FileImage style={{ width: 14, height: 14, color: '#a78bfa' }} />
-          <span style={{ color: '#94a3b8', fontSize: 13, fontWeight: 600 }}>{preview.name}</span>
+          <FileImage style={{ width: 14, height: 14, color: '#d97706' }} />
+          <span style={{ color: '#78716c', fontSize: 13, fontWeight: 600 }}>{preview.name}</span>
         </div>
       </div>
     </div>
@@ -698,17 +695,17 @@ const BeforeAfterModal = ({ data, onClose }) => {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{
               width: 40, height: 40, borderRadius: 12,
-              background: 'linear-gradient(135deg, rgba(52,211,153,0.15), rgba(52,211,153,0.05))',
-              border: '1px solid rgba(52,211,153,0.2)',
+              background: 'linear-gradient(135deg, rgba(4,120,87,0.15), rgba(4,120,87,0.05))',
+              border: '1px solid rgba(4,120,87,0.2)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <ArrowLeftRight style={{ width: 20, height: 20, color: '#34d399' }} />
+              <ArrowLeftRight style={{ width: 20, height: 20, color: '#047857' }} />
             </div>
             <div>
-              <h3 style={{ fontFamily: 'Manrope, sans-serif', color: '#f1f5f9', fontSize: 18, fontWeight: 800, margin: 0 }}>
+              <h3 style={{, color: '#f1f5f9', fontSize: 18, fontWeight: 800, margin: 0 }}>
                 Comparaison Avant / Après
               </h3>
-              <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0' }}>
+              <p style={{ fontSize: 12, color: '#78716c', margin: '2px 0 0' }}>
                 {data.created_at ? new Date(data.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
               </p>
             </div>
@@ -720,7 +717,7 @@ const BeforeAfterModal = ({ data, onClose }) => {
               width: 36, height: 36, borderRadius: 10,
               background: 'rgba(255,255,255,0.06)',
               border: '1px solid rgba(255,255,255,0.1)',
-              color: '#64748b', cursor: 'pointer',
+              color: '#78716c', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >
@@ -730,7 +727,7 @@ const BeforeAfterModal = ({ data, onClose }) => {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }} className="ba-modal-grid">
           {[
             { key: 'before_url', label: 'Avant', color: '#f59e0b', icon: '⬅' },
-            { key: 'after_url', label: 'Après', color: '#34d399', icon: '➡' },
+            { key: 'after_url', label: 'Après', color: '#047857', icon: '➡' },
           ].map(({ key, label, color, icon }, i) => {
             const imgUrl = data[key];
             return (
@@ -764,7 +761,7 @@ const BeforeAfterModal = ({ data, onClose }) => {
                     border: '1px dashed rgba(255,255,255,0.08)',
                     borderRadius: 14,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexDirection: 'column', gap: 8, color: '#475569',
+                    flexDirection: 'column', gap: 8, color: '#78716c',
                   }}>
                     <Image style={{ width: 32, height: 32, opacity: 0.4 }} />
                     <span style={{ fontSize: 12 }}>Image non disponible</span>
@@ -829,20 +826,20 @@ const UploadBeforeAfterModal = ({ onClose, onUpload, uploading }) => {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{
               width: 40, height: 40, borderRadius: 12,
-              background: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(139,92,246,0.05))',
-              border: '1px solid rgba(139,92,246,0.2)',
+              background: 'linear-gradient(135deg, rgba(4,120,87,0.15), rgba(4,120,87,0.05))',
+              border: '1px solid rgba(4,120,87,0.2)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <ArrowLeftRight style={{ width: 20, height: 20, color: '#a78bfa' }} />
+              <ArrowLeftRight style={{ width: 20, height: 20, color: '#d97706' }} />
             </div>
-            <h3 style={{ fontFamily: 'Manrope, sans-serif', color: '#f1f5f9', fontSize: 17, fontWeight: 800, margin: 0 }}>
+            <h3 style={{, color: '#f1f5f9', fontSize: 17, fontWeight: 800, margin: 0 }}>
               Upload Avant / Après
             </h3>
           </div>
           <button onClick={onClose} className="action-btn" style={{
             width: 34, height: 34, borderRadius: 10,
             background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-            color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#78716c', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <X style={{ width: 15, height: 15 }} />
           </button>
@@ -851,12 +848,12 @@ const UploadBeforeAfterModal = ({ onClose, onUpload, uploading }) => {
         {/* File inputs with previews */}
         {[
           { label: 'Photo Avant', ref: beforeRef, preview: beforePreview, setter: setBeforePreview, color: '#f59e0b', icon: '⬅' },
-          { label: 'Photo Après', ref: afterRef, preview: afterPreview, setter: setAfterPreview, color: '#34d399', icon: '➡' },
+          { label: 'Photo Après', ref: afterRef, preview: afterPreview, setter: setAfterPreview, color: '#047857', icon: '➡' },
         ].map(({ label, ref, preview, setter, color, icon }, i) => (
           <div key={i} style={{ marginBottom: 18, animation: `slideInUp 0.4s ease-out ${i * 0.1}s both` }}>
             <label style={{
               display: 'flex', alignItems: 'center', gap: 6,
-              fontSize: 11, fontWeight: 800, color: '#64748b',
+              fontSize: 11, fontWeight: 800, color: '#78716c',
               marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.08em',
             }}>
               <span style={{ color }}>{icon}</span> {label}
@@ -878,8 +875,8 @@ const UploadBeforeAfterModal = ({ onClose, onUpload, uploading }) => {
                 <img src={preview} alt={label} style={{ width: '100%', height: 120, objectFit: 'cover' }} />
               ) : (
                 <>
-                  <CloudUpload style={{ width: 22, height: 22, color: '#475569', margin: '0 auto 8px' }} />
-                  <p style={{ fontSize: 12, color: '#64748b', margin: 0, fontWeight: 600 }}>Cliquez pour sélectionner</p>
+                  <CloudUpload style={{ width: 22, height: 22, color: '#78716c', margin: '0 auto 8px' }} />
+                  <p style={{ fontSize: 12, color: '#78716c', margin: 0, fontWeight: 600 }}>Cliquez pour sélectionner</p>
                 </>
               )}
             </div>
@@ -901,7 +898,7 @@ const UploadBeforeAfterModal = ({ onClose, onUpload, uploading }) => {
             style={{
               flex: 1, background: 'rgba(255,255,255,0.06)',
               border: '1px solid rgba(255,255,255,0.1)',
-              color: '#94a3b8', borderRadius: 12,
+              color: '#78716c', borderRadius: 12,
               padding: '12px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
             }}
           >
@@ -913,7 +910,7 @@ const UploadBeforeAfterModal = ({ onClose, onUpload, uploading }) => {
             className="action-btn"
             style={{
               flex: 1,
-              background: uploading ? 'rgba(139,92,246,0.3)' : 'linear-gradient(135deg, #7c3aed, #8b5cf6)',
+              background: uploading ? 'rgba(4,120,87,0.3)' : 'linear-gradient(135deg, #047857, #047857)',
               border: 'none', color: '#fff', borderRadius: 12,
               padding: '12px 24px', fontSize: 13, fontWeight: 700,
               cursor: uploading ? 'not-allowed' : 'pointer',
@@ -980,7 +977,7 @@ const DocumentsManager = () => {
       setUploadProgress(prev => ({ ...prev, [fileId]: { name: file.name, progress: 100 } }));
       toast.success(
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <CheckCircle2 style={{ width: 16, height: 16, color: '#34d399' }} />
+          <CheckCircle2 style={{ width: 16, height: 16, color: '#047857' }} />
           <span><strong>{file.name}</strong> uploadé avec succès</span>
         </div>
       );
@@ -1094,22 +1091,21 @@ const DocumentsManager = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
             <div style={{
               width: 42, height: 42, borderRadius: 14,
-              background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(139,92,246,0.05))',
-              border: '1px solid rgba(139,92,246,0.2)',
+              background: 'linear-gradient(135deg, rgba(4,120,87,0.2), rgba(4,120,87,0.05))',
+              border: '1px solid rgba(4,120,87,0.2)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <FolderOpen style={{ width: 22, height: 22, color: '#a78bfa' }} />
+              <FolderOpen style={{ width: 22, height: 22, color: '#d97706' }} />
             </div>
             <div>
-              <h1 style={{
-                fontFamily: 'Manrope, sans-serif', fontSize: 26, fontWeight: 800,
+              <h1 style={{, fontSize: 26, fontWeight: 800,
                 margin: 0,
                 background: 'linear-gradient(135deg, #f1f5f9, #cbd5e1)',
                 WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
               }}>
                 Documents
               </h1>
-              <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>
+              <p style={{ color: '#78716c', fontSize: 13, margin: 0 }}>
                 {docs.length} fichier{docs.length !== 1 ? 's' : ''} · Photos, documents, avant/après
               </p>
             </div>
@@ -1122,9 +1118,9 @@ const DocumentsManager = () => {
             className="action-btn"
             style={{
               display: 'flex', alignItems: 'center', gap: 8,
-              background: 'rgba(52,211,153,0.08)',
-              border: '1px solid rgba(52,211,153,0.2)',
-              color: '#34d399', borderRadius: 12,
+              background: 'rgba(4,120,87,0.08)',
+              border: '1px solid rgba(4,120,87,0.2)',
+              color: '#047857', borderRadius: 12,
               padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
               transition: 'all 0.2s',
             }}
@@ -1136,7 +1132,7 @@ const DocumentsManager = () => {
             className="action-btn"
             style={{
               display: 'flex', alignItems: 'center', gap: 8,
-              background: 'linear-gradient(135deg, #7c3aed, #8b5cf6)',
+              background: 'linear-gradient(135deg, #047857, #047857)',
               border: 'none', color: '#fff', borderRadius: 12,
               padding: '10px 22px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
               boxShadow: '0 4px 20px rgba(124,58,237,0.25)',
@@ -1157,11 +1153,11 @@ const DocumentsManager = () => {
         onClick={() => fileInputRef.current?.click()}
         className="upload-zone"
         style={{
-          border: `2px dashed ${dragging ? 'rgba(139,92,246,0.6)' : 'rgba(255,255,255,0.08)'}`,
+          border: `2px dashed ${dragging ? 'rgba(4,120,87,0.6)' : 'rgba(255,255,255,0.08)'}`,
           borderRadius: 20, padding: dragging ? 40 : 32,
           textAlign: 'center', cursor: 'pointer',
           background: dragging
-            ? 'radial-gradient(ellipse at center, rgba(139,92,246,0.08) 0%, rgba(139,92,246,0.02) 70%)'
+            ? 'radial-gradient(ellipse at center, rgba(4,120,87,0.08) 0%, rgba(4,120,87,0.02) 70%)'
             : 'rgba(255,255,255,0.01)',
           transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
           marginBottom: 24, position: 'relative', overflow: 'hidden',
@@ -1172,7 +1168,7 @@ const DocumentsManager = () => {
         {dragging && (
           <div style={{
             position: 'absolute', inset: 0,
-            background: 'radial-gradient(circle at 50% 50%, rgba(139,92,246,0.1) 0%, transparent 70%)',
+            background: 'radial-gradient(circle at 50% 50%, rgba(4,120,87,0.1) 0%, transparent 70%)',
             animation: 'pulse-glow 1.5s ease-in-out infinite',
             pointerEvents: 'none',
           }} />
@@ -1180,36 +1176,36 @@ const DocumentsManager = () => {
 
         {uploading && progressEntries.length === 0 ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, position: 'relative' }}>
-            <RefreshCw style={{ width: 22, height: 22, color: '#8b5cf6', animation: 'spin 1s linear infinite' }} />
-            <span style={{ color: '#a78bfa', fontSize: 15, fontWeight: 700 }}>Upload en cours...</span>
+            <RefreshCw style={{ width: 22, height: 22, color: '#047857', animation: 'spin 1s linear infinite' }} />
+            <span style={{ color: '#d97706', fontSize: 15, fontWeight: 700 }}>Upload en cours...</span>
           </div>
         ) : (
           <div style={{ position: 'relative' }}>
             <div style={{
               width: 56, height: 56, borderRadius: 18, margin: '0 auto 16px',
               background: dragging
-                ? 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(139,92,246,0.08))'
+                ? 'linear-gradient(135deg, rgba(4,120,87,0.2), rgba(4,120,87,0.08))'
                 : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${dragging ? 'rgba(139,92,246,0.3)' : 'rgba(255,255,255,0.06)'}`,
+              border: `1px solid ${dragging ? 'rgba(4,120,87,0.3)' : 'rgba(255,255,255,0.06)'}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 0.3s',
             }}>
               <CloudUpload style={{
                 width: 26, height: 26,
-                color: dragging ? '#a78bfa' : '#475569',
+                color: dragging ? '#d97706' : '#78716c',
                 transition: 'all 0.3s',
                 transform: dragging ? 'translateY(-3px)' : 'none',
               }} />
             </div>
             <p style={{
-              color: dragging ? '#a78bfa' : '#94a3b8',
+              color: dragging ? '#d97706' : '#78716c',
               fontSize: 15, fontWeight: 700, margin: '0 0 6px',
               transition: 'color 0.3s',
             }}>
               {dragging ? '✨ Relâchez pour uploader' : 'Glissez-déposez des fichiers ici'}
             </p>
-            <p style={{ color: '#475569', fontSize: 12, margin: 0 }}>
-              ou <span style={{ color: '#a78bfa', fontWeight: 600 }}>cliquez pour parcourir</span> · JPG, PNG, PDF, DOC
+            <p style={{ color: '#78716c', fontSize: 12, margin: 0 }}>
+              ou <span style={{ color: '#d97706', fontWeight: 600 }}>cliquez pour parcourir</span> · JPG, PNG, PDF, DOC
             </p>
           </div>
         )}
@@ -1249,7 +1245,7 @@ const DocumentsManager = () => {
                   position: 'relative',
                   background: isActive ? `${tab.color}18` : 'transparent',
                   border: isActive ? `1px solid ${tab.color}30` : '1px solid transparent',
-                  color: isActive ? tab.color : '#64748b',
+                  color: isActive ? tab.color : '#78716c',
                   borderRadius: 10, padding: '7px 16px',
                   fontSize: 12, fontWeight: 700, cursor: 'pointer',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -1281,7 +1277,7 @@ const DocumentsManager = () => {
             background: 'rgba(255,255,255,0.03)',
             border: '1px solid rgba(255,255,255,0.08)',
             borderRadius: 10, padding: '8px 14px',
-            color: entityType ? '#f1f5f9' : '#64748b',
+            color: entityType ? '#f1f5f9' : '#78716c',
             fontSize: 13, fontWeight: 600,
             outline: 'none', cursor: 'pointer',
             transition: 'all 0.2s',
@@ -1298,7 +1294,7 @@ const DocumentsManager = () => {
         }}>
           <Search style={{
             position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
-            width: 14, height: 14, color: '#475569', pointerEvents: 'none',
+            width: 14, height: 14, color: '#78716c', pointerEvents: 'none',
           }} />
           <input
             type="text"
@@ -1324,8 +1320,8 @@ const DocumentsManager = () => {
           border: '1px solid rgba(255,255,255,0.06)',
           borderRadius: 8, padding: '5px 12px',
         }}>
-          <HardDrive style={{ width: 12, height: 12, color: '#475569' }} />
-          <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>
+          <HardDrive style={{ width: 12, height: 12, color: '#78716c' }} />
+          <span style={{ fontSize: 12, color: '#78716c', fontWeight: 600 }}>
             {filteredDocs.length} fichier{filteredDocs.length !== 1 ? 's' : ''}
           </span>
         </div>
@@ -1338,7 +1334,7 @@ const DocumentsManager = () => {
             width: 36, height: 36, borderRadius: 10,
             background: 'rgba(255,255,255,0.03)',
             border: '1px solid rgba(255,255,255,0.06)',
-            color: '#64748b', cursor: 'pointer',
+            color: '#78716c', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >

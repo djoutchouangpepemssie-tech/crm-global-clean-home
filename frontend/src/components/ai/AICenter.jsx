@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { PageHeader } from '../shared';
 import axios from 'axios';
 import api from '../../lib/api';
@@ -218,23 +218,23 @@ const AICenter = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Sparkles className="w-5 h-5 text-violet-400" />
-            <h1 className="text-2xl font-bold text-slate-100" style={{fontFamily:"Manrope,sans-serif"}}>Centre IA</h1>
+            <Sparkles className="w-5 h-5 text-brand-400" />
+            <h1 className="text-2xl font-bold text-neutral-100" style={{}}>Centre IA</h1>
           </div>
-          <p className="text-slate-500 text-sm">Scoring, emails, scripts d appels et diagnostic campagnes</p>
+          <p className="text-neutral-500 text-sm">Scoring, emails, scripts d appels et diagnostic campagnes</p>
         </div>
         <button onClick={handleScoreAll} disabled={scoring}
-          className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl text-sm disabled:opacity-60">
-          {scoring ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Brain className="w-4 h-4" />}
+          className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl text-sm disabled:opacity-60">
+          {scoring ? <div className="w-4 h-4 border-2 border-neutral-200 border-t-white rounded-full animate-spin" /> : <Brain className="w-4 h-4" />}
           Re-scorer tous les leads
         </button>
       </div>
 
-      <div className="flex gap-1 bg-white/3 rounded-2xl border border-white/5 p-1.5 overflow-x-auto">
+      <div className="flex gap-1 bg-neutral-100 rounded-2xl border border-neutral-100 p-1.5 overflow-x-auto">
         {TABS.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             className={"flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all whitespace-nowrap " +
-              (activeTab === tab.id ? "bg-violet-600 text-white" : "text-slate-500 hover:text-slate-300")}>
+              (activeTab === tab.id ? "bg-brand-600 text-white" : "text-neutral-500 hover:text-neutral-300")}>
             <tab.icon className="w-4 h-4" />{tab.label}
           </button>
         ))}
@@ -245,57 +245,57 @@ const AICenter = () => {
         <div className="space-y-5">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {[
-              {key:"hot", label:"Leads chauds", emoji:"🔥", color:"#f43f5e"},
+              {key:"hot", label:"Leads chauds", emoji:"🔥", color:"#c2410c"},
               {key:"warm", label:"Leads tiedies", emoji:"♨️", color:"#f59e0b"},
               {key:"cold", label:"Leads froids", emoji:"❄️", color:"#60a5fa"},
             ].map(seg => (
-              <div key={seg.key} className="section-card p-5">
+              <div key={seg.key} className="bg-white border border-neutral-200 rounded-xl p-5">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-3xl">{seg.emoji}</span>
                   <span className="text-3xl font-black" style={{color:seg.color}}>{segs[seg.key]?.count || 0}</span>
                 </div>
-                <p className="font-bold text-slate-200">{seg.label}</p>
-                <p className="text-xs text-slate-500 mb-3">Score moy: {segs[seg.key]?.avg_score || 0}/100</p>
+                <p className="font-bold text-neutral-200">{seg.label}</p>
+                <p className="text-xs text-neutral-500 mb-3">Score moy: {segs[seg.key]?.avg_score || 0}/100</p>
                 <button onClick={() => navigate("/leads")} style={{background:seg.color+"20",color:seg.color}}
                   className="w-full py-2 rounded-xl text-xs font-semibold">Voir ces leads →</button>
               </div>
             ))}
           </div>
           {(insights?.urgent_leads || []).length > 0 && (
-            <div className="section-card p-5">
+            <div className="bg-white border border-neutral-200 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-4">
-                <AlertTriangle className="w-4 h-4 text-rose-400" />
-                <h3 className="text-sm font-semibold text-slate-200">Leads chauds sans reponse</h3>
+                <AlertTriangle className="w-4 h-4 text-terracotta-400" />
+                <h3 className="text-sm font-semibold text-neutral-200">Leads chauds sans reponse</h3>
               </div>
               {insights.urgent_leads.map((lead, i) => (
                 <div key={i} onClick={() => navigate("/leads/"+lead.lead_id)}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-rose-500/5 border border-rose-500/15 hover:bg-rose-500/10 cursor-pointer transition-all mb-2">
-                  <div className="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center text-rose-300 font-bold text-sm">
+                  className="flex items-center gap-3 p-3 rounded-xl bg-terracotta-500/5 border border-terracotta-500/15 hover:bg-terracotta-500/10 cursor-pointer transition-all mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-terracotta-500/20 flex items-center justify-center text-terracotta-300 font-bold text-sm">
                     {(lead.name||"?").charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-slate-200">{lead.name}</p>
-                    <p className="text-xs text-slate-500">Sans reponse {lead.hours}h</p>
+                    <p className="text-sm font-semibold text-neutral-200">{lead.name}</p>
+                    <p className="text-xs text-neutral-500">Sans reponse {lead.hours}h</p>
                   </div>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400">Score {lead.score}</span>
-                  <ArrowUpRight className="w-4 h-4 text-rose-400" />
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-terracotta-500/20 text-terracotta-400">Score {lead.score}</span>
+                  <ArrowUpRight className="w-4 h-4 text-terracotta-400" />
                 </div>
               ))}
             </div>
           )}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
-              {label:"Total leads", value:insights?.total_leads||0, icon:Users, color:"#a78bfa"},
+              {label:"Total leads", value:insights?.total_leads||0, icon:Users, color:"#d97706"},
               {label:"Score moyen", value:(insights?.avg_score||0)+"/100", icon:Target, color:"#60a5fa"},
-              {label:"Leads chauds", value:segs.hot?.count||0, icon:Zap, color:"#f43f5e"},
+              {label:"Leads chauds", value:segs.hot?.count||0, icon:Zap, color:"#c2410c"},
               {label:"A relancer", value:insights?.urgent_leads?.length||0, icon:AlertTriangle, color:"#f59e0b"},
             ].map((m,i) => (
-              <div key={i} className="metric-card">
+              <div key={i} className="bg-white border border-neutral-200 rounded-xl p-5">
                 <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-3" style={{background:m.color+"15",border:"1px solid "+m.color+"30"}}>
                   <m.icon className="w-4 h-4" style={{color:m.color}} />
                 </div>
-                <p className="text-2xl font-bold text-slate-100">{m.value}</p>
-                <p className="text-xs text-slate-500 mt-1">{m.label}</p>
+                <p className="text-2xl font-bold text-neutral-100">{m.value}</p>
+                <p className="text-xs text-neutral-500 mt-1">{m.label}</p>
               </div>
             ))}
           </div>
@@ -305,85 +305,85 @@ const AICenter = () => {
       {/* EMAIL IA */}
       {activeTab === "email" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div className="section-card p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-violet-400" /> Generateur email IA
+          <div className="bg-white border border-neutral-200 rounded-xl p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-neutral-200 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-brand-400" /> Generateur email IA
             </h3>
             <div>
-              <label className="text-xs font-semibold text-slate-400 mb-1.5 block">Lead cible</label>
+              <label className="text-xs font-semibold text-neutral-400 mb-1.5 block">Lead cible</label>
               <select value={selectedLead} onChange={e => setSelectedLead(e.target.value)}
-                className="w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 rounded-xl text-sm">
-                <option value="" className="bg-slate-800">Selectionnez un lead...</option>
-                {leads.map(l => <option key={l.lead_id} value={l.lead_id} className="bg-slate-800">{l.name} — {l.service_type}</option>)}
+                className="w-full px-3 py-2.5 bg-white border border-neutral-200 text-neutral-200 rounded-xl text-sm">
+                <option value="" className="bg-neutral-800">Selectionnez un lead...</option>
+                {leads.map(l => <option key={l.lead_id} value={l.lead_id} className="bg-neutral-800">{l.name} — {l.service_type}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-400 mb-1.5 block">Contexte</label>
+              <label className="text-xs font-semibold text-neutral-400 mb-1.5 block">Contexte</label>
               <div className="space-y-2">
                 {CONTEXTS.map(c => (
                   <button key={c.id} onClick={() => setContext(c.id)}
                     className={"w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all " +
-                      (context===c.id?"border-violet-500 bg-violet-500/10":"border-white/5 hover:border-white/15")}>
+                      (context===c.id?"border-brand-500 bg-brand-500/10":"border-neutral-100 hover:border-neutral-200")}>
                     <span className="text-xl">{c.icon}</span>
-                    <span className="text-sm font-semibold text-slate-200">{c.label}</span>
-                    {context===c.id && <Check className="w-4 h-4 text-violet-400 ml-auto" />}
+                    <span className="text-sm font-semibold text-neutral-200">{c.label}</span>
+                    {context===c.id && <Check className="w-4 h-4 text-brand-400 ml-auto" />}
                   </button>
                 ))}
               </div>
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-400 mb-1.5 block">Ton</label>
+              <label className="text-xs font-semibold text-neutral-400 mb-1.5 block">Ton</label>
               <div className="flex gap-2">
                 {TONES.map(t => (
                   <button key={t.id} onClick={() => setTone(t.id)}
                     className={"flex-1 flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all " +
-                      (tone===t.id?"border-violet-500 bg-violet-500/10":"border-white/5 hover:border-white/15")}>
+                      (tone===t.id?"border-brand-500 bg-brand-500/10":"border-neutral-100 hover:border-neutral-200")}>
                     <span className="text-xl">{t.emoji}</span>
-                    <span className="text-xs font-semibold text-slate-300">{t.label}</span>
+                    <span className="text-xs font-semibold text-neutral-300">{t.label}</span>
                   </button>
                 ))}
               </div>
             </div>
             <button onClick={handleGenerate} disabled={generating||!selectedLead}
-              className="w-full py-3.5 bg-gradient-to-r from-violet-600 to-blue-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50">
-              {generating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              className="w-full py-3.5 bg-gradient-to-r from-brand-600 to-brand-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50">
+              {generating ? <div className="w-4 h-4 border-2 border-neutral-200 border-t-white rounded-full animate-spin" /> : <Sparkles className="w-4 h-4" />}
               {generating ? "Generation..." : "Generer email"}
             </button>
           </div>
-          <div className="section-card p-5">
-            <h3 className="text-sm font-semibold text-slate-200 mb-4 flex items-center gap-2">
-              <Mail className="w-4 h-4 text-blue-400" /> Apercu email
+          <div className="bg-white border border-neutral-200 rounded-xl p-5">
+            <h3 className="text-sm font-semibold text-neutral-200 mb-4 flex items-center gap-2">
+              <Mail className="w-4 h-4 text-neutral-400" /> Apercu email
             </h3>
             {generatedEmail ? (
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 mb-1 block">OBJET</label>
-                  <div className="flex items-center gap-2 p-3 bg-white/5 rounded-xl border border-white/10">
-                    <p className="text-sm text-slate-200 flex-1">{generatedEmail.subject}</p>
-                    <button onClick={() => {navigator.clipboard.writeText(generatedEmail.subject);toast.success("Copie!");}} className="text-slate-500 hover:text-slate-300">
+                  <label className="text-xs font-semibold text-neutral-500 mb-1 block">OBJET</label>
+                  <div className="flex items-center gap-2 p-3 bg-white rounded-xl border border-neutral-200">
+                    <p className="text-sm text-neutral-200 flex-1">{generatedEmail.subject}</p>
+                    <button onClick={() => {navigator.clipboard.writeText(generatedEmail.subject);toast.success("Copie!");}} className="text-neutral-500 hover:text-neutral-300">
                       <Copy className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 mb-1 block">CORPS</label>
+                  <label className="text-xs font-semibold text-neutral-500 mb-1 block">CORPS</label>
                   <textarea value={generatedEmail.body} onChange={e => setGeneratedEmail(prev => ({...prev, body: e.target.value}))}
-                    rows={10} className="w-full px-4 py-3 bg-white/5 border border-white/10 text-slate-300 rounded-xl text-sm resize-none focus:outline-none focus:border-violet-500 font-mono leading-relaxed" />
+                    rows={10} className="w-full px-4 py-3 bg-white border border-neutral-200 text-neutral-300 rounded-xl text-sm resize-none focus:outline-none focus:border-brand-500 font-mono leading-relaxed" />
                 </div>
                 <div className="flex gap-3">
                   <button onClick={() => {navigator.clipboard.writeText(generatedEmail.body);toast.success("Copie!");}}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-white/5 border border-white/10 text-slate-300 rounded-xl text-sm">
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-white border border-neutral-200 text-neutral-300 rounded-xl text-sm">
                     <Copy className="w-4 h-4" /> Copier
                   </button>
                   <button onClick={handleSend} disabled={sending}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm disabled:opacity-60">
-                    {sending ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send className="w-4 h-4" />}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl text-sm disabled:opacity-60">
+                    {sending ? <div className="w-4 h-4 border-2 border-neutral-200 border-t-white rounded-full animate-spin" /> : <Send className="w-4 h-4" />}
                     Envoyer
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-96 text-slate-600">
+              <div className="flex flex-col items-center justify-center h-96 text-neutral-600">
                 <Sparkles className="w-16 h-16 mb-4 opacity-20" />
                 <p className="text-sm">Selectionnez un lead et generez un email</p>
               </div>
@@ -395,57 +395,57 @@ const AICenter = () => {
       {/* SCRIPTS APPELS */}
       {activeTab === "scripts" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div className="section-card p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-              <Phone className="w-4 h-4 text-blue-400" /> Generateur de scripts d appels
+          <div className="bg-white border border-neutral-200 rounded-xl p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-neutral-200 flex items-center gap-2">
+              <Phone className="w-4 h-4 text-neutral-400" /> Generateur de scripts d appels
             </h3>
             <div>
-              <label className="text-xs font-semibold text-slate-400 mb-1.5 block">Lead cible (optionnel)</label>
+              <label className="text-xs font-semibold text-neutral-400 mb-1.5 block">Lead cible (optionnel)</label>
               <select value={selectedLeadForScript} onChange={e => setSelectedLeadForScript(e.target.value)}
-                className="w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 rounded-xl text-sm">
-                <option value="" className="bg-slate-800">Script generique</option>
-                {leads.map(l => <option key={l.lead_id} value={l.lead_id} className="bg-slate-800">{l.name} — {l.service_type} (score: {l.score||0})</option>)}
+                className="w-full px-3 py-2.5 bg-white border border-neutral-200 text-neutral-200 rounded-xl text-sm">
+                <option value="" className="bg-neutral-800">Script generique</option>
+                {leads.map(l => <option key={l.lead_id} value={l.lead_id} className="bg-neutral-800">{l.name} — {l.service_type} (score: {l.score||0})</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-400 mb-2 block">Contexte d appel</label>
+              <label className="text-xs font-semibold text-neutral-400 mb-2 block">Contexte d appel</label>
               <div className="space-y-2">
                 {SCRIPT_CONTEXTS.map(c => (
                   <button key={c.id} onClick={() => setScriptContext(c.id)}
                     className={"w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all " +
-                      (scriptContext===c.id?"border-blue-500 bg-blue-500/10":"border-white/5 hover:border-white/15")}>
+                      (scriptContext===c.id?"border-neutral-500 bg-neutral-500/10":"border-neutral-100 hover:border-neutral-200")}>
                     <span className="text-xl">{c.emoji}</span>
                     <div>
-                      <p className="text-sm font-semibold text-slate-200">{c.label}</p>
-                      <p className="text-xs text-slate-500">{c.desc}</p>
+                      <p className="text-sm font-semibold text-neutral-200">{c.label}</p>
+                      <p className="text-xs text-neutral-500">{c.desc}</p>
                     </div>
-                    {scriptContext===c.id && <Check className="w-4 h-4 text-blue-400 ml-auto" />}
+                    {scriptContext===c.id && <Check className="w-4 h-4 text-neutral-400 ml-auto" />}
                   </button>
                 ))}
               </div>
             </div>
             <button onClick={handleGenerateScript}
-              className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold rounded-xl flex items-center justify-center gap-2">
+              className="w-full py-3.5 bg-gradient-to-r from-brand-600 to-cyan-600 text-white font-bold rounded-xl flex items-center justify-center gap-2">
               <Phone className="w-4 h-4" /> Generer le script
             </button>
           </div>
 
-          <div className="section-card p-5">
-            <h3 className="text-sm font-semibold text-slate-200 mb-4 flex items-center gap-2">
-              <Phone className="w-4 h-4 text-blue-400" /> Script d appel
+          <div className="bg-white border border-neutral-200 rounded-xl p-5">
+            <h3 className="text-sm font-semibold text-neutral-200 mb-4 flex items-center gap-2">
+              <Phone className="w-4 h-4 text-neutral-400" /> Script d appel
             </h3>
             {generatedScript ? (
               <div className="space-y-3">
-                <pre className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap bg-white/3 p-4 rounded-xl border border-white/5 font-mono overflow-y-auto" style={{maxHeight:"420px"}}>
+                <pre className="text-xs text-neutral-300 leading-relaxed whitespace-pre-wrap bg-neutral-100 p-4 rounded-xl border border-neutral-100 font-mono overflow-y-auto" style={{maxHeight:"420px"}}>
                   {generatedScript}
                 </pre>
                 <button onClick={() => {navigator.clipboard.writeText(generatedScript); toast.success("Script copie !");}}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/5 border border-white/10 text-slate-300 rounded-xl text-sm hover:bg-white/10">
+                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-white border border-neutral-200 text-neutral-300 rounded-xl text-sm hover:bg-neutral-50">
                   <Copy className="w-4 h-4" /> Copier le script
                 </button>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-96 text-slate-600">
+              <div className="flex flex-col items-center justify-center h-96 text-neutral-600">
                 <Phone className="w-16 h-16 mb-4 opacity-20" />
                 <p className="text-sm mb-1">Aucun script genere</p>
                 <p className="text-xs text-center max-w-xs">Selectionnez un contexte et generez votre script d appel personnalise</p>
@@ -458,10 +458,10 @@ const AICenter = () => {
       {/* DIAGNOSTIC */}
       {activeTab === "diagnostic" && (
         <div className="space-y-5">
-          <div className="section-card p-5">
+          <div className="bg-white border border-neutral-200 rounded-xl p-5">
             <div className="flex items-center gap-2 mb-5">
               <BarChart3 className="w-4 h-4 text-amber-400" />
-              <h3 className="text-sm font-semibold text-slate-200">Diagnostic IA — Performance globale</h3>
+              <h3 className="text-sm font-semibold text-neutral-200">Diagnostic IA — Performance globale</h3>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {[
@@ -478,13 +478,13 @@ const AICenter = () => {
                   recommandation:"Reduisez le budget de 40%. Ciblez uniquement les audiences de retargeting et les lookalike des clients existants.",
                 },
                 {
-                  canal:"SEO Organique", score:85, color:"#34d399", emoji:"🔎",
+                  canal:"SEO Organique", score:85, color:"#047857", emoji:"🔎",
                   points_forts:["Top 10 sur 8 mots-cles cles","Trafic en hausse de 12%","Cout d acquisition excellent (7.9EUR)"],
                   points_faibles:["3 pages sans meta description","Vitesse mobile a ameliorer"],
                   recommandation:"Investissez dans 2 articles de blog/mois sur les mots-cles longue traine. ROI SEO est votre meilleur canal.",
                 },
                 {
-                  canal:"Bouche a oreille", score:95, color:"#a78bfa", emoji:"🤝",
+                  canal:"Bouche a oreille", score:95, color:"#d97706", emoji:"🤝",
                   points_forts:["Marge nette 75% — le meilleur canal","CPA = 0EUR","Clients tres fideles"],
                   points_faibles:["Volume trop faible (22 leads/mois)","Pas de systeme de parrainage structure"],
                   recommandation:"Lancez un programme de parrainage : 20EUR de remise pour le parrain et 10% pour le filleul. Objectif : doubler ce canal.",
@@ -494,10 +494,10 @@ const AICenter = () => {
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className="text-2xl">{d.emoji}</span>
-                      <span className="font-bold text-slate-200">{d.canal}</span>
+                      <span className="font-bold text-neutral-200">{d.canal}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="h-2 w-20 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-2 w-20 bg-neutral-50 rounded-full overflow-hidden">
                         <div className="h-full rounded-full" style={{width:d.score+"%",background:d.color}} />
                       </div>
                       <span className="text-sm font-black" style={{color:d.color}}>{d.score}/100</span>
@@ -505,44 +505,44 @@ const AICenter = () => {
                   </div>
                   <div className="space-y-2 mb-3">
                     {d.points_forts.map((p,j) => (
-                      <div key={j} className="flex items-center gap-2 text-xs text-slate-300">
-                        <span className="text-emerald-400">✓</span>{p}
+                      <div key={j} className="flex items-center gap-2 text-xs text-neutral-300">
+                        <span className="text-brand-400">✓</span>{p}
                       </div>
                     ))}
                     {d.points_faibles.map((p,j) => (
-                      <div key={j} className="flex items-center gap-2 text-xs text-slate-400">
-                        <span className="text-rose-400">✗</span>{p}
+                      <div key={j} className="flex items-center gap-2 text-xs text-neutral-400">
+                        <span className="text-terracotta-400">✗</span>{p}
                       </div>
                     ))}
                   </div>
                   <div className="p-3 rounded-xl" style={{background:d.color+"10",border:"1px solid "+d.color+"20"}}>
                     <p className="text-[10px] font-bold mb-1" style={{color:d.color}}>RECOMMANDATION IA</p>
-                    <p className="text-xs text-slate-300 leading-relaxed">{d.recommandation}</p>
+                    <p className="text-xs text-neutral-300 leading-relaxed">{d.recommandation}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="section-card p-5">
+          <div className="bg-white border border-neutral-200 rounded-xl p-5">
             <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="w-4 h-4 text-violet-400" />
-              <h3 className="text-sm font-semibold text-slate-200">Actions prioritaires cette semaine</h3>
+              <TrendingUp className="w-4 h-4 text-brand-400" />
+              <h3 className="text-sm font-semibold text-neutral-200">Actions prioritaires cette semaine</h3>
             </div>
             <div className="space-y-3">
               {[
-                {emoji:"1️⃣", color:"#f43f5e", action:"Relancer les 3 leads chauds sans reponse depuis 48h", impact:"Potentiel +2 clients", effort:"15 min"},
+                {emoji:"1️⃣", color:"#c2410c", action:"Relancer les 3 leads chauds sans reponse depuis 48h", impact:"Potentiel +2 clients", effort:"15 min"},
                 {emoji:"2️⃣", color:"#f59e0b", action:"Reduire budget Facebook Ads de 40% et rediriger vers Google", impact:"+320EUR de marge/mois", effort:"5 min"},
-                {emoji:"3️⃣", color:"#34d399", action:"Ajouter meta descriptions sur 3 pages SEO", impact:"+15% de CTR estime", effort:"30 min"},
+                {emoji:"3️⃣", color:"#047857", action:"Ajouter meta descriptions sur 3 pages SEO", impact:"+15% de CTR estime", effort:"30 min"},
                 {emoji:"4️⃣", color:"#60a5fa", action:"Envoyer email de suivi aux 8 clients satisfaits ce mois", impact:"Programme parrainage potentiel", effort:"10 min"},
               ].map((a,i) => (
-                <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-white/3 border border-white/5">
+                <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-neutral-100 border border-neutral-100">
                   <span className="text-2xl flex-shrink-0">{a.emoji}</span>
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-slate-200">{a.action}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">{a.impact}</p>
+                    <p className="text-sm font-semibold text-neutral-200">{a.action}</p>
+                    <p className="text-xs text-neutral-500 mt-0.5">{a.impact}</p>
                   </div>
-                  <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-white/5 text-slate-400 flex-shrink-0">{a.effort}</span>
+                  <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-white text-neutral-400 flex-shrink-0">{a.effort}</span>
                 </div>
               ))}
             </div>
@@ -554,22 +554,22 @@ const AICenter = () => {
       {activeTab === "segments" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {[
-            {key:"hot", label:"Leads chauds (75-100)", emoji:"🔥", color:"#f43f5e", strategy:"Appelez dans les 30 min. Devis personnalise immediat. Offre speciale limitee."},
+            {key:"hot", label:"Leads chauds (75-100)", emoji:"🔥", color:"#c2410c", strategy:"Appelez dans les 30 min. Devis personnalise immediat. Offre speciale limitee."},
             {key:"warm", label:"Leads tiedies (55-74)", emoji:"♨️", color:"#f59e0b", strategy:"Devis sous 2h. Relance J+1 et J+3. Remise de 10% si reponse sous 48h."},
-            {key:"lukewarm", label:"Leads neutres (35-54)", emoji:"⚖️", color:"#a78bfa", strategy:"Sequence email 7 jours. Temoignages clients. Rappel personnalise."},
+            {key:"lukewarm", label:"Leads neutres (35-54)", emoji:"⚖️", color:"#d97706", strategy:"Sequence email 7 jours. Temoignages clients. Rappel personnalise."},
             {key:"cold", label:"Leads froids (0-34)", emoji:"❄️", color:"#60a5fa", strategy:"Nurturing long terme. Newsletter mensuelle. Reactivation a J+30."},
           ].map(seg => (
-            <div key={seg.key} className="section-card p-5">
+            <div key={seg.key} className="bg-white border border-neutral-200 rounded-xl p-5">
               <div className="flex items-center gap-3 mb-4">
                 <span className="text-3xl">{seg.emoji}</span>
                 <div>
-                  <p className="font-bold text-slate-200">{seg.label}</p>
+                  <p className="font-bold text-neutral-200">{seg.label}</p>
                   <p className="text-2xl font-black" style={{color:seg.color}}>{segs[seg.key]?.count||0} leads</p>
                 </div>
               </div>
               <div className="p-3 rounded-xl mb-3" style={{background:seg.color+"10",border:"1px solid "+seg.color+"20"}}>
                 <p className="text-xs font-semibold mb-1" style={{color:seg.color}}>Strategie recommandee</p>
-                <p className="text-xs text-slate-400 leading-relaxed">{seg.strategy}</p>
+                <p className="text-xs text-neutral-400 leading-relaxed">{seg.strategy}</p>
               </div>
               <button onClick={() => navigate("/leads")} style={{background:seg.color+"15",color:seg.color}}
                 className="w-full py-2.5 rounded-xl text-sm font-semibold">Voir ces leads →</button>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '../shared';
 import axios from 'axios';
 import {
@@ -11,18 +11,18 @@ import BACKEND_URL from '../../config.js';
 const API_URL = BACKEND_URL + '/api';
 
 const TYPES = [
-  { id: 'email',      label: 'Email',          icon: Mail,        color: '#8b5cf6' },
+  { id: 'email',      label: 'Email',          icon: Mail,        color: '#047857' },
   { id: 'note',       label: 'Note interne',   icon: FileText,    color: '#60a5fa' },
-  { id: 'sms',        label: 'SMS',            icon: MessageSquare, color: '#10b981' },
+  { id: 'sms',        label: 'SMS',            icon: MessageSquare, color: '#047857' },
   { id: 'devis',      label: 'Devis',          icon: FileText,    color: '#f97316' },
-  { id: 'relance',    label: 'Relance',        icon: Mail,        color: '#f43f5e' },
+  { id: 'relance',    label: 'Relance',        icon: Mail,        color: '#c2410c' },
 ];
 
 const VARIABLES = [
   '{prenom}', '{nom}', '{email}', '{service}', '{adresse}', '{montant}', '{date}', '{intervenant}'
 ];
 
-const inputCls = "w-full px-3 py-2.5 bg-white/5 border border-white/10 text-slate-200 placeholder-slate-600 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-violet-500 transition-all";
+const inputCls = "w-full px-3 py-2.5 bg-white border border-neutral-200 text-neutral-200 placeholder-neutral-600 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all";
 
 const TemplatesManager = ({ onSelectTemplate }) => {
   const { confirm, ConfirmElement } = useConfirm();
@@ -126,20 +126,20 @@ const TemplatesManager = ({ onSelectTemplate }) => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <div className="flex items-center gap-2.5 mb-1">
-            <div className="w-8 h-8 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
-              <FileText className="w-4 h-4 text-violet-400"/>
+            <div className="w-8 h-8 rounded-xl bg-brand-600/20 border border-brand-500/30 flex items-center justify-center">
+              <FileText className="w-4 h-4 text-brand-400"/>
             </div>
-            <h1 className="text-2xl font-black text-slate-100" style={{fontFamily:'Manrope,sans-serif'}}>Templates</h1>
+            <h1 className="text-2xl font-black text-neutral-100" style={{}}>Templates</h1>
           </div>
-          <p className="text-slate-500 text-sm ml-10">{templates.length} template(s) · Emails, SMS, Notes</p>
+          <p className="text-neutral-500 text-sm ml-10">{templates.length} template(s) · Emails, SMS, Notes</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={fetchTemplates} className="p-2 rounded-xl bg-white/5 border border-white/5 text-slate-400">
+          <button onClick={fetchTemplates} className="p-2 rounded-xl bg-white border border-neutral-100 text-neutral-400">
             <RefreshCw className={`w-4 h-4 ${loading?'animate-spin':''}`}/>
           </button>
           <button onClick={()=>{ setEditingTemplate(null); setForm({name:'',type:'email',subject:'',content:''}); setShowForm(true); }}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white"
-            style={{background:'linear-gradient(135deg,#7c3aed,#4f46e5)',boxShadow:'0 4px 16px rgba(124,58,237,0.3)'}}>
+            style={{background:'linear-gradient(135deg,#047857,#4f46e5)',boxShadow:'0 4px 16px rgba(124,58,237,0.3)'}}>
             <Plus className="w-4 h-4"/> Nouveau template
           </button>
         </div>
@@ -148,19 +148,19 @@ const TemplatesManager = ({ onSelectTemplate }) => {
       {/* FILTRES */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"/>
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500"/>
           <input value={search} onChange={e=>setSearch(e.target.value)}
             placeholder="Rechercher un template..."
-            className="w-full pl-9 pr-4 py-2.5 bg-white/5 border border-white/10 text-slate-200 placeholder-slate-600 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-violet-500"/>
+            className="w-full pl-9 pr-4 py-2.5 bg-white border border-neutral-200 text-neutral-200 placeholder-neutral-600 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-brand-500"/>
         </div>
-        <div className="flex gap-1.5 bg-white/5 rounded-xl border border-white/5 p-1">
+        <div className="flex gap-1.5 bg-white rounded-xl border border-neutral-100 p-1">
           <button onClick={()=>setFilterType('')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filterType===''?'bg-violet-600 text-white':'text-slate-500 hover:text-slate-300'}`}>
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filterType===''?'bg-brand-600 text-white':'text-neutral-500 hover:text-neutral-300'}`}>
             Tous
           </button>
           {TYPES.map(t=>(
             <button key={t.id} onClick={()=>setFilterType(filterType===t.id?'':t.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filterType===t.id?'text-white':'text-slate-500 hover:text-slate-300'}`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filterType===t.id?'text-white':'text-neutral-500 hover:text-neutral-300'}`}
               style={filterType===t.id?{background:t.color}:{}}>
               {t.label}
             </button>
@@ -174,12 +174,12 @@ const TemplatesManager = ({ onSelectTemplate }) => {
           {[...Array(6)].map((_,i)=><div key={i} className="skeleton h-40 rounded-2xl"/>)}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="section-card flex flex-col items-center justify-center py-16 gap-4">
-          <FileText className="w-14 h-14 text-slate-700"/>
-          <p className="text-slate-500 font-semibold">Aucun template</p>
+        <div className="bg-white border border-neutral-200 rounded-xl flex flex-col items-center justify-center py-16 gap-4">
+          <FileText className="w-14 h-14 text-neutral-700"/>
+          <p className="text-neutral-500 font-semibold">Aucun template</p>
           <button onClick={()=>setShowForm(true)}
             className="px-5 py-2.5 text-white rounded-xl text-sm font-bold"
-            style={{background:'linear-gradient(135deg,#7c3aed,#4f46e5)'}}>
+            style={{background:'linear-gradient(135deg,#047857,#4f46e5)'}}>
             + Créer le premier template
           </button>
         </div>
@@ -189,7 +189,7 @@ const TemplatesManager = ({ onSelectTemplate }) => {
             const typeConfig = TYPES.find(t=>t.id===template.type)||TYPES[0];
             return (
               <div key={template.template_id||template.id}
-                className="section-card p-5 hover:border-white/10 transition-all group">
+                className="bg-white border border-neutral-200 rounded-xl p-5 hover:border-neutral-200 transition-all group">
                 {/* Header */}
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2.5">
@@ -198,7 +198,7 @@ const TemplatesManager = ({ onSelectTemplate }) => {
                       <typeConfig.icon className="w-4 h-4" style={{color:typeConfig.color}}/>
                     </div>
                     <div>
-                      <p className="font-bold text-slate-200 text-sm">{template.name}</p>
+                      <p className="font-bold text-neutral-200 text-sm">{template.name}</p>
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
                         style={{background:`${typeConfig.color}15`,color:typeConfig.color}}>
                         {typeConfig.label}
@@ -209,33 +209,33 @@ const TemplatesManager = ({ onSelectTemplate }) => {
 
                 {/* Sujet si email */}
                 {template.subject && (
-                  <p className="text-xs text-slate-500 mb-2 flex items-center gap-1">
+                  <p className="text-xs text-neutral-500 mb-2 flex items-center gap-1">
                     <Tag className="w-3 h-3"/> {template.subject}
                   </p>
                 )}
 
                 {/* Aperçu contenu */}
-                <p className="text-xs text-slate-600 leading-relaxed mb-4 line-clamp-3">
+                <p className="text-xs text-neutral-600 leading-relaxed mb-4 line-clamp-3">
                   {template.content}
                 </p>
 
                 {/* Actions */}
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
                   <button onClick={()=>setPreviewTemplate(template)}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold border border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all">
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold border border-neutral-200 text-neutral-400 hover:text-neutral-200 hover:bg-white transition-all">
                     <Eye className="w-3.5 h-3.5"/> Voir
                   </button>
                   <button onClick={()=>handleEdit(template)}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold border border-violet-500/20 text-violet-400 hover:bg-violet-500/10 transition-all">
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold border border-brand-500/20 text-brand-400 hover:bg-brand-500/10 transition-all">
                     <Edit2 className="w-3.5 h-3.5"/> Modifier
                   </button>
                   <button onClick={()=>handleCopy(template)}
-                    className="p-2 rounded-xl border border-white/10 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all"
+                    className="p-2 rounded-xl border border-neutral-200 text-neutral-400 hover:text-brand-400 hover:bg-brand-500/10 transition-all"
                     title="Copier le contenu">
                     <Copy className="w-3.5 h-3.5"/>
                   </button>
                   <button onClick={()=>handleDelete(template.template_id||template.id)}
-                    className="p-2 rounded-xl border border-white/10 text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all">
+                    className="p-2 rounded-xl border border-neutral-200 text-neutral-400 hover:text-terracotta-400 hover:bg-terracotta-500/10 transition-all">
                     <Trash2 className="w-3.5 h-3.5"/>
                   </button>
                 </div>
@@ -262,29 +262,29 @@ const TemplatesManager = ({ onSelectTemplate }) => {
             style={{background:'var(--bg-card)',border:'1px solid var(--border-default)'}}
             onClick={e=>e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-black text-slate-100">{previewTemplate.name}</h3>
-              <button onClick={()=>setPreviewTemplate(null)} className="p-2 text-slate-500 hover:text-slate-300 hover:bg-white/5 rounded-xl">
+              <h3 className="text-lg font-black text-neutral-100">{previewTemplate.name}</h3>
+              <button onClick={()=>setPreviewTemplate(null)} className="p-2 text-neutral-500 hover:text-neutral-300 hover:bg-white rounded-xl">
                 <X className="w-4 h-4"/>
               </button>
             </div>
             {previewTemplate.subject && (
-              <div className="mb-3 p-3 rounded-xl bg-white/3 border border-white/5">
-                <p className="text-xs font-bold text-slate-400 mb-1">Sujet</p>
-                <p className="text-sm text-slate-200">{previewTemplate.subject}</p>
+              <div className="mb-3 p-3 rounded-xl bg-neutral-100 border border-neutral-100">
+                <p className="text-xs font-bold text-neutral-400 mb-1">Sujet</p>
+                <p className="text-sm text-neutral-200">{previewTemplate.subject}</p>
               </div>
             )}
-            <div className="p-4 rounded-xl bg-white/3 border border-white/5">
-              <p className="text-xs font-bold text-slate-400 mb-2">Contenu</p>
-              <p className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">{previewTemplate.content}</p>
+            <div className="p-4 rounded-xl bg-neutral-100 border border-neutral-100">
+              <p className="text-xs font-bold text-neutral-400 mb-2">Contenu</p>
+              <p className="text-sm text-neutral-300 whitespace-pre-wrap leading-relaxed">{previewTemplate.content}</p>
             </div>
             <div className="flex gap-2 mt-4">
               <button onClick={()=>{ handleCopy(previewTemplate); setPreviewTemplate(null); }}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold border border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/5">
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold border border-neutral-200 text-neutral-400 hover:text-neutral-200 hover:bg-white">
                 <Copy className="w-4 h-4"/> Copier
               </button>
               <button onClick={()=>{ handleEdit(previewTemplate); setPreviewTemplate(null); }}
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold text-white"
-                style={{background:'linear-gradient(135deg,#7c3aed,#4f46e5)'}}>
+                style={{background:'linear-gradient(135deg,#047857,#4f46e5)'}}>
                 <Edit2 className="w-4 h-4"/> Modifier
               </button>
             </div>
@@ -300,11 +300,11 @@ const TemplatesManager = ({ onSelectTemplate }) => {
             style={{background:'var(--bg-card)',border:'1px solid var(--border-default)'}}
             onClick={e=>e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-black text-slate-100">
+              <h3 className="text-lg font-black text-neutral-100">
                 {editingTemplate ? '✏️ Modifier le template' : '✨ Nouveau template'}
               </h3>
               <button onClick={()=>{ setShowForm(false); setEditingTemplate(null); }}
-                className="p-2 text-slate-500 hover:text-slate-300 hover:bg-white/5 rounded-xl">
+                className="p-2 text-neutral-500 hover:text-neutral-300 hover:bg-white rounded-xl">
                 <X className="w-4 h-4"/>
               </button>
             </div>
@@ -312,21 +312,21 @@ const TemplatesManager = ({ onSelectTemplate }) => {
             <form onSubmit={handleSave} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Nom *</label>
+                  <label className="block text-xs font-semibold text-neutral-400 mb-1.5">Nom *</label>
                   <input required value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))}
                     placeholder="Ex: Email de bienvenue" className={inputCls}/>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Type</label>
+                  <label className="block text-xs font-semibold text-neutral-400 mb-1.5">Type</label>
                   <select value={form.type} onChange={e=>setForm(p=>({...p,type:e.target.value}))} className={inputCls}>
-                    {TYPES.map(t=><option key={t.id} value={t.id} className="bg-slate-800">{t.label}</option>)}
+                    {TYPES.map(t=><option key={t.id} value={t.id} className="bg-neutral-800">{t.label}</option>)}
                   </select>
                 </div>
               </div>
 
               {(form.type==='email'||form.type==='relance') && (
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Sujet de l&apos;email</label>
+                  <label className="block text-xs font-semibold text-neutral-400 mb-1.5">Sujet de l&apos;email</label>
                   <input value={form.subject} onChange={e=>setForm(p=>({...p,subject:e.target.value}))}
                     placeholder="Ex: Votre devis Global Clean Home" className={inputCls}/>
                 </div>
@@ -334,13 +334,13 @@ const TemplatesManager = ({ onSelectTemplate }) => {
 
               {/* Variables disponibles */}
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-2">
-                  Variables disponibles <span className="text-slate-600">(cliquez pour insérer)</span>
+                <label className="block text-xs font-semibold text-neutral-400 mb-2">
+                  Variables disponibles <span className="text-neutral-600">(cliquez pour insérer)</span>
                 </label>
                 <div className="flex flex-wrap gap-1.5">
                   {VARIABLES.map(v=>(
                     <button key={v} type="button" onClick={()=>insertVariable(v)}
-                      className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold border border-violet-500/20 text-violet-400 hover:bg-violet-500/10 transition-all">
+                      className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold border border-brand-500/20 text-brand-400 hover:bg-brand-500/10 transition-all">
                       {v}
                     </button>
                   ))}
@@ -348,19 +348,19 @@ const TemplatesManager = ({ onSelectTemplate }) => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1.5">Contenu *</label>
+                <label className="block text-xs font-semibold text-neutral-400 mb-1.5">Contenu *</label>
                 <textarea id="template-content" required value={form.content}
                   onChange={e=>setForm(p=>({...p,content:e.target.value}))}
                   rows={10} placeholder="Bonjour {prenom},&#10;&#10;Suite à votre demande..."
                   className={`${inputCls} resize-none font-mono text-xs leading-relaxed`}/>
-                <p className="text-[10px] text-slate-600 text-right mt-0.5">{form.content.length} caractères</p>
+                <p className="text-[10px] text-neutral-600 text-right mt-0.5">{form.content.length} caractères</p>
               </div>
 
               {/* Prévisualisation */}
               {form.content && (
-                <div className="p-4 rounded-xl border border-white/5 bg-white/2">
-                  <p className="text-xs font-bold text-slate-400 mb-2">📄 Aperçu</p>
-                  <p className="text-xs text-slate-400 whitespace-pre-wrap leading-relaxed">
+                <div className="p-4 rounded-xl border border-neutral-100 bg-neutral-100">
+                  <p className="text-xs font-bold text-neutral-400 mb-2">📄 Aperçu</p>
+                  <p className="text-xs text-neutral-400 whitespace-pre-wrap leading-relaxed">
                     {form.content
                       .replace('{prenom}','Marie')
                       .replace('{nom}','Dupont')
@@ -377,12 +377,12 @@ const TemplatesManager = ({ onSelectTemplate }) => {
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={()=>{ setShowForm(false); setEditingTemplate(null); }}
-                  className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 rounded-xl text-sm font-bold">
+                  className="flex-1 px-4 py-3 bg-white hover:bg-neutral-50 border border-neutral-200 text-neutral-400 rounded-xl text-sm font-bold">
                   Annuler
                 </button>
                 <button type="submit"
                   className="flex-1 px-4 py-3 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2"
-                  style={{background:'linear-gradient(135deg,#7c3aed,#4f46e5)'}}>
+                  style={{background:'linear-gradient(135deg,#047857,#4f46e5)'}}>
                   <Save className="w-4 h-4"/>
                   {editingTemplate ? 'Mettre à jour' : 'Créer le template'}
                 </button>
