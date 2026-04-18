@@ -270,7 +270,7 @@ export default function QuoteForm() {
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
                 <label className={fieldLabel}>
-                  Nom <span className="text-rose-600">*</span>
+                  Nom <span className="text-terracotta-600">*</span>
                 </label>
                 <Input
                   value={client.name}
@@ -435,7 +435,7 @@ export default function QuoteForm() {
                         <button
                           type="button"
                           onClick={() => removeLine(line.id)}
-                          className="p-1 rounded hover:bg-rose-50 text-rose-600"
+                          className="p-1 rounded hover:bg-terracotta-50 text-terracotta-600"
                           aria-label="Supprimer la ligne"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -529,7 +529,7 @@ export default function QuoteForm() {
                   <span className="text-ink-600">
                     Remise globale ({globalDiscountPercent}%)
                   </span>
-                  <span className="text-rose-700 tabular-nums">
+                  <span className="text-terracotta-700 tabular-nums">
                     −{(totals.subTotalHT - totals.ht).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                   </span>
                 </div>

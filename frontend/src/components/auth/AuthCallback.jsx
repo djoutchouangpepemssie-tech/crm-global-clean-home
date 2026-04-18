@@ -103,13 +103,13 @@ const AuthCallback = () => {
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-app)' }}>
       <div className="text-center space-y-4">
         <div className="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center"
-          style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', boxShadow: '0 0 30px rgba(139,92,246,0.4)' }}>
+          style={{ background: 'linear-gradient(135deg, #047857, #14532d)', boxShadow: '0 0 30px rgba(4,120,87,0.3)' }}>
           <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-slate-200">{status}</p>
+          <p className="text-sm font-semibold text-neutral-700">{status}</p>
           {retryCount > 0 && (
-            <p className="text-xs text-slate-500 mt-1">Tentative {retryCount + 1}/3</p>
+            <p className="text-xs text-neutral-500 mt-1">Tentative {retryCount + 1}/3</p>
           )}
         </div>
       </div>
