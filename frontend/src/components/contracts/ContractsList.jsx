@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+﻿import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import axios from 'axios';
 import {
   useContractsList,
@@ -52,12 +52,12 @@ function injectStyles() {
       to   { opacity: 1; transform: translateY(0); }
     }
     @keyframes ct-glow-pulse {
-      0%, 100% { box-shadow: 0 0 8px rgba(139,92,246,0.2); }
-      50%      { box-shadow: 0 0 20px rgba(139,92,246,0.45); }
+      0%, 100% { box-shadow: 0 0 8px rgba(4,120,87,0.2); }
+      50%      { box-shadow: 0 0 20px rgba(4,120,87,0.45); }
     }
     @keyframes ct-border-glow {
-      0%, 100% { border-color: rgba(139,92,246,0.15); }
-      50%      { border-color: rgba(139,92,246,0.4); }
+      0%, 100% { border-color: rgba(4,120,87,0.15); }
+      50%      { border-color: rgba(4,120,87,0.4); }
     }
     @keyframes ct-float {
       0%, 100% { transform: translateY(0); }
@@ -92,10 +92,10 @@ function injectStyles() {
       50%      { opacity: 0.5; }
     }
     @keyframes ct-revenue-glow {
-      0%, 100% { text-shadow: 0 0 8px rgba(139,92,246,0.3); }
-      50%      { text-shadow: 0 0 20px rgba(139,92,246,0.6); }
+      0%, 100% { text-shadow: 0 0 8px rgba(4,120,87,0.3); }
+      50%      { text-shadow: 0 0 20px rgba(4,120,87,0.6); }
     }
-    .ct-metric-card {
+    .ct-bg-white border border-neutral-200 rounded-xl p-5 {
       background: linear-gradient(135deg, rgba(15,23,42,0.8), rgba(15,23,42,0.4));
       border: 1px solid rgba(255,255,255,0.06);
       border-radius: 16px;
@@ -105,21 +105,21 @@ function injectStyles() {
       transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       cursor: default;
     }
-    .ct-metric-card::before {
+    .ct-bg-white border border-neutral-200 rounded-xl p-5::before {
       content: '';
       position: absolute;
       top: 0; left: 0; right: 0;
       height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(139,92,246,0.3), transparent);
+      background: linear-gradient(90deg, transparent, rgba(4,120,87,0.3), transparent);
       opacity: 0;
       transition: opacity 0.4s;
     }
-    .ct-metric-card:hover {
-      border-color: rgba(139,92,246,0.2);
+    .ct-bg-white border border-neutral-200 rounded-xl p-5:hover {
+      border-color: rgba(4,120,87,0.2);
       transform: translateY(-2px);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 24px rgba(139,92,246,0.08);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 24px rgba(4,120,87,0.08);
     }
-    .ct-metric-card:hover::before { opacity: 1; }
+    .ct-bg-white border border-neutral-200 rounded-xl p-5:hover::before { opacity: 1; }
 
     .ct-contract-card {
       background: linear-gradient(135deg, rgba(15,23,42,0.6), rgba(15,23,42,0.3));
@@ -139,16 +139,16 @@ function injectStyles() {
       transition: width 0.3s;
     }
     .ct-contract-card:hover {
-      border-color: rgba(139,92,246,0.2);
+      border-color: rgba(4,120,87,0.2);
       transform: translateY(-2px);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.25), 0 0 20px rgba(139,92,246,0.06);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.25), 0 0 20px rgba(4,120,87,0.06);
     }
     .ct-contract-card:hover::after { width: 4px; }
 
-    .ct-status-active::after { background: linear-gradient(180deg, #34d399, #059669); }
+    .ct-status-active::after { background: linear-gradient(180deg, #047857, #059669); }
     .ct-status-paused::after { background: linear-gradient(180deg, #f59e0b, #d97706); }
-    .ct-status-cancelled::after { background: linear-gradient(180deg, #f43f5e, #e11d48); }
-    .ct-status-expired::after { background: linear-gradient(180deg, #94a3b8, #64748b); }
+    .ct-status-cancelled::after { background: linear-gradient(180deg, #c2410c, #c2410c); }
+    .ct-status-expired::after { background: linear-gradient(180deg, #78716c, #78716c); }
 
     .ct-action-btn {
       position: relative;
@@ -195,11 +195,11 @@ function injectStyles() {
       transition: all 0.3s;
     }
     .ct-search-input:focus {
-      border-color: rgba(139,92,246,0.4);
-      box-shadow: 0 0 0 3px rgba(139,92,246,0.1);
+      border-color: rgba(4,120,87,0.4);
+      box-shadow: 0 0 0 3px rgba(4,120,87,0.1);
       background: rgba(255,255,255,0.06);
     }
-    .ct-search-input::placeholder { color: #475569; }
+    .ct-search-input::placeholder { color: #78716c; }
 
     .ct-modal-input {
       width: 100%;
@@ -214,8 +214,8 @@ function injectStyles() {
       transition: all 0.3s;
     }
     .ct-modal-input:focus {
-      border-color: rgba(139,92,246,0.5);
-      box-shadow: 0 0 0 3px rgba(139,92,246,0.1);
+      border-color: rgba(4,120,87,0.5);
+      box-shadow: 0 0 0 3px rgba(4,120,87,0.1);
       background: rgba(255,255,255,0.06);
     }
     .ct-modal-select {
@@ -231,8 +231,8 @@ function injectStyles() {
       cursor: pointer;
     }
     .ct-modal-select:focus {
-      border-color: rgba(139,92,246,0.5);
-      box-shadow: 0 0 0 3px rgba(139,92,246,0.1);
+      border-color: rgba(4,120,87,0.5);
+      box-shadow: 0 0 0 3px rgba(4,120,87,0.1);
     }
 
     .ct-premium-btn {
@@ -282,16 +282,16 @@ function injectStyles() {
    Config Constants
 ═══════════════════════════════════════════ */
 const FREQUENCY_LABELS = {
-  hebdomadaire: { label: 'Hebdo', short: 'H', color: '#8b5cf6', bg: 'rgba(139,92,246,0.15)', factor: 4 },
+  hebdomadaire: { label: 'Hebdo', short: 'H', color: '#047857', bg: 'rgba(4,120,87,0.15)', factor: 4 },
   bi_hebdomadaire: { label: 'Bi-hebdo', short: 'BH', color: '#06b6d4', bg: 'rgba(6,182,212,0.15)', factor: 8 },
   mensuel: { label: 'Mensuel', short: 'M', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)', factor: 1 },
 };
 
 const STATUS_CONFIG = {
-  active: { label: 'Actif', icon: CheckCircle, color: '#34d399', bg: 'rgba(52,211,153,0.12)', border: 'rgba(52,211,153,0.25)', glow: 'rgba(52,211,153,0.15)' },
+  active: { label: 'Actif', icon: CheckCircle, color: '#047857', bg: 'rgba(4,120,87,0.12)', border: 'rgba(4,120,87,0.25)', glow: 'rgba(4,120,87,0.15)' },
   paused: { label: 'Pausé', icon: Pause, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.25)', glow: 'rgba(245,158,11,0.15)' },
-  cancelled: { label: 'Annulé', icon: X, color: '#f43f5e', bg: 'rgba(244,63,94,0.12)', border: 'rgba(244,63,94,0.25)', glow: 'rgba(244,63,94,0.15)' },
-  expired: { label: 'Expiré', icon: Clock, color: '#94a3b8', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.25)', glow: 'rgba(148,163,184,0.15)' },
+  cancelled: { label: 'Annulé', icon: X, color: '#c2410c', bg: 'rgba(194,65,12,0.12)', border: 'rgba(194,65,12,0.25)', glow: 'rgba(194,65,12,0.15)' },
+  expired: { label: 'Expiré', icon: Clock, color: '#78716c', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.25)', glow: 'rgba(148,163,184,0.15)' },
 };
 
 const SERVICES = ['Ménage régulier', 'Grand ménage', 'Repassage', 'Vitres', 'Bureau', 'Airbnb'];
@@ -372,15 +372,14 @@ function EmptyState({ search, filter, onReset, onCreate }) {
     }}>
       <div style={{
         width: 80, height: 80, borderRadius: '50%',
-        background: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(139,92,246,0.05))',
+        background: 'linear-gradient(135deg, rgba(4,120,87,0.15), rgba(4,120,87,0.05))',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         margin: '0 auto 20px',
         animation: 'ct-float 3s ease-in-out infinite',
       }}>
-        <FileText style={{ width: 36, height: 36, color: '#8b5cf6', opacity: 0.7 }} />
+        <FileText style={{ width: 36, height: 36, color: '#047857', opacity: 0.7 }} />
       </div>
-      <h3 style={{
-        fontFamily: 'Manrope, sans-serif', fontSize: 18, fontWeight: 700,
+      <h3 style={{, fontSize: 18, fontWeight: 700,
         color: '#e2e8f0', margin: '0 0 8px'
       }}>
         {hasFilters ? 'Aucun contrat trouvé' : 'Pas encore de contrats'}
@@ -395,7 +394,7 @@ function EmptyState({ search, filter, onReset, onCreate }) {
           <button
             onClick={onReset}
             className="ct-premium-btn"
-            style={{ background: 'var(--border-default)', color: '#94a3b8' }}
+            style={{ background: 'var(--border-default)', color: '#78716c' }}
           >
             <RotateCcw style={{ width: 14, height: 14 }} />
             Réinitialiser
@@ -405,7 +404,7 @@ function EmptyState({ search, filter, onReset, onCreate }) {
           onClick={onCreate}
           className="ct-premium-btn"
           style={{
-            background: 'linear-gradient(135deg, #7c3aed, #8b5cf6)',
+            background: 'linear-gradient(135deg, #047857, #047857)',
             color: '#fff',
             boxShadow: '0 4px 16px rgba(124,58,237,0.3)',
           }}
@@ -444,15 +443,14 @@ function ConfirmModal({ isOpen, onConfirm, onCancel, title, desc, confirmLabel, 
         }}>
           {Icon && <Icon style={{ width: 24, height: 24, color }} />}
         </div>
-        <h3 style={{
-          fontFamily: 'Manrope, sans-serif', fontSize: 17, fontWeight: 700,
+        <h3 style={{, fontSize: 17, fontWeight: 700,
           color: 'var(--text-primary)', margin: '0 0 8px', textAlign: 'center'
         }}>{title}</h3>
-        <p style={{ color: '#94a3b8', fontSize: 13, textAlign: 'center', margin: '0 0 24px', lineHeight: 1.5 }}>{desc}</p>
+        <p style={{ color: '#78716c', fontSize: 13, textAlign: 'center', margin: '0 0 24px', lineHeight: 1.5 }}>{desc}</p>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={onCancel} className="ct-premium-btn" style={{
             flex: 1, justifyContent: 'center',
-            background: 'var(--border-default)', color: '#94a3b8',
+            background: 'var(--border-default)', color: '#78716c',
             border: '1px solid rgba(255,255,255,0.08)',
           }}>Annuler</button>
           <button onClick={onConfirm} className="ct-premium-btn" style={{
@@ -471,7 +469,7 @@ function ConfirmModal({ isOpen, onConfirm, onCancel, title, desc, confirmLabel, 
 ═══════════════════════════════════════════ */
 function ContractCard({ contract, index, onEdit, onAction, onConfirmAction }) {
   const c = contract;
-  const freq = FREQUENCY_LABELS[c.frequency] || { label: c.frequency, color: '#94a3b8', bg: 'rgba(148,163,184,0.1)', factor: 1 };
+  const freq = FREQUENCY_LABELS[c.frequency] || { label: c.frequency, color: '#78716c', bg: 'rgba(148,163,184,0.1)', factor: 1 };
   const status = STATUS_CONFIG[c.status] || STATUS_CONFIG.active;
   const StatusIcon = status.icon;
   const monthlyValue = (parseFloat(c.price_per_intervention) || 0) * (freq.factor || 1);
@@ -497,7 +495,6 @@ function ContractCard({ contract, index, onEdit, onAction, onConfirmAction }) {
             <div style={{ minWidth: 0 }}>
               <p style={{
                 fontSize: 14, fontWeight: 700, color: 'var(--text-primary)',
-                fontFamily: 'Manrope, sans-serif',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0
               }}>{c.client_name}</p>
               <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -527,7 +524,7 @@ function ContractCard({ contract, index, onEdit, onAction, onConfirmAction }) {
       {/* Service + Frequency */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
         <span style={{
-          background: 'rgba(139,92,246,0.1)', color: '#a78bfa',
+          background: 'rgba(4,120,87,0.1)', color: '#d97706',
           padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600,
         }}>
           {c.service || '—'}
@@ -540,7 +537,7 @@ function ContractCard({ contract, index, onEdit, onAction, onConfirmAction }) {
         </span>
         {c.day_of_week && (
           <span style={{
-            background: 'rgba(255,255,255,0.04)', color: '#94a3b8',
+            background: 'rgba(255,255,255,0.04)', color: '#78716c',
             padding: '4px 8px', borderRadius: 8, fontSize: 11,
           }}>
             {c.day_of_week} {c.time || ''}
@@ -548,7 +545,7 @@ function ContractCard({ contract, index, onEdit, onAction, onConfirmAction }) {
         )}
         {c.auto_renew && (
           <span style={{
-            background: 'rgba(52,211,153,0.1)', color: '#34d399',
+            background: 'rgba(4,120,87,0.1)', color: '#047857',
             padding: '3px 8px', borderRadius: 8, fontSize: 10, fontWeight: 700,
           }}>
             ♻ Auto
@@ -562,19 +559,19 @@ function ContractCard({ contract, index, onEdit, onAction, onConfirmAction }) {
         background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: 12, marginBottom: 14,
       }}>
         <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: 15, fontWeight: 800, color: '#a78bfa', margin: 0, fontFamily: 'Manrope, sans-serif' }}>
+          <p style={{ fontSize: 15, fontWeight: 800, color: '#d97706', margin: 0 }}>
             {c.price_per_intervention ? `${c.price_per_intervention}€` : '—'}
           </p>
           <p style={{ fontSize: 9, color: 'var(--text-muted)', margin: '2px 0 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>/ inter.</p>
         </div>
         <div style={{ textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.06)', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
-          <p style={{ fontSize: 15, fontWeight: 800, color: '#8b5cf6', margin: 0, fontFamily: 'Manrope, sans-serif' }}>
+          <p style={{ fontSize: 15, fontWeight: 800, color: '#047857', margin: 0 }}>
             {monthlyValue ? `${Math.round(monthlyValue)}€` : '—'}
           </p>
           <p style={{ fontSize: 9, color: 'var(--text-muted)', margin: '2px 0 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>MRR</p>
         </div>
         <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: 15, fontWeight: 800, color: '#7c3aed', margin: 0, fontFamily: 'Manrope, sans-serif' }}>
+          <p style={{ fontSize: 15, fontWeight: 800, color: '#047857', margin: 0 }}>
             {annualValue ? `${Math.round(annualValue).toLocaleString('fr-FR')}€` : '—'}
           </p>
           <p style={{ fontSize: 9, color: 'var(--text-muted)', margin: '2px 0 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Annuel</p>
@@ -582,7 +579,7 @@ function ContractCard({ contract, index, onEdit, onAction, onConfirmAction }) {
       </div>
 
       {/* Next intervention + Dates */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, fontSize: 12, color: '#94a3b8' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, fontSize: 12, color: '#78716c' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           <Calendar style={{ width: 12, height: 12, color: 'var(--text-muted)' }} />
           <span>Prochaine : {c.next_intervention ? new Date(c.next_intervention).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '—'}</span>
@@ -604,7 +601,7 @@ function ContractCard({ contract, index, onEdit, onAction, onConfirmAction }) {
           onClick={() => onEdit(c)}
           className="ct-action-btn"
           title="Éditer"
-          style={{ background: 'rgba(139,92,246,0.12)', color: '#a78bfa' }}
+          style={{ background: 'rgba(4,120,87,0.12)', color: '#d97706' }}
         >
           <Edit2 style={{ width: 14, height: 14 }} />
         </button>
@@ -623,7 +620,7 @@ function ContractCard({ contract, index, onEdit, onAction, onConfirmAction }) {
             onClick={() => onConfirmAction(c, 'resume')}
             className="ct-action-btn"
             title="Reprendre"
-            style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399' }}
+            style={{ background: 'rgba(4,120,87,0.12)', color: '#047857' }}
           >
             <Play style={{ width: 14, height: 14 }} />
           </button>
@@ -633,7 +630,7 @@ function ContractCard({ contract, index, onEdit, onAction, onConfirmAction }) {
             onClick={() => onConfirmAction(c, 'cancel')}
             className="ct-action-btn"
             title="Annuler"
-            style={{ background: 'rgba(244,63,94,0.12)', color: '#f43f5e' }}
+            style={{ background: 'rgba(194,65,12,0.12)', color: '#c2410c' }}
           >
             <X style={{ width: 14, height: 14 }} />
           </button>
@@ -693,27 +690,26 @@ function ContractModal({ isOpen, editingId, form, setForm, onSave, onClose }) {
           width: '100%', maxWidth: 640, maxHeight: '90vh',
           overflow: 'hidden',
           animation: 'ct-modal-content 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-          boxShadow: '0 24px 80px rgba(0,0,0,0.6), 0 0 40px rgba(139,92,246,0.08)',
+          boxShadow: '0 24px 80px rgba(0,0,0,0.6), 0 0 40px rgba(4,120,87,0.08)',
         }}
       >
         {/* Modal Header */}
         <div style={{
           padding: '20px 24px',
           borderBottom: '1px solid rgba(255,255,255,0.06)',
-          background: 'linear-gradient(135deg, rgba(139,92,246,0.06), transparent)',
+          background: 'linear-gradient(135deg, rgba(4,120,87,0.06), transparent)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{
               width: 40, height: 40, borderRadius: 12,
-              background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(139,92,246,0.05))',
+              background: 'linear-gradient(135deg, rgba(4,120,87,0.2), rgba(4,120,87,0.05))',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <FileText style={{ width: 18, height: 18, color: '#a78bfa' }} />
+              <FileText style={{ width: 18, height: 18, color: '#d97706' }} />
             </div>
             <div>
-              <h2 style={{
-                fontFamily: 'Manrope, sans-serif', fontSize: 17, fontWeight: 800,
+              <h2 style={{, fontSize: 17, fontWeight: 800,
                 color: 'var(--text-primary)', margin: 0
               }}>
                 {editingId ? 'Modifier le contrat' : 'Nouveau contrat'}
@@ -736,7 +732,7 @@ function ContractModal({ isOpen, editingId, form, setForm, onSave, onClose }) {
           <div style={{ marginBottom: 24 }}>
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14,
-              color: '#8b5cf6', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
+              color: '#047857', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
             }}>
               <Users style={{ width: 14, height: 14 }} />
               Informations client
@@ -806,7 +802,7 @@ function ContractModal({ isOpen, editingId, form, setForm, onSave, onClose }) {
           <div style={{ marginBottom: 24 }}>
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14,
-              color: '#34d399', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
+              color: '#047857', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
             }}>
               <Euro style={{ width: 14, height: 14 }} />
               Tarification & Dates
@@ -836,14 +832,14 @@ function ContractModal({ isOpen, editingId, form, setForm, onSave, onClose }) {
           <div style={{
             display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24,
             padding: '12px 16px', borderRadius: 12,
-            background: form.auto_renew ? 'rgba(52,211,153,0.06)' : 'rgba(255,255,255,0.02)',
-            border: `1px solid ${form.auto_renew ? 'rgba(52,211,153,0.15)' : 'rgba(255,255,255,0.04)'}`,
+            background: form.auto_renew ? 'rgba(4,120,87,0.06)' : 'rgba(255,255,255,0.02)',
+            border: `1px solid ${form.auto_renew ? 'rgba(4,120,87,0.15)' : 'rgba(255,255,255,0.04)'}`,
             transition: 'all 0.3s',
             cursor: 'pointer',
           }} onClick={() => setForm(p => ({ ...p, auto_renew: !p.auto_renew }))}>
             <div style={{
               width: 40, height: 22, borderRadius: 11,
-              background: form.auto_renew ? 'linear-gradient(135deg, #34d399, #059669)' : 'rgba(255,255,255,0.1)',
+              background: form.auto_renew ? 'linear-gradient(135deg, #047857, #059669)' : 'rgba(255,255,255,0.1)',
               position: 'relative', transition: 'all 0.3s',
               flexShrink: 0,
             }}>
@@ -865,7 +861,7 @@ function ContractModal({ isOpen, editingId, form, setForm, onSave, onClose }) {
 
           {/* Notes */}
           <div>
-            <label style={{ ...labelStyle, color: '#94a3b8' }}>Notes</label>
+            <label style={{ ...labelStyle, color: '#78716c' }}>Notes</label>
             <textarea className={inputStyle} rows={3} placeholder="Instructions spéciales, accès, codes..."
               value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
               style={{ resize: 'vertical' }} />
@@ -880,13 +876,13 @@ function ContractModal({ isOpen, editingId, form, setForm, onSave, onClose }) {
           background: 'rgba(0,0,0,0.2)',
         }}>
           <button onClick={onClose} className="ct-premium-btn" style={{
-            background: 'var(--border-default)', color: '#94a3b8',
+            background: 'var(--border-default)', color: '#78716c',
             border: '1px solid rgba(255,255,255,0.08)',
           }}>
             Annuler
           </button>
           <button onClick={handleSave} disabled={saving} className="ct-premium-btn" style={{
-            background: 'linear-gradient(135deg, #7c3aed, #8b5cf6)',
+            background: 'linear-gradient(135deg, #047857, #047857)',
             color: '#fff',
             boxShadow: '0 4px 16px rgba(124,58,237,0.3)',
             opacity: saving ? 0.7 : 1,
@@ -992,8 +988,8 @@ const ContractsList = () => {
 
   const confirmConfig = {
     pause: { title: 'Mettre en pause ?', desc: 'Le contrat sera suspendu. Les prochaines interventions ne seront pas générées tant qu\'il est en pause.', label: 'Mettre en pause', icon: Pause, color: '#f59e0b' },
-    resume: { title: 'Reprendre le contrat ?', desc: 'Le contrat sera réactivé et les interventions reprendront selon la fréquence définie.', label: 'Reprendre', icon: Play, color: '#34d399' },
-    cancel: { title: 'Annuler le contrat ?', desc: 'Cette action est définitive. Le contrat sera marqué comme annulé et ne pourra plus générer d\'interventions.', label: 'Annuler le contrat', icon: AlertTriangle, color: '#f43f5e' },
+    resume: { title: 'Reprendre le contrat ?', desc: 'Le contrat sera réactivé et les interventions reprendront selon la fréquence définie.', label: 'Reprendre', icon: Play, color: '#047857' },
+    cancel: { title: 'Annuler le contrat ?', desc: 'Cette action est définitive. Le contrat sera marqué comme annulé et ne pourra plus générer d\'interventions.', label: 'Annuler le contrat', icon: AlertTriangle, color: '#c2410c' },
   };
   const cc = confirmConfig[confirmModal.action] || {};
 
@@ -1012,9 +1008,9 @@ const ContractsList = () => {
             disabled={generating}
             className="ct-premium-btn"
             style={{
-              background: 'rgba(139,92,246,0.12)',
-              border: '1px solid rgba(139,92,246,0.25)',
-              color: '#a78bfa',
+              background: 'rgba(4,120,87,0.12)',
+              border: '1px solid rgba(4,120,87,0.25)',
+              color: '#d97706',
             }}
           >
             <RefreshCw style={{
@@ -1027,7 +1023,7 @@ const ContractsList = () => {
             onClick={openCreate}
             className="ct-premium-btn"
             style={{
-              background: 'linear-gradient(135deg, #7c3aed, #8b5cf6)',
+              background: 'linear-gradient(135deg, #047857, #047857)',
               color: '#fff',
               boxShadow: '0 4px 16px rgba(124,58,237,0.25)',
             }}
@@ -1045,7 +1041,7 @@ const ContractsList = () => {
         {[
           {
             label: 'Contrats actifs', value: stats.active, icon: CheckCircle,
-            color: '#34d399', bg: 'rgba(52,211,153,0.1)',
+            color: '#047857', bg: 'rgba(4,120,87,0.1)',
             trend: stats.active > 0 ? `${stats.active} en cours` : null,
             trendUp: true,
           },
@@ -1057,7 +1053,7 @@ const ContractsList = () => {
           },
           {
             label: 'MRR (Revenu Mensuel)', value: stats.monthly_revenue, icon: TrendingUp,
-            color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)',
+            color: '#047857', bg: 'rgba(4,120,87,0.1)',
             suffix: '€', isRevenue: true,
             trend: stats.monthly_revenue > 0 ? `${Math.round(stats.monthly_revenue / Math.max(stats.active, 1))}€ moy/contrat` : null,
             trendUp: true,
@@ -1070,7 +1066,7 @@ const ContractsList = () => {
             trendUp: true,
           },
         ].map((m, i) => (
-          <div key={i} className="ct-metric-card" style={{
+          <div key={i} className="ct-bg-white border border-neutral-200 rounded-xl p-5" style={{
             animation: `ct-slide-up 0.5s ease-out ${0.1 + i * 0.08}s both`,
           }}>
             <div style={{ position: 'absolute', top: -30, right: -30, width: 100, height: 100, borderRadius: '50%', background: `${m.color}08` }} />
@@ -1086,8 +1082,8 @@ const ContractsList = () => {
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 4,
                   fontSize: 10, fontWeight: 600,
-                  color: m.trendUp ? '#34d399' : '#f59e0b',
-                  background: m.trendUp ? 'rgba(52,211,153,0.1)' : 'rgba(245,158,11,0.1)',
+                  color: m.trendUp ? '#047857' : '#f59e0b',
+                  background: m.trendUp ? 'rgba(4,120,87,0.1)' : 'rgba(245,158,11,0.1)',
                   padding: '3px 8px', borderRadius: 8,
                 }}>
                   {m.trendUp ? <ArrowUpRight style={{ width: 10, height: 10 }} /> : <ArrowDownRight style={{ width: 10, height: 10 }} />}
@@ -1096,8 +1092,7 @@ const ContractsList = () => {
               )}
             </div>
             <p style={{
-              fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: 0,
-              fontFamily: 'Manrope, sans-serif', position: 'relative',
+              fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: 0, position: 'relative',
               animation: m.isRevenue ? 'ct-count-up 0.6s ease-out' : undefined,
             }}>
               <AnimatedCounter value={m.value} suffix={m.suffix || ''} />

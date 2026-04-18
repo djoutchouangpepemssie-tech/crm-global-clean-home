@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { PageHeader } from '../shared';
 import { useQuery } from '@tanstack/react-query';
 import { BookOpen, Calendar, Clock, User, CheckCircle, XCircle, AlertCircle, Plus, RefreshCw, MapPin } from 'lucide-react';
@@ -6,9 +6,9 @@ import { toast } from 'sonner';
 import api from '../../lib/api';
 
 const STATUS_CONFIG = {
-  confirmed:  { label: 'Confirmé',   color: '#34d399', bg: 'rgba(52,211,153,0.1)',  icon: CheckCircle },
+  confirmed:  { label: 'Confirmé',   color: '#047857', bg: 'rgba(4,120,87,0.1)',  icon: CheckCircle },
   pending:    { label: 'En attente', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)',  icon: Clock },
-  cancelled:  { label: 'Annulé',    color: '#f43f5e', bg: 'rgba(244,63,94,0.1)',   icon: XCircle },
+  cancelled:  { label: 'Annulé',    color: '#c2410c', bg: 'rgba(194,65,12,0.1)',   icon: XCircle },
   completed:  { label: 'Terminé',   color: '#60a5fa', bg: 'rgba(96,165,250,0.1)',  icon: CheckCircle },
 };
 
@@ -62,15 +62,15 @@ const BookingManager = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <BookOpen className="w-5 h-5 text-violet-400" />
-            <h1 className="text-2xl font-bold text-slate-100" style={{ fontFamily: 'Manrope,sans-serif' }}>Réservations</h1>
+            <BookOpen className="w-5 h-5 text-brand-400" />
+            <h1 className="text-2xl font-bold text-neutral-100" style={{ }}>Réservations</h1>
           </div>
-          <p className="text-slate-500 text-sm">
-            <span className="text-violet-400 font-semibold">{bookings.length}</span> réservation(s)
+          <p className="text-neutral-500 text-sm">
+            <span className="text-brand-400 font-semibold">{bookings.length}</span> réservation(s)
           </p>
         </div>
         <button onClick={fetchBookings}
-          className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-slate-200 transition-all border border-white/5">
+          className="p-2 rounded-lg bg-white hover:bg-neutral-50 text-neutral-400 hover:text-neutral-200 transition-all border border-neutral-100">
           <RefreshCw className="w-4 h-4" />
         </button>
       </div>
@@ -78,20 +78,20 @@ const BookingManager = () => {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'Total', value: stats.total, color: '#a78bfa', icon: BookOpen },
-          { label: 'Confirmés', value: stats.confirmed, color: '#34d399', icon: CheckCircle },
+          { label: 'Total', value: stats.total, color: '#d97706', icon: BookOpen },
+          { label: 'Confirmés', value: stats.confirmed, color: '#047857', icon: CheckCircle },
           { label: 'En attente', value: stats.pending, color: '#f59e0b', icon: Clock },
-          { label: 'Annulés', value: stats.cancelled, color: '#f43f5e', icon: XCircle },
+          { label: 'Annulés', value: stats.cancelled, color: '#c2410c', icon: XCircle },
         ].map((s, i) => (
-          <div key={i} className="metric-card">
+          <div key={i} className="bg-white border border-neutral-200 rounded-xl p-5">
             <div className="flex items-center justify-between mb-3">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center"
                 style={{ background: `${s.color}15`, border: `1px solid ${s.color}25` }}>
                 <s.icon className="w-4 h-4" style={{ color: s.color }} />
               </div>
             </div>
-            <p className="text-2xl font-bold" style={{ color: s.color, fontFamily: 'Manrope,sans-serif' }}>{s.value}</p>
-            <p className="text-xs text-slate-500 mt-1">{s.label}</p>
+            <p className="text-2xl font-bold" style={{ color: s.color }}>{s.value}</p>
+            <p className="text-xs text-neutral-500 mt-1">{s.label}</p>
           </div>
         ))}
       </div>
@@ -108,8 +108,8 @@ const BookingManager = () => {
           <button key={f.value} onClick={() => setFilter(f.value)}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
               filter === f.value
-                ? 'bg-violet-600 text-white'
-                : 'bg-white/5 border border-white/10 text-slate-400 hover:text-slate-200'
+                ? 'bg-brand-600 text-white'
+                : 'bg-white border border-neutral-200 text-neutral-400 hover:text-neutral-200'
             }`}>
             {f.label}
           </button>
@@ -117,18 +117,18 @@ const BookingManager = () => {
       </div>
 
       {/* Content */}
-      <div className="section-card overflow-hidden">
+      <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
         {loading ? (
           <div className="p-8 space-y-3">
             {[...Array(4)].map((_, i) => <div key={i} className="skeleton h-16 rounded-lg" />)}
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16">
-            <Calendar className="w-12 h-12 text-slate-700 mx-auto mb-3" />
-            <p className="text-slate-500 font-medium">
+            <Calendar className="w-12 h-12 text-neutral-700 mx-auto mb-3" />
+            <p className="text-neutral-500 font-medium">
               {bookings.length === 0 ? 'Aucune réservation' : 'Aucune réservation pour ce filtre'}
             </p>
-            <p className="text-xs text-slate-600 mt-1">
+            <p className="text-xs text-neutral-600 mt-1">
               Les réservations clients apparaîtront ici
             </p>
           </div>
@@ -138,7 +138,7 @@ const BookingManager = () => {
               const cfg = STATUS_CONFIG[booking.status] || STATUS_CONFIG['pending'];
               const Icon = cfg.icon;
               return (
-                <div key={booking.id || booking.booking_id || idx} className="p-4 hover:bg-white/2 transition-all">
+                <div key={booking.id || booking.booking_id || idx} className="p-4 hover:bg-neutral-100 transition-all">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3 min-w-0">
                       <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -146,16 +146,16 @@ const BookingManager = () => {
                         <Icon className="w-4 h-4" style={{ color: cfg.color }} />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-200">
+                        <p className="text-sm font-semibold text-neutral-200">
                           {booking.client_name || booking.lead_name || booking.name || `Réservation #${String(booking.id || idx + 1).slice(-6)}`}
                         </p>
                         {booking.service_type && (
-                          <p className="text-xs text-slate-500 mt-0.5">{booking.service_type}</p>
+                          <p className="text-xs text-neutral-500 mt-0.5">{booking.service_type}</p>
                         )}
                         {booking.address && (
                           <div className="flex items-center gap-1 mt-1">
-                            <MapPin className="w-3 h-3 text-slate-600 flex-shrink-0" />
-                            <p className="text-xs text-slate-600 truncate">{booking.address}</p>
+                            <MapPin className="w-3 h-3 text-neutral-600 flex-shrink-0" />
+                            <p className="text-xs text-neutral-600 truncate">{booking.address}</p>
                           </div>
                         )}
                       </div>
@@ -166,25 +166,25 @@ const BookingManager = () => {
                         {cfg.label}
                       </span>
                       {booking.amount && (
-                        <span className="text-sm font-bold text-violet-400">{fmt(booking.amount)}</span>
+                        <span className="text-sm font-bold text-brand-400">{fmt(booking.amount)}</span>
                       )}
                     </div>
                   </div>
                   <div className="flex items-center gap-4 mt-3 pl-12">
                     {booking.scheduled_at && (
-                      <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <div className="flex items-center gap-1.5 text-xs text-neutral-500">
                         <Calendar className="w-3 h-3" />
                         {fmtDate(booking.scheduled_at)}
                       </div>
                     )}
                     {booking.duration_min && (
-                      <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <div className="flex items-center gap-1.5 text-xs text-neutral-500">
                         <Clock className="w-3 h-3" />
                         {booking.duration_min} min
                       </div>
                     )}
                     {booking.assigned_to && (
-                      <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <div className="flex items-center gap-1.5 text-xs text-neutral-500">
                         <User className="w-3 h-3" />
                         {booking.assigned_to}
                       </div>
