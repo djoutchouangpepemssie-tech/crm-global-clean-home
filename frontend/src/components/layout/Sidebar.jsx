@@ -6,85 +6,99 @@ import {
   Sparkles, ChevronDown, Search, MessageSquare, Package,
   Ticket, UserCheck, Globe, Star, BarChart2, Settings,
   RefreshCw, MapPin, CalendarCheck, Heart, FolderOpen,
-  DollarSign, BarChart3, ChevronLeft, ChevronRight, Bell
+  ChevronLeft, ChevronRight, Sun, Moon,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import api from '../../lib/api';
 import { useTheme } from '../../contexts/ThemeContext';
 import BACKEND_URL from '../../config.js';
 const API_URL = (BACKEND_URL + '/api').replace('http://', 'https://');
 import axios from 'axios';
 
-/* ── NAV GROUPS ── */
+/* ═══ Palette Atelier (tokens durs pour inline styles) ═══ */
+const C = {
+  bg:       '#1C1915',  // ivoire profond / encre chaude
+  bgHover:  'rgba(255, 248, 235, 0.05)',
+  bgActive: 'rgba(194, 65, 12, 0.14)',  // terracotta translucent
+  border:   'rgba(255, 248, 235, 0.08)',
+  textMain: '#F5EFE3',
+  textMuted:'rgba(245, 239, 227, 0.55)',
+  textDim:  'rgba(245, 239, 227, 0.32)',
+  brand:    '#047857',   // émeraude
+  accent:   '#C2410C',   // terracotta
+  amber:    '#D97706',
+  ink:      '#57534E',   // sable foncé neutre
+};
+
+/* ═══ NAV GROUPS — couleurs atelier ═══ */
 const NAV_GROUPS = [
   {
     label: 'Principal',
-    color: '#6366F1',
+    color: C.accent,
     defaultOpen: true,
     items: [
-      { to: '/dashboard',    icon: LayoutDashboard, label: 'Dashboard'       },
-      { to: '/director',     icon: Sparkles,        label: 'Vue Directeur'   },
-      { to: '/leads',        icon: Users,           label: 'Leads',     badge: 'leads'    },
-      { to: '/kanban',       icon: Trello,          label: 'Pipeline'        },
-    ]
+      { to: '/dashboard',    icon: LayoutDashboard, label: 'Dashboard' },
+      { to: '/director',     icon: Sparkles,        label: 'Vue Directeur' },
+      { to: '/leads',        icon: Users,           label: 'Leads',    badge: 'leads' },
+      { to: '/kanban',       icon: Trello,          label: 'Pipeline' },
+    ],
   },
   {
     label: 'Commercial',
-    color: '#10B981',
+    color: C.brand,
     defaultOpen: false,
     items: [
-      { to: '/quotes',       icon: FileText,        label: 'Devis',     badge: 'devis'    },
-      { to: '/invoices',     icon: CreditCard,      label: 'Factures',  badge: 'factures' },
-      { to: '/contracts',    icon: RefreshCw,       label: 'Contrats'        },
-      { to: '/bookings',     icon: CalendarCheck,   label: 'Réservations'    },
-    ]
+      { to: '/quotes',       icon: FileText,        label: 'Devis',    badge: 'devis' },
+      { to: '/invoices',     icon: CreditCard,      label: 'Factures', badge: 'factures' },
+      { to: '/contracts',    icon: RefreshCw,       label: 'Contrats' },
+      { to: '/bookings',     icon: CalendarCheck,   label: 'Réservations' },
+    ],
   },
   {
     label: 'Opérations',
-    color: '#F59E0B',
+    color: C.amber,
     defaultOpen: false,
     items: [
-      { to: '/planning',     icon: CalendarDays,    label: 'Planning'        },
-      { to: '/intervenants', icon: UserCheck,       label: 'Intervenants'    },
-      { to: '/tasks',        icon: CheckSquare,     label: 'Tâches'          },
+      { to: '/planning',     icon: CalendarDays,    label: 'Planning' },
+      { to: '/intervenants', icon: UserCheck,       label: 'Intervenants' },
+      { to: '/tasks',        icon: CheckSquare,     label: 'Tâches' },
       { to: '/tickets',      icon: Ticket,          label: 'Tickets SAV', badge: 'tickets' },
-      { to: '/map',          icon: MapPin,          label: 'Carte'           },
-    ]
+      { to: '/map',          icon: MapPin,          label: 'Carte' },
+    ],
   },
   {
     label: 'Analytics',
-    color: '#3B82F6',
+    color: C.brand,
     defaultOpen: false,
     items: [
-      { to: '/analytics',    icon: TrendingUp,      label: 'Analytics'       },
-      { to: '/rentabilite',  icon: BarChart2,       label: 'Rentabilité'     },
-      { to: '/ads',          icon: Globe,           label: 'Publicités'      },
-      { to: '/seo',          icon: Search,          label: 'SEO'             },
-    ]
+      { to: '/analytics',    icon: TrendingUp,      label: 'Analytics' },
+      { to: '/rentabilite',  icon: BarChart2,       label: 'Rentabilité' },
+      { to: '/ads',          icon: Globe,           label: 'Publicités' },
+      { to: '/seo',          icon: Search,          label: 'SEO' },
+    ],
   },
   {
     label: 'Finance',
-    color: '#8B5CF6',
+    color: C.accent,
     defaultOpen: false,
     items: [
       { to: '/accounting-erp', icon: BookOpen,      label: 'Comptabilité ERP' },
-      { to: '/stock',          icon: Package,       label: 'Stocks'           },
-    ]
+      { to: '/stock',          icon: Package,       label: 'Stocks' },
+    ],
   },
   {
     label: 'Outils',
-    color: '#64748B',
+    color: C.ink,
     defaultOpen: false,
     items: [
-      { to: '/workflows',    icon: Zap,             label: 'Workflows'       },
-      { to: '/ai',           icon: Star,            label: 'Centre IA'       },
-      { to: '/chat',         icon: MessageSquare,   label: 'Messages'        },
-      { to: '/satisfaction', icon: Heart,           label: 'Satisfaction'    },
-      { to: '/documents',    icon: FolderOpen,      label: 'Documents'       },
-      { to: '/integrations', icon: Plug,            label: 'Intégrations'    },
-      { to: '/activity',     icon: Activity,        label: 'Journal'         },
-      { to: '/settings',     icon: Settings,        label: 'Paramètres'      },
-    ]
+      { to: '/workflows',    icon: Zap,             label: 'Workflows' },
+      { to: '/ai',           icon: Star,            label: 'Centre IA' },
+      { to: '/chat',         icon: MessageSquare,   label: 'Messages' },
+      { to: '/satisfaction', icon: Heart,           label: 'Satisfaction' },
+      { to: '/documents',    icon: FolderOpen,      label: 'Documents' },
+      { to: '/integrations', icon: Plug,            label: 'Intégrations' },
+      { to: '/activity',     icon: Activity,        label: 'Journal' },
+      { to: '/settings',     icon: Settings,        label: 'Paramètres' },
+    ],
   },
 ];
 
@@ -97,11 +111,10 @@ export default function Sidebar() {
 
   const [collapsed, setCollapsed] = useState(false);
   const [openGroups, setOpenGroups] = useState(() =>
-    Object.fromEntries(NAV_GROUPS.map(g => [g.label, g.defaultOpen]))
+    Object.fromEntries(NAV_GROUPS.map((g) => [g.label, g.defaultOpen]))
   );
   const [badges, setBadges] = useState({});
 
-  /* Fetch badge counts */
   const fetchBadges = useCallback(async () => {
     try {
       const [leadsRes, quotesRes, invoicesRes, ticketsRes] = await Promise.allSettled([
@@ -117,66 +130,80 @@ export default function Sidebar() {
         return Array.isArray(d) ? d.length || null : null;
       };
       setBadges({
-        leads:    get(leadsRes,    ['total','count']),
-        devis:    get(quotesRes,   ['total','count']),
-        factures: get(invoicesRes, ['total','count']),
-        tickets:  get(ticketsRes,  ['total','count']),
+        leads:    get(leadsRes,    ['total', 'count']),
+        devis:    get(quotesRes,   ['total', 'count']),
+        factures: get(invoicesRes, ['total', 'count']),
+        tickets:  get(ticketsRes,  ['total', 'count']),
       });
     } catch {}
   }, []);
 
-  useEffect(() => { fetchBadges(); const t = setInterval(fetchBadges, 120000); return () => clearInterval(t); }, [fetchBadges]);
+  useEffect(() => {
+    fetchBadges();
+    const t = setInterval(fetchBadges, 120000);
+    return () => clearInterval(t);
+  }, [fetchBadges]);
 
-  const toggleGroup = (label) => setOpenGroups(p => ({ ...p, [label]: !p[label] }));
+  const toggleGroup = (label) => setOpenGroups((p) => ({ ...p, [label]: !p[label] }));
 
-  const initials = user?.name?.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase() || 'U';
+  const initials = user?.name?.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() || 'U';
 
   return (
     <aside style={{
       width: collapsed ? '64px' : '240px',
       minWidth: collapsed ? '64px' : '240px',
-      background: '#16181D',
-      borderRight: '1px solid rgba(255,255,255,0.06)',
-      display: 'flex', flexDirection: 'column',
-      height: '100vh', position: 'sticky', top: 0,
+      background: C.bg,
+      borderRight: `1px solid ${C.border}`,
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100vh',
+      position: 'sticky',
+      top: 0,
       transition: 'width 0.25s cubic-bezier(0.4,0,0.2,1), min-width 0.25s cubic-bezier(0.4,0,0.2,1)',
-      overflow: 'hidden', zIndex: 40,
+      overflow: 'hidden',
+      zIndex: 40,
       fontFamily: 'var(--font-body)',
     }}>
 
       {/* Logo + Collapse */}
       <div style={{
         padding: collapsed ? '16px 0' : '16px 16px',
-        display: 'flex', alignItems: 'center',
+        display: 'flex',
+        alignItems: 'center',
         justifyContent: collapsed ? 'center' : 'space-between',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        borderBottom: `1px solid ${C.border}`,
         minHeight: '60px',
       }}>
         {!collapsed && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{
-              width: '32px', height: '32px',
-              background: 'linear-gradient(135deg, #6366F1, #4F46E5)',
+              width: '34px', height: '34px',
+              background: C.accent,
               borderRadius: '8px',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               flexShrink: 0,
+              boxShadow: 'inset 0 -2px 0 rgba(0,0,0,0.15)',
             }}>
-              <span style={{ color: '#fff', fontSize: '14px', fontWeight: '700', fontFamily: 'var(--font-display)' }}>G</span>
+              <span style={{ color: '#F5EFE3', fontSize: '15px', fontWeight: 700, fontFamily: 'var(--font-display, "Fraunces", serif)', letterSpacing: '-0.02em' }}>G</span>
             </div>
             <div>
-              <p style={{ color: '#fff', fontSize: '13px', fontWeight: '700', lineHeight: 1.2, fontFamily: 'var(--font-display)' }}>Global Clean</p>
-              <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '10px', lineHeight: 1 }}>CRM Pro</p>
+              <p style={{ color: C.textMain, fontSize: '13px', fontWeight: 600, lineHeight: 1.2, margin: 0, fontFamily: 'var(--font-display, "Fraunces", serif)', letterSpacing: '-0.01em' }}>
+                Global Clean
+              </p>
+              <p style={{ color: C.textDim, fontSize: '9.5px', lineHeight: 1, margin: '2px 0 0', fontFamily: 'var(--font-mono, ui-monospace, monospace)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
+                Atelier · CRM
+              </p>
             </div>
           </div>
         )}
         {collapsed && (
           <div style={{
-            width: '32px', height: '32px',
-            background: 'linear-gradient(135deg, #6366F1, #4F46E5)',
+            width: '34px', height: '34px',
+            background: C.accent,
             borderRadius: '8px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <span style={{ color: '#fff', fontSize: '14px', fontWeight: '700' }}>G</span>
+            <span style={{ color: '#F5EFE3', fontSize: '15px', fontWeight: 700, fontFamily: 'var(--font-display, "Fraunces", serif)' }}>G</span>
           </div>
         )}
         {!collapsed && (
@@ -185,19 +212,20 @@ export default function Sidebar() {
             style={{
               width: '24px', height: '24px',
               borderRadius: '6px',
-              background: 'rgba(255,255,255,0.06)',
-              border: 'none', cursor: 'pointer',
+              background: 'transparent',
+              border: `1px solid ${C.border}`,
+              cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'rgba(255,255,255,0.4)',
+              color: C.textMuted,
               transition: 'all 0.15s ease',
             }}
+            aria-label="Réduire la sidebar"
           >
             <ChevronLeft size={13} />
           </button>
         )}
       </div>
 
-      {/* Expand button when collapsed */}
       {collapsed && (
         <button
           onClick={() => setCollapsed(false)}
@@ -205,41 +233,51 @@ export default function Sidebar() {
             margin: '8px auto',
             width: '32px', height: '32px',
             borderRadius: '8px',
-            background: 'rgba(255,255,255,0.06)',
-            border: 'none', cursor: 'pointer',
+            background: 'transparent',
+            border: `1px solid ${C.border}`,
+            cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'rgba(255,255,255,0.4)',
+            color: C.textMuted,
           }}
+          aria-label="Développer la sidebar"
         >
           <ChevronRight size={13} />
         </button>
       )}
 
       {/* Nav */}
-      <nav style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '8px 0' }}
-        className="hide-scrollbar">
-        {NAV_GROUPS.map(group => (
+      <nav
+        style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '8px 0' }}
+        className="hide-scrollbar"
+      >
+        {NAV_GROUPS.map((group) => (
           <div key={group.label} style={{ marginBottom: '2px' }}>
 
-            {/* Group header */}
             {!collapsed && (
               <button
                 onClick={() => toggleGroup(group.label)}
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '6px 16px',
+                  padding: '8px 18px 4px',
                   background: 'none', border: 'none', cursor: 'pointer',
                   transition: 'all 0.15s ease',
                 }}
               >
-                <span style={{ fontSize: '10px', fontWeight: '600', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                <span style={{
+                  fontSize: '9.5px',
+                  fontWeight: 600,
+                  color: C.textDim,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+                }}>
                   {group.label}
                 </span>
                 <ChevronDown
-                  size={12}
+                  size={11}
                   style={{
-                    color: 'rgba(255,255,255,0.25)',
+                    color: C.textDim,
                     transform: openGroups[group.label] ? 'rotate(0deg)' : 'rotate(-90deg)',
                     transition: 'transform 0.2s ease',
                   }}
@@ -247,12 +285,12 @@ export default function Sidebar() {
               </button>
             )}
 
-            {/* Items */}
             {(collapsed || openGroups[group.label]) && (
               <div>
-                {group.items.map(item => {
+                {group.items.map((item) => {
                   const Icon = item.icon;
-                  const isActive = location.pathname === item.to ||
+                  const isActive =
+                    location.pathname === item.to ||
                     (item.to !== '/dashboard' && location.pathname.startsWith(item.to));
                   const badgeCount = item.badge ? badges[item.badge] : null;
 
@@ -264,49 +302,54 @@ export default function Sidebar() {
                       style={{
                         display: 'flex', alignItems: 'center',
                         gap: '10px',
-                        padding: collapsed ? '10px 0' : '8px 16px',
+                        padding: collapsed ? '10px 0' : '8px 14px',
                         justifyContent: collapsed ? 'center' : 'flex-start',
                         margin: collapsed ? '0' : '1px 8px',
-                        borderRadius: collapsed ? '0' : '8px',
-                        background: isActive
-                          ? `rgba(99,102,241,0.18)`
-                          : 'transparent',
+                        borderRadius: collapsed ? '0' : '6px',
+                        background: isActive ? C.bgActive : 'transparent',
                         borderLeft: isActive && !collapsed
-                          ? `3px solid ${group.color}`
-                          : collapsed ? 'none' : '3px solid transparent',
+                          ? `2px solid ${group.color}`
+                          : collapsed ? 'none' : '2px solid transparent',
                         textDecoration: 'none',
                         transition: 'all 0.15s ease',
                         position: 'relative',
                       }}
-                      onMouseEnter={e => {
-                        if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                      onMouseEnter={(e) => {
+                        if (!isActive) e.currentTarget.style.background = C.bgHover;
                       }}
-                      onMouseLeave={e => {
+                      onMouseLeave={(e) => {
                         if (!isActive) e.currentTarget.style.background = 'transparent';
                       }}
                     >
                       <Icon
                         size={16}
-                        style={{ color: isActive ? group.color : 'rgba(255,255,255,0.45)', flexShrink: 0 }}
+                        style={{
+                          color: isActive ? group.color : C.textMuted,
+                          flexShrink: 0,
+                          strokeWidth: isActive ? 2.2 : 1.8,
+                        }}
                       />
                       {!collapsed && (
                         <span style={{
                           fontSize: '13px',
-                          fontWeight: isActive ? '600' : '400',
-                          color: isActive ? '#fff' : 'rgba(255,255,255,0.6)',
+                          fontWeight: isActive ? 600 : 400,
+                          color: isActive ? C.textMain : C.textMuted,
                           flex: 1, whiteSpace: 'nowrap',
+                          letterSpacing: '-0.005em',
                         }}>
                           {item.label}
                         </span>
                       )}
                       {!collapsed && badgeCount > 0 && (
                         <span style={{
-                          fontSize: '10px', fontWeight: '700',
+                          fontSize: '10px', fontWeight: 700,
                           padding: '1px 6px',
                           background: group.color,
-                          color: '#fff',
+                          color: '#F5EFE3',
                           borderRadius: '20px',
                           minWidth: '18px', textAlign: 'center',
+                          fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+                          fontVariantNumeric: 'tabular-nums',
                         }}>
                           {badgeCount > 99 ? '99+' : badgeCount}
                         </span>
@@ -314,9 +357,10 @@ export default function Sidebar() {
                       {collapsed && badgeCount > 0 && (
                         <span style={{
                           position: 'absolute', top: '6px', right: '6px',
-                          width: '8px', height: '8px',
+                          width: '7px', height: '7px',
                           background: group.color,
                           borderRadius: '50%',
+                          boxShadow: `0 0 0 2px ${C.bg}`,
                         }} />
                       )}
                     </NavLink>
@@ -328,26 +372,26 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Bottom section */}
-      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '12px' }}>
+      {/* Bottom */}
+      <div style={{ borderTop: `1px solid ${C.border}`, padding: '12px' }}>
 
-        {/* Theme toggle */}
         {!collapsed && (
           <button
             onClick={() => updateTheme('theme', isDark ? 'light' : 'dark')}
             style={{
               width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
               padding: '8px 10px', marginBottom: '8px',
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: '8px', cursor: 'pointer',
-              color: 'rgba(255,255,255,0.6)',
-              fontSize: '12px', fontWeight: '500',
+              background: 'transparent',
+              border: `1px solid ${C.border}`,
+              borderRadius: '6px', cursor: 'pointer',
+              color: C.textMuted,
+              fontSize: '12px', fontWeight: 500,
               transition: 'all 0.15s ease',
+              fontFamily: 'inherit',
             }}
           >
-            <span style={{ fontSize: '14px' }}>{isDark ? '☀️' : '🌙'}</span>
-            <span>{isDark ? 'Mode Clair' : 'Mode Sombre'}</span>
+            {isDark ? <Sun size={13} /> : <Moon size={13} />}
+            <span>{isDark ? 'Mode clair' : 'Mode sombre'}</span>
           </button>
         )}
 
@@ -357,24 +401,34 @@ export default function Sidebar() {
           gap: collapsed ? '0' : '10px',
           justifyContent: collapsed ? 'center' : 'flex-start',
           padding: collapsed ? '8px 0' : '8px 10px',
-          borderRadius: '8px',
-          background: 'rgba(255,255,255,0.03)',
+          borderRadius: '6px',
+          background: 'rgba(255, 248, 235, 0.03)',
         }}>
           <div style={{
             width: '32px', height: '32px', borderRadius: '50%',
-            background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+            background: `linear-gradient(135deg, ${C.brand}, ${C.accent})`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', fontSize: '12px', fontWeight: '700',
+            color: '#F5EFE3', fontSize: '11px', fontWeight: 700,
             flexShrink: 0,
+            fontFamily: 'var(--font-display, "Fraunces", serif)',
+            letterSpacing: '0.02em',
           }}>
             {initials}
           </div>
           {!collapsed && (
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ color: '#fff', fontSize: '12px', fontWeight: '600', truncate: true, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <p style={{
+                color: C.textMain, fontSize: '12px', fontWeight: 600,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                margin: 0,
+              }}>
                 {user?.name || 'Utilisateur'}
               </p>
-              <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <p style={{
+                color: C.textDim, fontSize: '10px',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                margin: '1px 0 0',
+              }}>
                 {user?.email || ''}
               </p>
             </div>
@@ -386,11 +440,20 @@ export default function Sidebar() {
               style={{
                 width: '28px', height: '28px',
                 borderRadius: '6px',
-                background: 'rgba(239,68,68,0.1)',
-                border: '1px solid rgba(239,68,68,0.2)',
+                background: 'transparent',
+                border: `1px solid ${C.border}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', color: '#EF4444',
+                cursor: 'pointer', color: C.textMuted,
                 flexShrink: 0,
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = C.accent;
+                e.currentTarget.style.borderColor = 'rgba(194,65,12,0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = C.textMuted;
+                e.currentTarget.style.borderColor = C.border;
               }}
             >
               <LogOut size={13} />
@@ -404,20 +467,36 @@ export default function Sidebar() {
             <button
               onClick={() => navigate('/portal')}
               style={{
-                flex: 1, padding: '6px', fontSize: '10px', fontWeight: '500',
-                background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)',
-                borderRadius: '6px', cursor: 'pointer', color: '#10B981',
+                flex: 1, padding: '7px 6px',
+                fontSize: '10px', fontWeight: 500,
+                background: 'transparent',
+                border: `1px solid ${C.border}`,
+                borderRadius: '6px', cursor: 'pointer',
+                color: C.textMuted,
+                fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+                letterSpacing: '0.04em',
+                transition: 'all 0.15s ease',
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = C.brand; e.currentTarget.style.borderColor = 'rgba(4,120,87,0.4)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = C.textMuted; e.currentTarget.style.borderColor = C.border; }}
             >
               Portail Client
             </button>
             <button
               onClick={() => navigate('/intervenant')}
               style={{
-                flex: 1, padding: '6px', fontSize: '10px', fontWeight: '500',
-                background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)',
-                borderRadius: '6px', cursor: 'pointer', color: '#6366F1',
+                flex: 1, padding: '7px 6px',
+                fontSize: '10px', fontWeight: 500,
+                background: 'transparent',
+                border: `1px solid ${C.border}`,
+                borderRadius: '6px', cursor: 'pointer',
+                color: C.textMuted,
+                fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+                letterSpacing: '0.04em',
+                transition: 'all 0.15s ease',
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = C.accent; e.currentTarget.style.borderColor = 'rgba(194,65,12,0.4)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = C.textMuted; e.currentTarget.style.borderColor = C.border; }}
             >
               Portail Intervenant
             </button>
@@ -427,4 +506,4 @@ export default function Sidebar() {
     </aside>
   );
 }
-// HTTPS v3 - Tue Apr 14 17:33:52 UTC 2026
+// Atelier direction - Sidebar
