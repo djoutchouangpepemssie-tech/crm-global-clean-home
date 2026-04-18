@@ -1,14 +1,19 @@
 import React from 'react';
-import { Calendar, Search, Bell } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import NotificationCenter from '../notifications/NotificationCenter';
 
+/**
+ * Header — ATELIER direction
+ * Utilise les tokens CSS existants (--bg-card, --text-primary, etc.)
+ * Ajustements : hiérarchie typo plus forte, datepill en crème mate.
+ */
 const Header = ({ title, subtitle, actions }) => {
   return (
     <div style={{
-      background: 'var(--bg-card)',
-      borderBottom: '1px solid var(--border-default)',
+      background: 'var(--bg-card, #FFFFFF)',
+      borderBottom: '1px solid var(--border-default, #E5E0D6)',
       padding: '0 24px',
-      height: '60px',
+      height: '64px',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -20,12 +25,13 @@ const Header = ({ title, subtitle, actions }) => {
     }}>
 
       {/* Left — Title */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', minWidth: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
         <h1 style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: '16px',
-          fontWeight: '700',
-          color: 'var(--text-primary)',
+          fontFamily: 'var(--font-display, "Fraunces", serif)',
+          fontSize: '18px',
+          fontWeight: 600,
+          letterSpacing: '-0.015em',
+          color: 'var(--text-primary, #1C1915)',
           margin: 0,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
@@ -34,26 +40,34 @@ const Header = ({ title, subtitle, actions }) => {
           {title}
         </h1>
         {subtitle && (
-          <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>
+          <p style={{
+            fontSize: '11px',
+            color: 'var(--text-muted, #78716C)',
+            margin: 0,
+            fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+            letterSpacing: '0.02em',
+          }}>
             {subtitle}
           </p>
         )}
       </div>
 
       {/* Right — Actions + Date + Notifications */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
         {actions}
 
-        {/* Date */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: '6px',
           padding: '6px 12px',
-          background: 'var(--bg-muted)',
-          borderRadius: 'var(--radius-md)',
+          background: 'var(--bg-muted, #F5EFE3)',
+          border: '1px solid var(--border-default, #E5E0D6)',
+          borderRadius: 'var(--radius-md, 6px)',
           fontSize: '11px',
-          color: 'var(--text-muted)',
-          fontWeight: '500',
+          color: 'var(--text-muted, #78716C)',
+          fontWeight: 500,
           whiteSpace: 'nowrap',
+          fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+          letterSpacing: '0.02em',
         }}>
           <Calendar size={12} />
           {new Date().toLocaleDateString('fr-FR', {
