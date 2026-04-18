@@ -221,18 +221,8 @@ const tokenStyle = `
 `;
 
 /* ─── Demo data ────────────────────────────────────────────────── */
-const DEMO_LEADS = [
-  { id: 1, full_name: 'Marie Dupont',   city: 'Paris 11e',         email: 'marie.dupont@email.com',   phone: '06 12 34 56 78' },
-  { id: 2, full_name: 'Thomas Martin',  city: 'Paris 7e',          email: 'thomas.martin@email.com',  phone: '06 23 45 67 89' },
-  { id: 3, full_name: 'Sophie Bernard', city: 'Neuilly-sur-Seine', email: 'sophie.bernard@email.com', phone: '06 34 56 78 90' },
-  { id: 4, full_name: 'Antoine Leroy',  city: 'Vincennes',         email: 'antoine.leroy@email.com',  phone: '06 45 67 89 01' },
-  { id: 5, full_name: 'Camille Petit',  city: 'Paris 16e',         email: 'camille.petit@email.com',  phone: '06 56 78 90 12' },
-];
-
-const DEMO_SIMILAR = [
-  { id: 101, number: 'D-2024-008', client: 'Paul Lambert',   amount: 9200, status: 'accepté' },
-  { id: 102, number: 'D-2024-002', client: 'Thomas Martin',  amount: 840,  status: 'accepté' },
-];
+const DEMO_LEADS = [];
+const DEMO_SIMILAR = [];
 
 const SERVICE_SUGGESTIONS = [
   { label: 'Ménage régulier (2h/semaine)',        unit: 'mois',    price: 320 },

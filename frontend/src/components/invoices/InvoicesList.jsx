@@ -488,27 +488,17 @@ const InvoicesList = () => {
   );
 };
 
-// ---- FALLBACK -----------------------------------
+// ---- FALLBACK (vide — pas de données fictives) ---
 const FALLBACK = {
   stats: {
-    caBilled: 284600, caPrev: 240300, caDelta: 18.4,
-    caPaid: 198000, paidDelta: 12, paidRatio: 69.7,
-    caPending: 62400, pendingCount: 14,
-    caOverdue: 24200,
-    recoveryRate: 94.2, dso: 32, remindersSent: 47, nextDue: 'lundi 17 fév.',
-    cashFlow: 173,
+    caBilled: 0, caPrev: 0, caDelta: 0,
+    caPaid: 0, paidDelta: 0, paidRatio: 0,
+    caPending: 0, pendingCount: 0,
+    caOverdue: 0,
+    recoveryRate: 0, dso: 0, remindersSent: 0, nextDue: '—',
+    cashFlow: 0,
   },
-  invoices: [
-    { id: 1, ref: 'FAC-2024-1287', type: 'situation', situationNum: 3, clientName: 'Famille Leclerc',    clientCity: 'Paris 15e',         project: 'rénovation complète',   tvaLabel: '10%',       amountHT: 11400, amountTTC: 12540, emittedDate: '2024-12-04', dueDate: '2025-01-04', remindersDone: 3, status: 'overdue' },
-    { id: 2, ref: 'FAC-2025-0042', type: 'finale',    clientName: 'SCI Duranton',        clientCity: 'Neuilly-sur-Seine',  project: 'extension',             tvaLabel: '5,5/10', tvaMulti: true, amountHT: 7530,  amountTTC: 8240,  emittedDate: '2025-01-02', dueDate: '2025-02-02', remindersDone: 2, status: 'overdue' },
-    { id: 3, ref: 'FAC-2025-0031', type: 'acompte',   clientName: 'M. & Mme Martinet',   clientCity: 'Versailles',         project: 'cuisine + SdB',         tvaLabel: '20%',       amountHT: 2833,  amountTTC: 3400,  emittedDate: '2025-01-20', dueDate: '2025-02-05', remindersDone: 1, status: 'overdue' },
-    { id: 4, ref: 'FAC-2025-0058', type: 'situation', situationNum: 2, clientName: 'Maison Bertrand',    clientCity: 'Paris 7e',          project: 'hôtel particulier',    tvaLabel: '10%',       amountHT: 26000, amountTTC: 28600, emittedDate: '2025-02-08', dueDate: '2025-03-10', remindersDone: 0, status: 'emitted' },
-    { id: 5, ref: 'FAC-2025-0057', type: 'finale',    retenue: true,   clientName: 'Famille Roussel',    clientCity: 'Boulogne',          project: 'rénovation intégrale', tvaLabel: '10%',       amountHT: 16755, amountTTC: 18430, emittedDate: '2025-02-07', dueDate: '2025-03-09', remindersDone: 0, status: 'emitted' },
-    { id: 6, ref: 'FAC-2025-0051', type: 'situation', situationNum: 1, clientName: 'M. Valentin Moreau', clientCity: 'Paris 16e',         project: 'SdB + cuisine',        tvaLabel: '10%',       amountHT: 8909,  amountTTC: 9800,  emittedDate: '2025-01-15', dueDate: '2025-02-14', paidIn: 0,  status: 'paid' },
-    { id: 7, ref: 'FAC-2025-0048', type: 'acompte',   clientName: 'Famille Kerviel',     clientCity: 'Saint-Cloud',        project: 'maison 180m²',          tvaLabel: '20%',       amountHT: 12000, amountTTC: 14400, emittedDate: '2025-01-10', dueDate: '2025-01-15', paidIn: 2,  status: 'paid' },
-    { id: 8, ref: 'FAC-2025-0062', type: 'acompte',   clientName: 'M. Dubois',           clientCity: 'Paris 11e',          project: 'loft 95m²',             tvaLabel: '20%',       amountHT: 8250,  amountTTC: 9900,  emittedDate: null,          dueDate: null,         remindersDone: 0, status: 'draft' },
-    { id: 9, ref: 'FAC-2025-0029', type: 'finale',    clientName: 'Mme Chastel',         clientCity: 'Paris 8e',          project: 'appartement haussmannien', tvaLabel: '5,5/10/20', tvaMulti: true, amountHT: 38009, amountTTC: 42800, emittedDate: '2025-01-04', dueDate: '2025-02-04', paidIn: 28, status: 'paid' },
-  ],
+  invoices: [],
 };
 
 export default InvoicesList;

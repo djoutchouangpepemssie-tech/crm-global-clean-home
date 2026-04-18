@@ -570,72 +570,116 @@ const LeadDetail = () => {
   const navigate = useNavigate();
 
   const [data, setData] = useState(null);
+  const [loadError, setLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
   const [channel, setChannel] = useState('email');
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    api.get(`/leads/${id}`)
-      .then(r => { if (alive) setData(r.data); })
-      .catch(() => {})
-      .finally(() => { if (alive) setLoading(false); });
+    setLoadError(false);
+    Promise.all([
+      api.get(`/leads/${id}`),
+      api.get('/interactions', { params: { lead_id: id } }).catch(() => ({ data: [] })),
+      api.get('/quotes', { params: { lead_id: id, page_size: 20 } }).catch(() => ({ data: [] })),
+    ]).then(([leadR, intR, quotesR]) => {
+      if (!alive) return;
+      const raw = leadR.data;
+      if (!raw || !raw.lead_id) { setLoadError(true); return; }
+
+      const nameParts = (raw.name || '').trim().split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      const score = raw.score ?? 50;
+      const temperature = score >= 75 ? 'hot' : score >= 45 ? 'warm' : 'cold';
+
+      const lead = {
+        code: raw.lead_id,
+        firstName,
+        lastName,
+        summary: raw.message || `${raw.service_type}${raw.address ? ' — ' + raw.address : ''}`,
+        temperature,
+        aiScore: score,
+        aiScoreDelta: 0,
+        budget: null,
+        budgetNote: null,
+        deadlineDays: null,
+        engagementScore: score,
+        source: raw.source || '—',
+        createdAt: raw.created_at,
+        email: raw.email,
+        phone: raw.phone,
+        address: raw.address || '',
+        addressShort: raw.address ? raw.address.split(',').slice(0, 2).join(',').trim() : '',
+        currentStage: raw.status || 'nouveau',
+        stageHistory: {},
+        tags: raw.tags || [],
+        service_type: raw.service_type,
+      };
+
+      const interactions = Array.isArray(intR.data) ? intR.data : (intR.data?.items || []);
+      const groupedByDay = {};
+      interactions.forEach(int => {
+        const date = new Date(int.created_at);
+        const dayKey = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+        if (!groupedByDay[dayKey]) groupedByDay[dayKey] = { label: dayKey, items: [] };
+        groupedByDay[dayKey].items.push({
+          type: int.type || 'note',
+          at: int.created_at,
+          by: int.created_by || 'Système',
+          body: int.content || '',
+          title: int.subject || null,
+        });
+      });
+      const timeline = Object.values(groupedByDay);
+
+      const rawQuotes = Array.isArray(quotesR.data) ? quotesR.data : (quotesR.data?.items || []);
+      const STATUS_Q = { 'accepté': 'accepted', 'envoyé': 'pending', 'brouillon': 'draft', 'refusé': 'draft' };
+      const quotes = rawQuotes.map(q => ({
+        ref: q.quote_number || (q.quote_id || '').slice(-8).toUpperCase() || '—',
+        date: q.created_at ? new Date(q.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '—',
+        title: q.title || q.service_type || '—',
+        amount: q.amount || 0,
+        status: STATUS_Q[q.status] || 'draft',
+      }));
+
+      const synthesis = {
+        summary: raw.message
+          ? `${firstName} ${lastName} — ${raw.service_type}. ${raw.message}`
+          : `${firstName} ${lastName} est un prospect ${raw.service_type} (${raw.source || 'source inconnue'}). Score IA : ${score}/100. Statut : ${raw.status}.`,
+        nextAction: {
+          text: score >= 70
+            ? `Relancer ${firstName} pour valider le devis et confirmer le démarrage.`
+            : `Qualifier ${firstName} — appel de découverte recommandé.`,
+          type: 'call',
+        },
+      };
+
+      const engagement = {
+        opens: interactions.filter(i => i.type === 'email').length,
+        opensTotal: interactions.filter(i => i.type === 'email').length || 1,
+        responseHours: 24,
+        clicks: interactions.length,
+        quoteViews: quotes.length,
+        meetingsHonored: interactions.filter(i => i.type === 'rdv').length,
+        meetingsTotal: Math.max(interactions.filter(i => i.type === 'rdv').length, 1),
+      };
+
+      setData({ lead, synthesis, timeline, quotes, engagement });
+    }).catch(() => {
+      if (alive) setLoadError(true);
+    }).finally(() => {
+      if (alive) setLoading(false);
+    });
     return () => { alive = false; };
-  }, [id]);
+  }, [id, retryCount]);
 
-  const lead = data?.lead || {
-    code: 'L-2410-184',
-    firstName: 'Sophie',
-    lastName: 'Dubois',
-    summary: 'Rénovation complète — appartement haussmannien, 4 pièces, 110 m². Budget confirmé 42 000 €.',
-    temperature: 'hot',
-    aiScore: 94,
-    aiScoreDelta: 8,
-    budget: 42000,
-    budgetNote: 'Confirmé par téléphone',
-    deadlineDays: 15,
-    engagementScore: 92,
-    source: 'Site web',
-    createdAt: '2025-10-11T16:48:00',
-    email: 'sophie.dubois@gmail.com',
-    phone: '06 74 52 18 09',
-    address: '42 avenue Victor Hugo, 75116 Paris',
-    addressShort: '42 av. Victor Hugo',
-    currentStage: 'negociation',
-    stageHistory: { nouveau: '11 oct.', qualifie: '11 oct.', visite: '13 oct.', devis: '14 oct.' },
-    tags: ['Paris 16e', 'Haussmannien', 'Rénov complète', 'Budget >40k', 'Recommandation', 'Délai court', 'VIP'],
-  };
-
-  const synthesis = data?.synthesis || {
-    summary: `Sophie Dubois a contacté l'atelier le 11 octobre via le site web pour une <strong>rénovation complète</strong> de son appartement haussmannien du 16e (110 m², 4 pièces). Premier RDV sur place effectué le 13 octobre — <strong>devis envoyé le 14 octobre pour 42 000 €</strong>, accueilli très favorablement. Elle a ouvert le devis <strong>7 fois en 3 jours</strong>, répond en moyenne sous 2h, et souhaite démarrer <strong>avant la fin du mois</strong>. Aucun concurrent identifié.`,
-    nextAction: { text: 'Relancer aujourd\'hui avant 18h par téléphone — objet : validation RDV signature.', type: 'call' },
-  };
-
-  const timeline = data?.timeline || [
-    { label: "Aujourd'hui · 15 oct.", items: [
-      { type: 'email', at: '2025-10-15T14:22', by: 'Ouverture #7 · iPhone', title: 'Devis — Rénovation 110 m² Paris 16e', body: 'Ouvert par Sophie Dubois · consultation 4 min 12 s · page "récapitulatif" vue deux fois.' },
-      { type: 'status', at: '2025-10-15T11:40', by: 'Marie B.', title: 'Statut mis à jour : <em style="font-style:italic;color:var(--accent);">Négociation → Signature imminente</em>', body: 'Score IA recalculé : 86% → 94%.' },
-    ]},
-    { label: 'Hier · 14 oct.', items: [
-      { type: 'quote', at: '2025-10-14T17:04', by: 'Marie B.', title: 'DEV-2410-092 · 42 000 € TTC', body: 'Rénovation complète — 12 postes · délai estimé 8 semaines.', attachments: [{ icon: '📄', name: 'Devis_DEV-2410-092.pdf', size: '2,4 Mo' }] },
-      { type: 'note', at: '2025-10-14T15:30', by: 'Marie B.', body: 'Cliente très intéressée. Souhaite démarrer avant le 30 oct. Attentive aux finitions. Recommandée par Catherine P.' },
-    ]},
-    { label: '13 oct.', items: [
-      { type: 'rdv', at: '2025-10-13T10:00', by: 'Marie B.', title: 'Visite technique · 42 av. Victor Hugo', duration: '1h45', body: 'Relevé complet · 4 pièces + cuisine + SdB. Photos prises.', attachments: [{ icon: '🖼', name: '16 photos' }, { icon: '📄', name: 'plans.pdf' }] },
-    ]},
-    { label: '11 oct.', items: [
-      { type: 'status', at: '2025-10-11T16:48', by: 'Formulaire site web', title: 'Nouveau lead qualifié automatiquement', body: 'Formulaire complet · budget renseigné · assigné à Marie B.' },
-    ]},
-  ];
-
-  const quotes = data?.quotes || [
-    { ref: 'DEV-2410-092', date: '14 oct.', title: 'Rénovation complète · 110 m²', amount: 42000, status: 'pending' },
-    { ref: 'DEV-2410-091', date: '13 oct.', title: 'Estimation initiale', amount: 38500, status: 'draft' },
-  ];
-
-  const engagement = data?.engagement || {
-    opens: 7, opensTotal: 7, responseHours: 2, clicks: 12, quoteViews: 4, meetingsHonored: 1, meetingsTotal: 1,
-  };
+  const lead = data?.lead;
+  const synthesis = data?.synthesis;
+  const timeline = data?.timeline || [];
+  const quotes = data?.quotes || [];
+  const engagement = data?.engagement || { opens: 0, opensTotal: 1, responseHours: 0, clicks: 0, quoteViews: 0, meetingsHonored: 0, meetingsTotal: 1 };
 
   const handleAction = (type) => {
     if (['email', 'sms', 'note', 'rdv'].includes(type)) setChannel(type);
@@ -643,8 +687,8 @@ const LeadDetail = () => {
   };
 
   const handleSend = ({ channel: ch, subject, body }) => {
-    api.post(`/leads/${id}/interactions`, { type: ch, subject, body })
-      .then(() => window.location.reload())
+    api.post('/interactions', { lead_id: id, type: ch, content: [subject, body].filter(Boolean).join('\n') })
+      .then(() => setRetryCount(c => c + 1))
       .catch(e => console.error(e));
   };
 
@@ -654,6 +698,25 @@ const LeadDetail = () => {
         <style>{tokenStyle}</style>
         <div className="ld-display" style={{ fontStyle: 'italic', color: 'var(--ink-3)', fontSize: 17 }}>
           Chargement du dossier…
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError || !lead) {
+    return (
+      <div className="ld-root" style={{ padding: '56px 56px 120px', maxWidth: 1520, margin: '0 auto' }}>
+        <style>{tokenStyle}</style>
+        <div style={{ background: 'var(--surface)', border: '1.5px solid var(--line)', borderRadius: 14, padding: 32, textAlign: 'center' }}>
+          <div className="ld-display" style={{ fontSize: 18, color: 'var(--ink-2)', marginBottom: 12 }}>
+            Impossible de charger ce lead.
+          </div>
+          <button
+            onClick={() => { setData(null); setLoadError(false); setLoading(true); setRetryCount(c => c + 1); }}
+            style={{ padding: '9px 22px', borderRadius: 9, background: 'var(--accent)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+          >
+            Réessayer
+          </button>
         </div>
       </div>
     );
