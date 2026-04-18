@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '../../shared';
 import axios from 'axios';
 import api from '../../../lib/api';
@@ -13,10 +13,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { Package, RefreshCw, AlertTriangle, TrendingDown, TrendingUp, BarChart3 } from 'lucide-react';
 
 const STATUS_COLORS = {
-  ok: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+  ok: 'bg-brand-500/10 text-brand-500 border-brand-500/20',
   warning: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-  critical: 'bg-red-500/10 text-red-500 border-red-500/20',
-  overstock: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+  critical: 'bg-terracotta-500/10 text-terracotta-500 border-terracotta-500/20',
+  overstock: 'bg-neutral-500/10 text-neutral-500 border-neutral-500/20',
 };
 
 export default function StockAdvanced() {
@@ -95,10 +95,10 @@ export default function StockAdvanced() {
 
           {loading ? <Loader /> : valuation ? (
             <>
-              <Card className="bg-violet-500/5 border-violet-500/20">
+              <Card className="bg-brand-500/5 border-brand-500/20">
                 <CardContent className="p-5 text-center">
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Valeur totale ({valuation.method})</div>
-                  <div className="text-3xl font-bold text-violet-500">{fmt(valuation.grand_total)}</div>
+                  <div className="text-3xl font-bold text-brand-500">{fmt(valuation.grand_total)}</div>
                   <div className="text-xs text-muted-foreground mt-1">{valuation.item_count} article(s)</div>
                 </CardContent>
               </Card>
@@ -141,19 +141,19 @@ export default function StockAdvanced() {
           {loading ? <Loader /> : forecast ? (
             <>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="bg-red-500/5 border-red-500/20"><CardContent className="p-4 text-center">
+                <Card className="bg-terracotta-500/5 border-terracotta-500/20"><CardContent className="p-4 text-center">
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Critique</div>
-                  <div className="text-2xl font-bold text-red-500">{forecast.critical}</div>
+                  <div className="text-2xl font-bold text-terracotta-500">{forecast.critical}</div>
                 </CardContent></Card>
                 <Card className="bg-amber-500/5 border-amber-500/20"><CardContent className="p-4 text-center">
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Attention</div>
                   <div className="text-2xl font-bold text-amber-500">{forecast.warning}</div>
                 </CardContent></Card>
-                <Card className="bg-blue-500/5 border-blue-500/20"><CardContent className="p-4 text-center">
+                <Card className="bg-neutral-500/5 border-neutral-500/20"><CardContent className="p-4 text-center">
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Surstock</div>
-                  <div className="text-2xl font-bold text-blue-500">{forecast.overstock}</div>
+                  <div className="text-2xl font-bold text-neutral-500">{forecast.overstock}</div>
                 </CardContent></Card>
-                <Card className="bg-emerald-500/5 border-emerald-500/20"><CardContent className="p-4 text-center">
+                <Card className="bg-brand-500/5 border-brand-500/20"><CardContent className="p-4 text-center">
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Total</div>
                   <div className="text-2xl font-bold">{(forecast.forecasts || []).length}</div>
                 </CardContent></Card>
@@ -203,28 +203,28 @@ export default function StockAdvanced() {
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Total articles</div>
                   <div className="text-xl font-bold">{reconciliation.total_items}</div>
                 </CardContent></Card>
-                <Card className={`${reconciliation.discrepancies > 0 ? 'bg-red-500/5 border-red-500/20' : 'bg-emerald-500/5 border-emerald-500/20'}`}>
+                <Card className={`${reconciliation.discrepancies > 0 ? 'bg-terracotta-500/5 border-terracotta-500/20' : 'bg-brand-500/5 border-brand-500/20'}`}>
                   <CardContent className="p-4 text-center">
                     <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Écarts</div>
-                    <div className={`text-xl font-bold ${reconciliation.discrepancies > 0 ? 'text-red-500' : 'text-emerald-500'}`}>{reconciliation.discrepancies}</div>
+                    <div className={`text-xl font-bold ${reconciliation.discrepancies > 0 ? 'text-terracotta-500' : 'text-brand-500'}`}>{reconciliation.discrepancies}</div>
                   </CardContent>
                 </Card>
-                <Card className="bg-emerald-500/5 border-emerald-500/20"><CardContent className="p-4 text-center">
+                <Card className="bg-brand-500/5 border-brand-500/20"><CardContent className="p-4 text-center">
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Conformes</div>
-                  <div className="text-xl font-bold text-emerald-500">{reconciliation.total_items - reconciliation.discrepancies}</div>
+                  <div className="text-xl font-bold text-brand-500">{reconciliation.total_items - reconciliation.discrepancies}</div>
                 </CardContent></Card>
               </div>
 
               {reconciliation.discrepancy_items?.length > 0 && (
-                <Card className="border-red-500/30 overflow-hidden">
-                  <CardHeader className="pb-2 bg-red-500/5">
-                    <CardTitle className="text-sm font-semibold text-red-500 flex items-center gap-2">
+                <Card className="border-terracotta-500/30 overflow-hidden">
+                  <CardHeader className="pb-2 bg-terracotta-500/5">
+                    <CardTitle className="text-sm font-semibold text-terracotta-500 flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4" />Articles avec écarts
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
                     <table className="w-full">
-                      <thead className="bg-red-500/5">
+                      <thead className="bg-terracotta-500/5">
                         <tr>
                           <th className="text-left p-3 pl-5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Article</th>
                           <th className="text-right p-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Stock BD</th>
@@ -238,7 +238,7 @@ export default function StockAdvanced() {
                             <td className="p-3 pl-5 text-sm">{item.name || item.item_id}</td>
                             <td className="p-3 text-right font-mono text-sm tabular-nums">{item.db_quantity}</td>
                             <td className="p-3 text-right font-mono text-sm tabular-nums">{item.theoretical_quantity}</td>
-                            <td className={`p-3 pr-5 text-right font-mono text-sm tabular-nums font-semibold ${item.difference > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                            <td className={`p-3 pr-5 text-right font-mono text-sm tabular-nums font-semibold ${item.difference > 0 ? 'text-brand-500' : 'text-terracotta-500'}`}>
                               {item.difference > 0 ? '+' : ''}{item.difference}
                             </td>
                           </tr>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+﻿import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import BACKEND_URL from '../../config';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -26,7 +26,7 @@ import { useConfirm } from '../shared/ConfirmDialog';
 import { PageHeader } from '../shared';
 
 const API = `${BACKEND_URL}/api/accounting/erp`;
-const COLORS = ['#7c3aed', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#8b5cf6', '#14b8a6'];
+const COLORS = ['#047857', '#047857', '#f59e0b', '#c2410c', '#3b82f6', '#ec4899', '#047857', '#14b8a6'];
 
 const CATEGORIES = [
   { value: 'materiel', label: 'Matériel' },
@@ -41,10 +41,10 @@ const CATEGORIES = [
 ];
 
 const STATUS_LABELS = {
-  brouillon: { label: 'Brouillon', color: 'bg-gray-500', icon: '⚪' },
+  brouillon: { label: 'Brouillon', color: 'bg-neutral-500', icon: '⚪' },
   envoyee: { label: 'Envoyée', color: 'bg-yellow-500', icon: '🟡' },
-  payee: { label: 'Payée', color: 'bg-green-500', icon: '🟢' },
-  en_retard: { label: 'En retard', color: 'bg-red-500', icon: '🔴' },
+  payee: { label: 'Payée', color: 'bg-brand-500', icon: '🟢' },
+  en_retard: { label: 'En retard', color: 'bg-terracotta-500', icon: '🔴' },
 };
 
 const fmt = (n) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n || 0);
@@ -62,15 +62,15 @@ export default function AccountingERP() {
       <PageHeader title="ERP Comptable" subtitle="Journaux, TVA, clôtures" />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="flex gap-1 bg-white/5 rounded-2xl p-1.5 overflow-x-auto w-fit mb-2">
-          <TabsTrigger value="dashboard" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-500">📊 Dashboard</TabsTrigger>
-          <TabsTrigger value="invoices" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-500">📄 Factures</TabsTrigger>
-          <TabsTrigger value="expenses" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-500">💸 Dépenses</TabsTrigger>
-          <TabsTrigger value="treasury" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-500">🏦 Trésorerie</TabsTrigger>
-          <TabsTrigger value="journals" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-500">📒 Journaux</TabsTrigger>
-          <TabsTrigger value="tva" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-500">🧾 TVA</TabsTrigger>
-          <TabsTrigger value="reports" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-500">📈 Rapports</TabsTrigger>
-          <TabsTrigger value="payroll-rh" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-500">💼 Paie & RH</TabsTrigger>
+        <TabsList className="flex gap-1 bg-white rounded-2xl p-1.5 overflow-x-auto w-fit mb-2">
+          <TabsTrigger value="dashboard" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-brand-600 data-[state=active]:text-white text-neutral-500">📊 Dashboard</TabsTrigger>
+          <TabsTrigger value="invoices" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-brand-600 data-[state=active]:text-white text-neutral-500">📄 Factures</TabsTrigger>
+          <TabsTrigger value="expenses" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-brand-600 data-[state=active]:text-white text-neutral-500">💸 Dépenses</TabsTrigger>
+          <TabsTrigger value="treasury" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-brand-600 data-[state=active]:text-white text-neutral-500">🏦 Trésorerie</TabsTrigger>
+          <TabsTrigger value="journals" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-brand-600 data-[state=active]:text-white text-neutral-500">📒 Journaux</TabsTrigger>
+          <TabsTrigger value="tva" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-brand-600 data-[state=active]:text-white text-neutral-500">🧾 TVA</TabsTrigger>
+          <TabsTrigger value="reports" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-brand-600 data-[state=active]:text-white text-neutral-500">📈 Rapports</TabsTrigger>
+          <TabsTrigger value="payroll-rh" className="px-4 py-2 rounded-xl text-xs font-bold data-[state=active]:bg-brand-600 data-[state=active]:text-white text-neutral-500">💼 Paie & RH</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard"><DashboardSection onNavigate={setActiveTab} /></TabsContent>
@@ -122,18 +122,18 @@ function DashboardSection({ onNavigate }) {
           value={fmt(kpis.ca?.month)}
           sub={`Jour: ${fmt(kpis.ca?.day)} | Année: ${fmt(kpis.ca?.year)}`}
           icon={<DollarSign className="h-5 w-5" />}
-          color="text-green-400"
-          bgColor="bg-green-500/10"
-          hexColor="#10b981"
+          color="text-brand-400"
+          bgColor="bg-brand-500/10"
+          hexColor="#047857"
         />
         <KPICard
           title="Bénéfice (mois)"
           value={fmt(kpis.benefice?.month)}
           sub={fmtPct(kpis.benefice?.variation_pct)}
           icon={<TrendingUp className="h-5 w-5" />}
-          color={kpis.benefice?.month >= 0 ? "text-emerald-400" : "text-red-400"}
-          bgColor="bg-emerald-500/10"
-          hexColor={kpis.benefice?.month >= 0 ? "#10b981" : "#f43f5e"}
+          color={kpis.benefice?.month >= 0 ? "text-brand-400" : "text-terracotta-400"}
+          bgColor="bg-brand-500/10"
+          hexColor={kpis.benefice?.month >= 0 ? "#047857" : "#c2410c"}
           trend={kpis.benefice?.variation_pct}
         />
         <KPICard
@@ -150,18 +150,18 @@ function DashboardSection({ onNavigate }) {
           value={fmt(kpis.treasury?.solde)}
           sub={`Prévu 30j: ${fmt(kpis.treasury?.prevision_30j)}`}
           icon={<Wallet className="h-5 w-5" />}
-          color={kpis.treasury?.solde < kpis.treasury?.alert_threshold ? "text-red-400" : "text-blue-400"}
-          bgColor="bg-blue-500/10"
-          hexColor={kpis.treasury?.solde < kpis.treasury?.alert_threshold ? "#f43f5e" : "#3b82f6"}
+          color={kpis.treasury?.solde < kpis.treasury?.alert_threshold ? "text-terracotta-400" : "text-neutral-400"}
+          bgColor="bg-neutral-500/10"
+          hexColor={kpis.treasury?.solde < kpis.treasury?.alert_threshold ? "#c2410c" : "#3b82f6"}
         />
         <KPICard
           title="Impayées"
           value={`${kpis.unpaid_invoices?.count || 0}`}
           sub={fmt(kpis.unpaid_invoices?.amount)}
           icon={<AlertTriangle className="h-5 w-5" />}
-          color={kpis.unpaid_invoices?.count > 0 ? "text-red-400" : "text-gray-400"}
-          bgColor={kpis.unpaid_invoices?.count > 0 ? "bg-red-500/10" : "bg-gray-500/10"}
-          hexColor={kpis.unpaid_invoices?.count > 0 ? "#f43f5e" : "#64748b"}
+          color={kpis.unpaid_invoices?.count > 0 ? "text-terracotta-400" : "text-neutral-400"}
+          bgColor={kpis.unpaid_invoices?.count > 0 ? "bg-terracotta-500/10" : "bg-neutral-500/10"}
+          hexColor={kpis.unpaid_invoices?.count > 0 ? "#c2410c" : "#78716c"}
           alert={kpis.unpaid_invoices?.overdue > 0}
         />
         <KPICard
@@ -177,12 +177,12 @@ function DashboardSection({ onNavigate }) {
 
       {/* Alerts */}
       {kpis.unpaid_invoices?.overdue > 0 && (
-        <div className="rounded-2xl border border-red-500/30 bg-red-500/5 py-3 px-5 flex items-center gap-3">
-          <AlertTriangle className="h-5 w-5 text-red-500" />
-          <span className="text-red-400 font-medium text-sm">
+        <div className="rounded-2xl border border-terracotta-500/30 bg-terracotta-500/5 py-3 px-5 flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 text-terracotta-500" />
+          <span className="text-terracotta-400 font-medium text-sm">
             ⚠️ {kpis.unpaid_invoices.overdue} facture(s) en retard (&gt;30j) — {fmt(kpis.unpaid_invoices.amount)} impayés
           </span>
-          <Button size="sm" variant="outline" className="ml-auto border-red-500/30 text-red-400" onClick={() => onNavigate('invoices')}>
+          <Button size="sm" variant="outline" className="ml-auto border-terracotta-500/30 text-terracotta-400" onClick={() => onNavigate('invoices')}>
             Voir les factures
           </Button>
         </div>
@@ -190,7 +190,7 @@ function DashboardSection({ onNavigate }) {
 
       {/* Quick Actions */}
       <div className="flex gap-3 flex-wrap">
-        <Button className="bg-violet-600 hover:bg-violet-700" onClick={() => onNavigate('invoices')}>
+        <Button className="bg-brand-600 hover:bg-brand-700" onClick={() => onNavigate('invoices')}>
           <Plus className="h-4 w-4 mr-2" /> Nouvelle Facture
         </Button>
         <Button variant="outline" onClick={() => onNavigate('expenses')}>
@@ -208,8 +208,8 @@ function DashboardSection({ onNavigate }) {
       {charts && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* CA 12 mois */}
-          <div className="section-card overflow-hidden">
-            <div className="px-5 pt-5 pb-3"><h3 className="text-sm font-black text-slate-200 flex items-center gap-2"><BarChart3 className="h-4 w-4 text-violet-400" />CA TTC (12 derniers mois)</h3></div>
+          <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
+            <div className="px-5 pt-5 pb-3"><h3 className="text-sm font-black text-neutral-200 flex items-center gap-2"><BarChart3 className="h-4 w-4 text-brand-400" />CA TTC (12 derniers mois)</h3></div>
             <div className="px-5 pb-5">
               <ResponsiveContainer width="100%" height={250}>
                 <AreaChart data={charts.ca_monthly}>
@@ -217,15 +217,15 @@ function DashboardSection({ onNavigate }) {
                   <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="#666" />
                   <YAxis tick={{ fontSize: 10 }} stroke="#666" />
                   <Tooltip formatter={(v) => fmt(v)} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} />
-                  <Area type="monotone" dataKey="ca" stroke="#7c3aed" fill="#7c3aed" fillOpacity={0.2} />
+                  <Area type="monotone" dataKey="ca" stroke="#047857" fill="#047857" fillOpacity={0.2} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
 
           {/* Répartition prestations */}
-          <div className="section-card overflow-hidden">
-            <div className="px-5 pt-5 pb-3"><h3 className="text-sm font-black text-slate-200 flex items-center gap-2"><PieIcon className="h-4 w-4 text-emerald-400" />Répartition CA par prestation</h3></div>
+          <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
+            <div className="px-5 pt-5 pb-3"><h3 className="text-sm font-black text-neutral-200 flex items-center gap-2"><PieIcon className="h-4 w-4 text-brand-400" />Répartition CA par prestation</h3></div>
             <div className="px-5 pb-5">
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
@@ -239,8 +239,8 @@ function DashboardSection({ onNavigate }) {
           </div>
 
           {/* Waterfall */}
-          <div className="section-card overflow-hidden">
-            <div className="px-5 pt-5 pb-3"><h3 className="text-sm font-black text-slate-200 flex items-center gap-2"><BarChart3 className="h-4 w-4 text-amber-400" />Résultat du mois</h3></div>
+          <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
+            <div className="px-5 pt-5 pb-3"><h3 className="text-sm font-black text-neutral-200 flex items-center gap-2"><BarChart3 className="h-4 w-4 text-amber-400" />Résultat du mois</h3></div>
             <div className="px-5 pb-5">
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={charts.waterfall}>
@@ -250,7 +250,7 @@ function DashboardSection({ onNavigate }) {
                   <Tooltip formatter={(v) => fmt(v)} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} />
                   <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                     {charts.waterfall.map((entry, i) => (
-                      <Cell key={i} fill={entry.value >= 0 ? '#10b981' : '#ef4444'} />
+                      <Cell key={i} fill={entry.value >= 0 ? '#047857' : '#c2410c'} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -259,8 +259,8 @@ function DashboardSection({ onNavigate }) {
           </div>
 
           {/* Solde bancaire */}
-          <div className="section-card overflow-hidden">
-            <div className="px-5 pt-5 pb-3"><h3 className="text-sm font-black text-slate-200 flex items-center gap-2"><Wallet className="h-4 w-4 text-blue-400" />Solde bancaire (6 mois)</h3></div>
+          <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
+            <div className="px-5 pt-5 pb-3"><h3 className="text-sm font-black text-neutral-200 flex items-center gap-2"><Wallet className="h-4 w-4 text-neutral-400" />Solde bancaire (6 mois)</h3></div>
             <div className="px-5 pb-5">
               <ResponsiveContainer width="100%" height={250}>
                 <AreaChart data={charts.solde_monthly}>
@@ -281,22 +281,22 @@ function DashboardSection({ onNavigate }) {
 
 function KPICard({ title, value, sub, icon, color, bgColor, trend, alert, hexColor }) {
   return (
-    <div className={`section-card p-5 hover:border-white/10 transition-all ${alert ? 'border-red-500/30 animate-pulse' : ''}`}>
+    <div className={`bg-white border border-neutral-200 rounded-xl p-5 hover:border-neutral-200 transition-all ${alert ? 'border-terracotta-500/30 animate-pulse' : ''}`}>
       <div className="flex items-start justify-between mb-3">
         <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
-          style={{background: hexColor ? `${hexColor}20` : 'rgba(124,58,237,0.15)', border: hexColor ? `1px solid ${hexColor}30` : '1px solid rgba(124,58,237,0.3)'}}>
+          style={{background: hexColor ? `${hexColor}20` : 'rgba(4,120,87,0.15)', border: hexColor ? `1px solid ${hexColor}30` : '1px solid rgba(4,120,87,0.3)'}}>
           <span className={color}>{icon}</span>
         </div>
         {trend !== undefined && trend !== 0 && (
-          <div className={`flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${trend > 0 ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10'}`}>
+          <div className={`flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${trend > 0 ? 'text-brand-400 bg-brand-500/10' : 'text-terracotta-400 bg-terracotta-500/10'}`}>
             {trend > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
             {Math.abs(trend)}%
           </div>
         )}
       </div>
-      <div className="text-2xl font-black text-slate-100 mb-1" style={{fontFamily:'Manrope,sans-serif'}}>{value}</div>
-      <p className="text-xs font-semibold text-slate-500">{title}</p>
-      {sub && <p className="text-[10px] text-slate-600 mt-0.5">{sub}</p>}
+      <div className="text-2xl font-black text-neutral-100 mb-1" style={{sans-serif'}}>{value}</div>
+      <p className="text-xs font-semibold text-neutral-500">{title}</p>
+      {sub && <p className="text-[10px] text-neutral-600 mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -363,7 +363,7 @@ function InvoiceModule() {
   return (
     <div className="space-y-4 mt-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <Button className="bg-violet-600 hover:bg-violet-700" onClick={() => setCreateOpen(true)}>
+        <Button className="bg-brand-600 hover:bg-brand-700" onClick={() => setCreateOpen(true)}>
           <Plus className="h-4 w-4 mr-2" /> Nouvelle Facture
         </Button>
         <div className="flex-1 min-w-[200px]">
@@ -420,16 +420,16 @@ function InvoiceModule() {
                         {inv.status === 'brouillon' && (
                           <>
                             <Button size="sm" variant="ghost" title="Envoyer" onClick={() => handleSend(inv.invoice_id)}>
-                              <Send className="h-3.5 w-3.5 text-blue-400" />
+                              <Send className="h-3.5 w-3.5 text-neutral-400" />
                             </Button>
                             <Button size="sm" variant="ghost" title="Supprimer" onClick={() => handleDelete(inv.invoice_id)}>
-                              <Trash2 className="h-3.5 w-3.5 text-red-400" />
+                              <Trash2 className="h-3.5 w-3.5 text-terracotta-400" />
                             </Button>
                           </>
                         )}
                         {(inv.status === 'envoyee' || inv.status_display === 'en_retard') && (
                           <Button size="sm" variant="ghost" title="Paiement" onClick={() => setPaymentOpen(inv)}>
-                            <Banknote className="h-3.5 w-3.5 text-green-400" />
+                            <Banknote className="h-3.5 w-3.5 text-brand-400" />
                           </Button>
                         )}
                       </div>
@@ -591,18 +591,18 @@ function InvoiceCreateDialog({ open, onClose, onCreated }) {
                 </Select>
                 <div className="col-span-1 text-right text-sm font-medium">{fmt(item.quantity * item.unit_price_ht * (1 + item.tva_rate / 100))}</div>
                 <Button size="sm" variant="ghost" className="col-span-1" onClick={() => removeItem(idx)} disabled={form.items.length === 1}>
-                  <Trash2 className="h-3 w-3 text-red-400" />
+                  <Trash2 className="h-3 w-3 text-terracotta-400" />
                 </Button>
               </div>
             ))}
           </div>
 
           {/* Totals */}
-          <div className="section-card" className="bg-muted/30">
+          <div className="bg-white border border-neutral-200 rounded-xl" className="bg-muted/30">
             <div className="p-4 grid grid-cols-3 gap-4 text-center">
               <div><div className="text-xs text-muted-foreground">Total HT</div><div className="text-lg font-bold">{fmt(totals.ht)}</div></div>
               <div><div className="text-xs text-muted-foreground">TVA</div><div className="text-lg font-bold text-amber-400">{fmt(totals.tva)}</div></div>
-              <div><div className="text-xs text-muted-foreground">Total TTC</div><div className="text-lg font-bold text-green-400">{fmt(totals.ttc)}</div></div>
+              <div><div className="text-xs text-muted-foreground">Total TTC</div><div className="text-lg font-bold text-brand-400">{fmt(totals.ttc)}</div></div>
             </div>
           </div>
 
@@ -610,7 +610,7 @@ function InvoiceCreateDialog({ open, onClose, onCreated }) {
 
           <div className="flex gap-3 justify-end">
             <Button variant="outline" onClick={onClose}>Annuler</Button>
-            <Button className="bg-violet-600 hover:bg-violet-700" onClick={handleSubmit} disabled={saving}>
+            <Button className="bg-brand-600 hover:bg-brand-700" onClick={handleSubmit} disabled={saving}>
               {saving ? 'Création...' : '✅ Créer Facture (Brouillon)'}
             </Button>
           </div>
@@ -664,7 +664,7 @@ function InvoiceDetail({ invoice }) {
           <div className="flex justify-between text-sm"><span>Total HT</span><span>{fmt(invoice.total_ht)}</span></div>
           <div className="flex justify-between text-sm text-amber-400"><span>TVA</span><span>{fmt(invoice.total_tva)}</span></div>
           <Separator />
-          <div className="flex justify-between font-bold text-lg"><span>Total TTC</span><span className="text-green-400">{fmt(invoice.total_ttc)}</span></div>
+          <div className="flex justify-between font-bold text-lg"><span>Total TTC</span><span className="text-brand-400">{fmt(invoice.total_ttc)}</span></div>
         </div>
       </div>
 
@@ -675,7 +675,7 @@ function InvoiceDetail({ invoice }) {
         <div className="space-y-2">
           <h4 className="text-sm font-medium flex items-center gap-2"><BookOpen className="h-4 w-4" />Écritures comptables</h4>
           {invoice.journal_entries.map(j => (
-            <div className="section-card" key={j.entry_id} className="bg-muted/20">
+            <div className="bg-white border border-neutral-200 rounded-xl" key={j.entry_id} className="bg-muted/20">
               <div className="p-3 text-xs">
                 <div className="flex justify-between mb-1">
                   <span className="font-medium">{j.description}</span>
@@ -716,7 +716,7 @@ function PaymentDialog({ invoice, onClose, onPaid }) {
         <div className="space-y-3">
           <div className="text-center p-3 bg-muted/30 rounded-lg">
             <div className="text-sm text-muted-foreground">Montant facture</div>
-            <div className="text-2xl font-bold text-green-400">{fmt(invoice.total_ttc)}</div>
+            <div className="text-2xl font-bold text-brand-400">{fmt(invoice.total_ttc)}</div>
           </div>
           <Input type="number" placeholder="Montant payé" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: Number(e.target.value) }))} />
           <Select value={form.method} onValueChange={v => setForm(f => ({ ...f, method: v }))}>
@@ -731,7 +731,7 @@ function PaymentDialog({ invoice, onClose, onPaid }) {
           <Input placeholder="Référence (optionnel)" value={form.reference} onChange={e => setForm(f => ({ ...f, reference: e.target.value }))} />
           <div className="flex gap-3 justify-end">
             <Button variant="outline" onClick={onClose}>Annuler</Button>
-            <Button className="bg-green-600 hover:bg-green-700" onClick={handleSubmit} disabled={saving}>
+            <Button className="bg-brand-600 hover:bg-brand-700" onClick={handleSubmit} disabled={saving}>
               {saving ? 'Enregistrement...' : '✅ Enregistrer Paiement'}
             </Button>
           </div>
@@ -842,7 +842,7 @@ function ExpenseModule() {
                   <td className="p-3 text-right font-medium">{fmt(exp.amount_ttc)}</td>
                   <td className="p-3 text-muted-foreground">{exp.supplier_name || '—'}</td>
                   <td className="p-3 text-center">
-                    <Badge className={exp.status === 'payee' ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'}>
+                    <Badge className={exp.status === 'payee' ? 'bg-brand-500 text-white' : 'bg-yellow-500 text-white'}>
                       {exp.status === 'payee' ? '✅ Payée' : '⏳ En attente'}
                     </Badge>
                   </td>
@@ -850,11 +850,11 @@ function ExpenseModule() {
                     <div className="flex gap-1 justify-center">
                       {exp.status === 'en_attente' && (
                         <Button size="sm" variant="ghost" title="Payer" onClick={() => handlePay(exp.expense_id)}>
-                          <Banknote className="h-3.5 w-3.5 text-green-400" />
+                          <Banknote className="h-3.5 w-3.5 text-brand-400" />
                         </Button>
                       )}
                       <Button size="sm" variant="ghost" title="Supprimer" onClick={() => handleDelete(exp.expense_id)}>
-                        <Trash2 className="h-3.5 w-3.5 text-red-400" />
+                        <Trash2 className="h-3.5 w-3.5 text-terracotta-400" />
                       </Button>
                     </div>
                   </td>
@@ -909,7 +909,7 @@ function ExpenseCreateDialog({ open, onClose, onCreated }) {
           <Input type="number" placeholder="Montant HT (€)" value={form.amount_ht || ''} onChange={e => setForm(f => ({ ...f, amount_ht: Number(e.target.value) }))} />
           <div className="grid grid-cols-3 gap-3 p-3 bg-muted/30 rounded-lg text-center">
             <div><div className="text-xs text-muted-foreground">TVA ({tvaRate}%)</div><div className="font-bold text-amber-400">{fmt(tva)}</div></div>
-            <div><div className="text-xs text-muted-foreground">Total TTC</div><div className="font-bold text-red-400">{fmt(ttc)}</div></div>
+            <div><div className="text-xs text-muted-foreground">Total TTC</div><div className="font-bold text-terracotta-400">{fmt(ttc)}</div></div>
             <div>
               <div className="text-xs text-muted-foreground">Statut</div>
               <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
@@ -966,28 +966,28 @@ function TreasuryModule() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="section-card overflow-hidden">
+        <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
           <div className="p-4 text-center">
             <div className="text-xs text-muted-foreground">Solde initial</div>
             <div className="text-xl font-bold">{fmt(data.solde_initial)}</div>
           </div>
         </div>
-        <div className="section-card" className="border-green-500/30">
+        <div className="bg-white border border-neutral-200 rounded-xl" className="border-brand-500/30">
           <div className="p-4 text-center">
             <div className="text-xs text-muted-foreground">Entrées</div>
-            <div className="text-xl font-bold text-green-400">+{fmt(data.total_in)}</div>
+            <div className="text-xl font-bold text-brand-400">+{fmt(data.total_in)}</div>
           </div>
         </div>
-        <div className="section-card" className="border-red-500/30">
+        <div className="bg-white border border-neutral-200 rounded-xl" className="border-terracotta-500/30">
           <div className="p-4 text-center">
             <div className="text-xs text-muted-foreground">Sorties</div>
-            <div className="text-xl font-bold text-red-400">-{fmt(data.total_out)}</div>
+            <div className="text-xl font-bold text-terracotta-400">-{fmt(data.total_out)}</div>
           </div>
         </div>
-        <div className="section-card" className="border-blue-500/30">
+        <div className="bg-white border border-neutral-200 rounded-xl" className="border-neutral-500/30">
           <div className="p-4 text-center">
             <div className="text-xs text-muted-foreground">Solde courant</div>
-            <div className={`text-xl font-bold ${data.solde_courant >= 0 ? 'text-blue-400' : 'text-red-400'}`}>{fmt(data.solde_courant)}</div>
+            <div className={`text-xl font-bold ${data.solde_courant >= 0 ? 'text-neutral-400' : 'text-terracotta-400'}`}>{fmt(data.solde_courant)}</div>
             <div className="text-xs text-muted-foreground mt-1">Prévision 30j: {fmt(data.prevision_30j)}</div>
           </div>
         </div>
@@ -995,18 +995,18 @@ function TreasuryModule() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Entrées */}
-        <div className="section-card overflow-hidden">
-          <div className="px-5 pt-5 pb-3"><h3 className="text-sm text-green-400">📥 Entrées (Factures payées)</h3></div>
+        <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
+          <div className="px-5 pt-5 pb-3"><h3 className="text-sm text-brand-400">📥 Entrées (Factures payées)</h3></div>
           <div className="px-5 pb-5">
             {data.entries_in.length === 0 ? <p className="text-sm text-muted-foreground">Aucune entrée</p> : (
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {data.entries_in.map((e, i) => (
-                  <div key={i} className="flex justify-between items-center p-2 bg-green-500/5 rounded">
+                  <div key={i} className="flex justify-between items-center p-2 bg-brand-500/5 rounded">
                     <div>
                       <div className="text-sm font-medium">{e.invoice_number} — {e.client_name}</div>
                       <div className="text-xs text-muted-foreground">{e.payment_date?.slice(0, 10)}</div>
                     </div>
-                    <span className="font-bold text-green-400">+{fmt(e.total_ttc)}</span>
+                    <span className="font-bold text-brand-400">+{fmt(e.total_ttc)}</span>
                   </div>
                 ))}
               </div>
@@ -1015,18 +1015,18 @@ function TreasuryModule() {
         </div>
 
         {/* Sorties */}
-        <div className="section-card overflow-hidden">
-          <div className="px-5 pt-5 pb-3"><h3 className="text-sm text-red-400">📤 Sorties (Dépenses payées)</h3></div>
+        <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
+          <div className="px-5 pt-5 pb-3"><h3 className="text-sm text-terracotta-400">📤 Sorties (Dépenses payées)</h3></div>
           <div className="px-5 pb-5">
             {data.entries_out.length === 0 ? <p className="text-sm text-muted-foreground">Aucune sortie</p> : (
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {data.entries_out.map((e, i) => (
-                  <div key={i} className="flex justify-between items-center p-2 bg-red-500/5 rounded">
+                  <div key={i} className="flex justify-between items-center p-2 bg-terracotta-500/5 rounded">
                     <div>
                       <div className="text-sm font-medium">{e.description}</div>
                       <div className="text-xs text-muted-foreground">{e.category} — {e.date?.slice(0, 10)}</div>
                     </div>
-                    <span className="font-bold text-red-400">-{fmt(e.amount_ttc)}</span>
+                    <span className="font-bold text-terracotta-400">-{fmt(e.amount_ttc)}</span>
                   </div>
                 ))}
               </div>
@@ -1080,9 +1080,9 @@ function JournalModule() {
 
       {/* Balance summary */}
       <div className="flex gap-4 items-center">
-        <Badge variant="outline" className="text-green-400 border-green-500/30">Débit: {fmt(totals.debit)}</Badge>
-        <Badge variant="outline" className="text-red-400 border-red-500/30">Crédit: {fmt(totals.credit)}</Badge>
-        <Badge className={totals.balanced ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
+        <Badge variant="outline" className="text-brand-400 border-brand-500/30">Débit: {fmt(totals.debit)}</Badge>
+        <Badge variant="outline" className="text-terracotta-400 border-terracotta-500/30">Crédit: {fmt(totals.credit)}</Badge>
+        <Badge className={totals.balanced ? 'bg-brand-500/20 text-brand-400' : 'bg-terracotta-500/20 text-terracotta-400'}>
           {totals.balanced ? '✅ Équilibré' : '⚠️ Déséquilibré'}
         </Badge>
       </div>
@@ -1090,7 +1090,7 @@ function JournalModule() {
       {loading ? <LoadingState /> : (
         <div className="space-y-3">
           {entries.map(entry => (
-            <div className="section-card" key={entry.entry_id} className="hover:border-violet-500/30 transition-colors">
+            <div className="bg-white border border-neutral-200 rounded-xl" key={entry.entry_id} className="hover:border-brand-500/30 transition-colors">
               <div className="p-4">
                 <div className="flex justify-between items-start mb-3">
                   <div>
@@ -1114,17 +1114,17 @@ function JournalModule() {
                         <tr key={i} className="border-t">
                           <td className="p-2 font-mono text-xs">{e.account_number}</td>
                           <td className="p-2">{e.account_label}</td>
-                          <td className="p-2 text-right text-green-400">{e.debit > 0 ? fmt(e.debit) : ''}</td>
-                          <td className="p-2 text-right text-red-400">{e.credit > 0 ? fmt(e.credit) : ''}</td>
+                          <td className="p-2 text-right text-brand-400">{e.debit > 0 ? fmt(e.debit) : ''}</td>
+                          <td className="p-2 text-right text-terracotta-400">{e.credit > 0 ? fmt(e.credit) : ''}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
                 <div className="flex justify-end gap-4 mt-2 text-xs">
-                  <span>Total Débit: <strong className="text-green-400">{fmt(entry.total_debit)}</strong></span>
-                  <span>Total Crédit: <strong className="text-red-400">{fmt(entry.total_credit)}</strong></span>
-                  {entry.is_balanced && <Badge className="bg-green-500/20 text-green-400 text-xs">✓ Équilibré</Badge>}
+                  <span>Total Débit: <strong className="text-brand-400">{fmt(entry.total_debit)}</strong></span>
+                  <span>Total Crédit: <strong className="text-terracotta-400">{fmt(entry.total_credit)}</strong></span>
+                  {entry.is_balanced && <Badge className="bg-brand-500/20 text-brand-400 text-xs">✓ Équilibré</Badge>}
                 </div>
               </div>
             </div>
@@ -1180,24 +1180,24 @@ function TVAModule() {
         <>
           {/* Summary */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="section-card" className="border-green-500/30">
+            <div className="bg-white border border-neutral-200 rounded-xl" className="border-brand-500/30">
               <div className="p-6 text-center">
                 <div className="text-sm text-muted-foreground mb-2">TVA Collectée</div>
-                <div className="text-3xl font-bold text-green-400">{fmt(data.tva_collectee)}</div>
+                <div className="text-3xl font-bold text-brand-400">{fmt(data.tva_collectee)}</div>
                 <div className="text-xs text-muted-foreground mt-1">Sur ventes</div>
               </div>
             </div>
-            <div className="section-card" className="border-blue-500/30">
+            <div className="bg-white border border-neutral-200 rounded-xl" className="border-neutral-500/30">
               <div className="p-6 text-center">
                 <div className="text-sm text-muted-foreground mb-2">TVA Déductible</div>
-                <div className="text-3xl font-bold text-blue-400">{fmt(data.tva_deductible)}</div>
+                <div className="text-3xl font-bold text-neutral-400">{fmt(data.tva_deductible)}</div>
                 <div className="text-xs text-muted-foreground mt-1">Sur achats</div>
               </div>
             </div>
-            <div className="section-card" className={`border-2 ${data.tva_a_verser >= 0 ? 'border-amber-500/50' : 'border-green-500/50'}`}>
+            <div className="bg-white border border-neutral-200 rounded-xl" className={`border-2 ${data.tva_a_verser >= 0 ? 'border-amber-500/50' : 'border-brand-500/50'}`}>
               <div className="p-6 text-center">
                 <div className="text-sm text-muted-foreground mb-2">TVA à verser</div>
-                <div className={`text-3xl font-bold ${data.tva_a_verser >= 0 ? 'text-amber-400' : 'text-green-400'}`}>
+                <div className={`text-3xl font-bold ${data.tva_a_verser >= 0 ? 'text-amber-400' : 'text-brand-400'}`}>
                   {fmt(data.tva_a_verser)}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
@@ -1209,7 +1209,7 @@ function TVAModule() {
 
           {/* Detail tables */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="section-card overflow-hidden">
+            <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
               <div className="px-5 pt-5 pb-3"><h3 className="text-sm">📈 Détail TVA Collectée</h3></div>
               <div className="px-5 pb-5">
                 {data.detail_collectee?.length > 0 ? (
@@ -1224,7 +1224,7 @@ function TVAModule() {
                 ) : <p className="text-sm text-muted-foreground">Aucune vente ce mois</p>}
               </div>
             </div>
-            <div className="section-card overflow-hidden">
+            <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
               <div className="px-5 pt-5 pb-3"><h3 className="text-sm">📉 Détail TVA Déductible</h3></div>
               <div className="px-5 pb-5">
                 {data.detail_deductible?.length > 0 ? (
@@ -1300,28 +1300,28 @@ function IncomeStatement() {
         {month && <Button size="sm" variant="ghost" onClick={() => setMonth('')}>Tout</Button>}
       </div>
 
-      <div className="section-card" className="max-w-lg">
+      <div className="bg-white border border-neutral-200 rounded-xl" className="max-w-lg">
         <div className="px-5 pt-5 pb-3"><h3>📊 Compte de Résultat {month || '(global)'}</h3></div>
         <div className="space-y-3">
-          <div className="flex justify-between py-2"><span>CA HT</span><span className="font-bold text-green-400">{fmt(data.ca_ht)}</span></div>
+          <div className="flex justify-between py-2"><span>CA HT</span><span className="font-bold text-brand-400">{fmt(data.ca_ht)}</span></div>
           <Separator />
           {data.charges_detail.map((c, i) => (
             <div key={i} className="flex justify-between py-1 text-sm pl-4">
               <span className="text-muted-foreground">- {c.category}</span>
-              <span className="text-red-400">{fmt(c.ht)}</span>
+              <span className="text-terracotta-400">{fmt(c.ht)}</span>
             </div>
           ))}
-          <div className="flex justify-between py-2 border-t"><span>Total Charges HT</span><span className="font-bold text-red-400">{fmt(data.charges_ht)}</span></div>
+          <div className="flex justify-between py-2 border-t"><span>Total Charges HT</span><span className="font-bold text-terracotta-400">{fmt(data.charges_ht)}</span></div>
           <Separator />
           <div className="flex justify-between py-2 text-lg">
             <span className="font-bold">Résultat Brut</span>
-            <span className={`font-bold ${data.resultat_brut >= 0 ? 'text-green-400' : 'text-red-400'}`}>{fmt(data.resultat_brut)}</span>
+            <span className={`font-bold ${data.resultat_brut >= 0 ? 'text-brand-400' : 'text-terracotta-400'}`}>{fmt(data.resultat_brut)}</span>
           </div>
           <div className="flex justify-between py-1 text-sm"><span className="text-muted-foreground">- TVA à verser</span><span>{fmt(data.tva_a_verser)}</span></div>
           <Separator />
           <div className="flex justify-between py-2 text-xl">
             <span className="font-bold">Résultat Net</span>
-            <span className={`font-bold ${data.resultat_net >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fmt(data.resultat_net)}</span>
+            <span className={`font-bold ${data.resultat_net >= 0 ? 'text-brand-400' : 'text-terracotta-400'}`}>{fmt(data.resultat_net)}</span>
           </div>
         </div>
       </div>
@@ -1343,7 +1343,7 @@ function TopClients() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="section-card overflow-hidden">
+        <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
           <div className="px-5 pt-5 pb-3"><h3 className="text-sm">👥 Top Clients par CA</h3></div>
           <div className="px-5 pb-5">
             <div className="rounded-lg border overflow-hidden">
@@ -1366,7 +1366,7 @@ function TopClients() {
           </div>
         </div>
 
-        <div className="section-card overflow-hidden">
+        <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
           <div className="px-5 pt-5 pb-3"><h3 className="text-sm">📊 Répartition CA par client</h3></div>
           <div className="px-5 pb-5">
             <ResponsiveContainer width="100%" height={300}>
@@ -1397,7 +1397,7 @@ function ServicesAnalysis() {
 
   return (
     <div className="space-y-4">
-      <div className="section-card overflow-hidden">
+      <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
         <div className="px-5 pt-5 pb-3"><h3 className="text-sm">🧹 Rentabilité par type de prestation</h3></div>
         <div className="px-5 pb-5">
           <div className="rounded-lg border overflow-hidden">
@@ -1420,11 +1420,11 @@ function ServicesAnalysis() {
                     <td className="p-3 text-right">{s.count}</td>
                     <td className="p-3 text-right">{fmt(s.avg_per_intervention)}</td>
                     <td className="p-3 text-right">
-                      <Badge variant="outline" className={s.margin_pct >= 50 ? 'text-green-400 border-green-500/30' : 'text-amber-400 border-amber-500/30'}>
+                      <Badge variant="outline" className={s.margin_pct >= 50 ? 'text-brand-400 border-brand-500/30' : 'text-amber-400 border-amber-500/30'}>
                         {s.margin_pct}%
                       </Badge>
                     </td>
-                    <td className="p-3 text-right text-green-400">{fmt(s.margin_estimated)}</td>
+                    <td className="p-3 text-right text-brand-400">{fmt(s.margin_estimated)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1433,7 +1433,7 @@ function ServicesAnalysis() {
         </div>
       </div>
 
-      <div className="section-card overflow-hidden">
+      <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
         <div className="px-5 pt-5 pb-3"><h3 className="text-sm">📊 CA par type de service</h3></div>
         <div className="px-5 pb-5">
           <ResponsiveContainer width="100%" height={300}>
@@ -1485,7 +1485,7 @@ function PeriodComparison() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="section-card overflow-hidden">
+        <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
           <div className="px-5 pt-5 pb-3"><h3 className="text-sm">📅 Comparaison</h3></div>
           <div className="px-5 pb-5">
             <div className="rounded-lg border overflow-hidden">
@@ -1510,7 +1510,7 @@ function PeriodComparison() {
                         <td className="p-3 font-medium">{label}</td>
                         <td className="p-3 text-right">{fmt(v1)}</td>
                         <td className="p-3 text-right">{fmt(v2)}</td>
-                        <td className={`p-3 text-right font-medium ${variation >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        <td className={`p-3 text-right font-medium ${variation >= 0 ? 'text-brand-400' : 'text-terracotta-400'}`}>
                           {fmtPct(variation)}
                         </td>
                       </tr>
@@ -1522,7 +1522,7 @@ function PeriodComparison() {
           </div>
         </div>
 
-        <div className="section-card overflow-hidden">
+        <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
           <div className="px-5 pt-5 pb-3"><h3 className="text-sm">📊 Graphique comparatif</h3></div>
           <div className="px-5 pb-5">
             <ResponsiveContainer width="100%" height={250}>
@@ -1532,7 +1532,7 @@ function PeriodComparison() {
                 <YAxis tick={{ fontSize: 10 }} stroke="#666" />
                 <Tooltip formatter={(v) => fmt(v)} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} />
                 <Legend />
-                <Bar dataKey={data.period1.month} fill="#7c3aed" radius={[4, 4, 0, 0]} />
+                <Bar dataKey={data.period1.month} fill="#047857" radius={[4, 4, 0, 0]} />
                 <Bar dataKey={data.period2.month} fill="#3b82f6" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -1550,7 +1550,7 @@ function PeriodComparison() {
 function LoadingState() {
   return (
     <div className="flex items-center justify-center p-12">
-      <div className="animate-spin h-8 w-8 border-4 border-violet-500 border-t-transparent rounded-full" />
+      <div className="animate-spin h-8 w-8 border-4 border-brand-500 border-t-transparent rounded-full" />
     </div>
   );
 }

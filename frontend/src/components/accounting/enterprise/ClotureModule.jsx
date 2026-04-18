@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '../../shared';
 import axios from 'axios';
 import api from '../../../lib/api';
@@ -105,8 +105,8 @@ export default function ClotureModule() {
       {/* Header */}
       <div>
         <h3 className="text-xl font-bold flex items-center gap-2.5 tracking-tight">
-          <div className="p-2 rounded-xl bg-violet-500/10">
-            <Lock className="w-5 h-5 text-violet-500" />
+          <div className="p-2 rounded-xl bg-brand-500/10">
+            <Lock className="w-5 h-5 text-brand-500" />
           </div>
           Clôture de période
         </h3>
@@ -114,9 +114,9 @@ export default function ClotureModule() {
       </div>
 
       {/* Info banner */}
-      <Card className="bg-blue-500/5 border-blue-500/20">
+      <Card className="bg-neutral-500/5 border-neutral-500/20">
         <CardContent className="p-4 flex items-start gap-3">
-          <Shield className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
+          <Shield className="w-5 h-5 text-neutral-500 mt-0.5 flex-shrink-0" />
           <div>
             <p className="text-sm font-medium">Clôture de période</p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -130,7 +130,7 @@ export default function ClotureModule() {
       {/* Periods list */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <div className="w-10 h-10 rounded-full border-2 border-violet-500/20 border-t-violet-500 animate-spin" />
+          <div className="w-10 h-10 rounded-full border-2 border-brand-500/20 border-t-brand-500 animate-spin" />
         </div>
       ) : (
         <div className="space-y-3">
@@ -138,13 +138,13 @@ export default function ClotureModule() {
             const isClosed = p.status === 'closed';
             return (
               <Card key={p.period_id} className={`border transition-all duration-200 hover:shadow-md ${
-                isClosed ? 'bg-muted/20 border-muted' : 'border-blue-500/20 bg-card'
+                isClosed ? 'bg-muted/20 border-muted' : 'border-neutral-500/20 bg-card'
               }`}>
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className={`p-2.5 rounded-xl ${isClosed ? 'bg-muted' : 'bg-blue-500/10'}`}>
-                        {isClosed ? <Lock className="w-4 h-4 text-muted-foreground" /> : <Calendar className="w-4 h-4 text-blue-500" />}
+                      <div className={`p-2.5 rounded-xl ${isClosed ? 'bg-muted' : 'bg-neutral-500/10'}`}>
+                        {isClosed ? <Lock className="w-4 h-4 text-muted-foreground" /> : <Calendar className="w-4 h-4 text-neutral-500" />}
                       </div>
                       <div>
                         <h4 className="text-sm font-semibold capitalize">{p.label || p.period_id}</h4>
@@ -158,8 +158,8 @@ export default function ClotureModule() {
                     <div className="flex items-center gap-3">
                       <Badge className={`text-xs ${
                         isClosed
-                          ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                          : 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                          ? 'bg-brand-500/10 text-brand-500 border-brand-500/20'
+                          : 'bg-neutral-500/10 text-neutral-500 border-neutral-500/20'
                       }`}>
                         {isClosed ? (
                           <><Lock className="w-3 h-3 mr-1" />Clôturé</>
@@ -171,7 +171,7 @@ export default function ClotureModule() {
                       {isClosed ? (
                         <div className="flex items-center gap-1.5">
                           <Button size="sm" variant="outline" className="h-8 text-xs gap-1" title="Générer automatiquement P&L + Bilan pour cette période" onClick={() => alert('Rapports générés pour ' + p.period_id)}>
-                            <BarChart3 className="w-3 h-3 text-violet-500" />Générer Rapports
+                            <BarChart3 className="w-3 h-3 text-brand-500" />Générer Rapports
                           </Button>
                           <Button size="sm" variant="outline" className="h-8 text-xs gap-1 text-amber-600 hover:bg-amber-500/10" onClick={() => handleReopen(p.period_id)} title="Réouvrir cette période (nécessite validation admin)">
                             <Unlock className="w-3 h-3" />Réouvrir
@@ -180,11 +180,11 @@ export default function ClotureModule() {
                       ) : (
                         <div className="flex items-center gap-1.5">
                           <Button size="sm" variant="outline" className="h-8 text-xs gap-1" title="Vérifier la checklist avant clôture" onClick={() => { loadChecklist(p.period_id); setShowConfirm(p); }}>
-                            <ClipboardCheck className="w-3 h-3 text-blue-500" />Checklist Clôture
+                            <ClipboardCheck className="w-3 h-3 text-neutral-500" />Checklist Clôture
                           </Button>
                           <Button
                             size="sm"
-                            className="h-8 text-xs gap-1 bg-gradient-to-r from-violet-500 to-violet-600 hover:from-violet-600 hover:to-violet-700"
+                            className="h-8 text-xs gap-1 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700"
                             onClick={() => { loadChecklist(p.period_id); setShowConfirm(p); }}
                             title="Clôturer et verrouiller cette période comptable"
                           >
@@ -206,7 +206,7 @@ export default function ClotureModule() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Lock className="w-5 h-5 text-violet-500" />
+              <Lock className="w-5 h-5 text-brand-500" />
               Clôture — {showConfirm?.label || showConfirm?.period_id}
             </DialogTitle>
           </DialogHeader>
@@ -218,22 +218,22 @@ export default function ClotureModule() {
 
               {checklistLoading ? (
                 <div className="flex items-center justify-center py-8">
-                  <RefreshCw className="w-5 h-5 animate-spin text-violet-500" />
+                  <RefreshCw className="w-5 h-5 animate-spin text-brand-500" />
                 </div>
               ) : checklist ? (
                 <div className="space-y-2">
                   {(checklist.items || []).map((item, i) => (
                     <div key={i} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
                       item.done
-                        ? 'bg-emerald-500/5 border-emerald-500/20'
-                        : 'bg-red-500/5 border-red-500/20'
+                        ? 'bg-brand-500/5 border-brand-500/20'
+                        : 'bg-terracotta-500/5 border-terracotta-500/20'
                     }`}>
                       {item.done ? (
-                        <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                        <CheckCircle className="w-4 h-4 text-brand-500 flex-shrink-0" />
                       ) : (
-                        <XCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                        <XCircle className="w-4 h-4 text-terracotta-500 flex-shrink-0" />
                       )}
-                      <span className={`text-sm ${item.done ? '' : 'text-red-600 font-medium'}`}>
+                      <span className={`text-sm ${item.done ? '' : 'text-terracotta-600 font-medium'}`}>
                         {item.label}
                       </span>
                     </div>
@@ -258,7 +258,7 @@ export default function ClotureModule() {
             {/* Actions */}
             <div className="flex gap-3">
               <Button
-                className="flex-1 h-10 bg-gradient-to-r from-violet-500 to-violet-600 hover:from-violet-600 hover:to-violet-700"
+                className="flex-1 h-10 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700"
                 onClick={() => handleClose(showConfirm?.period_id)}
               >
                 <Lock className="w-4 h-4 mr-2" />

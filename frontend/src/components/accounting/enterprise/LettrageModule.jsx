@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '../../shared';
 import axios from 'axios';
 import api from '../../../lib/api';
@@ -17,9 +17,9 @@ import {
 } from 'lucide-react';
 
 const STATUS_COLORS = {
-  lettre: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+  lettre: 'bg-brand-500/10 text-brand-500 border-brand-500/20',
   non_lettre: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-  partiel: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+  partiel: 'bg-neutral-500/10 text-neutral-500 border-neutral-500/20',
 };
 
 export default function LettrageModule() {
@@ -162,7 +162,7 @@ export default function LettrageModule() {
                 <ListFilter className="w-3.5 h-3.5 text-amber-500" />Voir Non-lettrées
               </Button>
               <Button size="sm" variant="outline" className="gap-1.5 text-xs h-9" title="Rapprochement automatique par montant" onClick={() => alert('Rapprochement auto lancé')}>
-                <Zap className="w-3.5 h-3.5 text-violet-500" />Rapprochement Auto
+                <Zap className="w-3.5 h-3.5 text-brand-500" />Rapprochement Auto
               </Button>
               <Button size="sm" variant="outline" onClick={() => { setSelected([]); loadLettrage(); }} title="Actualiser la liste des écritures">
                 <RefreshCw className="w-3.5 h-3.5 mr-1.5" />Actualiser
@@ -210,7 +210,7 @@ export default function LettrageModule() {
                               <td className="p-3 text-right font-mono text-sm tabular-nums">{fmt(e.total_credit)}</td>
                               <td className="p-3 text-center">
                                 {e.lettering_code ? (
-                                  <Badge className="text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
+                                  <Badge className="text-[10px] bg-brand-500/10 text-brand-500 border-brand-500/20">
                                     <Link2 className="w-2.5 h-2.5 mr-1" />{e.lettering_code}
                                   </Badge>
                                 ) : (
@@ -220,7 +220,7 @@ export default function LettrageModule() {
                               <td className="p-3 text-right" onClick={ev => ev.stopPropagation()}>
                                 {e.lettering_code && (
                                   <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelettrage(e.entry_id)} title="Délettrer">
-                                    <Unlink className="w-3.5 h-3.5 text-red-500" />
+                                    <Unlink className="w-3.5 h-3.5 text-terracotta-500" />
                                   </Button>
                                 )}
                               </td>
@@ -241,19 +241,19 @@ export default function LettrageModule() {
           {/* Summary */}
           {bankBalance && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card className="bg-blue-500/5 border-blue-500/20">
+              <Card className="bg-neutral-500/5 border-neutral-500/20">
                 <CardContent className="p-4 text-center">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Solde comptable</p>
                   <p className="text-xl font-bold">{fmt(bankBalance.book_balance)}</p>
                 </CardContent>
               </Card>
-              <Card className="bg-violet-500/5 border-violet-500/20">
+              <Card className="bg-brand-500/5 border-brand-500/20">
                 <CardContent className="p-4 text-center">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Solde bancaire</p>
                   <p className="text-xl font-bold">{fmt(bankBalance.bank_balance)}</p>
                 </CardContent>
               </Card>
-              <Card className={`${Math.abs(bankBalance.difference || 0) < 0.01 ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+              <Card className={`${Math.abs(bankBalance.difference || 0) < 0.01 ? 'bg-brand-500/5 border-brand-500/20' : 'bg-terracotta-500/5 border-terracotta-500/20'}`}>
                 <CardContent className="p-4 text-center">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Écart</p>
                   <p className="text-xl font-bold">{fmt(bankBalance.difference)}</p>
@@ -273,7 +273,7 @@ export default function LettrageModule() {
             <CardContent className="p-0">
               {loading ? (
                 <div className="flex items-center justify-center py-16">
-                  <div className="w-10 h-10 rounded-full border-2 border-blue-500/20 border-t-blue-500 animate-spin" />
+                  <div className="w-10 h-10 rounded-full border-2 border-neutral-500/20 border-t-neutral-500 animate-spin" />
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -293,12 +293,12 @@ export default function LettrageModule() {
                         <tr key={l.line_id} className="border-t hover:bg-muted/30 transition-colors">
                           <td className="p-3 text-sm">{l.bank_date}</td>
                           <td className="p-3 text-sm">{l.label}</td>
-                          <td className={`p-3 text-right font-mono text-sm tabular-nums ${l.amount >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                          <td className={`p-3 text-right font-mono text-sm tabular-nums ${l.amount >= 0 ? 'text-brand-500' : 'text-terracotta-500'}`}>
                             {fmt(l.amount)}
                           </td>
                           <td className="p-3 text-center">
                             <Badge className={`text-[10px] ${
-                              l.status === 'matched' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                              l.status === 'matched' ? 'bg-brand-500/10 text-brand-500 border-brand-500/20' :
                               'bg-amber-500/10 text-amber-500 border-amber-500/20'
                             }`}>
                               {l.status === 'matched' ? '✓ Rapproché' : 'En attente'}
@@ -308,7 +308,7 @@ export default function LettrageModule() {
                           <td className="p-3 text-right">
                             {l.status === 'matched' ? (
                               <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleBankUnmatch(l.line_id)} title="Dé-rapprocher">
-                                <Unlink className="w-3.5 h-3.5 text-red-500" />
+                                <Unlink className="w-3.5 h-3.5 text-terracotta-500" />
                               </Button>
                             ) : (
                               <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => handleBankMatch(l.line_id)}>

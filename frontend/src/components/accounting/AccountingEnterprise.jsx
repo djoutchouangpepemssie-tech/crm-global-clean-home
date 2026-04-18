@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+﻿import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import api from '../../lib/api';
 import BACKEND_URL from '../../config';
@@ -48,7 +48,7 @@ const PERIODS = [
   { value: 'ytd', label: 'Année en cours' },
 ];
 
-const CHART_COLORS = ['#2563eb', '#7c3aed', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#8b5cf6'];
+const CHART_COLORS = ['#2563eb', '#047857', '#047857', '#f59e0b', '#c2410c', '#06b6d4', '#ec4899', '#047857'];
 
 const CustomTooltipStyle = {
   background: 'hsl(var(--card))',
@@ -64,28 +64,28 @@ const CustomTooltipStyle = {
 function KPICard({ title, value, subtitle, icon: Icon, trend, trendLabel, color = 'blue', sparkData }) {
   const colorMap = {
     blue: {
-      bg: 'from-blue-500/10 via-blue-600/5 to-transparent',
-      border: 'border-blue-500/20 hover:border-blue-500/40',
-      icon: 'bg-blue-500/15 text-blue-500',
-      ring: 'ring-blue-500/10',
+      bg: 'from-neutral-500/10 via-brand-600/5 to-transparent',
+      border: 'border-neutral-500/20 hover:border-neutral-500/40',
+      icon: 'bg-neutral-500/15 text-neutral-500',
+      ring: 'ring-neutral-500/10',
     },
     violet: {
-      bg: 'from-violet-500/10 via-violet-600/5 to-transparent',
-      border: 'border-violet-500/20 hover:border-violet-500/40',
-      icon: 'bg-violet-500/15 text-violet-500',
-      ring: 'ring-violet-500/10',
+      bg: 'from-brand-500/10 via-brand-600/5 to-transparent',
+      border: 'border-brand-500/20 hover:border-brand-500/40',
+      icon: 'bg-brand-500/15 text-brand-500',
+      ring: 'ring-brand-500/10',
     },
     green: {
-      bg: 'from-emerald-500/10 via-emerald-600/5 to-transparent',
-      border: 'border-emerald-500/20 hover:border-emerald-500/40',
-      icon: 'bg-emerald-500/15 text-emerald-500',
-      ring: 'ring-emerald-500/10',
+      bg: 'from-brand-500/10 via-brand-600/5 to-transparent',
+      border: 'border-brand-500/20 hover:border-brand-500/40',
+      icon: 'bg-brand-500/15 text-brand-500',
+      ring: 'ring-brand-500/10',
     },
     red: {
-      bg: 'from-red-500/10 via-red-600/5 to-transparent',
-      border: 'border-red-500/20 hover:border-red-500/40',
-      icon: 'bg-red-500/15 text-red-500',
-      ring: 'ring-red-500/10',
+      bg: 'from-terracotta-500/10 via-terracotta-600/5 to-transparent',
+      border: 'border-terracotta-500/20 hover:border-terracotta-500/40',
+      icon: 'bg-terracotta-500/15 text-terracotta-500',
+      ring: 'ring-terracotta-500/10',
     },
     amber: {
       bg: 'from-amber-500/10 via-amber-600/5 to-transparent',
@@ -113,8 +113,8 @@ function KPICard({ title, value, subtitle, icon: Icon, trend, trendLabel, color 
           {trend !== undefined && trend !== null && (
             <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold ${
               trend >= 0 
-                ? 'bg-emerald-500/10 text-emerald-500' 
-                : 'bg-red-500/10 text-red-500'
+                ? 'bg-brand-500/10 text-brand-500' 
+                : 'bg-terracotta-500/10 text-terracotta-500'
             }`}>
               {trend >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
               {Math.abs(trend).toFixed(1)}%
@@ -156,9 +156,9 @@ function AlertSection({ alerts }) {
   if (!alerts || alerts.length === 0) return null;
 
   const typeConfig = {
-    danger: { bg: 'bg-red-500/5', border: 'border-red-500/20', text: 'text-red-400', icon: AlertCircle },
+    danger: { bg: 'bg-terracotta-500/5', border: 'border-terracotta-500/20', text: 'text-terracotta-400', icon: AlertCircle },
     warning: { bg: 'bg-amber-500/5', border: 'border-amber-500/20', text: 'text-amber-400', icon: AlertTriangle },
-    info: { bg: 'bg-blue-500/5', border: 'border-blue-500/20', text: 'text-blue-400', icon: AlertCircle },
+    info: { bg: 'bg-neutral-500/5', border: 'border-neutral-500/20', text: 'text-neutral-400', icon: AlertCircle },
   };
 
   return (
@@ -190,23 +190,23 @@ function QuickActions({ onNavigate }) {
   return (
     <div className="space-y-3">
       <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-        <Zap className="w-3.5 h-3.5 text-violet-500" />
+        <Zap className="w-3.5 h-3.5 text-brand-500" />
         Actions rapides
       </h4>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-        <button onClick={() => onNavigate('journal')} className="flex items-center gap-2 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all duration-200 border border-blue-500/20 bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 hover:shadow-md hover:shadow-blue-500/10" title="Créer une nouvelle écriture débit/crédit">
+        <button onClick={() => onNavigate('journal')} className="flex items-center gap-2 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all duration-200 border border-neutral-500/20 bg-neutral-500/10 text-brand-600 hover:bg-neutral-500/20 hover:shadow-md hover:shadow-neutral-500/10" title="Créer une nouvelle écriture débit/crédit">
           <Plus className="w-4 h-4" /><span>Nouvelle Écriture</span>
         </button>
-        <button onClick={() => onNavigate('reports')} className="flex items-center gap-2 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all duration-200 border border-violet-500/20 bg-violet-500/10 text-violet-600 hover:bg-violet-500/20 hover:shadow-md hover:shadow-violet-500/10" title="Voir P&L, Bilan, Cash Flow">
+        <button onClick={() => onNavigate('reports')} className="flex items-center gap-2 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all duration-200 border border-brand-500/20 bg-brand-500/10 text-brand-600 hover:bg-brand-500/20 hover:shadow-md hover:shadow-brand-500/10" title="Voir P&L, Bilan, Cash Flow">
           <BarChart3 className="w-4 h-4" /><span>Voir Rapports</span>
         </button>
-        <button onClick={() => onNavigate('expenses')} className="flex items-center gap-2 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all duration-200 border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 hover:shadow-md hover:shadow-emerald-500/10" title="Soumettre une note de frais">
+        <button onClick={() => onNavigate('expenses')} className="flex items-center gap-2 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all duration-200 border border-brand-500/20 bg-brand-500/10 text-brand-600 hover:bg-brand-500/20 hover:shadow-md hover:shadow-brand-500/10" title="Soumettre une note de frais">
           <Receipt className="w-4 h-4" /><span>+ Note de frais</span>
         </button>
         <button onClick={() => onNavigate('tva')} className="flex items-center gap-2 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all duration-200 border border-amber-500/20 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 hover:shadow-md hover:shadow-amber-500/10" title="Créer une déclaration TVA mensuelle/trimestrielle">
           <Calculator className="w-4 h-4" /><span>Déclarer TVA</span>
         </button>
-        <button onClick={() => onNavigate('payroll')} className="flex items-center gap-2 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all duration-200 border border-pink-500/20 bg-pink-500/10 text-pink-600 hover:bg-pink-500/20 hover:shadow-md hover:shadow-pink-500/10" title="Générer une fiche de paie">
+        <button onClick={() => onNavigate('payroll')} className="flex items-center gap-2 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all duration-200 border border-terracotta-500/20 bg-terracotta-500/10 text-terracotta-600 hover:bg-terracotta-500/20 hover:shadow-md hover:shadow-terracotta-500/10" title="Générer une fiche de paie">
           <Users className="w-4 h-4" /><span>+ Fiche paie</span>
         </button>
       </div>
@@ -285,8 +285,8 @@ export default function AccountingEnterprise() {
       return (
         <div className="flex flex-col items-center justify-center py-24 gap-4">
           <div className="relative">
-            <div className="w-12 h-12 rounded-full border-2 border-blue-500/20 border-t-blue-500 animate-spin" />
-            <BookOpen className="w-5 h-5 text-blue-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+            <div className="w-12 h-12 rounded-full border-2 border-neutral-500/20 border-t-neutral-500 animate-spin" />
+            <BookOpen className="w-5 h-5 text-neutral-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
           </div>
           <p className="text-sm text-muted-foreground animate-pulse">Chargement du tableau de bord...</p>
         </div>
@@ -310,8 +310,8 @@ export default function AccountingEnterprise() {
     // Pie chart data for CA breakdown
     const pieData = [
       { name: 'Services', value: (kpis.ca || 0) * 0.45, color: '#2563eb' },
-      { name: 'Produits', value: (kpis.ca || 0) * 0.30, color: '#7c3aed' },
-      { name: 'Prestations', value: (kpis.ca || 0) * 0.15, color: '#10b981' },
+      { name: 'Produits', value: (kpis.ca || 0) * 0.30, color: '#047857' },
+      { name: 'Prestations', value: (kpis.ca || 0) * 0.15, color: '#047857' },
       { name: 'Autres', value: (kpis.ca || 0) * 0.10, color: '#f59e0b' },
     ].filter(d => d.value > 0);
 
@@ -428,7 +428,7 @@ export default function AccountingEnterprise() {
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-blue-500" />
+                  <BarChart3 className="w-4 h-4 text-neutral-500" />
                   Évolution CA / Charges
                 </CardTitle>
                 <Badge variant="outline" className="text-[10px] font-normal">12 derniers mois</Badge>
@@ -439,12 +439,12 @@ export default function AccountingEnterprise() {
                 <ComposedChart data={chart}>
                   <defs>
                     <linearGradient id="gradientRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#047857" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#047857" stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="gradientExpenses" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#c2410c" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#c2410c" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
@@ -452,9 +452,9 @@ export default function AccountingEnterprise() {
                   <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
                   <Tooltip contentStyle={CustomTooltipStyle} formatter={(v) => fmtFull(v)} />
                   <Legend verticalAlign="top" height={36} iconType="circle" iconSize={8} />
-                  <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} fill="url(#gradientRevenue)" name="Chiffre d'affaires" dot={false} activeDot={{ r: 5, strokeWidth: 2 }} />
-                  <Area type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} fill="url(#gradientExpenses)" name="Charges" dot={false} activeDot={{ r: 4 }} />
-                  <Line type="monotone" dataKey="profit" stroke="#7c3aed" strokeWidth={2} strokeDasharray="5 5" name="Résultat" dot={false} />
+                  <Area type="monotone" dataKey="revenue" stroke="#047857" strokeWidth={2.5} fill="url(#gradientRevenue)" name="Chiffre d'affaires" dot={false} activeDot={{ r: 5, strokeWidth: 2 }} />
+                  <Area type="monotone" dataKey="expenses" stroke="#c2410c" strokeWidth={2} fill="url(#gradientExpenses)" name="Charges" dot={false} activeDot={{ r: 4 }} />
+                  <Line type="monotone" dataKey="profit" stroke="#047857" strokeWidth={2} strokeDasharray="5 5" name="Résultat" dot={false} />
                 </ComposedChart>
               </ResponsiveContainer>
             </CardContent>
@@ -468,15 +468,15 @@ export default function AccountingEnterprise() {
             <Card className="border-0 shadow-sm bg-card/50 backdrop-blur">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-violet-500" />
+                  <BarChart3 className="w-4 h-4 text-brand-500" />
                   Activité
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {[
-                  { label: 'Écritures comptables', value: stats.total_entries || 0, color: 'bg-blue-500' },
-                  { label: 'Factures émises', value: stats.total_invoices || 0, color: 'bg-violet-500' },
-                  { label: 'Devis en cours', value: stats.total_quotes || 0, color: 'bg-emerald-500' },
+                  { label: 'Écritures comptables', value: stats.total_entries || 0, color: 'bg-neutral-500' },
+                  { label: 'Factures émises', value: stats.total_invoices || 0, color: 'bg-brand-500' },
+                  { label: 'Devis en cours', value: stats.total_quotes || 0, color: 'bg-brand-500' },
                   { label: 'Brouillons', value: stats.draft_entries || 0, color: 'bg-amber-500' },
                 ].map((item) => (
                   <div key={item.label} className="flex items-center justify-between group">
@@ -498,7 +498,7 @@ export default function AccountingEnterprise() {
           <Card className="border-0 shadow-sm bg-card/50 backdrop-blur">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <PieChartIcon className="w-4 h-4 text-violet-500" />
+                <PieChartIcon className="w-4 h-4 text-brand-500" />
                 Répartition du CA
               </CardTitle>
             </CardHeader>
@@ -530,7 +530,7 @@ export default function AccountingEnterprise() {
           <Card className="border-0 shadow-sm bg-card/50 backdrop-blur">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-emerald-500" />
+                <BarChart3 className="w-4 h-4 text-brand-500" />
                 Rentabilité mensuelle
               </CardTitle>
             </CardHeader>
@@ -544,7 +544,7 @@ export default function AccountingEnterprise() {
                   <ReferenceLine y={0} stroke="hsl(var(--border))" strokeWidth={1.5} />
                   <Bar dataKey="profit" name="Résultat" radius={[6, 6, 0, 0]}>
                     {chart.map((entry, i) => (
-                      <Cell key={i} fill={entry.profit >= 0 ? '#10b981' : '#ef4444'} opacity={0.85} />
+                      <Cell key={i} fill={entry.profit >= 0 ? '#047857' : '#c2410c'} opacity={0.85} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -558,7 +558,7 @@ export default function AccountingEnterprise() {
           <Card className="border-0 shadow-sm bg-card/50 backdrop-blur">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-blue-500" />
+                <BarChart3 className="w-4 h-4 text-neutral-500" />
                 Analyse comparée : CA HT / Charges / Résultat
               </CardTitle>
             </CardHeader>
@@ -571,8 +571,8 @@ export default function AccountingEnterprise() {
                   <Tooltip contentStyle={CustomTooltipStyle} formatter={(v) => fmtFull(Math.abs(v))} />
                   <Legend verticalAlign="top" height={36} iconType="circle" iconSize={8} />
                   <Bar dataKey="CA HT" fill="#2563eb" radius={[4, 4, 0, 0]} barSize={18} />
-                  <Bar dataKey="Charges" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={18} />
-                  <Bar dataKey="Résultat" fill="#7c3aed" radius={[4, 4, 0, 0]} barSize={18} />
+                  <Bar dataKey="Charges" fill="#c2410c" radius={[4, 4, 0, 0]} barSize={18} />
+                  <Bar dataKey="Résultat" fill="#047857" radius={[4, 4, 0, 0]} barSize={18} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -584,7 +584,7 @@ export default function AccountingEnterprise() {
           <Card className="border-0 shadow-sm bg-card/50 backdrop-blur">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Calculator className="w-4 h-4 text-blue-500" />
+                <Calculator className="w-4 h-4 text-neutral-500" />
                 Ratios financiers clés
               </CardTitle>
             </CardHeader>
@@ -598,11 +598,11 @@ export default function AccountingEnterprise() {
                   { label: 'Trésorerie nette', value: fmt(ratios.tresorerie_nette), good: (ratios.tresorerie_nette || 0) > 0, desc: '> 0 = excédent' },
                 ].map((r) => (
                   <div key={r.label} className={`text-center p-4 rounded-xl border transition-all duration-200 hover:shadow-md ${
-                    r.good ? 'bg-emerald-500/5 border-emerald-500/15' : 'bg-red-500/5 border-red-500/15'
+                    r.good ? 'bg-brand-500/5 border-brand-500/15' : 'bg-terracotta-500/5 border-terracotta-500/15'
                   }`}>
                     <div className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wider">{r.label}</div>
                     <div className="text-xl font-bold tracking-tight">{r.value}</div>
-                    <div className={`text-[10px] mt-1 ${r.good ? 'text-emerald-500' : 'text-red-400'}`}>{r.desc}</div>
+                    <div className={`text-[10px] mt-1 ${r.good ? 'text-brand-500' : 'text-terracotta-400'}`}>{r.desc}</div>
                   </div>
                 ))}
               </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '../../shared';
 import axios from 'axios';
 import api from '../../../lib/api';
@@ -37,20 +37,20 @@ const TYPES = [
 ];
 
 const TYPE_COLORS = {
-  actif: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-  passif: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
-  charge: 'bg-red-500/10 text-red-500 border-red-500/20',
-  produit: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+  actif: 'bg-neutral-500/10 text-neutral-500 border-neutral-500/20',
+  passif: 'bg-brand-500/10 text-brand-500 border-brand-500/20',
+  charge: 'bg-terracotta-500/10 text-terracotta-500 border-terracotta-500/20',
+  produit: 'bg-brand-500/10 text-brand-500 border-brand-500/20',
 };
 
 const CLASS_COLORS = {
-  '1': 'from-blue-500/10 to-blue-600/5 border-blue-500/20',
-  '2': 'from-violet-500/10 to-violet-600/5 border-violet-500/20',
+  '1': 'from-neutral-500/10 to-brand-600/5 border-neutral-500/20',
+  '2': 'from-brand-500/10 to-brand-600/5 border-brand-500/20',
   '3': 'from-amber-500/10 to-amber-600/5 border-amber-500/20',
   '4': 'from-cyan-500/10 to-cyan-600/5 border-cyan-500/20',
-  '5': 'from-emerald-500/10 to-emerald-600/5 border-emerald-500/20',
-  '6': 'from-red-500/10 to-red-600/5 border-red-500/20',
-  '7': 'from-green-500/10 to-green-600/5 border-green-500/20',
+  '5': 'from-brand-500/10 to-brand-600/5 border-brand-500/20',
+  '6': 'from-terracotta-500/10 to-terracotta-600/5 border-terracotta-500/20',
+  '7': 'from-brand-500/10 to-brand-600/5 border-brand-500/20',
 };
 
 export default function ChartOfAccounts() {
@@ -116,8 +116,8 @@ export default function ChartOfAccounts() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h3 className="text-xl font-bold flex items-center gap-2.5 tracking-tight">
-            <div className="p-2 rounded-xl bg-violet-500/10">
-              <ClipboardList className="w-5 h-5 text-violet-500" />
+            <div className="p-2 rounded-xl bg-brand-500/10">
+              <ClipboardList className="w-5 h-5 text-brand-500" />
             </div>
             Plan Comptable Général
           </h3>
@@ -125,14 +125,14 @@ export default function ChartOfAccounts() {
         </div>
         <Dialog open={showCreate} onOpenChange={setShowCreate}>
           <DialogTrigger asChild>
-            <Button size="sm" className="gap-1.5 bg-gradient-to-r from-violet-500 to-violet-600 hover:from-violet-600 hover:to-violet-700 shadow-md shadow-violet-500/20">
+            <Button size="sm" className="gap-1.5 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 shadow-md shadow-brand-500/20">
               <Plus className="w-3.5 h-3.5" />Nouveau compte
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Hash className="w-5 h-5 text-violet-500" />
+                <Hash className="w-5 h-5 text-brand-500" />
                 Créer un compte comptable
               </DialogTitle>
             </DialogHeader>
@@ -169,7 +169,7 @@ export default function ChartOfAccounts() {
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description (optionnel)</label>
                 <Input value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} className="h-10" />
               </div>
-              <Button className="w-full h-10 bg-gradient-to-r from-violet-500 to-violet-600" onClick={handleCreate}>
+              <Button className="w-full h-10 bg-gradient-to-r from-brand-500 to-brand-600" onClick={handleCreate}>
                 <Plus className="w-4 h-4 mr-2" />Créer le compte
               </Button>
             </div>
@@ -202,7 +202,7 @@ export default function ChartOfAccounts() {
       {/* Classes accordion */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <div className="w-10 h-10 rounded-full border-2 border-violet-500/20 border-t-violet-500 animate-spin" />
+          <div className="w-10 h-10 rounded-full border-2 border-brand-500/20 border-t-brand-500 animate-spin" />
         </div>
       ) : (
         <div className="space-y-3">
@@ -242,23 +242,23 @@ export default function ChartOfAccounts() {
                     <tbody>
                       {cls.accounts.map((a, idx) => (
                         <tr key={a.code} className={`border-t border-border/50 hover:bg-muted/20 transition-colors ${idx % 2 === 0 ? '' : 'bg-muted/5'}`}>
-                          <td className="p-3 pl-14 font-mono font-semibold text-sm text-blue-600">{a.code}</td>
+                          <td className="p-3 pl-14 font-mono font-semibold text-sm text-brand-600">{a.code}</td>
                           <td className="p-3 text-sm">{a.label}</td>
                           <td className="p-3 text-center">
                             <Badge className={`text-[10px] ${TYPE_COLORS[a.type] || 'bg-muted'}`}>{a.type}</Badge>
                           </td>
                           <td className={`p-3 text-right font-mono text-sm tabular-nums font-medium ${
-                            (a.balance || 0) > 0 ? 'text-emerald-500' : (a.balance || 0) < 0 ? 'text-red-500' : 'text-muted-foreground'
+                            (a.balance || 0) > 0 ? 'text-brand-500' : (a.balance || 0) < 0 ? 'text-terracotta-500' : 'text-muted-foreground'
                           }`}>
                             {fmt(a.balance)}
                           </td>
                           <td className="p-3 pr-5 text-right">
                             <div className="flex items-center justify-end gap-0.5">
                               <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" title="Voir le solde détaillé du compte" onClick={() => alert(`Solde ${a.code}: ${fmt(a.balance)}`)}>
-                                <BarChart3 className="w-3 h-3 text-violet-500" />
+                                <BarChart3 className="w-3 h-3 text-brand-500" />
                               </Button>
                               <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" title="Voir l'historique des mouvements" onClick={() => alert(`Mouvements du compte ${a.code}`)}>
-                                <History className="w-3 h-3 text-blue-500" />
+                                <History className="w-3 h-3 text-neutral-500" />
                               </Button>
                             </div>
                           </td>

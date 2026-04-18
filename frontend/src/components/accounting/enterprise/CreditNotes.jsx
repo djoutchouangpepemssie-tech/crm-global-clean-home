@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '../../shared';
 import axios from 'axios';
 import api from '../../../lib/api';
@@ -60,8 +60,8 @@ export default function CreditNotes() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-xl font-bold flex items-center gap-2.5 tracking-tight">
-            <div className="p-2 rounded-xl bg-rose-500/10">
-              <Banknote className="w-5 h-5 text-rose-500" />
+            <div className="p-2 rounded-xl bg-terracotta-500/10">
+              <Banknote className="w-5 h-5 text-terracotta-500" />
             </div>
             Avoirs
           </h3>
@@ -69,14 +69,14 @@ export default function CreditNotes() {
         </div>
         <Dialog open={showCreate} onOpenChange={setShowCreate}>
           <DialogTrigger asChild>
-            <Button size="sm" className="gap-1.5 bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 shadow-md shadow-rose-500/20">
+            <Button size="sm" className="gap-1.5 bg-gradient-to-r from-terracotta-500 to-terracotta-600 hover:from-terracotta-600 hover:to-terracotta-700 shadow-md shadow-terracotta-500/20">
               <Plus className="w-3.5 h-3.5" />Nouvel avoir
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Banknote className="w-5 h-5 text-rose-500" />Créer un avoir
+                <Banknote className="w-5 h-5 text-terracotta-500" />Créer un avoir
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
@@ -112,7 +112,7 @@ export default function CreditNotes() {
                   </div>
                 ))}
               </div>
-              <Button className="w-full h-10 bg-gradient-to-r from-rose-500 to-rose-600" onClick={handleCreate}>
+              <Button className="w-full h-10 bg-gradient-to-r from-terracotta-500 to-terracotta-600" onClick={handleCreate}>
                 <Banknote className="w-4 h-4 mr-2" />Créer l'avoir
               </Button>
             </div>
@@ -124,7 +124,7 @@ export default function CreditNotes() {
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <div className="w-10 h-10 rounded-full border-2 border-rose-500/20 border-t-rose-500 animate-spin" />
+              <div className="w-10 h-10 rounded-full border-2 border-terracotta-500/20 border-t-terracotta-500 animate-spin" />
             </div>
           ) : notes.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
@@ -156,14 +156,14 @@ export default function CreditNotes() {
                       <td className="p-3 text-right font-mono text-sm tabular-nums text-muted-foreground">{fmt(n.tva_amount)}</td>
                       <td className="p-3 text-right font-mono text-sm tabular-nums font-semibold">{fmt(n.total_ttc)}</td>
                       <td className="p-3 text-center">
-                        <Badge className={`text-[10px] ${n.status === 'validated' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>
+                        <Badge className={`text-[10px] ${n.status === 'validated' ? 'bg-brand-500/10 text-brand-500 border-brand-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>
                           {n.status === 'validated' ? 'Validé' : 'Brouillon'}
                         </Badge>
                       </td>
                       <td className="p-3 pr-5 text-right">
                         {n.status === 'draft' && (
                           <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => handleValidate(n.credit_note_id)}>
-                            <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                            <CheckCircle className="w-3.5 h-3.5 text-brand-500" />
                           </Button>
                         )}
                       </td>

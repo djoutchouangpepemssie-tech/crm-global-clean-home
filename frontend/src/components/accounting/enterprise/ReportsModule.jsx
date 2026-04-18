@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+﻿import React, { useState, useCallback } from 'react';
 import { PageHeader } from '../../shared';
 import axios from 'axios';
 import api from '../../../lib/api';
@@ -79,7 +79,7 @@ export default function ReportsModule() {
 
   const Loader = () => (
     <div className="flex flex-col items-center justify-center py-20 gap-3">
-      <div className="w-10 h-10 rounded-full border-2 border-blue-500/20 border-t-blue-500 animate-spin" />
+      <div className="w-10 h-10 rounded-full border-2 border-neutral-500/20 border-t-neutral-500 animate-spin" />
       <p className="text-sm text-muted-foreground">Génération du rapport...</p>
     </div>
   );
@@ -121,8 +121,8 @@ export default function ReportsModule() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-xl font-bold flex items-center gap-2.5 tracking-tight">
-            <div className="p-2 rounded-xl bg-blue-500/10">
-              <Download className="w-5 h-5 text-blue-500" />
+            <div className="p-2 rounded-xl bg-neutral-500/10">
+              <Download className="w-5 h-5 text-neutral-500" />
             </div>
             Rapports Financiers
           </h3>
@@ -131,13 +131,13 @@ export default function ReportsModule() {
         {/* Action buttons */}
         <div className="flex items-center gap-1.5">
           <Button size="sm" variant="outline" className="gap-1 text-xs h-8" onClick={() => handleTabChange('pl')} title="Voir le Compte de Résultat (P&L)">
-            <TrendingUp className="w-3 h-3 text-emerald-500" />P&L
+            <TrendingUp className="w-3 h-3 text-brand-500" />P&L
           </Button>
           <Button size="sm" variant="outline" className="gap-1 text-xs h-8" onClick={() => handleTabChange('balance-sheet')} title="Voir le Bilan Comptable">
-            <BarChart3 className="w-3 h-3 text-blue-500" />Bilan
+            <BarChart3 className="w-3 h-3 text-neutral-500" />Bilan
           </Button>
           <Button size="sm" variant="outline" className="gap-1 text-xs h-8" onClick={() => handleTabChange('cash-flow')} title="Voir les Flux de Trésorerie">
-            <Wallet className="w-3 h-3 text-violet-500" />Cash Flow
+            <Wallet className="w-3 h-3 text-brand-500" />Cash Flow
           </Button>
           <div className="w-px h-6 bg-border mx-1" />
           <Button size="sm" variant="outline" className="gap-1 text-xs h-8" onClick={() => exportReport('pdf')} title="Exporter au format PDF avec mise en page professionnelle">
@@ -164,7 +164,7 @@ export default function ReportsModule() {
         <TabsContent value="pl" className="mt-6 space-y-6">
           <div className="flex items-center gap-3">
             <Input className="w-28 h-10 font-mono" type="number" value={year} onChange={e => setYear(parseInt(e.target.value))} />
-            <Button size="sm" onClick={loadPL} className="gap-1.5 h-10 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700" title="Générer le compte de résultat pour cette année">
+            <Button size="sm" onClick={loadPL} className="gap-1.5 h-10 bg-gradient-to-r from-neutral-500 to-brand-600 hover:from-brand-600 hover:to-brand-700" title="Générer le compte de résultat pour cette année">
               <TrendingUp className="w-3.5 h-3.5" />Voir P&L
             </Button>
             <Button size="sm" variant="outline" className="gap-1.5 text-xs h-10" title="Exporter le P&L au format PDF professionnel" onClick={() => exportReport('pdf')}>
@@ -180,27 +180,27 @@ export default function ReportsModule() {
             <div className="space-y-6">
               {/* Summary cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="bg-emerald-500/5 border-emerald-500/20"><CardContent className="p-4 text-center">
-                  <ArrowUp className="w-5 h-5 text-emerald-500 mx-auto mb-2" />
+                <Card className="bg-brand-500/5 border-brand-500/20"><CardContent className="p-4 text-center">
+                  <ArrowUp className="w-5 h-5 text-brand-500 mx-auto mb-2" />
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Total produits</div>
-                  <div className="text-xl font-bold text-emerald-500">{fmtK(plData.produits?.total)}</div>
+                  <div className="text-xl font-bold text-brand-500">{fmtK(plData.produits?.total)}</div>
                 </CardContent></Card>
-                <Card className="bg-red-500/5 border-red-500/20"><CardContent className="p-4 text-center">
-                  <ArrowDown className="w-5 h-5 text-red-500 mx-auto mb-2" />
+                <Card className="bg-terracotta-500/5 border-terracotta-500/20"><CardContent className="p-4 text-center">
+                  <ArrowDown className="w-5 h-5 text-terracotta-500 mx-auto mb-2" />
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Total charges</div>
-                  <div className="text-xl font-bold text-red-500">{fmtK(plData.charges?.total)}</div>
+                  <div className="text-xl font-bold text-terracotta-500">{fmtK(plData.charges?.total)}</div>
                 </CardContent></Card>
-                <Card className={`${plData.resultat_net >= 0 ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                <Card className={`${plData.resultat_net >= 0 ? 'bg-brand-500/5 border-brand-500/20' : 'bg-terracotta-500/5 border-terracotta-500/20'}`}>
                   <CardContent className="p-4 text-center">
-                    <DollarSign className={`w-5 h-5 ${plData.resultat_net >= 0 ? 'text-emerald-500' : 'text-red-500'} mx-auto mb-2`} />
+                    <DollarSign className={`w-5 h-5 ${plData.resultat_net >= 0 ? 'text-brand-500' : 'text-terracotta-500'} mx-auto mb-2`} />
                     <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Résultat net</div>
-                    <div className={`text-xl font-bold ${plData.resultat_net >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{fmtK(plData.resultat_net)}</div>
+                    <div className={`text-xl font-bold ${plData.resultat_net >= 0 ? 'text-brand-500' : 'text-terracotta-500'}`}>{fmtK(plData.resultat_net)}</div>
                   </CardContent>
                 </Card>
-                <Card className="bg-violet-500/5 border-violet-500/20"><CardContent className="p-4 text-center">
-                  <BarChart3 className="w-5 h-5 text-violet-500 mx-auto mb-2" />
+                <Card className="bg-brand-500/5 border-brand-500/20"><CardContent className="p-4 text-center">
+                  <BarChart3 className="w-5 h-5 text-brand-500 mx-auto mb-2" />
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Marge nette</div>
-                  <div className="text-xl font-bold text-violet-500">{plData.marge_nette?.toFixed(1) || 0}%</div>
+                  <div className="text-xl font-bold text-brand-500">{plData.marge_nette?.toFixed(1) || 0}%</div>
                 </CardContent></Card>
               </div>
 
@@ -208,35 +208,35 @@ export default function ReportsModule() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card className="border-0 shadow-sm">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-semibold text-emerald-600 flex items-center gap-2">
+                    <CardTitle className="text-sm font-semibold text-brand-600 flex items-center gap-2">
                       <ArrowUp className="w-4 h-4" />Produits
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <SectionTable title="Exploitation" items={plData.produits?.exploitation} color="text-emerald-600" icon={TrendingUp} />
-                    <SectionTable title="Financiers" items={plData.produits?.financiers} color="text-emerald-600" />
-                    <SectionTable title="Exceptionnels" items={plData.produits?.exceptionnels} color="text-emerald-600" />
-                    <div className="flex justify-between text-sm font-bold pt-3 border-t-2 border-emerald-500/20">
+                    <SectionTable title="Exploitation" items={plData.produits?.exploitation} color="text-brand-600" icon={TrendingUp} />
+                    <SectionTable title="Financiers" items={plData.produits?.financiers} color="text-brand-600" />
+                    <SectionTable title="Exceptionnels" items={plData.produits?.exceptionnels} color="text-brand-600" />
+                    <div className="flex justify-between text-sm font-bold pt-3 border-t-2 border-brand-500/20">
                       <span>TOTAL PRODUITS</span>
-                      <span className="text-emerald-500 font-mono tabular-nums">{fmt(plData.produits?.total)}</span>
+                      <span className="text-brand-500 font-mono tabular-nums">{fmt(plData.produits?.total)}</span>
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card className="border-0 shadow-sm">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-semibold text-red-600 flex items-center gap-2">
+                    <CardTitle className="text-sm font-semibold text-terracotta-600 flex items-center gap-2">
                       <ArrowDown className="w-4 h-4" />Charges
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <SectionTable title="Exploitation" items={plData.charges?.exploitation} color="text-red-600" icon={TrendingUp} />
-                    <SectionTable title="Financières" items={plData.charges?.financieres} color="text-red-600" />
-                    <SectionTable title="Exceptionnelles" items={plData.charges?.exceptionnelles} color="text-red-600" />
-                    <SectionTable title="Dotations" items={plData.charges?.dotations} color="text-red-600" />
-                    <div className="flex justify-between text-sm font-bold pt-3 border-t-2 border-red-500/20">
+                    <SectionTable title="Exploitation" items={plData.charges?.exploitation} color="text-terracotta-600" icon={TrendingUp} />
+                    <SectionTable title="Financières" items={plData.charges?.financieres} color="text-terracotta-600" />
+                    <SectionTable title="Exceptionnelles" items={plData.charges?.exceptionnelles} color="text-terracotta-600" />
+                    <SectionTable title="Dotations" items={plData.charges?.dotations} color="text-terracotta-600" />
+                    <div className="flex justify-between text-sm font-bold pt-3 border-t-2 border-terracotta-500/20">
                       <span>TOTAL CHARGES</span>
-                      <span className="text-red-500 font-mono tabular-nums">{fmt(plData.charges?.total)}</span>
+                      <span className="text-terracotta-500 font-mono tabular-nums">{fmt(plData.charges?.total)}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -255,14 +255,14 @@ export default function ReportsModule() {
                   ].map((r, i) => (
                     <div key={i} className="flex justify-between text-sm py-2 px-4 rounded-lg bg-muted/20">
                       <span>{r.label}</span>
-                      <span className={`font-mono font-medium tabular-nums ${(r.value || 0) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                      <span className={`font-mono font-medium tabular-nums ${(r.value || 0) >= 0 ? 'text-brand-500' : 'text-terracotta-500'}`}>
                         {fmt(r.value)}
                       </span>
                     </div>
                   ))}
                   <div className="flex justify-between text-base font-bold pt-3 px-4 border-t-2 border-foreground/10">
                     <span>RÉSULTAT NET</span>
-                    <span className={`font-mono tabular-nums ${plData.resultat_net >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                    <span className={`font-mono tabular-nums ${plData.resultat_net >= 0 ? 'text-brand-500' : 'text-terracotta-500'}`}>
                       {fmt(plData.resultat_net)}
                     </span>
                   </div>
@@ -284,7 +284,7 @@ export default function ReportsModule() {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Au {bsData.date}</span>
-                <Badge className={`${bsData.is_balanced ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>
+                <Badge className={`${bsData.is_balanced ? 'bg-brand-500/10 text-brand-500 border-brand-500/20' : 'bg-terracotta-500/10 text-terracotta-500 border-terracotta-500/20'}`}>
                   {bsData.is_balanced ? '✅ Bilan équilibré' : '⚠️ Déséquilibre détecté'}
                 </Badge>
               </div>
@@ -292,35 +292,35 @@ export default function ReportsModule() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card className="border-0 shadow-sm">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-semibold text-blue-600 flex items-center gap-2">
+                    <CardTitle className="text-sm font-semibold text-brand-600 flex items-center gap-2">
                       <BarChart3 className="w-4 h-4" />ACTIF
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <SectionTable title="Immobilisations" items={bsData.actif?.immobilisations} color="text-blue-600" />
-                    <SectionTable title="Stocks" items={bsData.actif?.stocks} color="text-blue-600" />
-                    <SectionTable title="Créances" items={bsData.actif?.creances} color="text-blue-600" />
-                    <SectionTable title="Trésorerie" items={bsData.actif?.tresorerie} color="text-blue-600" />
-                    <div className="flex justify-between text-sm font-bold pt-3 border-t-2 border-blue-500/20">
-                      <span>TOTAL ACTIF</span><span className="text-blue-500 font-mono tabular-nums">{fmt(bsData.total_actif)}</span>
+                    <SectionTable title="Immobilisations" items={bsData.actif?.immobilisations} color="text-brand-600" />
+                    <SectionTable title="Stocks" items={bsData.actif?.stocks} color="text-brand-600" />
+                    <SectionTable title="Créances" items={bsData.actif?.creances} color="text-brand-600" />
+                    <SectionTable title="Trésorerie" items={bsData.actif?.tresorerie} color="text-brand-600" />
+                    <div className="flex justify-between text-sm font-bold pt-3 border-t-2 border-neutral-500/20">
+                      <span>TOTAL ACTIF</span><span className="text-neutral-500 font-mono tabular-nums">{fmt(bsData.total_actif)}</span>
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card className="border-0 shadow-sm">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-semibold text-purple-600 flex items-center gap-2">
+                    <CardTitle className="text-sm font-semibold text-brand-600 flex items-center gap-2">
                       <BarChart3 className="w-4 h-4" />PASSIF
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <SectionTable title="Capitaux propres" items={bsData.passif?.capitaux} color="text-purple-600" />
-                    <SectionTable title="Dettes" items={bsData.passif?.dettes} color="text-purple-600" />
+                    <SectionTable title="Capitaux propres" items={bsData.passif?.capitaux} color="text-brand-600" />
+                    <SectionTable title="Dettes" items={bsData.passif?.dettes} color="text-brand-600" />
                     <div className="flex justify-between text-sm pt-3 border-t">
                       <span>Résultat de l'exercice</span><span className="font-mono tabular-nums">{fmt(bsData.resultat)}</span>
                     </div>
-                    <div className="flex justify-between text-sm font-bold pt-3 border-t-2 border-purple-500/20">
-                      <span>TOTAL PASSIF</span><span className="text-purple-500 font-mono tabular-nums">{fmt(bsData.total_passif)}</span>
+                    <div className="flex justify-between text-sm font-bold pt-3 border-t-2 border-brand-500/20">
+                      <span>TOTAL PASSIF</span><span className="text-brand-500 font-mono tabular-nums">{fmt(bsData.total_passif)}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -331,7 +331,7 @@ export default function ReportsModule() {
                 <Card className="border-0 shadow-sm">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                      <PieChartIcon className="w-4 h-4 text-violet-500" />
+                      <PieChartIcon className="w-4 h-4 text-brand-500" />
                       Répartition Actif / Passif
                     </CardTitle>
                   </CardHeader>
@@ -346,7 +346,7 @@ export default function ReportsModule() {
                           cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={4} dataKey="value" stroke="none"
                         >
                           <Cell fill="#2563eb" />
-                          <Cell fill="#7c3aed" />
+                          <Cell fill="#047857" />
                         </Pie>
                         <Tooltip contentStyle={CustomTooltipStyle} formatter={v => fmt(v)} />
                         <Legend verticalAlign="bottom" iconType="circle" iconSize={8} />
@@ -361,7 +361,7 @@ export default function ReportsModule() {
               <FileText className="w-10 h-10 text-muted-foreground/30" />
               <p className="text-sm text-muted-foreground">Cliquez pour générer le bilan comptable</p>
               <div className="flex gap-2">
-                <Button size="sm" onClick={loadBS} className="gap-1.5 bg-gradient-to-r from-blue-500 to-blue-600" title="Générer le bilan comptable Actif/Passif">
+                <Button size="sm" onClick={loadBS} className="gap-1.5 bg-gradient-to-r from-neutral-500 to-brand-600" title="Générer le bilan comptable Actif/Passif">
                   <BarChart3 className="w-3.5 h-3.5" />Voir Bilan
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => exportReport('pdf')} title="Exporter le bilan au format PDF">
@@ -378,27 +378,27 @@ export default function ReportsModule() {
           cfData ? (
             <div className="space-y-6">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="bg-emerald-500/5 border-emerald-500/20"><CardContent className="p-4 text-center">
-                  <ArrowUp className="w-5 h-5 text-emerald-500 mx-auto mb-2" />
+                <Card className="bg-brand-500/5 border-brand-500/20"><CardContent className="p-4 text-center">
+                  <ArrowUp className="w-5 h-5 text-brand-500 mx-auto mb-2" />
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Entrées</div>
-                  <div className="text-xl font-bold text-emerald-500">{fmtK(cfData.total_inflows)}</div>
+                  <div className="text-xl font-bold text-brand-500">{fmtK(cfData.total_inflows)}</div>
                 </CardContent></Card>
-                <Card className="bg-red-500/5 border-red-500/20"><CardContent className="p-4 text-center">
-                  <ArrowDown className="w-5 h-5 text-red-500 mx-auto mb-2" />
+                <Card className="bg-terracotta-500/5 border-terracotta-500/20"><CardContent className="p-4 text-center">
+                  <ArrowDown className="w-5 h-5 text-terracotta-500 mx-auto mb-2" />
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Sorties</div>
-                  <div className="text-xl font-bold text-red-500">{fmtK(cfData.total_outflows)}</div>
+                  <div className="text-xl font-bold text-terracotta-500">{fmtK(cfData.total_outflows)}</div>
                 </CardContent></Card>
-                <Card className={`${cfData.net_cash_flow >= 0 ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                <Card className={`${cfData.net_cash_flow >= 0 ? 'bg-brand-500/5 border-brand-500/20' : 'bg-terracotta-500/5 border-terracotta-500/20'}`}>
                   <CardContent className="p-4 text-center">
-                    <DollarSign className={`w-5 h-5 ${cfData.net_cash_flow >= 0 ? 'text-emerald-500' : 'text-red-500'} mx-auto mb-2`} />
+                    <DollarSign className={`w-5 h-5 ${cfData.net_cash_flow >= 0 ? 'text-brand-500' : 'text-terracotta-500'} mx-auto mb-2`} />
                     <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Flux net</div>
                     <div className="text-xl font-bold">{fmtK(cfData.net_cash_flow)}</div>
                   </CardContent>
                 </Card>
-                <Card className="bg-blue-500/5 border-blue-500/20"><CardContent className="p-4 text-center">
-                  <Wallet className="w-5 h-5 text-blue-500 mx-auto mb-2" />
+                <Card className="bg-neutral-500/5 border-neutral-500/20"><CardContent className="p-4 text-center">
+                  <Wallet className="w-5 h-5 text-neutral-500 mx-auto mb-2" />
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Solde bancaire</div>
-                  <div className="text-xl font-bold text-blue-500">{fmtK(cfData.current_bank_balance)}</div>
+                  <div className="text-xl font-bold text-neutral-500">{fmtK(cfData.current_bank_balance)}</div>
                 </CardContent></Card>
               </div>
 
@@ -406,7 +406,7 @@ export default function ReportsModule() {
                 <Card className="border-0 shadow-sm">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                      <BarChart3 className="w-4 h-4 text-blue-500" />
+                      <BarChart3 className="w-4 h-4 text-neutral-500" />
                       Flux de trésorerie mensuel
                     </CardTitle>
                   </CardHeader>
@@ -418,9 +418,9 @@ export default function ReportsModule() {
                         <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                         <Tooltip contentStyle={CustomTooltipStyle} formatter={v => fmt(v)} />
                         <Legend verticalAlign="top" height={36} iconType="circle" iconSize={8} />
-                        <Bar dataKey="inflows" name="Entrées" fill="#10b981" radius={[4, 4, 0, 0]} barSize={16} />
-                        <Bar dataKey="outflows" name="Sorties" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={16} />
-                        <Line type="monotone" dataKey="net" name="Net cumulé" stroke="#7c3aed" strokeWidth={2} dot={false} />
+                        <Bar dataKey="inflows" name="Entrées" fill="#047857" radius={[4, 4, 0, 0]} barSize={16} />
+                        <Bar dataKey="outflows" name="Sorties" fill="#c2410c" radius={[4, 4, 0, 0]} barSize={16} />
+                        <Line type="monotone" dataKey="net" name="Net cumulé" stroke="#047857" strokeWidth={2} dot={false} />
                         <ReferenceLine y={0} stroke="hsl(var(--border))" strokeWidth={1.5} />
                       </ComposedChart>
                     </ResponsiveContainer>
@@ -433,7 +433,7 @@ export default function ReportsModule() {
               <Wallet className="w-10 h-10 text-muted-foreground/30" />
               <p className="text-sm text-muted-foreground">Cliquez pour générer le flux de trésorerie</p>
               <div className="flex gap-2">
-                <Button size="sm" onClick={loadCF} className="gap-1.5 bg-gradient-to-r from-blue-500 to-blue-600" title="Générer le rapport de flux de trésorerie">
+                <Button size="sm" onClick={loadCF} className="gap-1.5 bg-gradient-to-r from-neutral-500 to-brand-600" title="Générer le rapport de flux de trésorerie">
                   <Wallet className="w-3.5 h-3.5" />Voir Cash Flow
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => exportReport('pdf')} title="Exporter le cash flow au format PDF">
@@ -461,11 +461,11 @@ export default function ReportsModule() {
                   <CardHeader className="py-3 px-5 bg-muted/20">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-semibold">
-                        <span className="font-mono text-blue-600 mr-2">{acc.code}</span>
+                        <span className="font-mono text-brand-600 mr-2">{acc.code}</span>
                         {acc.label}
                       </span>
                       <span className={`text-sm font-mono font-bold tabular-nums ${
-                        (acc.balance || 0) >= 0 ? 'text-emerald-500' : 'text-red-500'
+                        (acc.balance || 0) >= 0 ? 'text-brand-500' : 'text-terracotta-500'
                       }`}>
                         Solde: {fmt(acc.balance)}
                       </span>

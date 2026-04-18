@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '../../shared';
 import axios from 'axios';
 import api from '../../../lib/api';
@@ -17,8 +17,8 @@ import {
 
 const STATUS_COLORS = {
   pending: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-  matched: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-  unmatched: 'bg-red-500/10 text-red-500 border-red-500/20',
+  matched: 'bg-brand-500/10 text-brand-500 border-brand-500/20',
+  unmatched: 'bg-terracotta-500/10 text-terracotta-500 border-terracotta-500/20',
 };
 
 export default function BankReconciliation() {
@@ -78,8 +78,8 @@ export default function BankReconciliation() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-xl font-bold flex items-center gap-2.5 tracking-tight">
-            <div className="p-2 rounded-xl bg-blue-500/10">
-              <CreditCard className="w-5 h-5 text-blue-500" />
+            <div className="p-2 rounded-xl bg-neutral-500/10">
+              <CreditCard className="w-5 h-5 text-neutral-500" />
             </div>
             Rapprochement Bancaire
           </h3>
@@ -93,18 +93,18 @@ export default function BankReconciliation() {
             <Zap className="w-3.5 h-3.5 text-amber-500" />Rapprocher Auto
           </Button>
           <Button size="sm" variant="outline" className="gap-1.5 text-xs h-9" title="Voir le détail des écarts théorique vs bancaire" onClick={() => { /* scroll to summary */ }}>
-            <BarChart3 className="w-3.5 h-3.5 text-violet-500" />Voir Écart
+            <BarChart3 className="w-3.5 h-3.5 text-brand-500" />Voir Écart
           </Button>
           <Dialog open={showCreate} onOpenChange={setShowCreate}>
           <DialogTrigger asChild>
-            <Button size="sm" className="gap-1.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-md shadow-blue-500/20" title="Ajouter manuellement un mouvement bancaire">
+            <Button size="sm" className="gap-1.5 bg-gradient-to-r from-neutral-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 shadow-md shadow-neutral-500/20" title="Ajouter manuellement un mouvement bancaire">
               <Plus className="w-3.5 h-3.5" />+ Ligne Bancaire
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-blue-500" />
+                <Building2 className="w-5 h-5 text-neutral-500" />
                 Ajouter un mouvement bancaire
               </DialogTitle>
             </DialogHeader>
@@ -121,7 +121,7 @@ export default function BankReconciliation() {
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Montant (+ crédit, - débit)</label>
                 <Input type="number" step="0.01" className="h-10 font-mono" value={form.amount} onChange={e => setForm(p => ({...p, amount: parseFloat(e.target.value) || 0}))} />
               </div>
-              <Button className="w-full h-10 bg-gradient-to-r from-blue-500 to-blue-600" onClick={handleCreate}>
+              <Button className="w-full h-10 bg-gradient-to-r from-neutral-500 to-brand-600" onClick={handleCreate}>
                 <Plus className="w-4 h-4 mr-2" />Ajouter
               </Button>
             </div>
@@ -133,22 +133,22 @@ export default function BankReconciliation() {
       {/* Summary */}
       {summary && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="bg-blue-500/5 border-blue-500/20">
+          <Card className="bg-neutral-500/5 border-neutral-500/20">
             <CardContent className="p-4 text-center">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Solde comptable</p>
               <p className="text-xl font-bold">{fmt(summary.book_balance)}</p>
             </CardContent>
           </Card>
-          <Card className="bg-violet-500/5 border-violet-500/20">
+          <Card className="bg-brand-500/5 border-brand-500/20">
             <CardContent className="p-4 text-center">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Solde bancaire</p>
               <p className="text-xl font-bold">{fmt(summary.bank_balance)}</p>
             </CardContent>
           </Card>
-          <Card className={`${Math.abs(summary.difference || 0) < 0.01 ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+          <Card className={`${Math.abs(summary.difference || 0) < 0.01 ? 'bg-brand-500/5 border-brand-500/20' : 'bg-terracotta-500/5 border-terracotta-500/20'}`}>
             <CardContent className="p-4 text-center">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Écart</p>
-              <p className={`text-xl font-bold ${Math.abs(summary.difference || 0) < 0.01 ? 'text-emerald-500' : 'text-red-500'}`}>{fmt(summary.difference)}</p>
+              <p className={`text-xl font-bold ${Math.abs(summary.difference || 0) < 0.01 ? 'text-brand-500' : 'text-terracotta-500'}`}>{fmt(summary.difference)}</p>
             </CardContent>
           </Card>
           <Card className="bg-amber-500/5 border-amber-500/20">
@@ -165,7 +165,7 @@ export default function BankReconciliation() {
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <div className="w-10 h-10 rounded-full border-2 border-blue-500/20 border-t-blue-500 animate-spin" />
+              <div className="w-10 h-10 rounded-full border-2 border-neutral-500/20 border-t-neutral-500 animate-spin" />
             </div>
           ) : lines.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
@@ -190,7 +190,7 @@ export default function BankReconciliation() {
                     <tr key={l.line_id} className={`border-t border-border/50 hover:bg-muted/30 transition-colors ${idx % 2 === 0 ? '' : 'bg-muted/10'}`}>
                       <td className="p-3 pl-5 text-sm">{l.bank_date}</td>
                       <td className="p-3 text-sm">{l.label}</td>
-                      <td className={`p-3 text-right font-mono text-sm tabular-nums font-medium ${l.amount >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                      <td className={`p-3 text-right font-mono text-sm tabular-nums font-medium ${l.amount >= 0 ? 'text-brand-500' : 'text-terracotta-500'}`}>
                         <span className="flex items-center justify-end gap-1">
                           {l.amount >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
                           {fmt(l.amount)}
@@ -205,7 +205,7 @@ export default function BankReconciliation() {
                       <td className="p-3 pr-5 text-right">
                         <div className="flex items-center justify-end gap-0.5">
                           {l.status === 'matched' ? (
-                            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 rounded-lg text-red-500 hover:text-red-600 hover:bg-red-500/10" onClick={() => handleUnmatch(l.line_id)} title="Annuler le rapprochement de cette ligne">
+                            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 rounded-lg text-terracotta-500 hover:text-terracotta-600 hover:bg-terracotta-500/10" onClick={() => handleUnmatch(l.line_id)} title="Annuler le rapprochement de cette ligne">
                               <Unlink className="w-3 h-3" />Dé-rapprocher
                             </Button>
                           ) : (

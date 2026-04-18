@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import api from '../../lib/api';
 import BACKEND_URL from '../../config';
@@ -30,9 +30,9 @@ const PERIODS = [
 ];
 
 const ENTRY_TYPES = [
-  { value: 'revenue', label: '📈 Revenu', color: 'text-green-600' },
-  { value: 'expense', label: '📉 Dépense', color: 'text-red-600' },
-  { value: 'payment_in', label: '💰 Encaissement', color: 'text-blue-600' },
+  { value: 'revenue', label: '📈 Revenu', color: 'text-brand-600' },
+  { value: 'expense', label: '📉 Dépense', color: 'text-terracotta-600' },
+  { value: 'payment_in', label: '💰 Encaissement', color: 'text-brand-600' },
   { value: 'payment_out', label: '💸 Décaissement', color: 'text-orange-600' },
 ];
 
@@ -127,7 +127,7 @@ export default function AccountingDashboard() {
   const formatCurrency = (v) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(v || 0);
 
   if (loading && !dashboard) {
-    return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" /></div>;
+    return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600" /></div>;
   }
 
   const kpis = dashboard?.kpis || {};
@@ -182,28 +182,28 @@ export default function AccountingDashboard() {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="h-4 w-4 text-green-600" />
-              <span className="text-xs text-gray-500">Chiffre d'affaires</span>
+              <TrendingUp className="h-4 w-4 text-brand-600" />
+              <span className="text-xs text-neutral-500">Chiffre d'affaires</span>
             </div>
-            <p className="text-xl font-bold text-green-600">{formatCurrency(kpis.chiffre_affaires)}</p>
+            <p className="text-xl font-bold text-brand-600">{formatCurrency(kpis.chiffre_affaires)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-2 mb-1">
-              <TrendingDown className="h-4 w-4 text-red-600" />
-              <span className="text-xs text-gray-500">Dépenses</span>
+              <TrendingDown className="h-4 w-4 text-terracotta-600" />
+              <span className="text-xs text-neutral-500">Dépenses</span>
             </div>
-            <p className="text-xl font-bold text-red-600">{formatCurrency(kpis.depenses)}</p>
+            <p className="text-xl font-bold text-terracotta-600">{formatCurrency(kpis.depenses)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="h-4 w-4 text-emerald-600" />
-              <span className="text-xs text-gray-500">Bénéfice net</span>
+              <DollarSign className="h-4 w-4 text-brand-600" />
+              <span className="text-xs text-neutral-500">Bénéfice net</span>
             </div>
-            <p className={`text-xl font-bold ${kpis.benefice_net >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+            <p className={`text-xl font-bold ${kpis.benefice_net >= 0 ? 'text-brand-600' : 'text-terracotta-600'}`}>
               {formatCurrency(kpis.benefice_net)}
             </p>
           </CardContent>
@@ -211,26 +211,26 @@ export default function AccountingDashboard() {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-2 mb-1">
-              <Wallet className="h-4 w-4 text-blue-600" />
-              <span className="text-xs text-gray-500">Trésorerie</span>
+              <Wallet className="h-4 w-4 text-brand-600" />
+              <span className="text-xs text-neutral-500">Trésorerie</span>
             </div>
-            <p className="text-xl font-bold text-blue-600">{formatCurrency(kpis.tresorerie)}</p>
+            <p className="text-xl font-bold text-brand-600">{formatCurrency(kpis.tresorerie)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-2 mb-1">
-              <CreditCard className="h-4 w-4 text-purple-600" />
-              <span className="text-xs text-gray-500">Encaissements</span>
+              <CreditCard className="h-4 w-4 text-brand-600" />
+              <span className="text-xs text-neutral-500">Encaissements</span>
             </div>
-            <p className="text-xl font-bold text-purple-600">{formatCurrency(kpis.paiements_recus)}</p>
+            <p className="text-xl font-bold text-brand-600">{formatCurrency(kpis.paiements_recus)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-2 mb-1">
               <PieChart className="h-4 w-4 text-amber-600" />
-              <span className="text-xs text-gray-500">Marge brute</span>
+              <span className="text-xs text-neutral-500">Marge brute</span>
             </div>
             <p className="text-xl font-bold text-amber-600">{kpis.marge_brute || 0}%</p>
           </CardContent>
@@ -255,17 +255,17 @@ export default function AccountingDashboard() {
                   <>
                     <div className="flex justify-between"><span>Total factures</span><span className="font-bold">{invoicesStats.total_invoices}</span></div>
                     <div className="flex justify-between"><span>Facturé</span><span className="font-bold">{formatCurrency(invoicesStats.total_invoiced)}</span></div>
-                    <div className="flex justify-between text-green-600"><span>Encaissé</span><span className="font-bold">{formatCurrency(invoicesStats.total_paid)}</span></div>
-                    <div className="flex justify-between text-red-600"><span>Impayé</span><span className="font-bold">{formatCurrency(invoicesStats.outstanding)}</span></div>
+                    <div className="flex justify-between text-brand-600"><span>Encaissé</span><span className="font-bold">{formatCurrency(invoicesStats.total_paid)}</span></div>
+                    <div className="flex justify-between text-terracotta-600"><span>Impayé</span><span className="font-bold">{formatCurrency(invoicesStats.outstanding)}</span></div>
                     <div className="flex justify-between"><span>Taux de paiement</span><Badge>{invoicesStats.payment_rate}%</Badge></div>
                     {invoicesStats.by_status && Object.entries(invoicesStats.by_status).map(([status, data]) => (
-                      <div key={status} className="flex justify-between text-sm text-gray-500">
+                      <div key={status} className="flex justify-between text-sm text-neutral-500">
                         <span>{status.replace(/_/g, ' ')}</span>
                         <span>{data.count} ({formatCurrency(data.total)})</span>
                       </div>
                     ))}
                   </>
-                ) : <p className="text-gray-500">Aucune donnée</p>}
+                ) : <p className="text-neutral-500">Aucune donnée</p>}
               </CardContent>
             </Card>
 
@@ -277,15 +277,15 @@ export default function AccountingDashboard() {
                   <>
                     <div className="flex justify-between"><span>Total devis</span><span className="font-bold">{quotesStats.total_quotes}</span></div>
                     <div className="flex justify-between"><span>Montant total</span><span className="font-bold">{formatCurrency(quotesStats.total_amount)}</span></div>
-                    <div className="flex justify-between"><span>Taux de conversion</span><Badge className="bg-blue-100 text-blue-800">{quotesStats.conversion_rate}%</Badge></div>
+                    <div className="flex justify-between"><span>Taux de conversion</span><Badge className="bg-neutral-100 text-brand-800">{quotesStats.conversion_rate}%</Badge></div>
                     {quotesStats.by_status && Object.entries(quotesStats.by_status).map(([status, data]) => (
-                      <div key={status} className="flex justify-between text-sm text-gray-500">
+                      <div key={status} className="flex justify-between text-sm text-neutral-500">
                         <span>{status}</span>
                         <span>{data.count} ({formatCurrency(data.total)})</span>
                       </div>
                     ))}
                   </>
-                ) : <p className="text-gray-500">Aucune donnée</p>}
+                ) : <p className="text-neutral-500">Aucune donnée</p>}
               </CardContent>
             </Card>
 
@@ -298,7 +298,7 @@ export default function AccountingDashboard() {
                     <span className="capitalize">{cat.category}</span>
                     <span className="font-medium">{formatCurrency(cat.total)}</span>
                   </div>
-                )) : <p className="text-gray-500 text-sm">Aucune donnée</p>}
+                )) : <p className="text-neutral-500 text-sm">Aucune donnée</p>}
               </CardContent>
             </Card>
 
@@ -313,9 +313,9 @@ export default function AccountingDashboard() {
                       const pct = maxVal > 0 ? (m.total / maxVal * 100) : 0;
                       return (
                         <div key={i} className="flex items-center gap-3">
-                          <span className="text-sm w-20 text-gray-500">{m.month}</span>
-                          <div className="flex-1 bg-gray-100 rounded-full h-6">
-                            <div className="bg-emerald-500 rounded-full h-6 flex items-center px-2" style={{ width: `${Math.max(pct, 5)}%` }}>
+                          <span className="text-sm w-20 text-neutral-500">{m.month}</span>
+                          <div className="flex-1 bg-neutral-100 rounded-full h-6">
+                            <div className="bg-brand-500 rounded-full h-6 flex items-center px-2" style={{ width: `${Math.max(pct, 5)}%` }}>
                               <span className="text-xs text-white font-medium">{formatCurrency(m.total)}</span>
                             </div>
                           </div>
@@ -323,7 +323,7 @@ export default function AccountingDashboard() {
                       );
                     })}
                   </div>
-                ) : <p className="text-gray-500 text-sm">Aucune donnée</p>}
+                ) : <p className="text-neutral-500 text-sm">Aucune donnée</p>}
               </CardContent>
             </Card>
 
@@ -336,10 +336,10 @@ export default function AccountingDashboard() {
                     <span className="capitalize">{m.method}</span>
                     <div className="text-right">
                       <span className="font-medium">{formatCurrency(m.total)}</span>
-                      <span className="text-xs text-gray-500 ml-1">({m.count}x)</span>
+                      <span className="text-xs text-neutral-500 ml-1">({m.count}x)</span>
                     </div>
                   </div>
-                )) : <p className="text-gray-500 text-sm">Aucune donnée</p>}
+                )) : <p className="text-neutral-500 text-sm">Aucune donnée</p>}
               </CardContent>
             </Card>
           </div>
@@ -364,33 +364,33 @@ export default function AccountingDashboard() {
             </CardHeader>
             <CardContent>
               {entries.length === 0 ? (
-                <p className="text-center py-8 text-gray-500">Aucune écriture</p>
+                <p className="text-center py-8 text-neutral-500">Aucune écriture</p>
               ) : (
                 <div className="space-y-2">
                   {entries.map(entry => {
                     const typeInfo = ENTRY_TYPES.find(t => t.value === entry.entry_type) || ENTRY_TYPES[0];
                     const isIncome = entry.entry_type === 'revenue' || entry.entry_type === 'payment_in';
                     return (
-                      <div key={entry.entry_id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50">
+                      <div key={entry.entry_id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-neutral-50">
                         <div className="flex items-center gap-3">
                           {isIncome ? (
-                            <ArrowUpRight className="h-5 w-5 text-green-600" />
+                            <ArrowUpRight className="h-5 w-5 text-brand-600" />
                           ) : (
-                            <ArrowDownRight className="h-5 w-5 text-red-600" />
+                            <ArrowDownRight className="h-5 w-5 text-terracotta-600" />
                           )}
                           <div>
                             <p className="font-medium text-sm">{entry.description}</p>
                             <div className="flex gap-2 items-center mt-0.5">
                               <Badge variant="outline" className="text-xs">{entry.category}</Badge>
-                              {entry.payment_method && <span className="text-xs text-gray-400">{entry.payment_method}</span>}
-                              <span className="text-xs text-gray-400">
+                              {entry.payment_method && <span className="text-xs text-neutral-400">{entry.payment_method}</span>}
+                              <span className="text-xs text-neutral-400">
                                 {entry.entry_date ? new Date(entry.entry_date).toLocaleDateString('fr-FR') : ''}
                               </span>
                             </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className={`font-bold ${isIncome ? 'text-green-600' : 'text-red-600'}`}>
+                          <span className={`font-bold ${isIncome ? 'text-brand-600' : 'text-terracotta-600'}`}>
                             {isIncome ? '+' : '-'}{formatCurrency(entry.amount)}
                           </span>
                           <Button variant="ghost" size="sm" onClick={() => handleDeleteEntry(entry.entry_id)}>
@@ -405,7 +405,7 @@ export default function AccountingDashboard() {
               {entriesTotal > 20 && (
                 <div className="flex justify-center gap-2 mt-4">
                   <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Précédent</Button>
-                  <span className="text-sm text-gray-500 self-center">Page {page}</span>
+                  <span className="text-sm text-neutral-500 self-center">Page {page}</span>
                   <Button variant="outline" size="sm" disabled={entries.length < 20} onClick={() => setPage(p => p + 1)}>Suivant</Button>
                 </div>
               )}
@@ -425,7 +425,7 @@ export default function AccountingDashboard() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="text-left text-gray-500 border-b">
+                        <tr className="text-left text-neutral-500 border-b">
                           <th className="pb-2">Mois</th>
                           <th className="pb-2 text-right">Revenus</th>
                           <th className="pb-2 text-right">Dépenses</th>
@@ -436,9 +436,9 @@ export default function AccountingDashboard() {
                         {profitLoss.months.map((m, i) => (
                           <tr key={i} className="border-b">
                             <td className="py-2 font-medium">{m.month}</td>
-                            <td className="text-right text-green-600">{formatCurrency(m.revenue)}</td>
-                            <td className="text-right text-red-600">{formatCurrency(m.expenses)}</td>
-                            <td className={`text-right font-bold ${m.profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                            <td className="text-right text-brand-600">{formatCurrency(m.revenue)}</td>
+                            <td className="text-right text-terracotta-600">{formatCurrency(m.expenses)}</td>
+                            <td className={`text-right font-bold ${m.profit >= 0 ? 'text-brand-600' : 'text-terracotta-600'}`}>
                               {formatCurrency(m.profit)}
                             </td>
                           </tr>
@@ -447,9 +447,9 @@ export default function AccountingDashboard() {
                       <tfoot>
                         <tr className="font-bold text-lg border-t-2">
                           <td className="pt-3">TOTAL</td>
-                          <td className="pt-3 text-right text-green-600">{formatCurrency(profitLoss.totals?.revenue)}</td>
-                          <td className="pt-3 text-right text-red-600">{formatCurrency(profitLoss.totals?.expenses)}</td>
-                          <td className={`pt-3 text-right ${profitLoss.totals?.profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                          <td className="pt-3 text-right text-brand-600">{formatCurrency(profitLoss.totals?.revenue)}</td>
+                          <td className="pt-3 text-right text-terracotta-600">{formatCurrency(profitLoss.totals?.expenses)}</td>
+                          <td className={`pt-3 text-right ${profitLoss.totals?.profit >= 0 ? 'text-brand-600' : 'text-terracotta-600'}`}>
                             {formatCurrency(profitLoss.totals?.profit)}
                           </td>
                         </tr>
@@ -457,7 +457,7 @@ export default function AccountingDashboard() {
                     </table>
                   </div>
                 </>
-              ) : <p className="text-gray-500 text-center py-8">Aucune donnée pour cette année</p>}
+              ) : <p className="text-neutral-500 text-center py-8">Aucune donnée pour cette année</p>}
             </CardContent>
           </Card>
         </TabsContent>

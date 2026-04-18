@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '../../shared';
 import axios from 'axios';
 import api from '../../../lib/api';
@@ -24,8 +24,8 @@ const CONTRACT_TYPES = [
 ];
 
 const STATUS_MAP = {
-  active: { label: 'Actif', class: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
-  expired: { label: 'Expiré', class: 'bg-red-500/10 text-red-500 border-red-500/20' },
+  active: { label: 'Actif', class: 'bg-brand-500/10 text-brand-500 border-brand-500/20' },
+  expired: { label: 'Expiré', class: 'bg-terracotta-500/10 text-terracotta-500 border-terracotta-500/20' },
   pending: { label: 'En attente', class: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
 };
 
@@ -94,8 +94,8 @@ export default function ContractsModule() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-xl font-bold flex items-center gap-2.5 tracking-tight">
-            <div className="p-2 rounded-xl bg-indigo-500/10">
-              <FileText className="w-5 h-5 text-indigo-500" />
+            <div className="p-2 rounded-xl bg-brand-500/10">
+              <FileText className="w-5 h-5 text-brand-500" />
             </div>
             Contrats & Documents
           </h3>
@@ -103,14 +103,14 @@ export default function ContractsModule() {
         </div>
         <Dialog open={showCreate} onOpenChange={setShowCreate}>
           <DialogTrigger asChild>
-            <Button size="sm" className="gap-1.5 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 shadow-md shadow-indigo-500/20">
+            <Button size="sm" className="gap-1.5 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 shadow-md shadow-brand-500/20">
               <Plus className="w-3.5 h-3.5" />Nouveau contrat
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-indigo-500" />
+                <FileText className="w-5 h-5 text-brand-500" />
                 Nouveau contrat
               </DialogTitle>
             </DialogHeader>
@@ -163,7 +163,7 @@ export default function ContractsModule() {
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Termes (optionnel)</label>
                 <Textarea value={form.terms} onChange={e => setForm(p => ({...p, terms: e.target.value}))} rows={3} />
               </div>
-              <Button className="w-full h-10 bg-gradient-to-r from-indigo-500 to-indigo-600" onClick={handleCreate}>
+              <Button className="w-full h-10 bg-gradient-to-r from-brand-500 to-brand-600" onClick={handleCreate}>
                 <FileText className="w-4 h-4 mr-2" />Créer le contrat
               </Button>
             </div>
@@ -196,7 +196,7 @@ export default function ContractsModule() {
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <div className="w-10 h-10 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin" />
+              <div className="w-10 h-10 rounded-full border-2 border-brand-500/20 border-t-brand-500 animate-spin" />
             </div>
           ) : contracts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
@@ -231,9 +231,9 @@ export default function ContractsModule() {
                         <td className="p-3 text-center">
                           {days !== null ? (
                             <Badge className={`text-[10px] ${
-                              days < 0 ? 'bg-red-500/10 text-red-500' :
+                              days < 0 ? 'bg-terracotta-500/10 text-terracotta-500' :
                               days < 30 ? 'bg-amber-500/10 text-amber-500' :
-                              'bg-emerald-500/10 text-emerald-500'
+                              'bg-brand-500/10 text-brand-500'
                             }`}>
                               <Clock className="w-2.5 h-2.5 mr-1" />
                               {days < 0 ? `Expiré (${Math.abs(days)}j)` : `${days}j`}
@@ -251,13 +251,13 @@ export default function ContractsModule() {
                               <Eye className="w-3.5 h-3.5" />
                             </Button>
                             <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" title="Modifier le contrat" onClick={() => alert('Éditer contrat ' + c.contract_id)}>
-                              <Edit className="w-3.5 h-3.5 text-blue-500" />
+                              <Edit className="w-3.5 h-3.5 text-neutral-500" />
                             </Button>
                             <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" title="Voir l'historique des versions" onClick={() => alert('Historique contrat ' + c.contract_id)}>
-                              <History className="w-3.5 h-3.5 text-violet-500" />
+                              <History className="w-3.5 h-3.5 text-brand-500" />
                             </Button>
                             <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" title="Archiver le contrat" onClick={() => handleArchive(c.contract_id)}>
-                              <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                              <Trash2 className="w-3.5 h-3.5 text-terracotta-500" />
                             </Button>
                           </div>
                         </td>
@@ -288,7 +288,7 @@ export default function ContractsModule() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-indigo-500" />
+              <FileText className="w-5 h-5 text-brand-500" />
               {showDetail?.title}
             </DialogTitle>
           </DialogHeader>

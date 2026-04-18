@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '../../shared';
 import axios from 'axios';
 import api from '../../../lib/api';
@@ -22,17 +22,17 @@ import { useConfirm } from '../../shared/ConfirmDialog';
 
 const JOURNAL_TYPES = [
   { value: 'ACH', label: 'Achats', color: 'bg-amber-500/10 text-amber-600' },
-  { value: 'VTE', label: 'Ventes', color: 'bg-emerald-500/10 text-emerald-600' },
-  { value: 'BQ', label: 'Banque', color: 'bg-blue-500/10 text-blue-600' },
-  { value: 'OD', label: 'Opérations diverses', color: 'bg-violet-500/10 text-violet-600' },
+  { value: 'VTE', label: 'Ventes', color: 'bg-brand-500/10 text-brand-600' },
+  { value: 'BQ', label: 'Banque', color: 'bg-neutral-500/10 text-brand-600' },
+  { value: 'OD', label: 'Opérations diverses', color: 'bg-brand-500/10 text-brand-600' },
   { value: 'AN', label: 'À nouveau', color: 'bg-cyan-500/10 text-cyan-600' },
-  { value: 'PAI', label: 'Paie', color: 'bg-pink-500/10 text-pink-600' },
+  { value: 'PAI', label: 'Paie', color: 'bg-terracotta-500/10 text-terracotta-600' },
 ];
 
 const STATUS_MAP = {
   draft: { label: 'Brouillon', class: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
-  validated: { label: 'Validé', class: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
-  reversed: { label: 'Contrepassé', class: 'bg-red-500/10 text-red-500 border-red-500/20' },
+  validated: { label: 'Validé', class: 'bg-brand-500/10 text-brand-500 border-brand-500/20' },
+  reversed: { label: 'Contrepassé', class: 'bg-terracotta-500/10 text-terracotta-500 border-terracotta-500/20' },
 };
 
 const PAGE_SIZES = [20, 50, 100];
@@ -224,8 +224,8 @@ export default function JournalEntries() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h3 className="text-xl font-bold flex items-center gap-2.5 tracking-tight">
-            <div className="p-2 rounded-xl bg-blue-500/10">
-              <BookOpen className="w-5 h-5 text-blue-500" />
+            <div className="p-2 rounded-xl bg-neutral-500/10">
+              <BookOpen className="w-5 h-5 text-neutral-500" />
             </div>
             Journal comptable
           </h3>
@@ -251,7 +251,7 @@ export default function JournalEntries() {
 
           <Dialog open={showCreate} onOpenChange={setShowCreate}>
             <DialogTrigger asChild>
-              <Button size="sm" className="gap-1.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-md shadow-blue-500/20">
+              <Button size="sm" className="gap-1.5 bg-gradient-to-r from-neutral-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 shadow-md shadow-neutral-500/20">
                 <Plus className="w-3.5 h-3.5" />
                 Nouvelle écriture
               </Button>
@@ -259,7 +259,7 @@ export default function JournalEntries() {
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-lg">
-                  <BookOpen className="w-5 h-5 text-blue-500" />
+                  <BookOpen className="w-5 h-5 text-neutral-500" />
                   Saisie d'écriture comptable
                 </DialogTitle>
               </DialogHeader>
@@ -359,7 +359,7 @@ export default function JournalEntries() {
                             </td>
                             <td className="p-2">
                               <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeLine(i)} disabled={form.lines.length <= 2}>
-                                <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                <Trash2 className="w-3.5 h-3.5 text-terracotta-500" />
                               </Button>
                             </td>
                           </tr>
@@ -379,10 +379,10 @@ export default function JournalEntries() {
                   {/* Balance indicator */}
                   <div className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${
                     isBalanced
-                      ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                      ? 'bg-brand-500/10 text-brand-600 border border-brand-500/20'
                       : totalDebit === 0 && totalCredit === 0
                         ? 'bg-muted/30 text-muted-foreground border border-transparent'
-                        : 'bg-red-500/10 text-red-600 border border-red-500/20'
+                        : 'bg-terracotta-500/10 text-terracotta-600 border border-terracotta-500/20'
                   }`}>
                     {isBalanced ? (
                       <><CheckCircle className="w-4 h-4" /> Écriture équilibrée — Prête à enregistrer</>
@@ -395,7 +395,7 @@ export default function JournalEntries() {
                 </div>
 
                 <div className="flex gap-2">
-                  <Button className="flex-1 h-10 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700" onClick={handleCreate} disabled={!isBalanced || !form.description}>
+                  <Button className="flex-1 h-10 bg-gradient-to-r from-neutral-500 to-brand-600 hover:from-brand-600 hover:to-brand-700" onClick={handleCreate} disabled={!isBalanced || !form.description}>
                     <CheckCircle className="w-4 h-4 mr-2" />
                     Enregistrer l'écriture
                   </Button>
@@ -449,7 +449,7 @@ export default function JournalEntries() {
         <CardContent className="p-0">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <div className="w-10 h-10 rounded-full border-2 border-blue-500/20 border-t-blue-500 animate-spin" />
+              <div className="w-10 h-10 rounded-full border-2 border-neutral-500/20 border-t-neutral-500 animate-spin" />
               <p className="text-sm text-muted-foreground">Chargement des écritures...</p>
             </div>
           ) : entries.length === 0 ? (
@@ -503,10 +503,10 @@ export default function JournalEntries() {
                           {e.status === 'draft' && (
                             <>
                               <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => handleValidate(e.entry_id)} title="Valider">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                                <CheckCircle className="w-3.5 h-3.5 text-brand-500" />
                               </Button>
                               <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => handleDelete(e.entry_id)} title="Supprimer">
-                                <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                <Trash2 className="w-3.5 h-3.5 text-terracotta-500" />
                               </Button>
                             </>
                           )}
@@ -557,7 +557,7 @@ export default function JournalEntries() {
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-blue-500" />
+              <BookOpen className="w-5 h-5 text-neutral-500" />
               Écriture {showDetail?.entry_id?.slice(-8)}
               <Badge className={`ml-2 ${STATUS_MAP[showDetail?.status]?.class || ''}`}>
                 {STATUS_MAP[showDetail?.status]?.label || showDetail?.status}
@@ -594,7 +594,7 @@ export default function JournalEntries() {
                   <tbody>
                     {(showDetail.lines || []).map((l, i) => (
                       <tr key={i} className="border-t hover:bg-muted/20 transition-colors">
-                        <td className="p-3 font-mono font-medium text-blue-600">{l.account_code}</td>
+                        <td className="p-3 font-mono font-medium text-brand-600">{l.account_code}</td>
                         <td className="p-3">{l.label}</td>
                         <td className="p-3 text-right font-mono tabular-nums">{l.debit > 0 ? fmt(l.debit) : ''}</td>
                         <td className="p-3 text-right font-mono tabular-nums">{l.credit > 0 ? fmt(l.credit) : ''}</td>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '../../shared';
 import axios from 'axios';
 import api from '../../../lib/api';
@@ -20,10 +20,10 @@ import {
 } from 'lucide-react';
 
 const STATUS_MAP = {
-  submitted: { label: 'Soumise', class: 'bg-blue-500/10 text-blue-500 border-blue-500/20', icon: '📤' },
-  approved: { label: 'Approuvée', class: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', icon: '✅' },
-  rejected: { label: 'Rejetée', class: 'bg-red-500/10 text-red-500 border-red-500/20', icon: '❌' },
-  reimbursed: { label: 'Remboursée', class: 'bg-violet-500/10 text-violet-500 border-violet-500/20', icon: '💰' },
+  submitted: { label: 'Soumise', class: 'bg-neutral-500/10 text-neutral-500 border-neutral-500/20', icon: '📤' },
+  approved: { label: 'Approuvée', class: 'bg-brand-500/10 text-brand-500 border-brand-500/20', icon: '✅' },
+  rejected: { label: 'Rejetée', class: 'bg-terracotta-500/10 text-terracotta-500 border-terracotta-500/20', icon: '❌' },
+  reimbursed: { label: 'Remboursée', class: 'bg-brand-500/10 text-brand-500 border-brand-500/20', icon: '💰' },
   accounted: { label: 'Comptabilisée', class: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20', icon: '📋' },
 };
 
@@ -193,7 +193,7 @@ export default function ExpenseReports() {
                       <Input className="h-9 text-xs font-mono" type="number" step="0.01" value={line.amount} onChange={e => updateLine(i, 'amount', e.target.value)} />
                     </div>
                     <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => removeLine(i)} disabled={form.lines.length <= 1}>
-                      <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                      <Trash2 className="w-3.5 h-3.5 text-terracotta-500" />
                     </Button>
                   </div>
                 ))}
@@ -230,10 +230,10 @@ export default function ExpenseReports() {
             </div>
             <div className="flex items-center gap-2">
               <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" title="Scanner ou uploader un justificatif de reçu" onClick={() => alert('Ouvrir scanner de reçu')}>
-                <FileImage className="w-3.5 h-3.5 text-violet-500" />Scan Reçu
+                <FileImage className="w-3.5 h-3.5 text-brand-500" />Scan Reçu
               </Button>
               <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" title="Voir les statistiques de notes de frais par catégorie" onClick={() => alert('Vue d\'ensemble des notes de frais')}>
-                <BarChart3 className="w-3.5 h-3.5 text-blue-500" />Vue d'ensemble
+                <BarChart3 className="w-3.5 h-3.5 text-neutral-500" />Vue d'ensemble
               </Button>
             </div>
           </div>
@@ -285,16 +285,16 @@ export default function ExpenseReports() {
                           {r.status === 'submitted' && (
                             <>
                               <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => handleApprove(r.report_id, 'approved')} title="Approuver">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                                <CheckCircle className="w-3.5 h-3.5 text-brand-500" />
                               </Button>
                               <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => handleApprove(r.report_id, 'rejected')} title="Rejeter">
-                                <XCircle className="w-3.5 h-3.5 text-red-500" />
+                                <XCircle className="w-3.5 h-3.5 text-terracotta-500" />
                               </Button>
                             </>
                           )}
                           {r.status === 'approved' && (
                             <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => handleReimburse(r.report_id)} title="Rembourser">
-                              <Banknote className="w-3.5 h-3.5 text-violet-500" />
+                              <Banknote className="w-3.5 h-3.5 text-brand-500" />
                             </Button>
                           )}
                         </div>

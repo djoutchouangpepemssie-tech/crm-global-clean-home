@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+﻿import React, { useState, useCallback, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { Plus, RefreshCw, User, FileText, Euro, X, Check, Trash2, Download, Send, Eye } from 'lucide-react';
@@ -35,7 +35,7 @@ function F({label,required,children}){
   return(
     <div style={{marginBottom:'14px'}}>
       <label style={{display:'block',fontSize:'12px',fontWeight:600,color:'var(--text-secondary)',marginBottom:'5px'}}>
-        {label}{required&&<span style={{color:'#ef4444',marginLeft:'2px'}}>*</span>}
+        {label}{required&&<span style={{color:'#c2410c',marginLeft:'2px'}}>*</span>}
       </label>
       {children}
     </div>
@@ -56,7 +56,7 @@ function Txt({value,onChange,placeholder,rows=3}){
 }
 
 function Btn({children,onClick,variant='primary',disabled,small}){
-  const s={primary:{background:'var(--brand)',color:'#fff',border:'none'},secondary:{background:'var(--bg-muted)',color:'var(--text-secondary)',border:'1px solid var(--border-default)'},danger:{background:'#ef4444',color:'#fff',border:'none'},success:{background:'#10b981',color:'#fff',border:'none'}};
+  const s={primary:{background:'var(--brand)',color:'#fff',border:'none'},secondary:{background:'var(--bg-muted)',color:'var(--text-secondary)',border:'1px solid var(--border-default)'},danger:{background:'#c2410c',color:'#fff',border:'none'},success:{background:'#047857',color:'#fff',border:'none'}};
   return(
     <button onClick={onClick} disabled={disabled} style={{display:'inline-flex',alignItems:'center',gap:'6px',padding:small?'6px 12px':'9px 18px',borderRadius:'var(--radius-md)',fontSize:small?'12px':'13px',fontWeight:600,cursor:disabled?'not-allowed':'pointer',opacity:disabled?0.6:1,transition:'all 0.15s',...s[variant]}}>
       {children}
@@ -156,7 +156,7 @@ function EmployeesTab(){
               <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
                 {emp.base_salary>0&&<span style={{fontSize:'13px',fontWeight:600,color:'var(--brand)'}}>{fmt(emp.base_salary)}/mois</span>}
                 <Badge label={emp.status==='active'?'Actif':'Inactif'} color={emp.status==='active'?'green':'gray'}/>
-                <button onClick={()=>handleDelete(emp.employee_id)} style={{background:'none',border:'none',cursor:'pointer',color:'#ef4444',padding:'4px'}}><Trash2 size={14}/></button>
+                <button onClick={()=>handleDelete(emp.employee_id)} style={{background:'none',border:'none',cursor:'pointer',color:'#c2410c',padding:'4px'}}><Trash2 size={14}/></button>
               </div>
             </div>
           ))}
@@ -337,7 +337,7 @@ function PayslipsTab(){
                   <td style={{padding:'12px',fontSize:'13px',fontWeight:500,color:'var(--text-primary)'}}>{p.employee_name}</td>
                   <td style={{padding:'12px',fontSize:'13px',color:'var(--text-secondary)'}}>{MONTHS[p.period_month-1]} {p.period_year}</td>
                   <td style={{padding:'12px',fontSize:'13px'}}>{fmt(p.salary_brut)}</td>
-                  <td style={{padding:'12px',fontSize:'13px',color:'#ef4444'}}>- {fmt(p.total_cotisations_sal||p.social_charges)}</td>
+                  <td style={{padding:'12px',fontSize:'13px',color:'#c2410c'}}>- {fmt(p.total_cotisations_sal||p.social_charges)}</td>
                   <td style={{padding:'12px',fontSize:'14px',fontWeight:700,color:'var(--brand)'}}>{fmt(p.salary_net)}</td>
                   <td style={{padding:'12px'}}>
                     <Badge label={p.status==='paid'?'Payée':'En attente'} color={p.status==='paid'?'green':'amber'}/>
@@ -409,7 +409,7 @@ function PayslipsTab(){
                       <tr key={i} style={{background:i%2===0?'white':'var(--bg-muted)'}}>
                         <td style={{padding:'6px 10px',fontSize:'11px',color:'var(--text-secondary)'}}>{name}</td>
                         <td style={{padding:'6px 10px',fontSize:'11px',textAlign:'right',color:'var(--text-muted)'}}>{rate}</td>
-                        <td style={{padding:'6px 10px',fontSize:'11px',textAlign:'right',color:'#ef4444'}}>{typeof sal==='number'?`- ${fmt(sal)}`:sal}</td>
+                        <td style={{padding:'6px 10px',fontSize:'11px',textAlign:'right',color:'#c2410c'}}>{typeof sal==='number'?`- ${fmt(sal)}`:sal}</td>
                         <td style={{padding:'6px 10px',fontSize:'11px',textAlign:'right',color:'var(--text-muted)'}}>{pat}</td>
                       </tr>
                     ))}
@@ -418,7 +418,7 @@ function PayslipsTab(){
                 <div style={{marginTop:'12px',display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'8px'}}>
                   {[
                     ['Salaire brut',fmt(prevData.brut),'var(--text-primary)'],
-                    ['Total cotisations',`- ${fmt(prevData.totalCotis)}`,'#ef4444'],
+                    ['Total cotisations',`- ${fmt(prevData.totalCotis)}`,'#c2410c'],
                     ['Net avant PAS',fmt(prevData.netAvant),'var(--text-secondary)'],
                     ['Prélèvement source (11%)',`- ${fmt(prevData.pas)}`,'#f59e0b'],
                     ['NET À PAYER',fmt(prevData.net),'var(--brand)'],
@@ -721,7 +721,7 @@ function ExpensesTab(){
                   </p>
                 )}
                 {form.items.length>1&&(
-                  <button onClick={()=>removeItem(i)} style={{position:'absolute',top:'8px',right:'8px',background:'none',border:'none',cursor:'pointer',color:'#ef4444'}}><X size={14}/></button>
+                  <button onClick={()=>removeItem(i)} style={{position:'absolute',top:'8px',right:'8px',background:'none',border:'none',cursor:'pointer',color:'#c2410c'}}><X size={14}/></button>
                 )}
               </div>
             ))}

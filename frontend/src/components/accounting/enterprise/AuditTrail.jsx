@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '../../shared';
 import axios from 'axios';
 import api from '../../../lib/api';
@@ -15,14 +15,14 @@ import {
 import { Shield, RefreshCw, ChevronLeft, ChevronRight, CheckCircle, AlertTriangle, Eye, Lock } from 'lucide-react';
 
 const ACTION_COLORS = {
-  create: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-  update: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-  delete: 'bg-red-500/10 text-red-500 border-red-500/20',
-  validate: 'bg-violet-500/10 text-violet-500 border-violet-500/20',
+  create: 'bg-brand-500/10 text-brand-500 border-brand-500/20',
+  update: 'bg-neutral-500/10 text-neutral-500 border-neutral-500/20',
+  delete: 'bg-terracotta-500/10 text-terracotta-500 border-terracotta-500/20',
+  validate: 'bg-brand-500/10 text-brand-500 border-brand-500/20',
   reverse: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
   lettrage: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
-  close_period: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
-  bank_match: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+  close_period: 'bg-brand-500/10 text-brand-500 border-brand-500/20',
+  bank_match: 'bg-neutral-500/10 text-neutral-500 border-neutral-500/20',
 };
 
 export default function AuditTrail() {
@@ -72,8 +72,8 @@ export default function AuditTrail() {
     <div className="space-y-6">
       <div>
         <h3 className="text-xl font-bold flex items-center gap-2.5 tracking-tight">
-          <div className="p-2 rounded-xl bg-slate-500/10">
-            <Shield className="w-5 h-5 text-slate-500" />
+          <div className="p-2 rounded-xl bg-neutral-500/10">
+            <Shield className="w-5 h-5 text-neutral-500" />
           </div>
           Journal d'Audit
         </h3>
@@ -81,9 +81,9 @@ export default function AuditTrail() {
       </div>
 
       {/* Info banner */}
-      <Card className="bg-slate-500/5 border-slate-500/20">
+      <Card className="bg-neutral-500/5 border-neutral-500/20">
         <CardContent className="p-4 flex items-start gap-3">
-          <Lock className="w-5 h-5 text-slate-500 mt-0.5 flex-shrink-0" />
+          <Lock className="w-5 h-5 text-neutral-500 mt-0.5 flex-shrink-0" />
           <div>
             <p className="text-sm font-medium">Piste d'audit immuable</p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -97,7 +97,7 @@ export default function AuditTrail() {
       {/* Stats */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="bg-violet-500/5 border-violet-500/20">
+          <Card className="bg-brand-500/5 border-brand-500/20">
             <CardContent className="p-4 text-center">
               <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Total entrées</div>
               <div className="text-2xl font-bold">{stats.total_entries}</div>
@@ -137,7 +137,7 @@ export default function AuditTrail() {
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <div className="w-10 h-10 rounded-full border-2 border-slate-500/20 border-t-slate-500 animate-spin" />
+              <div className="w-10 h-10 rounded-full border-2 border-neutral-500/20 border-t-neutral-500 animate-spin" />
             </div>
           ) : entries.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
@@ -173,7 +173,7 @@ export default function AuditTrail() {
                             <Eye className="w-3.5 h-3.5" />
                           </Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => verifyEntry(e.audit_id)} title="Vérifier intégrité">
-                            <Shield className="w-3.5 h-3.5 text-violet-500" />
+                            <Shield className="w-3.5 h-3.5 text-brand-500" />
                           </Button>
                         </div>
                       </td>
@@ -203,7 +203,7 @@ export default function AuditTrail() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-slate-500" />Détail audit
+              <Shield className="w-5 h-5 text-neutral-500" />Détail audit
             </DialogTitle>
           </DialogHeader>
           {showDetail && (
@@ -255,15 +255,15 @@ export default function AuditTrail() {
           {verifyResult && (
             <div className="text-center space-y-4 py-4">
               {verifyResult.is_valid ? (
-                <div className="w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
-                  <CheckCircle className="w-10 h-10 text-emerald-500" />
+                <div className="w-20 h-20 rounded-full bg-brand-500/10 flex items-center justify-center mx-auto">
+                  <CheckCircle className="w-10 h-10 text-brand-500" />
                 </div>
               ) : (
-                <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto">
-                  <AlertTriangle className="w-10 h-10 text-red-500" />
+                <div className="w-20 h-20 rounded-full bg-terracotta-500/10 flex items-center justify-center mx-auto">
+                  <AlertTriangle className="w-10 h-10 text-terracotta-500" />
                 </div>
               )}
-              <p className={`text-lg font-bold ${verifyResult.is_valid ? 'text-emerald-500' : 'text-red-500'}`}>
+              <p className={`text-lg font-bold ${verifyResult.is_valid ? 'text-brand-500' : 'text-terracotta-500'}`}>
                 {verifyResult.message}
               </p>
               <div className="text-xs text-muted-foreground space-y-1">

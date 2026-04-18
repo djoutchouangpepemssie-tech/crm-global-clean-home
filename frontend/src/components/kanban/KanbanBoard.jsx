@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+﻿import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Mail, Phone, GripVertical, Trello, RefreshCw, TrendingUp, Sparkles, Zap, ChevronRight } from 'lucide-react';
@@ -10,11 +10,11 @@ import { queryKeys } from '../../lib/api';
 
 const COLUMNS = [
   { id: 'nouveau',      title: 'Nouveau',      color: '#60a5fa', gradient: 'linear-gradient(135deg, #60a5fa, #3b82f6)', icon: '🆕' },
-  { id: 'contacté',    title: 'Contacté',     color: '#a78bfa', gradient: 'linear-gradient(135deg, #a78bfa, #8b5cf6)', icon: '📞' },
+  { id: 'contacté',    title: 'Contacté',     color: '#d97706', gradient: 'linear-gradient(135deg, #d97706, #047857)', icon: '📞' },
   { id: 'en_attente',  title: 'En attente',   color: '#f59e0b', gradient: 'linear-gradient(135deg, #f59e0b, #d97706)', icon: '⏳' },
   { id: 'devis_envoyé',title: 'Devis envoyé', color: '#c084fc', gradient: 'linear-gradient(135deg, #c084fc, #a855f7)', icon: '📄' },
-  { id: 'gagné',       title: 'Gagné',        color: '#34d399', gradient: 'linear-gradient(135deg, #34d399, #10b981)', icon: '🏆' },
-  { id: 'perdu',       title: 'Perdu',        color: '#f43f5e', gradient: 'linear-gradient(135deg, #f43f5e, #e11d48)', icon: '❌' },
+  { id: 'gagné',       title: 'Gagné',        color: '#047857', gradient: 'linear-gradient(135deg, #047857, #047857)', icon: '🏆' },
+  { id: 'perdu',       title: 'Perdu',        color: '#c2410c', gradient: 'linear-gradient(135deg, #c2410c, #c2410c)', icon: '❌' },
 ];
 
 // ── CSS Keyframes (injected once) ─────────────
@@ -122,8 +122,8 @@ const initials = (name) => {
 // ── Premium Score Bar ─────────────────────────
 function ScoreBar({ score, color }) {
   const pct = Math.min(100, Math.max(0, score || 0));
-  const barColor = pct >= 70 ? '#34d399' : pct >= 40 ? '#f59e0b' : '#f43f5e';
-  const barGlow = pct >= 70 ? 'rgba(52,211,153,0.3)' : pct >= 40 ? 'rgba(245,158,11,0.3)' : 'rgba(244,63,94,0.3)';
+  const barColor = pct >= 70 ? '#047857' : pct >= 40 ? '#f59e0b' : '#c2410c';
+  const barGlow = pct >= 70 ? 'rgba(4,120,87,0.3)' : pct >= 40 ? 'rgba(245,158,11,0.3)' : 'rgba(194,65,12,0.3)';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <div style={{
@@ -252,7 +252,7 @@ function KanbanCard({ lead, col, isDragging, isJustDropped, onNavigate, onDragSt
             ...(isHovered ? { color: '#f1f5f9' } : {}),
           }}>{lead.name}</p>
           <p style={{
-            fontSize: 10, color: '#64748b', marginTop: 2,
+            fontSize: 10, color: '#78716c', marginTop: 2,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             display: 'flex', alignItems: 'center', gap: 4,
           }}>
@@ -262,7 +262,7 @@ function KanbanCard({ lead, col, isDragging, isJustDropped, onNavigate, onDragSt
         </div>
         <GripVertical style={{
           width: 14, height: 14,
-          color: isHovered ? col.color + '80' : '#334155',
+          color: isHovered ? col.color + '80' : '#44403c',
           flexShrink: 0, marginTop: 2,
           transition: 'color 0.3s, transform 0.3s',
           transform: isHovered ? 'scale(1.1)' : 'scale(1)',
@@ -280,7 +280,7 @@ function KanbanCard({ lead, col, isDragging, isJustDropped, onNavigate, onDragSt
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
               <Mail style={{ width: 10, height: 10, color: col.color + '60', flexShrink: 0 }} />
               <span style={{
-                fontSize: 10, color: '#94a3b8',
+                fontSize: 10, color: '#78716c',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
                 {lead.email}
@@ -290,7 +290,7 @@ function KanbanCard({ lead, col, isDragging, isJustDropped, onNavigate, onDragSt
           {lead.phone && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <Phone style={{ width: 10, height: 10, color: col.color + '60', flexShrink: 0 }} />
-              <span style={{ fontSize: 10, color: '#94a3b8' }}>{lead.phone}</span>
+              <span style={{ fontSize: 10, color: '#78716c' }}>{lead.phone}</span>
             </div>
           )}
         </div>
@@ -320,7 +320,7 @@ function KanbanCard({ lead, col, isDragging, isJustDropped, onNavigate, onDragSt
           </span>
         ) : lead.surface ? (
           <span style={{
-            fontSize: 10, color: '#94a3b8',
+            fontSize: 10, color: '#78716c',
             background: 'rgba(255,255,255,0.04)',
             borderRadius: 6, padding: '3px 8px',
             border: '1px solid rgba(255,255,255,0.06)',
@@ -333,14 +333,14 @@ function KanbanCard({ lead, col, isDragging, isJustDropped, onNavigate, onDragSt
           {days > 0 && (
             <span style={{
               fontSize: 9, fontWeight: 700,
-              color: days > 14 ? '#f43f5e' : days > 7 ? '#f59e0b' : '#64748b',
+              color: days > 14 ? '#c2410c' : days > 7 ? '#f59e0b' : '#78716c',
               background: days > 14
-                ? 'rgba(244,63,94,0.1)'
+                ? 'rgba(194,65,12,0.1)'
                 : days > 7
                   ? 'rgba(245,158,11,0.08)'
                   : 'rgba(255,255,255,0.04)',
               borderRadius: 6, padding: '2px 6px',
-              border: `1px solid ${days > 14 ? 'rgba(244,63,94,0.2)' : days > 7 ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.06)'}`,
+              border: `1px solid ${days > 14 ? 'rgba(194,65,12,0.2)' : days > 7 ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.06)'}`,
             }}>
               {days}j
             </span>
@@ -422,7 +422,7 @@ function EmptyColumnState({ col }) {
       }}>
         <span style={{ color: col.color, fontSize: 20, lineHeight: 1, opacity: 0.6 }}>+</span>
       </div>
-      <p style={{ fontSize: 11, color: '#475569', textAlign: 'center', lineHeight: 1.4 }}>
+      <p style={{ fontSize: 11, color: '#78716c', textAlign: 'center', lineHeight: 1.4 }}>
         Glissez des leads ici
       </p>
     </div>
@@ -460,14 +460,14 @@ function TotalBar({ leads }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative', zIndex: 1 }}>
         <div style={{
           width: 32, height: 32, borderRadius: 10,
-          background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+          background: 'linear-gradient(135deg, #047857, #6366f1)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 4px 12px rgba(139,92,246,0.3)',
+          boxShadow: '0 4px 12px rgba(4,120,87,0.3)',
         }}>
           <Zap style={{ width: 16, height: 16, color: '#fff' }} />
         </div>
         <div>
-          <p style={{ fontSize: 10, color: '#64748b', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Leads</p>
+          <p style={{ fontSize: 10, color: '#78716c', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Leads</p>
           <p style={{ fontSize: 18, fontWeight: 900, color: '#e2e8f0', letterSpacing: '-0.02em', lineHeight: 1 }}>{leads.length}</p>
         </div>
       </div>
@@ -479,15 +479,15 @@ function TotalBar({ leads }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative', zIndex: 1 }}>
         <div style={{
           width: 32, height: 32, borderRadius: 10,
-          background: 'linear-gradient(135deg, #a78bfa, #8b5cf6)',
+          background: 'linear-gradient(135deg, #d97706, #047857)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: '0 4px 12px rgba(167,139,250,0.3)',
         }}>
           <TrendingUp style={{ width: 16, height: 16, color: '#fff' }} />
         </div>
         <div>
-          <p style={{ fontSize: 10, color: '#64748b', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Pipeline</p>
-          <p style={{ fontSize: 18, fontWeight: 900, color: '#a78bfa', letterSpacing: '-0.02em', lineHeight: 1 }}>{fmt(pipelineTotal)}</p>
+          <p style={{ fontSize: 10, color: '#78716c', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Pipeline</p>
+          <p style={{ fontSize: 18, fontWeight: 900, color: '#d97706', letterSpacing: '-0.02em', lineHeight: 1 }}>{fmt(pipelineTotal)}</p>
         </div>
       </div>
 
@@ -498,24 +498,24 @@ function TotalBar({ leads }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative', zIndex: 1 }}>
         <div style={{
           width: 32, height: 32, borderRadius: 10,
-          background: 'linear-gradient(135deg, #34d399, #10b981)',
+          background: 'linear-gradient(135deg, #047857, #047857)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 4px 12px rgba(52,211,153,0.3)',
+          boxShadow: '0 4px 12px rgba(4,120,87,0.3)',
         }}>
           <Sparkles style={{ width: 16, height: 16, color: '#fff' }} />
         </div>
         <div>
-          <p style={{ fontSize: 10, color: '#64748b', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Gagné</p>
-          <p style={{ fontSize: 18, fontWeight: 900, color: '#34d399', letterSpacing: '-0.02em', lineHeight: 1 }}>{fmt(wonTotal)}</p>
+          <p style={{ fontSize: 10, color: '#78716c', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Gagné</p>
+          <p style={{ fontSize: 18, fontWeight: 900, color: '#047857', letterSpacing: '-0.02em', lineHeight: 1 }}>{fmt(wonTotal)}</p>
         </div>
       </div>
 
       {/* Grand total at the end */}
       <div style={{ marginLeft: 'auto', position: 'relative', zIndex: 1 }}>
-        <p style={{ fontSize: 10, color: '#64748b', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', textAlign: 'right' }}>Total</p>
+        <p style={{ fontSize: 10, color: '#78716c', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', textAlign: 'right' }}>Total</p>
         <p style={{
           fontSize: 22, fontWeight: 900, letterSpacing: '-0.02em', lineHeight: 1,
-          background: 'linear-gradient(135deg, #c084fc, #60a5fa, #34d399)',
+          background: 'linear-gradient(135deg, #c084fc, #60a5fa, #047857)',
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',
         }}>{fmt(grandTotal)}</p>
@@ -573,7 +573,7 @@ const KanbanBoard = () => {
       const col = COLUMNS.find(c => c.id === targetColumnId);
       toast.success(`✨ Déplacé vers "${col?.title}"`, {
         duration: 2000,
-        style: { background: '#1e293b', border: `1px solid ${col?.color}40`, color: '#e2e8f0' },
+        style: { background: '#292524', border: `1px solid ${col?.color}40`, color: '#e2e8f0' },
       });
     } catch {
       // Rollback : on restaure le snapshot du cache
@@ -636,7 +636,7 @@ const KanbanBoard = () => {
             borderRadius: 12,
             background: 'linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))',
             border: '1px solid rgba(255,255,255,0.08)',
-            color: '#94a3b8',
+            color: '#78716c',
             cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 6,
             transition: 'all 0.3s ease',
@@ -649,7 +649,7 @@ const KanbanBoard = () => {
           }}
           onMouseLeave={e => {
             e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))';
-            e.currentTarget.style.color = '#94a3b8';
+            e.currentTarget.style.color = '#78716c';
             e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
           }}
         >
@@ -775,7 +775,7 @@ const KanbanBoard = () => {
                     }} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative', zIndex: 1 }}>
                       <TrendingUp style={{ width: 12, height: 12, color: col.color, opacity: 0.7 }} />
-                      <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>Total</span>
+                      <span style={{ fontSize: 10, color: '#78716c', fontWeight: 600 }}>Total</span>
                     </div>
                     <span style={{
                       fontSize: 13, fontWeight: 900, color: col.color,

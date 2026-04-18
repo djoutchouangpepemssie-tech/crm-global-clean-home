@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '../../shared';
 import axios from 'axios';
 import api from '../../../lib/api';
@@ -73,8 +73,8 @@ export default function TVAModule() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-xl font-bold flex items-center gap-2.5 tracking-tight">
-            <div className="p-2 rounded-xl bg-emerald-500/10">
-              <Calculator className="w-5 h-5 text-emerald-500" />
+            <div className="p-2 rounded-xl bg-brand-500/10">
+              <Calculator className="w-5 h-5 text-brand-500" />
             </div>
             TVA & Déclarations
           </h3>
@@ -86,14 +86,14 @@ export default function TVAModule() {
           </Button>
           <Dialog open={showCreate} onOpenChange={setShowCreate}>
             <DialogTrigger asChild>
-              <Button size="sm" className="gap-1.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-md shadow-emerald-500/20">
+              <Button size="sm" className="gap-1.5 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 shadow-md shadow-brand-500/20">
                 <Plus className="w-3.5 h-3.5" />Déclaration TVA
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
-                  <Calculator className="w-5 h-5 text-emerald-500" />
+                  <Calculator className="w-5 h-5 text-brand-500" />
                   Nouvelle déclaration TVA
                 </DialogTitle>
               </DialogHeader>
@@ -129,7 +129,7 @@ export default function TVAModule() {
                     <Input type="date" className="h-10" value={form.period_end} onChange={e => setForm(p => ({...p, period_end: e.target.value}))} />
                   </div>
                 </div>
-                <Button className="w-full h-10 bg-gradient-to-r from-emerald-500 to-emerald-600" onClick={handleCreate}>
+                <Button className="w-full h-10 bg-gradient-to-r from-brand-500 to-brand-600" onClick={handleCreate}>
                   <Calculator className="w-4 h-4 mr-2" />Calculer la TVA
                 </Button>
               </div>
@@ -149,7 +149,7 @@ export default function TVAModule() {
               {Object.entries(rates.standard_rates || {}).map(([key, val]) => (
                 <div key={key} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-muted/30 border">
                   <span className="text-xs text-muted-foreground">{val.label}</span>
-                  <span className="text-sm font-bold text-emerald-600">{val.rate}%</span>
+                  <span className="text-sm font-bold text-brand-600">{val.rate}%</span>
                 </div>
               ))}
             </div>
@@ -162,7 +162,7 @@ export default function TVAModule() {
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <div className="w-10 h-10 rounded-full border-2 border-emerald-500/20 border-t-emerald-500 animate-spin" />
+              <div className="w-10 h-10 rounded-full border-2 border-brand-500/20 border-t-brand-500 animate-spin" />
             </div>
           ) : declarations.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
@@ -190,11 +190,11 @@ export default function TVAModule() {
                       <td className="p-3 text-center text-sm">{d.period_start} → {d.period_end}</td>
                       <td className="p-3 text-center"><Badge variant="outline" className="text-[10px]">{d.regime}</Badge></td>
                       <td className="p-3 text-right font-mono text-sm tabular-nums">{fmt(d.ca_ht)}</td>
-                      <td className="p-3 text-right font-mono text-sm tabular-nums text-blue-500">{fmt(d.tva_collected)}</td>
-                      <td className="p-3 text-right font-mono text-sm tabular-nums text-emerald-500">{fmt(d.tva_deductible)}</td>
+                      <td className="p-3 text-right font-mono text-sm tabular-nums text-neutral-500">{fmt(d.tva_collected)}</td>
+                      <td className="p-3 text-right font-mono text-sm tabular-nums text-brand-500">{fmt(d.tva_deductible)}</td>
                       <td className="p-3 text-right font-mono text-sm tabular-nums font-semibold">{fmt(d.tva_to_pay)}</td>
                       <td className="p-3 text-center">
-                        <Badge className={`text-[10px] ${d.status === 'validated' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>
+                        <Badge className={`text-[10px] ${d.status === 'validated' ? 'bg-brand-500/10 text-brand-500 border-brand-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>
                           {d.status === 'validated' ? 'Validé' : 'Brouillon'}
                         </Badge>
                       </td>
@@ -205,11 +205,11 @@ export default function TVAModule() {
                           </Button>
                           {d.status === 'draft' && (
                             <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => handleValidate(d.declaration_id)} title="Valider la déclaration TVA">
-                              <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                              <CheckCircle className="w-3.5 h-3.5 text-brand-500" />
                             </Button>
                           )}
                           {d.status === 'validated' && (
-                            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 rounded-lg text-blue-600 hover:bg-blue-500/10" title="Générer le fichier EDI pour la déclaration TVA" onClick={() => alert('Fichier EDI généré pour ' + d.declaration_id)}>
+                            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 rounded-lg text-brand-600 hover:bg-neutral-500/10" title="Générer le fichier EDI pour la déclaration TVA" onClick={() => alert('Fichier EDI généré pour ' + d.declaration_id)}>
                               <Link2 className="w-3 h-3" />EDI
                             </Button>
                           )}
@@ -241,7 +241,7 @@ export default function TVAModule() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Calculator className="w-5 h-5 text-emerald-500" />
+              <Calculator className="w-5 h-5 text-brand-500" />
               Résultat déclaration TVA
             </DialogTitle>
           </DialogHeader>
@@ -256,16 +256,16 @@ export default function TVAModule() {
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Charges HT</div>
                   <div className="text-lg font-bold">{fmt(showResult.charges_ht)}</div>
                 </CardContent></Card>
-                <Card className="bg-blue-500/5 border-blue-500/20"><CardContent className="p-4 text-center">
+                <Card className="bg-neutral-500/5 border-neutral-500/20"><CardContent className="p-4 text-center">
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">TVA collectée</div>
-                  <div className="text-lg font-bold text-blue-500">{fmt(showResult.tva_collected)}</div>
+                  <div className="text-lg font-bold text-neutral-500">{fmt(showResult.tva_collected)}</div>
                 </CardContent></Card>
-                <Card className="bg-emerald-500/5 border-emerald-500/20"><CardContent className="p-4 text-center">
+                <Card className="bg-brand-500/5 border-brand-500/20"><CardContent className="p-4 text-center">
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">TVA déductible</div>
-                  <div className="text-lg font-bold text-emerald-500">{fmt(showResult.tva_deductible)}</div>
+                  <div className="text-lg font-bold text-brand-500">{fmt(showResult.tva_deductible)}</div>
                 </CardContent></Card>
               </div>
-              <Card className={`${showResult.tva_to_pay > 0 ? 'bg-red-500/5 border-red-500/20' : 'bg-emerald-500/5 border-emerald-500/20'}`}>
+              <Card className={`${showResult.tva_to_pay > 0 ? 'bg-terracotta-500/5 border-terracotta-500/20' : 'bg-brand-500/5 border-brand-500/20'}`}>
                 <CardContent className="p-5 text-center">
                   <div className="text-xs text-muted-foreground mb-2">
                     {showResult.tva_to_pay > 0 ? '💳 TVA à payer' : '💰 Crédit de TVA'}
