@@ -1,21 +1,11 @@
 /**
- * QuotesList — Vague 2.
+ * QuotesList — Atelier direction.
  *
- * Refonte complète : branchement sur React Query + composants partagés.
+ * Palette Atelier (terracotta + émeraude + crème + encre chaude) en remplacement
+ * des accents violet/blue/emerald/amber génériques.
  *
- * Features préservées :
- *   - Filtres statut (chips avec compteurs live) + recherche
- *   - Stats en haut (total, CA total, CA accepté, taux de conversion)
- *   - Actions : voir (→ lead), envoyer, convertir en facture, supprimer
- *   - Détection des devis expirants (≤ 3j) et expirés
- *   - Création devis classique + devis vocal (modal VoiceQuote)
- *
- * Nouveautés :
- *   - Branchement React Query → création/update répercutés partout
- *   - Édition inline du statut via menu contextuel
- *   - Lien Quote → Lead cliquable
- *   - Bulk actions (suppression multiple)
- *   - Raccourcis clavier : / recherche, C créer, R refresh
+ * Features préservées 1:1 : filtres, recherche, stats, actions, bulk,
+ * raccourcis clavier, devis vocal. Aucune logique modifiée.
  */
 import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -23,7 +13,7 @@ import axios from 'axios';
 import {
   Plus, Search, X, RefreshCw, FileText, Send, Trash2,
   ArrowRight, Mic, AlertTriangle,
-  DollarSign, TrendingUp, BarChart3, Zap, Inbox, ExternalLink, ChevronDown,
+  Coins, TrendingUp, BarChart3, Zap, Inbox, ExternalLink, ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -55,97 +45,90 @@ const QUOTE_STATUS_LABELS = {
   expiré: 'Expiré',
 };
 
-// Mappe les variantes sans accent vers le statut canonique
 function normalizeStatus(s) {
   if (!s) return 'brouillon';
-  const map = {
-    envoye: 'envoyé',
-    accepte: 'accepté',
-    refuse: 'refusé',
-    expire: 'expiré',
-  };
+  const map = { envoye: 'envoyé', accepte: 'accepté', refuse: 'refusé', expire: 'expiré' };
   return map[s] || s;
 }
 
-// ── KPI card ─────────────────────────────────────────────────────
-function KpiCard({ icon: Icon, label, value, accent = 'violet' }) {
+/* ── KPI card — Atelier ─────────────────────────────────────────── */
+function KpiCard({ icon: Icon, label, value, accent = 'brand' }) {
+  // Atelier accents : brand (émeraude), accent (terracotta), amber (safran), ink (sable)
   const accents = {
-    violet: 'from-violet-500/10 to-violet-500/5 ring-violet-200 text-violet-600',
-    blue: 'from-blue-500/10 to-blue-500/5 ring-blue-200 text-blue-600',
-    emerald: 'from-emerald-500/10 to-emerald-500/5 ring-emerald-200 text-emerald-600',
-    amber: 'from-amber-500/10 to-amber-500/5 ring-amber-200 text-amber-600',
+    brand:   { bg: 'bg-brand-50/60',   ring: 'ring-brand-200/60',   icon: 'text-brand-700',   bar: 'bg-brand-600' },
+    accent:  { bg: 'bg-accent-50/60',  ring: 'ring-accent-200/60',  icon: 'text-accent-700',  bar: 'bg-accent-600' },
+    amber:   { bg: 'bg-amber-50/60',   ring: 'ring-amber-200/60',   icon: 'text-amber-700',   bar: 'bg-amber-600' },
+    ink:     { bg: 'bg-ink-50/80',     ring: 'ring-ink-200/60',     icon: 'text-ink-700',     bar: 'bg-ink-600' },
   };
+  const a = accents[accent] || accents.brand;
   return (
-    <div className={`rounded-xl bg-gradient-to-br ${accents[accent]} ring-1 p-4 animate-fade-in-up`}>
-      <Icon className="w-5 h-5 mb-3" />
-      <div className="text-2xl font-bold text-slate-900 tracking-tight">{value}</div>
-      <div className="text-xs text-slate-600 mt-1">{label}</div>
+    <div className={`relative rounded-card ${a.bg} ring-1 ${a.ring} p-4 animate-fade-in-up overflow-hidden`}>
+      <span className={`absolute top-0 left-0 h-full w-[3px] ${a.bar}`} aria-hidden />
+      <Icon className={`w-[18px] h-[18px] mb-3 ${a.icon}`} strokeWidth={1.8} />
+      <div className="text-display text-2xl font-semibold text-ink-900 tracking-tight tabular-nums">
+        {value}
+      </div>
+      <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-600 mt-1">
+        {label}
+      </div>
     </div>
   );
 }
 
-// ── Skeleton ─────────────────────────────────────────────────────
+/* ── Skeleton ─────────────────────────────────────────────────── */
 function QuotesSkeleton() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div
-          key={i}
-          className="rounded-xl border border-slate-200 p-5 section-card/30"
-        >
+        <div key={i} className="rounded-card border border-ink-200 p-5 bg-bg-card">
           <div className="flex items-start justify-between mb-3">
             <div className="space-y-2 flex-1">
-              <div className="h-4 w-32 bg-slate-200 rounded animate-pulse" />
-              <div className="h-3 w-20 /60 rounded animate-pulse" />
+              <div className="h-4 w-32 bg-ink-100 rounded animate-pulse" />
+              <div className="h-3 w-20 bg-ink-100/60 rounded animate-pulse" />
             </div>
-            <div className="h-6 w-16 /60 rounded-full animate-pulse" />
+            <div className="h-6 w-16 bg-ink-100/60 rounded-full animate-pulse" />
           </div>
-          <div className="h-8 w-24 bg-slate-200 rounded animate-pulse mt-4" />
-          <div className="h-3 w-full /60 rounded animate-pulse mt-4" />
+          <div className="h-8 w-24 bg-ink-100 rounded animate-pulse mt-4" />
+          <div className="h-3 w-full bg-ink-100/60 rounded animate-pulse mt-4" />
         </div>
       ))}
     </div>
   );
 }
 
-// ── Carte devis ──────────────────────────────────────────────────
+/* ── Quote card — Atelier ───────────────────────────────────────── */
 function QuoteCard({ quote, isSelected, onToggleSelect, onView, onSend, onConvert, onDelete, onStatusChange }) {
   const status = normalizeStatus(quote.status);
   const isDraft = status === 'brouillon';
   const isSent = status === 'envoyé';
   const isAccepted = status === 'accepté';
 
-  // Calcul jours avant expiration (devis envoyés seulement)
   const expiryDays = quote.expiry_date ? -daysSince(quote.expiry_date) : null;
   const isExpiringSoon = expiryDays !== null && expiryDays > 0 && expiryDays <= 3 && isSent;
   const isExpired = expiryDays !== null && expiryDays < 0 && isSent;
 
+  // Filet de gauche selon statut (plus éditorial qu'une barre top colorée)
+  const statusBar =
+    isAccepted ? 'bg-brand-600'
+    : isSent ? 'bg-accent-600'
+    : isDraft ? 'bg-ink-300'
+    : 'bg-amber-600';
+
   return (
     <div
       className={`
-        group relative rounded-xl border p-5 cursor-pointer
-        transition-all duration-200 ease-standard animate-fade-in-up
+        group relative rounded-card border p-5 cursor-pointer overflow-hidden
+        transition-all duration-200 ease-out animate-fade-in-up
         ${isSelected
-          ? 'border-violet-300 bg-violet-50/40 shadow-brand'
-          : 'border-slate-200 section-card/30 hover:border-slate-300 hover:shadow-card-lg'}
+          ? 'border-accent-300 bg-accent-50/40 shadow-sm'
+          : 'border-ink-200 bg-bg-card hover:border-ink-300 hover:shadow-md'}
       `}
       onClick={onView}
     >
-      {/* Accent top */}
-      <div
-        className="absolute top-0 left-0 right-0 h-1 rounded-t-xl opacity-80"
-        style={{
-          background: isAccepted
-            ? 'linear-gradient(90deg, #10b981, #34d399)'
-            : isSent
-              ? 'linear-gradient(90deg, #3b82f6, #60a5fa)'
-              : isDraft
-                ? 'linear-gradient(90deg, #94a3b8, #cbd5e1)'
-                : 'linear-gradient(90deg, #f59e0b, #fbbf24)',
-        }}
-      />
+      {/* Filet gauche statut */}
+      <span className={`absolute top-0 left-0 h-full w-[3px] ${statusBar}`} aria-hidden />
 
-      <div className="flex items-start justify-between gap-3 mb-3">
+      <div className="flex items-start justify-between gap-3 mb-3 ml-1">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
             <div onClick={(e) => e.stopPropagation()}>
@@ -155,15 +138,15 @@ function QuoteCard({ quote, isSelected, onToggleSelect, onView, onSend, onConver
                 aria-label="Sélectionner"
               />
             </div>
-            <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
-            <span className="text-xs font-mono text-slate-500 truncate">
+            <FileText className="w-3.5 h-3.5 text-ink-400 flex-shrink-0" strokeWidth={1.8} />
+            <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-ink-500 truncate">
               {quote.quote_number || (quote.quote_id ? quote.quote_id.slice(0, 8) : '—')}
             </span>
           </div>
-          <div className="font-semibold text-slate-900 truncate">
+          <div className="text-display font-semibold text-ink-900 truncate leading-tight">
             {quote.lead_name || quote.client_name || 'Sans client'}
           </div>
-          <div className="text-xs text-slate-500 mt-0.5">
+          <div className="text-xs text-ink-500 mt-1">
             {quote.service_type || 'Service non précisé'}
           </div>
         </div>
@@ -172,22 +155,24 @@ function QuoteCard({ quote, isSelected, onToggleSelect, onView, onSend, onConver
         </div>
       </div>
 
-      <div className="flex items-end justify-between mt-4">
+      <div className="flex items-end justify-between mt-4 ml-1">
         <div>
-          <div className="text-xs text-slate-500">Montant</div>
-          <div className="text-2xl font-bold text-slate-900 tracking-tight">
+          <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-ink-500">Montant</div>
+          <div className="text-display text-2xl font-semibold text-ink-900 tracking-tight tabular-nums mt-0.5">
             {quote.amount
               ? `${Number(quote.amount).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €`
               : '—'}
           </div>
         </div>
         <div className="text-right">
-          <div className="text-xs text-slate-400">{relativeTime(quote.created_at)}</div>
+          <div className="font-mono text-[10px] tracking-[0.02em] text-ink-400">
+            {relativeTime(quote.created_at)}
+          </div>
           {(isExpiringSoon || isExpired) && (
             <div className={`mt-1 text-xs font-semibold flex items-center gap-1 justify-end ${
-              isExpired ? 'text-rose-600' : 'text-amber-600'
+              isExpired ? 'text-rose-700' : 'text-amber-700'
             }`}>
-              <AlertTriangle className="w-3 h-3" />
+              <AlertTriangle className="w-3 h-3" strokeWidth={2} />
               {isExpired ? 'Expiré' : `Expire dans ${expiryDays}j`}
             </div>
           )}
@@ -196,7 +181,7 @@ function QuoteCard({ quote, isSelected, onToggleSelect, onView, onSend, onConver
 
       {/* Actions row */}
       <div
-        className="mt-4 pt-3 border-t border-slate-200 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+        className="mt-4 pt-3 ml-1 border-t border-ink-200 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
         onClick={(e) => e.stopPropagation()}
       >
         {isDraft && (
@@ -224,7 +209,9 @@ function QuoteCard({ quote, isSelected, onToggleSelect, onView, onSend, onConver
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel className="text-xs">Changer le statut</DropdownMenuLabel>
+            <DropdownMenuLabel className="text-xs font-mono uppercase tracking-wider">
+              Changer le statut
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
             {QUOTE_STATUSES.map((s) => (
               <DropdownMenuItem key={s} onClick={() => onStatusChange(s)}>
@@ -233,7 +220,7 @@ function QuoteCard({ quote, isSelected, onToggleSelect, onView, onSend, onConver
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onDelete} className="text-rose-600 focus:text-rose-600">
+            <DropdownMenuItem onClick={onDelete} className="text-rose-700 focus:text-rose-700">
               <Trash2 className="w-3.5 h-3.5 mr-2" />
               Supprimer
             </DropdownMenuItem>
@@ -244,7 +231,7 @@ function QuoteCard({ quote, isSelected, onToggleSelect, onView, onSend, onConver
   );
 }
 
-// ── Composant principal ──────────────────────────────────────────
+/* ── Main ───────────────────────────────────────────────────────── */
 export default function QuotesList() {
   const navigate = useNavigate();
   const { confirm, ConfirmElement } = useConfirm();
@@ -260,13 +247,11 @@ export default function QuotesList() {
   const deleteQuote = useDeleteQuote();
   const updateQuote = useUpdateQuote();
 
-  // Normaliser la liste : la route GET /quotes renvoie parfois {items: [...]}
   const quotesList = useMemo(() => {
     if (Array.isArray(quotes)) return quotes;
     return quotes?.items || quotes?.quotes || [];
   }, [quotes]);
 
-  // Stats live calculées depuis le cache
   const stats = useMemo(() => {
     const totalCount = quotesList.length;
     const totalAmount = quotesList.reduce((s, q) => s + (Number(q.amount) || 0), 0);
@@ -276,7 +261,6 @@ export default function QuotesList() {
     return { totalCount, totalAmount, acceptedAmount, conversionRate };
   }, [quotesList]);
 
-  // Compteurs par statut (pour les chips)
   const statusCounts = useMemo(() => {
     const counts = { '': quotesList.length };
     quotesList.forEach((q) => {
@@ -286,12 +270,9 @@ export default function QuotesList() {
     return counts;
   }, [quotesList]);
 
-  // Filtrage
   const filteredQuotes = useMemo(() => {
     let list = quotesList;
-    if (status) {
-      list = list.filter((q) => normalizeStatus(q.status) === status);
-    }
+    if (status) list = list.filter((q) => normalizeStatus(q.status) === status);
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter((quote) =>
@@ -303,73 +284,53 @@ export default function QuotesList() {
     return list;
   }, [quotesList, status, search]);
 
-  // Handlers
-  const handleView = useCallback(
-    (quote) => {
-      if (quote.lead_id) navigate(`/leads/${quote.lead_id}`);
-      else toast.info('Ce devis n\'est lié à aucun lead');
-    },
-    [navigate]
-  );
+  const handleView = useCallback((quote) => {
+    if (quote.lead_id) navigate(`/leads/${quote.lead_id}`);
+    else toast.info('Ce devis n\'est lié à aucun lead');
+  }, [navigate]);
 
-  const handleSend = useCallback(
-    async (quote) => {
-      const ok = await confirm({
-        title: 'Envoyer ce devis ?',
-        description: 'Le devis sera envoyé par email au client. Cette action est définitive.',
-        variant: 'info',
-        confirmText: 'Envoyer',
-      });
-      if (ok) await sendQuote.mutateAsync(quote.quote_id);
-    },
-    [confirm, sendQuote]
-  );
+  const handleSend = useCallback(async (quote) => {
+    const ok = await confirm({
+      title: 'Envoyer ce devis ?',
+      description: 'Le devis sera envoyé par email au client. Cette action est définitive.',
+      variant: 'info',
+      confirmText: 'Envoyer',
+    });
+    if (ok) await sendQuote.mutateAsync(quote.quote_id);
+  }, [confirm, sendQuote]);
 
-  const handleConvert = useCallback(
-    async (quote) => {
-      const ok = await confirm({
-        title: 'Convertir en facture ?',
-        description: `Une facture sera créée à partir de ce devis (${Number(quote.amount).toLocaleString('fr-FR')} €).`,
-        variant: 'info',
-        confirmText: 'Convertir',
-      });
-      if (!ok) return;
-      try {
-        await axios.post(
-          `${BACKEND_URL}/api/invoices/from-quote/${quote.quote_id}`,
-          {},
-          { withCredentials: true }
-        );
-        toast.success('Facture créée à partir du devis');
-        refetch();
-        navigate('/invoices');
-      } catch (err) {
-        toast.error(err.response?.data?.detail || 'Erreur lors de la conversion');
-      }
-    },
-    [confirm, refetch, navigate]
-  );
+  const handleConvert = useCallback(async (quote) => {
+    const ok = await confirm({
+      title: 'Convertir en facture ?',
+      description: `Une facture sera créée à partir de ce devis (${Number(quote.amount).toLocaleString('fr-FR')} €).`,
+      variant: 'info',
+      confirmText: 'Convertir',
+    });
+    if (!ok) return;
+    try {
+      await axios.post(`${BACKEND_URL}/api/invoices/from-quote/${quote.quote_id}`, {}, { withCredentials: true });
+      toast.success('Facture créée à partir du devis');
+      refetch();
+      navigate('/invoices');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erreur lors de la conversion');
+    }
+  }, [confirm, refetch, navigate]);
 
-  const handleDelete = useCallback(
-    async (quote) => {
-      const ok = await confirm({
-        title: 'Supprimer ce devis ?',
-        description: 'Le devis sera archivé. Cette action peut être annulée par un administrateur.',
-        variant: 'danger',
-        confirmText: 'Supprimer',
-      });
-      if (ok) await deleteQuote.mutateAsync(quote.quote_id);
-    },
-    [confirm, deleteQuote]
-  );
+  const handleDelete = useCallback(async (quote) => {
+    const ok = await confirm({
+      title: 'Supprimer ce devis ?',
+      description: 'Le devis sera archivé. Cette action peut être annulée par un administrateur.',
+      variant: 'danger',
+      confirmText: 'Supprimer',
+    });
+    if (ok) await deleteQuote.mutateAsync(quote.quote_id);
+  }, [confirm, deleteQuote]);
 
-  const handleStatusChange = useCallback(
-    async (quote, nextStatus) => {
-      await updateQuote.mutateAsync({ quoteId: quote.quote_id, payload: { status: nextStatus } });
-      toast.success(`Statut changé en "${QUOTE_STATUS_LABELS[nextStatus]}"`);
-    },
-    [updateQuote]
-  );
+  const handleStatusChange = useCallback(async (quote, nextStatus) => {
+    await updateQuote.mutateAsync({ quoteId: quote.quote_id, payload: { status: nextStatus } });
+    toast.success(`Statut changé en "${QUOTE_STATUS_LABELS[nextStatus]}"`);
+  }, [updateQuote]);
 
   const handleToggleSelect = useCallback((quoteId) => {
     setSelectedIds((prev) => {
@@ -399,7 +360,6 @@ export default function QuotesList() {
     setSearch('');
   }, []);
 
-  // Raccourcis clavier
   useHotkeys({
     '/': () => searchInputRef.current?.focus(),
     c: () => navigate('/quotes/new'),
@@ -435,44 +395,29 @@ export default function QuotesList() {
         ]}
       />
 
-      {/* Stats KPIs */}
+      {/* KPIs Atelier */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <KpiCard icon={BarChart3} label="Total devis" value={stats.totalCount} accent="violet" />
-        <KpiCard
-          icon={DollarSign}
-          label="CA total"
-          value={`${stats.totalAmount.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €`}
-          accent="blue"
-        />
-        <KpiCard
-          icon={TrendingUp}
-          label="CA accepté"
-          value={`${stats.acceptedAmount.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €`}
-          accent="emerald"
-        />
-        <KpiCard
-          icon={Zap}
-          label="Taux de conversion"
-          value={`${stats.conversionRate}%`}
-          accent="amber"
-        />
+        <KpiCard icon={BarChart3}  label="Total devis"        value={stats.totalCount} accent="ink" />
+        <KpiCard icon={Coins}      label="CA total"           value={`${stats.totalAmount.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €`} accent="accent" />
+        <KpiCard icon={TrendingUp} label="CA accepté"         value={`${stats.acceptedAmount.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €`} accent="brand" />
+        <KpiCard icon={Zap}        label="Taux de conversion" value={`${stats.conversionRate}%`} accent="amber" />
       </div>
 
-      {/* Filtres chips */}
+      {/* Chips filtres */}
       <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1 -mx-1 px-1">
         <button
           type="button"
           onClick={() => setStatus('')}
           className={`
-            flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ease-snappy
+            flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all
             ${status === ''
-              ? 'bg-slate-800 text-white   shadow-sm'
-              : 'section-card/40 text-slate-600 border border-slate-200 hover:border-slate-300'}
+              ? 'bg-ink-900 text-bg-base shadow-sm'
+              : 'bg-bg-card text-ink-700 border border-ink-200 hover:border-ink-300'}
           `}
         >
-          <FileText className="w-3.5 h-3.5" />
+          <FileText className="w-3.5 h-3.5" strokeWidth={1.8} />
           Tous
-          <span className="text-xs opacity-70">{statusCounts[''] || 0}</span>
+          <span className="font-mono text-[10px] opacity-70 tabular-nums">{statusCounts[''] || 0}</span>
         </button>
         {QUOTE_STATUSES.map((s) => {
           const count = statusCounts[s] || 0;
@@ -484,27 +429,27 @@ export default function QuotesList() {
               type="button"
               onClick={() => setStatus(active ? '' : s)}
               className={`
-                flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ease-snappy
+                flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all
                 ${active
-                  ? 'bg-slate-800 text-white   shadow-sm'
-                  : 'section-card/40 text-slate-600 border border-slate-200 hover:border-slate-300'}
+                  ? 'bg-ink-900 text-bg-base shadow-sm'
+                  : 'bg-bg-card text-ink-700 border border-ink-200 hover:border-ink-300'}
               `}
             >
               <StatusBadge domain="quote" status={s} size="xs" className="-ml-1 pointer-events-none" />
-              <span className="text-xs opacity-70">{count}</span>
+              <span className="font-mono text-[10px] opacity-70 tabular-nums">{count}</span>
             </button>
           );
         })}
       </div>
 
-      {/* Barre recherche */}
+      {/* Recherche */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         <div className="relative flex-1 min-w-[240px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 pointer-events-none" strokeWidth={1.8} />
           <Input
             ref={searchInputRef}
             type="text"
-            placeholder="Rechercher par client, service, numéro… (/)"
+            placeholder="Rechercher par client, service, numéro…  ( / )"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 pr-9"
@@ -513,14 +458,14 @@ export default function QuotesList() {
             <button
               type="button"
               onClick={() => setSearch('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-slate-100"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-ink-100"
             >
-              <X className="w-3.5 h-3.5 text-slate-400" />
+              <X className="w-3.5 h-3.5 text-ink-400" />
             </button>
           )}
         </div>
         {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={resetFilters} className="gap-1 text-slate-500">
+          <Button variant="ghost" size="sm" onClick={resetFilters} className="gap-1 text-ink-600">
             <X className="w-3.5 h-3.5" />
             Réinitialiser
           </Button>
@@ -567,20 +512,20 @@ export default function QuotesList() {
       {/* Bulk actions floating bar */}
       {selectedIds.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-fade-in-up">
-          <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-slate-800 text-white  shadow-card-xl ring-1 ring-slate-700/50">
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-ink-900 text-bg-base shadow-lg ring-1 ring-ink-800">
             <span className="text-sm font-medium">
               {selectedIds.size} {selectedIds.size > 1 ? 'devis sélectionnés' : 'devis sélectionné'}
             </span>
-            <div className="w-px h-5 bg-slate-700" />
+            <div className="w-px h-5 bg-ink-700" />
             <button
               type="button"
               onClick={handleBulkDelete}
-              className="text-sm font-medium text-rose-300 hover:opacity-80 transition-opacity flex items-center gap-1"
+              className="text-sm font-medium text-rose-300 hover:text-rose-200 transition-colors flex items-center gap-1"
             >
               <Trash2 className="w-4 h-4" />
               Supprimer
             </button>
-            <div className="w-px h-5 bg-slate-700" />
+            <div className="w-px h-5 bg-ink-700" />
             <button
               type="button"
               onClick={() => setSelectedIds(new Set())}
@@ -593,7 +538,6 @@ export default function QuotesList() {
         </div>
       )}
 
-      {/* Modal devis vocal */}
       {showVoice && (
         <VoiceQuote
           onClose={() => setShowVoice(false)}
