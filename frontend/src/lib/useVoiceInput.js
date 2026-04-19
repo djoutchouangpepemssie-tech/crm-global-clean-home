@@ -30,6 +30,8 @@ export default function useVoiceInput({
   const recognitionRef = useRef(null);
   const silenceTimer = useRef(null);
   const stoppedByUser = useRef(false);
+  const accumulatedFinal = useRef(''); // ← accumule les segments finaux d'une session
+  const fired = useRef(false);         // ← garde : onFinal ne tire qu'UNE fois par session
   const supported = Boolean(SpeechRecognitionApi);
 
   // Reset silence timer à chaque nouvelle parole
@@ -59,6 +61,8 @@ export default function useVoiceInput({
     setError(null);
     setTranscript('');
     setFinalTranscript('');
+    accumulatedFinal.current = '';
+    fired.current = false;
     stoppedByUser.current = false;
 
     const rec = new SpeechRecognitionApi();
@@ -68,10 +72,18 @@ export default function useVoiceInput({
     rec.maxAlternatives = 1;
 
     rec.onstart = () => setListening(true);
+
+    // onend : on ne déclenche onFinal QU'ICI, avec TOUT le texte accumulé.
+    // Évite le spam quand Web Speech découpe une phrase en plusieurs segments finaux.
     rec.onend = () => {
       setListening(false);
       if (silenceTimer.current) { clearTimeout(silenceTimer.current); silenceTimer.current = null; }
       recognitionRef.current = null;
+      const fullFinal = accumulatedFinal.current.trim();
+      if (fullFinal && !fired.current && onFinal) {
+        fired.current = true;
+        onFinal(fullFinal);
+      }
     };
 
     rec.onerror = (e) => {
@@ -93,12 +105,12 @@ export default function useVoiceInput({
         if (event.results[i].isFinal) final += txt;
         else interim += txt;
       }
-      const full = (final || interim).trim();
-      setTranscript(full);
       if (final) {
-        setFinalTranscript(prev => (prev + ' ' + final).trim());
-        if (onFinal) onFinal(final.trim());
+        accumulatedFinal.current = (accumulatedFinal.current + ' ' + final).trim();
+        setFinalTranscript(accumulatedFinal.current);
       }
+      // Affichage live pendant qu'on parle
+      setTranscript((accumulatedFinal.current + ' ' + interim).trim());
       bumpSilenceTimer();
     };
 

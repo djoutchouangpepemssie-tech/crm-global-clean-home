@@ -12,18 +12,32 @@ import { Mic, MicOff, X, Loader } from 'lucide-react';
 import useVoiceInput from '../../lib/useVoiceInput';
 import api from '../../lib/api';
 
-// Table des intentions de navigation rapide (heuristique locale, avant Claude)
+// Table des intentions de navigation rapide (heuristique locale, avant Claude).
+// Ordre IMPORTANT : plus spécifique d'abord (ex: "nouveau devis" avant "devis").
 const NAV_KEYWORDS = [
-  { regex: /(dashboard|tableau de bord|accueil)/i,          path: '/dashboard' },
-  { regex: /(\bleads?\b|\bprospects?\b)/i,                   path: '/leads' },
-  { regex: /(\bdevis\b)/i,                                   path: '/quotes' },
-  { regex: /(\bfactures?\b|facturation)/i,                   path: '/invoices' },
-  { regex: /(\bplanning\b|agenda|calendrier)/i,              path: '/planning' },
-  { regex: /(\bcarte\b|\bmap\b)/i,                           path: '/map' },
-  { regex: /(vue directeur|directeur)/i,                     path: '/director' },
-  { regex: /(nouveau lead|créer (un )?lead)/i,               path: '/leads/new' },
-  { regex: /(nouveau devis|créer (un )?devis)/i,             path: '/quotes/new' },
-  { regex: /(nouvelle facture|créer (une )?facture)/i,       path: '/invoices/new' },
+  // Créations (les plus spécifiques d'abord)
+  { regex: /(nouveau lead|créer (un )?lead|ajoute(r)? (un )?lead|ajoute(r)? (un )?prospect)/i, path: '/leads/new' },
+  { regex: /(nouveau devis|créer (un )?devis|ajoute(r)? (un )?devis)/i,                        path: '/quotes/new' },
+  { regex: /(nouvelle facture|créer (une )?facture|ajoute(r)? (une )?facture)/i,               path: '/invoices/new' },
+
+  // Pages principales
+  { regex: /(tableau de bord|dashboard|\baccueil\b)/i,                   path: '/dashboard' },
+  { regex: /(vue directeur|mode directeur|directeur)/i,                  path: '/director' },
+  { regex: /(\bleads?\b|\bprospects?\b|clients potentiels)/i,            path: '/leads' },
+  { regex: /(\bdevis\b|\bdeviser\b)/i,                                   path: '/quotes' },
+  { regex: /(\bfactures?\b|facturation|compta)/i,                        path: '/invoices' },
+  { regex: /(\btâches?\b|\btasks?\b|à faire|to-?do)/i,                   path: '/tasks' },
+  { regex: /(\bplanning\b|agenda|calendrier|rendez-?vous|rdvs?)/i,        path: '/planning' },
+  { regex: /(\bcarte\b|\bmap\b|localisation)/i,                          path: '/map' },
+  { regex: /(\bkanban\b|tableau kanban)/i,                               path: '/kanban' },
+  { regex: /(analytics|statistiques|\bstats\b)/i,                        path: '/analytics' },
+  { regex: /(\bseo\b|référencement)/i,                                   path: '/seo' },
+  { regex: /(\brentabilit[ée]\b|roi)/i,                                  path: '/rentabilite' },
+  { regex: /(\bfinance\b|finances)/i,                                    path: '/finance' },
+  { regex: /(satisfaction|avis|reviews?)/i,                              path: '/satisfaction' },
+  { regex: /(\bchat\b|messagerie|messages)/i,                            path: '/chat' },
+  { regex: /(intégrations?|\bplugs?\b|connecter)/i,                      path: '/integrations' },
+  { regex: /(paramètres|settings|réglages|config)/i,                     path: '/settings' },
 ];
 
 export default function VoiceFab() {
@@ -33,34 +47,51 @@ export default function VoiceFab() {
   const navigate = useNavigate();
   const hideTimer = useRef(null);
 
+  // Détecte les instructions qui concernent le layout dashboard (garde anti-spam :
+  // on n'appelle /layouts/.../command que si ça a l'air d'être une commande layout)
+  const looksLikeLayoutCommand = (instr) => {
+    const s = instr.toLowerCase();
+    return /\b(ajoute|enl[èe]ve|retire|supprime|met(s|)|déplace|organise|passe|reset|réinitialise|par défaut|pleine largeur|à côté|en haut|à gauche|à droite)\b/.test(s)
+      || /(pipeline|chiffre d'affaires|ca |revenu|activité|direct|insights?|recommandations?|actions rapides|cover|leads récents|kpi)/i.test(s);
+  };
+
   const handleCommand = useCallback(async (text) => {
     const instruction = text.trim();
     if (!instruction) return;
 
-    // 1) Tentative de navigation rapide (heuristique locale)
+    // 1) Navigation rapide (heuristique locale, sans appel serveur)
     for (const { regex, path } of NAV_KEYWORDS) {
       if (regex.test(instruction)) {
         navigate(path);
-        setMessage(`Direction : ${path}`);
-        hideMessageSoon();
+        setMessage(`→ ${path}`);
+        hideMessageSoon(2500);
         return;
       }
     }
 
-    // 2) Sinon on part sur Claude pour la commande layout dashboard
-    setProcessing(true);
-    try {
-      const r = await api.post('/layouts/dashboard/command', { instruction });
-      setMessage(r.data?.explanation || 'Mise à jour appliquée.');
-      // Si on n'est pas sur le dashboard, on y va pour voir le résultat
-      if (window.location.pathname !== '/dashboard') navigate('/dashboard');
-      hideMessageSoon();
-    } catch (e) {
-      setMessage(e?.message || 'Claude n\'a pas pu traiter cette demande.');
-      hideMessageSoon(5000);
-    } finally {
-      setProcessing(false);
+    // 2) Si l'instruction ressemble à une commande layout → endpoint /command
+    if (looksLikeLayoutCommand(instruction)) {
+      setProcessing(true);
+      try {
+        const r = await api.post('/layouts/dashboard/command', { instruction });
+        setMessage(r.data?.explanation || 'Layout mis à jour.');
+        if (window.location.pathname !== '/dashboard') navigate('/dashboard');
+        hideMessageSoon();
+      } catch (e) {
+        const msg = e?.status === 503
+          ? 'IA non configurée — essaie une commande simple : « ajoute le pipeline », « enlève les insights », « reset ».'
+          : (e?.message || 'Impossible de traiter cette commande.');
+        setMessage(msg);
+        hideMessageSoon(5000);
+      } finally {
+        setProcessing(false);
+      }
+      return;
     }
+
+    // 3) Aucune correspondance → on n'appelle PAS l'API (évite le spam 503)
+    setMessage(`Je n'ai pas compris « ${instruction} ». Essaie : « ouvre les leads », « ajoute le pipeline », ou « nouvelle facture ».`);
+    hideMessageSoon(6000);
   }, [navigate]);
 
   const hideMessageSoon = (ms = 3500) => {

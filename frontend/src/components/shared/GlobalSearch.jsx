@@ -81,10 +81,11 @@ function GlobalSearchModal({ onClose }) {
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  // Flatten results for keyboard nav
+  // Flatten results for keyboard nav — protégé contre les réponses non-standard
+  // (backend peut retourner {detail: "..."} en cas d'erreur 401/403 → pas un array)
   const flatResults = results
     ? Object.entries(results).flatMap(([type, items]) =>
-        (items || []).map(item => ({ type, item }))
+        (Array.isArray(items) ? items : []).map(item => ({ type, item }))
       )
     : [];
 
