@@ -2304,19 +2304,110 @@ class LayoutCommand(BaseModel):
     instruction: str = Field(..., max_length=500, description="Instruction en langage naturel")
 
 
+def _local_layout_command(instruction: str, current_blocks: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Fallback local : interprète des commandes simples via regex quand Claude
+    n'est pas dispo. Couvre : ajouter, enlever, redimensionner, réinitialiser.
+    Retourne {blocks, explanation} ou None si impossible d'interpréter localement.
+    """
+    import re as _re
+    instr = instruction.lower().strip()
+    blocks = [dict(b) for b in current_blocks]
+
+    # Table de reconnaissance : mots-clés FR → type de bloc
+    KEYWORDS = {
+        "pipeline":      "pipeline",
+        "entonnoir":     "pipeline",
+        "ca ":           "hero-revenue", "chiffre d'affaires": "hero-revenue", "revenu": "hero-revenue",
+        "facturation":   "hero-revenue",
+        "leads récents": "recent-leads", "derniers leads": "recent-leads",
+        "kpi leads":     "kpi-leads", "objectif leads": "kpi-leads", "nouveaux leads": "kpi-leads",
+        "activité":      "activity-feed", "direct":         "activity-feed", "temps réel": "activity-feed",
+        "insights":      "ai-insights", "recommandations":  "ai-insights", "suggestion": "ai-insights",
+        "actions rapides": "quick-actions", "raccourcis":   "quick-actions",
+        "cover":         "cover", "accueil":               "cover", "salutation":   "cover",
+    }
+
+    def _find_type():
+        for kw, t in KEYWORDS.items():
+            if kw in instr and t in AVAILABLE_BLOCKS:
+                return t
+        return None
+
+    target_type = _find_type()
+
+    # reset / réinitialise
+    if _re.search(r"\b(reset|réinitialise|remet|par défaut)\b", instr):
+        return {"blocks": DEFAULT_LAYOUTS.get("dashboard", []), "explanation": "Layout réinitialisé au défaut."}
+
+    # enlève / supprime / retire / enlever
+    if _re.search(r"\b(enl[èe]ve|retire|supprime|vire)\b", instr) and target_type:
+        new_blocks = [b for b in blocks if b.get("type") != target_type]
+        if len(new_blocks) == len(blocks):
+            return None
+        meta = AVAILABLE_BLOCKS.get(target_type, {})
+        return {"blocks": new_blocks, "explanation": f"Bloc « {meta.get('title', target_type)} » supprimé."}
+
+    # ajoute / met / affiche
+    if _re.search(r"\b(ajoute|met(s|)|affiche|rajoute)\b", instr) and target_type:
+        if any(b.get("type") == target_type for b in blocks):
+            # Déjà présent : éventuellement redimensionner
+            w_match = _re.search(r"\b(pleine largeur|full|12|8|6|4|1/2|2/3|1/3|demi|tier)\b", instr)
+            if w_match:
+                m = w_match.group(1)
+                w = 12 if m in ("pleine largeur", "full", "12") else \
+                    8  if m in ("8", "2/3") else \
+                    6  if m in ("6", "1/2", "demi") else \
+                    4  if m in ("4", "1/3", "tier") else None
+                if w:
+                    for b in blocks:
+                        if b.get("type") == target_type:
+                            b["w"] = w
+                    meta = AVAILABLE_BLOCKS.get(target_type, {})
+                    return {"blocks": blocks, "explanation": f"Bloc « {meta.get('title', target_type)} » redimensionné à {w}/12."}
+            return None
+        meta = AVAILABLE_BLOCKS.get(target_type, {})
+        new_block = {"id": f"{target_type}-{uuid.uuid4().hex[:6]}", "type": target_type, "w": 6}
+        # En haut si "en haut", sinon à la fin
+        if _re.search(r"\b(en haut|début|dessus)\b", instr):
+            blocks.insert(0, new_block)
+        else:
+            blocks.append(new_block)
+        return {"blocks": blocks, "explanation": f"Bloc « {meta.get('title', target_type)} » ajouté."}
+
+    return None
+
+
 @api_router.post("/layouts/{scope}/command")
 async def layout_command(scope: str, payload: LayoutCommand, request: Request):
-    """Transforme une instruction en français en un nouveau layout via Claude."""
+    """Transforme une instruction en français en un nouveau layout via Claude,
+    avec un fallback local (regex) si la clé Anthropic n'est pas disponible.
+    """
     import httpx, json
 
     user = await require_auth(request)
     anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if not anthropic_key:
-        raise HTTPException(status_code=503, detail="Claude API non configurée (ANTHROPIC_API_KEY manquant)")
 
     # Récupère le layout courant
     doc = await db.user_layouts.find_one({"user_id": user.user_id, "scope": scope}, {"_id": 0})
     current_blocks = (doc or {}).get("blocks") or DEFAULT_LAYOUTS.get(scope, [])
+
+    # ── Fallback local si pas de Claude ─────────────────────────────
+    if not anthropic_key:
+        local = _local_layout_command(payload.instruction, current_blocks)
+        if local:
+            await db.user_layouts.update_one(
+                {"user_id": user.user_id, "scope": scope},
+                {"$set": {
+                    "user_id": user.user_id, "scope": scope, "blocks": local["blocks"],
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }},
+                upsert=True,
+            )
+            return {"scope": scope, "blocks": local["blocks"], "explanation": local["explanation"] + " (mode local · Claude non configuré)", "instruction": payload.instruction, "mode": "local"}
+        raise HTTPException(
+            status_code=503,
+            detail="Claude n'est pas configuré (ANTHROPIC_API_KEY manquant sur le serveur). Essaie une commande simple comme « ajoute le pipeline » ou contacte l'admin pour activer l'IA."
+        )
 
     # Catalogue en texte pour le prompt
     catalog = "\n".join([f"  - `{t}` — {m['title']} : {m['description']}" for t, m in AVAILABLE_BLOCKS.items()])

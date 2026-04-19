@@ -188,10 +188,18 @@ function useClaudeCommand(scope, replaceFromServer) {
         setLastExplanation(r.data.explanation || 'Mise à jour appliquée.');
         return r.data;
       }
-      throw new Error('Réponse Claude invalide');
+      throw new Error('Réponse serveur invalide');
     } catch (e) {
-      const msg = e?.detail || e?.message || 'Erreur Claude';
-      setError(typeof msg === 'string' ? msg : 'Erreur Claude');
+      // Erreurs typées : 503 = pas de Claude configuré, autres = erreur réelle
+      let msg = e?.message || e?.detail?.detail || 'Erreur inconnue';
+      if (e?.status === 503) {
+        msg = 'Mode IA indisponible : ANTHROPIC_API_KEY manquant sur le serveur. Essaie une commande simple (« ajoute le pipeline », « enlève les insights », « reset ») — ça marche en mode local.';
+      } else if (e?.status === 504) {
+        msg = 'Claude a mis trop de temps à répondre. Réessaie ou reformule.';
+      } else if (e?.status === 502) {
+        msg = 'Claude a refusé la requête. Reformule ta demande plus précisément.';
+      }
+      setError(typeof msg === 'string' ? msg : 'Erreur');
       return null;
     } finally {
       setPending(false);
