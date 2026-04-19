@@ -96,10 +96,12 @@ const LeadForm = lazy(() => import('./components/leads/LeadForm'));
 const QuotesCahier = lazy(() => import('./components/quotes/QuotesCahier'));
 const QuotesList = lazy(() => import('./components/quotes/QuotesList'));
 const QuoteForm = lazy(() => import('./components/quotes/QuoteForm'));
+const TasksCarnet = lazy(() => import('./components/tasks/TasksCarnet'));
 const TasksList = lazy(() => import('./components/tasks/TasksList'));
 const ActivityLog = lazy(() => import('./components/activity/ActivityLog'));
 const KanbanBoard = lazy(() => import('./components/kanban/KanbanBoard'));
 const Analytics = lazy(() => import('./components/analytics/Analytics'));
+const InvoicesGrandLivre = lazy(() => import('./components/invoices/InvoicesGrandLivre'));
 const InvoicesList = lazy(() => import('./components/invoices/InvoicesList'));
 const PaymentSuccess = lazy(() => import('./components/invoices/PaymentSuccess'));
 const FinancialDashboard = lazy(() => import('./components/invoices/FinancialDashboard'));
@@ -397,11 +399,13 @@ function AppRouter() {
                     <Route path="/quotes/premium" element={<QuoteForm />} />
                     <Route path="/quotes" element={<QuotesCahier />} />
                     <Route path="/quotes/legacy" element={<QuotesList />} />
-                    <Route path="/tasks" element={<TasksList />} />
+                    <Route path="/tasks" element={<TasksCarnet />} />
+                    <Route path="/tasks/legacy" element={<TasksList />} />
                     <Route path="/activity" element={<ActivityLog />} />
                     <Route path="/kanban" element={<KanbanBoard />} />
                     <Route path="/analytics" element={<Analytics />} />
-                    <Route path="/invoices" element={<InvoicesList />} />
+                    <Route path="/invoices" element={<InvoicesGrandLivre />} />
+                    <Route path="/invoices/legacy" element={<InvoicesList />} />
                     <Route path="/invoices/new" element={<InvoiceForm />} />
                     <Route path="/invoices/:invoiceId/success" element={<PaymentSuccess />} />
                     {/* Legacy : /invoices/premium redirige vers /invoices/new */}
