@@ -236,6 +236,26 @@ const OUBLIS_IA = [
   'Délai de paiement non spécifié (30j recommandé)',
 ];
 
+/* ─── Services proposés (alignés avec SERVICE_TYPES du backend) ─── */
+const SERVICE_TYPES = [
+  'Ménage', 'Canapé', 'Matelas', 'Tapis', 'Bureaux',
+  'Vitres', 'Fin de chantier', 'Déménagement', 'Autre',
+];
+
+/* ─── TVA : taux autorisés en France + parsing sûr (0 reste 0) ─── */
+const TVA_RATES = [
+  { value: 0,   label: '0% — Exonéré / Art. 293B CGI' },
+  { value: 5.5, label: '5,5% — Travaux logements anciens' },
+  { value: 10,  label: '10% — Travaux d\'amélioration' },
+  { value: 20,  label: '20% — Standard' },
+];
+
+function parseTva(v, fallback = 20) {
+  if (v === 0 || v === '0') return 0;
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 /* ─── Helpers ──────────────────────────────────────────────────── */
 function fmtEur(n) {
   return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 }).format(n || 0);
@@ -294,6 +314,7 @@ function Step1Client({ data, setData, leads }) {
     setData(d => ({
       ...d,
       lead_id: leadId,
+      service_type: d.service_type || lead.service_type || 'Autre',
       title: d.title?.trim()
         ? d.title
         : (lead.service_type ? `${lead.service_type} — ${lead.full_name}` : `Devis — ${lead.full_name}`),
@@ -349,9 +370,18 @@ function Step1Client({ data, setData, leads }) {
           </div>
         </div>
       )}
-      <div style={{ marginBottom: 16 }}>
-        <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Titre du devis *</label>
-        <input className="qf-field" placeholder="Ex: Ménage régulier 2h/semaine" value={data.title || ''} onChange={e => setData(d => ({ ...d, title: e.target.value }))} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
+        <div>
+          <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Service *</label>
+          <select className="qf-field" value={data.service_type || ''} onChange={e => setData(d => ({ ...d, service_type: e.target.value }))}>
+            <option value="">— Choisir un service —</option>
+            {SERVICE_TYPES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Titre du devis *</label>
+          <input className="qf-field" placeholder="Ex: Ménage régulier 2h/semaine" value={data.title || ''} onChange={e => setData(d => ({ ...d, title: e.target.value }))} />
+        </div>
       </div>
       <div>
         <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Description courte</label>
@@ -530,10 +560,15 @@ function Step3Conditions({ data, setData }) {
           </select>
         </div>
         <div>
-          <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>TVA</label>
-          <select className="qf-field" value={data.tva || '20'} onChange={e => setData(d => ({ ...d, tva: e.target.value }))}>
-            {['0', '5.5', '10', '20'].map(t => <option key={t} value={t}>{t}%</option>)}
+          <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Taux de TVA</label>
+          <select className="qf-field" value={data.tva ?? '20'} onChange={e => setData(d => ({ ...d, tva: e.target.value }))}>
+            {TVA_RATES.map(t => <option key={t.value} value={String(t.value)}>{t.label}</option>)}
           </select>
+          {parseTva(data.tva) === 0 && (
+            <div className="qf-mono" style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 4 }}>
+              Aucune TVA ne sera calculée (auto-entrepreneur ou exonéré).
+            </div>
+          )}
         </div>
         <div>
           <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Remise globale (%)</label>
@@ -554,7 +589,7 @@ function Step4Recap({ formData, groups, leads }) {
   const totalHT = groups.reduce((s, g) => s + g.postes.reduce((ps, p) => ps + (p.qty || 0) * (p.price || 0), 0), 0);
   const discount = ((formData.discount || 0) / 100) * totalHT;
   const base = totalHT - discount;
-  const tva = ((parseFloat(formData.tva) || 20) / 100) * base;
+  const tva = (parseTva(formData.tva) / 100) * base;
   const ttc = base + tva;
 
   return (
@@ -570,7 +605,9 @@ function Step4Recap({ formData, groups, leads }) {
           <div>
             <div className="qf-label" style={{ marginBottom: 8 }}>Devis</div>
             <div style={{ fontWeight: 600, fontSize: 14 }}>{formData.title || '(sans titre)'}</div>
-            <div style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 2 }}>Validité : {formData.expiry_date || 'non définie'}</div>
+            <div style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 2 }}>
+              Service : <strong>{formData.service_type || '—'}</strong> · Validité : {formData.expiry_date || 'non définie'}
+            </div>
           </div>
         </div>
         {groups.map(g => (
@@ -593,9 +630,15 @@ function Step4Recap({ formData, groups, leads }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--ink-3)', marginBottom: 4 }}>
             <span>Total HT</span><span className="qf-mono">{fmtEur(base)}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--ink-3)', marginBottom: 8 }}>
-            <span>TVA ({formData.tva || 20}%)</span><span className="qf-mono">{fmtEur(tva)}</span>
-          </div>
+          {parseTva(formData.tva) > 0 ? (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--ink-3)', marginBottom: 8 }}>
+              <span>TVA ({parseTva(formData.tva)}%)</span><span className="qf-mono">{fmtEur(tva)}</span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--ink-3)', marginBottom: 8, fontStyle: 'italic' }}>
+              <span>TVA non applicable (0%)</span><span className="qf-mono">—</span>
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 18, fontWeight: 800, color: 'var(--ink)' }}>
             <span>Total TTC</span>
             <span className="qf-mono" style={{ color: 'var(--accent)' }}>{fmtEur(ttc)}</span>
@@ -612,7 +655,7 @@ function Sidebar({ groups, formData, leads }) {
   const totalHT = groups.reduce((s, g) => s + g.postes.reduce((ps, p) => ps + (p.qty || 0) * (p.price || 0), 0), 0);
   const discount = ((formData.discount || 0) / 100) * totalHT;
   const base = totalHT - discount;
-  const tva = ((parseFloat(formData.tva) || 20) / 100) * base;
+  const tva = (parseTva(formData.tva) / 100) * base;
   const ttc = base + tva;
   const proba = 87;
 
@@ -622,7 +665,7 @@ function Sidebar({ groups, formData, leads }) {
         <div className="qf-label" style={{ marginBottom: 10 }}>Totaux</div>
         <div className="qf-mono" style={{ fontSize: 28, fontWeight: 800, color: 'var(--ink)', lineHeight: 1, marginBottom: 4 }}>{fmtEur(ttc)}</div>
         <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 12 }}>TTC · {fmtEur(base)} HT</div>
-        {[['Total HT', fmtEur(base)], [`TVA ${formData.tva || 20}%`, fmtEur(tva)], ['Total TTC', fmtEur(ttc)]].map(([l, v]) => (
+        {[['Total HT', fmtEur(base)], [`TVA ${parseTva(formData.tva)}%`, parseTva(formData.tva) > 0 ? fmtEur(tva) : '—'], ['Total TTC', fmtEur(ttc)]].map(([l, v]) => (
           <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--ink-2)', marginBottom: 3 }}>
             <span>{l}</span><span className="qf-mono" style={{ fontWeight: 600 }}>{v}</span>
           </div>
@@ -679,7 +722,7 @@ export default function QuoteForm() {
   const [saveError, setSaveError] = useState(null);
   const [lastSaved, setLastSaved] = useState(null);
   const [formData, setFormData] = useState({
-    lead_id: null, title: '', description: '',
+    lead_id: null, service_type: '', title: '', description: '',
     expiry_date: '', delay: '', payment_mode: 'virement',
     payment_delay: '30 jours', tva: '20', discount: 0, notes: '',
   });
@@ -718,6 +761,7 @@ export default function QuoteForm() {
       setFormData(prev => ({
         ...prev,
         lead_id: q.lead_id || null,
+        service_type: q.service_type || '',
         title: q.title || '',
         description: q.details || '',
         expiry_date: q.expiry_date || '',
@@ -751,7 +795,7 @@ export default function QuoteForm() {
   }, [formData, groups]);
 
   const canNext = useCallback(() => {
-    if (step === 1) return Boolean(formData.lead_id && formData.title.trim());
+    if (step === 1) return Boolean(formData.lead_id && formData.service_type && formData.title.trim());
     if (step === 2) return groups.some(g => g.postes.some(p => p.label.trim() && p.price > 0));
     return true;
   }, [step, formData, groups]);
@@ -759,7 +803,7 @@ export default function QuoteForm() {
   const handleSave = async (andSend = false) => {
     setSaving(true);
     const totalHT = groups.reduce((s, g) => s + g.postes.reduce((ps, p) => ps + (p.qty || 0) * (p.price || 0), 0), 0);
-    const tvaRate = parseFloat(formData.tva) || 20;
+    const tvaRate = parseTva(formData.tva);
     const base = totalHT * (1 - (formData.discount || 0) / 100);
     const amount = base * (1 + tvaRate / 100);
     const line_items = groups.flatMap(g => g.postes.map(p => ({
@@ -767,7 +811,7 @@ export default function QuoteForm() {
     })));
     const payload = {
       lead_id: formData.lead_id,
-      service_type: formData.title || 'Autre',
+      service_type: formData.service_type || 'Autre',
       title: formData.title,
       amount,
       details: formData.description || '',
