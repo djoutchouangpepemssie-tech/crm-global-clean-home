@@ -362,15 +362,8 @@ function AppRouter() {
             <div className="flex h-screen w-full overflow-hidden" style={{background:"var(--bg-app)"}}>
               {/* Sidebar — visible partout (gère son mode mobile via hamburger interne) */}
               <Sidebar />
-              {/* Main content */}
+              {/* Main content — plus de header top bar : Cmd+K remplace GlobalSearch, VoiceFab remplace NotificationBell (stubs) */}
               <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                {/* Desktop header avec notifications — caché sur mobile */}
-                <div className="hidden lg:flex items-center justify-between px-6 py-3 border-b border-white/5 flex-shrink-0" style={{background:"hsl(224,71%,5%)",zIndex:9000,position:"relative"}}>
-                  <React.Suspense fallback={null}>
-                    <GlobalSearchTrigger />
-                  </React.Suspense>
-                  <NotificationBell />
-                </div>
                 <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{background:"var(--bg-app)"}}>
                   <PWAInstallBanner />
                   <CommandPalette />
