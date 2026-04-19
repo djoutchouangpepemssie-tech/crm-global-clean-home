@@ -104,6 +104,54 @@ const STAGES = [
   { key: 'gagné',        label: 'Gagné' },
 ];
 
+/* ─────────── Parser brief structuré ─────────── */
+// Reconnaît les messages du calculateur de devis type :
+//   === DEVIS GLOBAL CLEAN HOME ===
+//   --- SERVICES ---
+//   • Bureaux & locaux: 100m² × 3€/m² = 300€
+//   --- CALCUL ---
+//   Prix/jour: 300.00€
+function parseStructuredMessage(text) {
+  if (!text || typeof text !== 'string') return null;
+  if (!/^[=\-]{2,}/m.test(text)) return null;
+
+  const raw = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const result = { header: null, date: null, sections: [] };
+  let section = null, subsection = null;
+
+  for (const line of raw) {
+    let m;
+    if ((m = line.match(/^={2,}\s*(.+?)\s*={2,}$/))) { result.header = m[1]; continue; }
+    if ((m = line.match(/^-{3,}\s*(.+?)\s*-{3,}$/))) {
+      section = { title: m[1], items: [] };
+      subsection = null;
+      result.sections.push(section);
+      continue;
+    }
+    if ((m = line.match(/^-{2}\s*([^-].*?)\s*-{2}$/))) {
+      subsection = { type: 'sub', title: m[1], items: [] };
+      if (section) section.items.push(subsection);
+      continue;
+    }
+    if ((m = line.match(/^[•·*]\s+(.+)$/))) {
+      (subsection || section)?.items.push({ type: 'bullet', text: m[1] });
+      continue;
+    }
+    if ((m = line.match(/^([^:]{1,40}):\s*(.*)$/))) {
+      const key = m[1].trim();
+      const value = m[2].trim();
+      if (key.toLowerCase() === 'date' && !result.date) { result.date = value; continue; }
+      (subsection || section)?.items.push({ type: 'kv', key, value: value || '—' });
+      continue;
+    }
+    (subsection || section)?.items.push({ type: 'text', text: line });
+  }
+
+  return result.sections.length ? result : null;
+}
+
+const SECTION_ICONS = { services: '🧽', calcul: '🧮', intervention: '📍', client: '👤' };
+
 /* ─────────────── Helpers ─────────────── */
 const fmtEur = (v) => new Intl.NumberFormat('fr-FR').format(Math.round(v || 0));
 const fmtDate = (iso, opts = { day: 'numeric', month: 'short' }) => {
@@ -240,6 +288,20 @@ export default function LeadDossier() {
   const quoteAmount = mainQuote?.amount || 0;
   const quoteTTC = quoteAmount * 1.2;
 
+  // Parse du brief structuré (message du calculateur)
+  const parsedBrief = useMemo(() => parseStructuredMessage(lead.message), [lead.message]);
+
+  // Formatage distance & engagement pour affichage
+  const fmtRel = (iso) => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    const diff = (Date.now() - d.getTime()) / 1000;
+    if (diff < 60)    return 'à l\'instant';
+    if (diff < 3600)  return `il y a ${Math.floor(diff / 60)} min`;
+    if (diff < 86400) return `il y a ${Math.floor(diff / 3600)} h`;
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+  };
+
   // Timeline events construits depuis interactions + événements dérivés
   const timelineEvents = [];
   if (openedAt) timelineEvents.push({ kind: 'created', date: openedAt, title: 'Lead créé', desc: `Source : ${lead.source || 'directe'}` });
@@ -363,6 +425,67 @@ export default function LeadDossier() {
                 </div>
               )}
             </div>
+
+            {/* ━━━ Brief initial (description des besoins — message du calculateur) ━━━ */}
+            {parsedBrief && (
+              <div className="dsr-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid var(--line-2)', flexWrap: 'wrap', gap: 8 }}>
+                  <div>
+                    <div className="dsr-label" style={{ marginBottom: 4 }}>Brief initial</div>
+                    <div className="dsr-display" style={{ fontSize: 20, fontWeight: 500 }}>
+                      {parsedBrief.header || 'Demande de devis'}
+                    </div>
+                  </div>
+                  {parsedBrief.date && (
+                    <div style={{ textAlign: 'right' }}>
+                      <div className="dsr-label">Reçue le</div>
+                      <div className="dsr-mono" style={{ color: 'var(--ink-2)', fontWeight: 600, fontSize: 11 }}>{parsedBrief.date}</div>
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+                  {parsedBrief.sections.map((sec, i) => {
+                    const ico = SECTION_ICONS[sec.title.toLowerCase()] || '○';
+                    return (
+                      <div key={i} style={{ background: 'var(--surface-2)', borderRadius: 12, padding: 14, border: '1px solid var(--line-2)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, paddingBottom: 6, borderBottom: '1px solid var(--line)' }}>
+                          <span style={{ fontSize: 14 }}>{ico}</span>
+                          <span className="dsr-display" style={{ fontSize: 13, fontWeight: 600 }}>{sec.title}</span>
+                        </div>
+                        <div>
+                          {sec.items.map((it, j) => {
+                            if (it.type === 'bullet') return (
+                              <div key={j} style={{ display: 'flex', gap: 6, padding: '5px 0', fontSize: 12, color: 'var(--ink-2)' }}>
+                                <span style={{ color: 'var(--accent)', flexShrink: 0 }}>•</span>
+                                <span style={{ flex: 1, lineHeight: 1.4 }}>{it.text}</span>
+                              </div>
+                            );
+                            if (it.type === 'kv') return (
+                              <div key={j} style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 8, padding: '5px 0', borderBottom: '1px dashed var(--line-2)' }}>
+                                <span className="dsr-label" style={{ fontSize: 9 }}>{it.key}</span>
+                                <span style={{ fontFamily: 'Fraunces, serif', fontSize: 12, color: 'var(--ink)', fontWeight: 500, lineHeight: 1.3 }}>{it.value}</span>
+                              </div>
+                            );
+                            if (it.type === 'sub') return (
+                              <div key={j} style={{ marginTop: 8, paddingTop: 6, paddingLeft: 8, borderLeft: '2px solid var(--accent)' }}>
+                                <div style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 11, color: 'var(--accent)', fontWeight: 500, marginBottom: 4 }}>{it.title}</div>
+                                {it.items.map((iit, k) => (
+                                  <div key={k} style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 8, padding: '4px 0', fontSize: 11 }}>
+                                    <span className="dsr-label" style={{ fontSize: 9 }}>{iit.key}</span>
+                                    <span style={{ fontFamily: 'Fraunces, serif', fontSize: 11, color: 'var(--ink)' }}>{iit.value}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                            return <div key={j} style={{ padding: '4px 0', fontSize: 12, color: 'var(--ink-2)' }}>{it.text}</div>;
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* ━━━ Avancement (stepper) ━━━ */}
             <div className="dsr-card">
@@ -534,6 +657,136 @@ export default function LeadDossier() {
                 </div>
               )}
             </div>
+
+            {/* ━━━ Score d'engagement (tracking réel) ━━━ */}
+            <div className="dsr-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 18 }}>
+                <div className="dsr-label">Score d'engagement</div>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.1em',
+                  color: 'var(--ink-3)', textTransform: 'uppercase',
+                }}>
+                  <span style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--accent)', animation: 'pulse 2s infinite' }} />
+                  Tracking actif
+                </span>
+              </div>
+
+              {(() => {
+                const eng = engagement || {};
+                const opens = eng.email_opens ?? 0;
+                const uniqueOpens = eng.unique_emails_opened ?? 0;
+                const views = eng.quote_views ?? 0;
+                const sent = eng.quotes_sent ?? 0;
+                const interactionsCount = eng.interactions_count ?? 0;
+                const lastOpen = eng.last_email_open_at;
+                const lastView = eng.last_quote_view_at;
+                const openRate = sent > 0 ? Math.min(100, Math.round((uniqueOpens / sent) * 100)) : 0;
+
+                const cells = [
+                  {
+                    k: 'Emails ouverts',
+                    v: opens,
+                    sub: sent > 0 ? `${uniqueOpens}/${sent} unique · ${openRate}%` : (opens > 0 ? 'Tracking actif' : 'Aucun email tracké'),
+                    color: opens > 0 ? 'var(--accent)' : 'var(--ink-3)',
+                  },
+                  {
+                    k: 'Devis consultés',
+                    v: views,
+                    sub: views > 0 ? `Dernière vue ${fmtRel(lastView)}` : (sent > 0 ? 'Pas encore ouvert' : '—'),
+                    color: views > 0 ? 'var(--accent)' : 'var(--ink-3)',
+                  },
+                  {
+                    k: 'Dernière ouverture',
+                    v: lastOpen ? fmtRel(lastOpen) : '—',
+                    sub: lastOpen ? 'Pixel tracking email' : 'Aucune ouverture détectée',
+                    color: lastOpen ? 'var(--accent)' : 'var(--ink-3)',
+                    small: true,
+                  },
+                  {
+                    k: 'Interactions',
+                    v: interactionsCount,
+                    sub: interactionsCount > 0 ? 'Appels · emails · notes · RDV' : 'Aucune interaction',
+                    color: interactionsCount > 0 ? 'var(--accent)' : 'var(--ink-3)',
+                  },
+                ];
+
+                return (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
+                    {cells.map((c, i) => (
+                      <div key={i} style={{ padding: 14, background: 'var(--surface-2)', borderRadius: 12 }}>
+                        <div className="dsr-label" style={{ marginBottom: 6 }}>{c.k}</div>
+                        <div className="dsr-display" style={{
+                          fontWeight: 500, fontSize: c.small ? 18 : 24, color: 'var(--ink)',
+                          letterSpacing: '-0.02em', fontFeatureSettings: '"tnum"', lineHeight: 1,
+                        }}>{c.v}</div>
+                        <div className="dsr-mono" style={{ fontSize: 10, color: c.color, marginTop: 6, letterSpacing: '0.04em' }}>
+                          {c.sub}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* ━━━ Localisation · trajet depuis le siège ━━━ */}
+            {distance && (
+              <div className="dsr-card">
+                <div className="dsr-label" style={{ marginBottom: 16 }}>Localisation · trajet</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 12 }}>
+                  <div>
+                    <div className="dsr-label" style={{ marginBottom: 4 }}>Distance</div>
+                    <div className="dsr-display" style={{ fontSize: 20, fontWeight: 500 }}>
+                      {distance.distance_km} <span style={{ fontSize: 13, color: 'var(--ink-3)', fontStyle: 'italic' }}>km</span>
+                    </div>
+                    <div className="dsr-mono" style={{ fontSize: 9, color: 'var(--ink-3)', marginTop: 4 }}>
+                      {distance.method === 'osrm' ? 'Trajet voiture' : 'Estimation'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="dsr-label" style={{ marginBottom: 4 }}>Durée</div>
+                    <div className="dsr-display" style={{ fontSize: 20, fontWeight: 500 }}>
+                      {distance.duration_min} <span style={{ fontSize: 13, color: 'var(--ink-3)', fontStyle: 'italic' }}>min</span>
+                    </div>
+                    <div className="dsr-mono" style={{ fontSize: 9, color: 'var(--ink-3)', marginTop: 4 }}>
+                      Estimation
+                    </div>
+                  </div>
+                  <div>
+                    <div className="dsr-label" style={{ marginBottom: 4 }}>Départ</div>
+                    <div className="dsr-display" style={{ fontSize: 14, fontWeight: 500 }}>
+                      Saint-Thibault
+                    </div>
+                    <div className="dsr-mono" style={{ fontSize: 9, color: 'var(--ink-3)', marginTop: 4 }}>
+                      77400
+                    </div>
+                  </div>
+                </div>
+                {distance.destination_label && (
+                  <div style={{
+                    padding: '8px 12px', borderRadius: 8,
+                    background: 'var(--surface-2)', fontSize: 11, color: 'var(--ink-3)',
+                    marginBottom: 12,
+                  }}>
+                    <span className="dsr-label" style={{ marginRight: 6 }}>Adresse</span>
+                    <span style={{ color: 'var(--ink-2)', fontFamily: 'Fraunces, serif' }}>
+                      {distance.destination_label}
+                    </span>
+                  </div>
+                )}
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(distance.origin)}&destination=${encodeURIComponent(distance.destination)}&travelmode=driving`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="dsr-btn"
+                  style={{ display: 'inline-flex', background: 'var(--accent-soft)', color: 'var(--accent)', borderColor: 'var(--accent)' }}
+                >
+                  <MapPin style={{ width: 12, height: 12 }} />
+                  Itinéraire Google Maps →
+                </a>
+              </div>
+            )}
+
           </div>
 
           {/* ════════ RIGHT SIDEBAR ════════ */}
