@@ -5,7 +5,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Search, Plus, FileText, Send, Download, CheckSquare, Square, Trash2 } from 'lucide-react';
+import { Search, Plus, FileText, Send, Download, CheckSquare, Square, Trash2, X } from 'lucide-react';
 import api from '../../lib/api';
 
 /* ─────────────────── TOKENS + STYLES ─────────────────── */
@@ -39,13 +39,37 @@ const tokenStyle = `
 
   /* Entrée du cahier */
   .qc-entry {
-    display: grid; grid-template-columns: 90px 1fr 180px 120px 100px;
-    gap: 24px; align-items: center;
-    padding: 24px 28px;
+    display: grid; grid-template-columns: 32px 80px 1fr 160px 110px 110px 110px;
+    gap: 18px; align-items: center;
+    padding: 22px 26px;
     border-bottom: 1px solid var(--line-2);
     cursor: pointer; text-decoration: none; color: var(--ink);
     transition: background .15s; position: relative;
   }
+  .qc-entry.selected { background: var(--accent-soft) !important; }
+
+  .qc-check {
+    width: 20px; height: 20px; border-radius: 4px;
+    border: 1.5px solid var(--ink-3); background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0; transition: all .15s;
+  }
+  .qc-check:hover { border-color: var(--accent); }
+  .qc-check.checked { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+
+  .qc-row-actions {
+    display: flex; gap: 4px; opacity: 0; transition: opacity .15s;
+    justify-content: flex-end;
+  }
+  .qc-entry:hover .qc-row-actions { opacity: 1; }
+  .qc-row-btn {
+    width: 28px; height: 28px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink-3);
+    cursor: pointer; transition: all .15s;
+  }
+  .qc-row-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .qc-row-btn.danger:hover { border-color: oklch(0.55 0.18 25); color: oklch(0.55 0.18 25); background: oklch(0.94 0.08 25); }
   .qc-entry:nth-child(odd)  { background: var(--surface); }
   .qc-entry:nth-child(even) { background: var(--surface-2); }
   .qc-entry:hover { background: var(--accent-soft); }
@@ -87,7 +111,7 @@ const tokenStyle = `
     .qc-header { padding: 18px 20px !important; flex-wrap: wrap !important; gap: 14px !important; }
     .qc-header-title { font-size: 36px !important; }
     .qc-body { padding: 0 20px 40px !important; }
-    .qc-entry { grid-template-columns: 50px 1fr auto !important; gap: 14px !important; padding: 16px 18px !important; }
+    .qc-entry { grid-template-columns: 28px 50px 1fr auto !important; gap: 12px !important; padding: 14px 16px !important; }
     .qc-roman { font-size: 28px !important; }
     .qc-hide-mobile { display: none !important; }
     .qc-kpis-grid { grid-template-columns: 1fr 1fr !important; }
@@ -131,6 +155,9 @@ export default function QuotesCahier() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selected, setSelected] = useState(new Set());
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState(null);
 
   const load = () => {
     setLoading(true);
@@ -140,6 +167,82 @@ export default function QuotesCahier() {
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
+
+  const toggleSelect = (id) => {
+    const n = new Set(selected);
+    n.has(id) ? n.delete(id) : n.add(id);
+    setSelected(n);
+  };
+
+  const downloadPdf = async (q) => {
+    try {
+      const r = await api.get(`/quotes/${q.quote_id}/pdf`, { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([r.data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = `${q.quote_number || q.quote_id}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) { showToast('PDF indisponible'); }
+  };
+
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const sendQuote = async (q) => {
+    if (!window.confirm(`Envoyer le devis ${q.quote_number || ''} par email au client ?`)) return;
+    setBusy(true);
+    try {
+      await api.post(`/quotes/${q.quote_id}/send`);
+      showToast('✓ Devis envoyé');
+      load();
+    } catch (e) { showToast(`Échec : ${e?.message || 'erreur'}`); }
+    setBusy(false);
+  };
+
+  const deleteQuote = async (q) => {
+    if (!window.confirm(`Supprimer ce devis ? Réversible via la corbeille.`)) return;
+    setBusy(true);
+    try {
+      await api.delete(`/quotes/${q.quote_id}`);
+      showToast('✓ Devis supprimé');
+      load();
+    } catch (e) { showToast('Suppression impossible'); }
+    setBusy(false);
+  };
+
+  const bulkSend = async () => {
+    if (!selected.size || !window.confirm(`Envoyer ${selected.size} devis par email ?`)) return;
+    setBusy(true);
+    const r = await Promise.allSettled([...selected].map(id => api.post(`/quotes/${id}/send`)));
+    const ok = r.filter(x => x.status === 'fulfilled').length;
+    setSelected(new Set());
+    showToast(`${ok} devis envoyé(s)`);
+    setBusy(false);
+    load();
+  };
+
+  const bulkPdf = async () => {
+    if (!selected.size) return;
+    setBusy(true);
+    for (const id of [...selected]) {
+      const q = quotes.find(x => x.quote_id === id);
+      if (q) await downloadPdf(q);
+    }
+    setBusy(false);
+  };
+
+  const bulkDelete = async () => {
+    if (!selected.size || !window.confirm(`Supprimer ${selected.size} devis ?`)) return;
+    setBusy(true);
+    const r = await Promise.allSettled([...selected].map(id => api.delete(`/quotes/${id}`)));
+    const ok = r.filter(x => x.status === 'fulfilled').length;
+    setSelected(new Set());
+    showToast(`${ok} devis supprimé(s)`);
+    setBusy(false);
+    load();
+  };
 
   const filtered = useMemo(() => {
     let arr = [...quotes];
@@ -271,10 +374,24 @@ export default function QuotesCahier() {
           <div style={{ border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
             {filtered.map((q, idx) => {
               const status = STATUS_META[q.status] || STATUS_META.brouillon;
-              const romanNum = toRoman(filtered.length - idx);  // le + récent = plus grand chiffre
+              const romanNum = toRoman(filtered.length - idx);
               const ref = q.quote_number || q.quote_id?.slice(-8).toUpperCase() || '—';
+              const isSelected = selected.has(q.quote_id);
+              const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
               return (
-                <Link key={q.quote_id} to={`/quotes/${q.quote_id}`} className="qc-entry">
+                <div
+                  key={q.quote_id}
+                  className={`qc-entry ${isSelected ? 'selected' : ''}`}
+                  onClick={() => navigate(`/quotes/${q.quote_id}`)}
+                >
+                  <div
+                    className={`qc-check ${isSelected ? 'checked' : ''}`}
+                    onClick={(e) => { stop(e); toggleSelect(q.quote_id); }}
+                    title={isSelected ? 'Désélectionner' : 'Sélectionner'}
+                  >
+                    {isSelected && <CheckSquare style={{ width: 14, height: 14 }} />}
+                  </div>
+
                   <div className="qc-roman">{romanNum}</div>
 
                   <div style={{ minWidth: 0 }}>
@@ -311,12 +428,97 @@ export default function QuotesCahier() {
                   <div className="qc-display" style={{ fontSize: 22, fontWeight: 500, textAlign: 'right', color: 'var(--ink)' }}>
                     {fmtEur(q.amount)}<span style={{ fontSize: 13, color: 'var(--ink-3)', fontStyle: 'italic' }}> €</span>
                   </div>
-                </Link>
+
+                  <div className="qc-row-actions qc-hide-mobile">
+                    <button
+                      className="qc-row-btn"
+                      onClick={(e) => { stop(e); sendQuote(q); }}
+                      disabled={busy}
+                      title="Envoyer par email"
+                    >
+                      <Send style={{ width: 13, height: 13 }} />
+                    </button>
+                    <button
+                      className="qc-row-btn"
+                      onClick={(e) => { stop(e); downloadPdf(q); }}
+                      title="Télécharger PDF"
+                    >
+                      <Download style={{ width: 13, height: 13 }} />
+                    </button>
+                    <button
+                      className="qc-row-btn danger"
+                      onClick={(e) => { stop(e); deleteQuote(q); }}
+                      disabled={busy}
+                      title="Supprimer"
+                    >
+                      <Trash2 style={{ width: 13, height: 13 }} />
+                    </button>
+                  </div>
+                </div>
               );
             })}
           </div>
         )}
       </div>
+
+      {/* ═══════════ BARRE D'ACTIONS GROUPÉES ═══════════ */}
+      {selected.size > 0 && (
+        <div style={{
+          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '12px 18px', borderRadius: 999,
+          background: 'var(--ink)', color: 'var(--bg)',
+          boxShadow: '0 8px 28px rgba(0,0,0,0.22)', zIndex: 50,
+          fontFamily: 'JetBrains Mono, monospace', fontSize: 11, letterSpacing: '0.06em',
+        }}>
+          <span style={{ textTransform: 'uppercase' }}>
+            {selected.size} devis sélectionné{selected.size > 1 ? 's' : ''}
+          </span>
+          <span style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.25)' }} />
+          <button
+            onClick={bulkSend}
+            disabled={busy}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: 0, color: 'var(--bg)', cursor: 'pointer', padding: '6px 10px', borderRadius: 999, fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase' }}
+          >
+            <Send style={{ width: 13, height: 13 }} /> Envoyer
+          </button>
+          <button
+            onClick={bulkPdf}
+            disabled={busy}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: 0, color: 'var(--bg)', cursor: 'pointer', padding: '6px 10px', borderRadius: 999, fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase' }}
+          >
+            <Download style={{ width: 13, height: 13 }} /> PDF
+          </button>
+          <button
+            onClick={bulkDelete}
+            disabled={busy}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: 0, color: 'oklch(0.85 0.12 25)', cursor: 'pointer', padding: '6px 10px', borderRadius: 999, fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase' }}
+          >
+            <Trash2 style={{ width: 13, height: 13 }} /> Supprimer
+          </button>
+          <span style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.25)' }} />
+          <button
+            onClick={() => setSelected(new Set())}
+            style={{ display: 'flex', alignItems: 'center', background: 'transparent', border: 0, color: 'var(--bg)', cursor: 'pointer', padding: 4 }}
+            title="Tout désélectionner"
+          >
+            <X style={{ width: 14, height: 14 }} />
+          </button>
+        </div>
+      )}
+
+      {/* ═══════════ TOAST ═══════════ */}
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 24, right: 24,
+          padding: '12px 18px', borderRadius: 10,
+          background: 'var(--ink)', color: 'var(--bg)',
+          boxShadow: '0 6px 20px rgba(0,0,0,0.2)', zIndex: 51,
+          fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 14,
+        }}>
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

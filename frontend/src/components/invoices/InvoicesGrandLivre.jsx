@@ -4,7 +4,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Search, Plus, Download, Send, Check, AlertTriangle } from 'lucide-react';
+import { Search, Plus, Download, Send, Check, AlertTriangle, CheckSquare, Trash2, X } from 'lucide-react';
 import api from '../../lib/api';
 
 /* ─────────────────── TOKENS + STYLES ─────────────────── */
@@ -58,6 +58,31 @@ const tokenStyle = `
     transition: background .1s; cursor: pointer;
   }
   .gl-ledger tbody tr:hover { background: var(--accent-soft); }
+  .gl-ledger tbody tr.selected { background: var(--accent-soft) !important; }
+
+  .gl-check {
+    width: 18px; height: 18px; border-radius: 3px;
+    border: 1.5px solid var(--ink-3); background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all .15s;
+  }
+  .gl-check:hover { border-color: var(--accent); }
+  .gl-check.checked { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+
+  .gl-row-actions {
+    display: flex; gap: 4px; justify-content: flex-end;
+    opacity: 0; transition: opacity .15s;
+  }
+  .gl-ledger tbody tr:hover .gl-row-actions { opacity: 1; }
+  .gl-row-btn {
+    width: 26px; height: 26px; border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink-3);
+    cursor: pointer; transition: all .15s;
+  }
+  .gl-row-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .gl-row-btn.success:hover { border-color: oklch(0.50 0.15 145); color: oklch(0.50 0.15 145); background: oklch(0.94 0.06 145); }
+  .gl-row-btn.danger:hover { border-color: oklch(0.55 0.18 25); color: oklch(0.55 0.18 25); background: oklch(0.94 0.08 25); }
 
   .gl-ledger td {
     padding: 14px 18px; vertical-align: top;
@@ -142,18 +167,105 @@ export default function InvoicesGrandLivre() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
+  const [selected, setSelected] = useState(new Set());
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState(null);
 
-  useEffect(() => {
-    let alive = true;
+  const load = () => {
+    setLoading(true);
     api.get('/invoices', { params: { page_size: 200 } })
       .then(r => {
         const raw = r.data?.items || r.data || [];
-        if (alive) setInvoices(Array.isArray(raw) ? raw : []);
+        setInvoices(Array.isArray(raw) ? raw : []);
       })
-      .catch(() => { if (alive) setInvoices([]); })
-      .finally(() => { if (alive) setLoading(false); });
-    return () => { alive = false; };
-  }, []);
+      .catch(() => setInvoices([]))
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => { load(); }, []);
+
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
+
+  const toggleSelect = (id) => {
+    const n = new Set(selected);
+    n.has(id) ? n.delete(id) : n.add(id);
+    setSelected(n);
+  };
+
+  const downloadPdf = async (inv) => {
+    try {
+      const r = await api.get(`/invoices/${inv.invoice_id}/pdf`, { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([r.data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = `${inv.invoice_number || inv.invoice_id}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch { showToast('PDF indisponible'); }
+  };
+
+  const sendInvoice = async (inv) => {
+    if (!window.confirm(`Envoyer la facture ${inv.invoice_number || ''} par email ?`)) return;
+    setBusy(true);
+    try {
+      await api.post(`/invoices/${inv.invoice_id}/send`);
+      showToast('✓ Facture envoyée');
+      load();
+    } catch { showToast('Échec envoi'); }
+    setBusy(false);
+  };
+
+  const markPaid = async (inv) => {
+    if (!window.confirm(`Marquer la facture ${inv.invoice_number || ''} comme soldée ?`)) return;
+    setBusy(true);
+    try {
+      await api.patch(`/invoices/${inv.invoice_id}`, { status: 'payée' });
+      showToast('✓ Marquée soldée');
+      load();
+    } catch { showToast('Échec'); }
+    setBusy(false);
+  };
+
+  const deleteInvoice = async (inv) => {
+    if (!window.confirm(`Supprimer cette facture ? Réversible via la corbeille.`)) return;
+    setBusy(true);
+    try {
+      await api.delete(`/invoices/${inv.invoice_id}`);
+      showToast('✓ Facture supprimée');
+      load();
+    } catch { showToast('Suppression impossible'); }
+    setBusy(false);
+  };
+
+  const bulkSend = async () => {
+    if (!selected.size || !window.confirm(`Envoyer ${selected.size} facture(s) ?`)) return;
+    setBusy(true);
+    const r = await Promise.allSettled([...selected].map(id => api.post(`/invoices/${id}/send`)));
+    const ok = r.filter(x => x.status === 'fulfilled').length;
+    setSelected(new Set());
+    showToast(`${ok} facture(s) envoyée(s)`);
+    setBusy(false);
+    load();
+  };
+
+  const bulkPdf = async () => {
+    if (!selected.size) return;
+    setBusy(true);
+    for (const id of [...selected]) {
+      const inv = invoices.find(x => x.invoice_id === id);
+      if (inv) await downloadPdf(inv);
+    }
+    setBusy(false);
+  };
+
+  const bulkDelete = async () => {
+    if (!selected.size || !window.confirm(`Supprimer ${selected.size} facture(s) ?`)) return;
+    setBusy(true);
+    const r = await Promise.allSettled([...selected].map(id => api.delete(`/invoices/${id}`)));
+    const ok = r.filter(x => x.status === 'fulfilled').length;
+    setSelected(new Set());
+    showToast(`${ok} facture(s) supprimée(s)`);
+    setBusy(false);
+    load();
+  };
 
   const filtered = useMemo(() => {
     let arr = [...invoices];
@@ -299,21 +411,35 @@ export default function InvoicesGrandLivre() {
             <table className="gl-ledger">
               <thead>
                 <tr>
-                  <th style={{ width: 60 }}>#</th>
+                  <th style={{ width: 36 }}></th>
+                  <th style={{ width: 50 }}>#</th>
                   <th>Référence</th>
                   <th>Client · Chantier</th>
-                  <th style={{ width: 100 }}>Émise</th>
-                  <th style={{ width: 100 }}>Échéance</th>
-                  <th className="text-right" style={{ width: 120 }}>Débit HT</th>
-                  <th className="text-right" style={{ width: 120 }}>Débit TTC</th>
-                  <th style={{ width: 120 }}>Statut</th>
+                  <th style={{ width: 90 }}>Émise</th>
+                  <th style={{ width: 90 }}>Échéance</th>
+                  <th className="text-right" style={{ width: 110 }}>Débit HT</th>
+                  <th className="text-right" style={{ width: 110 }}>Débit TTC</th>
+                  <th style={{ width: 110 }}>Statut</th>
+                  <th className="text-right" style={{ width: 130 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((inv, idx) => {
                   const st = STATUS_META[inv.status] || STATUS_META.brouillon;
+                  const isSelected = selected.has(inv.invoice_id);
+                  const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
+                  const isPaid = ['payée', 'payee'].includes(inv.status);
                   return (
-                    <tr key={inv.invoice_id} onClick={() => navigate(`/invoices/${inv.invoice_id}`)}>
+                    <tr
+                      key={inv.invoice_id}
+                      className={isSelected ? 'selected' : ''}
+                      onClick={() => navigate(`/invoices/${inv.invoice_id}`)}
+                    >
+                      <td onClick={(e) => { stop(e); toggleSelect(inv.invoice_id); }} style={{ cursor: 'pointer' }}>
+                        <div className={`gl-check ${isSelected ? 'checked' : ''}`}>
+                          {isSelected && <CheckSquare style={{ width: 12, height: 12 }} />}
+                        </div>
+                      </td>
                       <td className="mono" style={{ color: 'var(--ink-3)' }}>{filtered.length - idx}</td>
                       <td className="mono" style={{ fontWeight: 600, color: 'var(--ink)' }}>
                         {inv.invoice_number || inv.invoice_id?.slice(-8).toUpperCase() || '—'}
@@ -340,22 +466,107 @@ export default function InvoicesGrandLivre() {
                           {st.label}
                         </span>
                       </td>
+                      <td>
+                        <div className="gl-row-actions">
+                          <button
+                            className="gl-row-btn"
+                            onClick={(e) => { stop(e); sendInvoice(inv); }}
+                            disabled={busy}
+                            title="Envoyer par email"
+                          >
+                            <Send style={{ width: 12, height: 12 }} />
+                          </button>
+                          <button
+                            className="gl-row-btn"
+                            onClick={(e) => { stop(e); downloadPdf(inv); }}
+                            title="Télécharger PDF"
+                          >
+                            <Download style={{ width: 12, height: 12 }} />
+                          </button>
+                          {!isPaid && (
+                            <button
+                              className="gl-row-btn success"
+                              onClick={(e) => { stop(e); markPaid(inv); }}
+                              disabled={busy}
+                              title="Marquer soldée"
+                            >
+                              <Check style={{ width: 12, height: 12 }} />
+                            </button>
+                          )}
+                          <button
+                            className="gl-row-btn danger"
+                            onClick={(e) => { stop(e); deleteInvoice(inv); }}
+                            disabled={busy}
+                            title="Supprimer"
+                          >
+                            <Trash2 style={{ width: 12, height: 12 }} />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan="5" style={{ textAlign: 'right' }}>Totaux</td>
+                  <td colSpan="6" style={{ textAlign: 'right' }}>Totaux</td>
                   <td className="num" style={{ textAlign: 'right' }}>{fmtEur(filtered.reduce((s, i) => s + (i.amount || i.amount_ht || 0), 0))} €</td>
                   <td className="num" style={{ textAlign: 'right' }}>{fmtEur(filtered.reduce((s, i) => s + (i.amount_ttc || i.amount || 0), 0))} €</td>
-                  <td>{filtered.length} écritures</td>
+                  <td colSpan="2">{filtered.length} écritures</td>
                 </tr>
               </tfoot>
             </table>
           </div>
         )}
       </div>
+
+      {/* ═══════════ BARRE D'ACTIONS GROUPÉES ═══════════ */}
+      {selected.size > 0 && (
+        <div style={{
+          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '12px 18px', borderRadius: 999,
+          background: 'var(--ink)', color: 'var(--bg)',
+          boxShadow: '0 8px 28px rgba(0,0,0,0.22)', zIndex: 50,
+          fontFamily: 'JetBrains Mono, monospace', fontSize: 11, letterSpacing: '0.06em',
+        }}>
+          <span style={{ textTransform: 'uppercase' }}>
+            {selected.size} facture{selected.size > 1 ? 's' : ''} sélectionnée{selected.size > 1 ? 's' : ''}
+          </span>
+          <span style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.25)' }} />
+          <button onClick={bulkSend} disabled={busy}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: 0, color: 'var(--bg)', cursor: 'pointer', padding: '6px 10px', borderRadius: 999, fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            <Send style={{ width: 13, height: 13 }} /> Envoyer
+          </button>
+          <button onClick={bulkPdf} disabled={busy}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: 0, color: 'var(--bg)', cursor: 'pointer', padding: '6px 10px', borderRadius: 999, fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            <Download style={{ width: 13, height: 13 }} /> PDF
+          </button>
+          <button onClick={bulkDelete} disabled={busy}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: 0, color: 'oklch(0.85 0.12 25)', cursor: 'pointer', padding: '6px 10px', borderRadius: 999, fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            <Trash2 style={{ width: 13, height: 13 }} /> Supprimer
+          </button>
+          <span style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.25)' }} />
+          <button onClick={() => setSelected(new Set())}
+            style={{ display: 'flex', alignItems: 'center', background: 'transparent', border: 0, color: 'var(--bg)', cursor: 'pointer', padding: 4 }}
+            title="Tout désélectionner">
+            <X style={{ width: 14, height: 14 }} />
+          </button>
+        </div>
+      )}
+
+      {/* ═══════════ TOAST ═══════════ */}
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 24, right: 24,
+          padding: '12px 18px', borderRadius: 10,
+          background: 'var(--ink)', color: 'var(--bg)',
+          boxShadow: '0 6px 20px rgba(0,0,0,0.2)', zIndex: 51,
+          fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 14,
+        }}>
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

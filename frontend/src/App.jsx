@@ -399,6 +399,7 @@ function AppRouter() {
                     <Route path="/quotes/premium" element={<QuoteForm />} />
                     <Route path="/quotes" element={<QuotesCahier />} />
                     <Route path="/quotes/legacy" element={<QuotesList />} />
+                    <Route path="/quotes/:id" element={<QuoteForm />} />
                     <Route path="/tasks" element={<TasksCarnet />} />
                     <Route path="/tasks/legacy" element={<TasksList />} />
                     <Route path="/activity" element={<ActivityLog />} />
@@ -408,6 +409,7 @@ function AppRouter() {
                     <Route path="/invoices/legacy" element={<InvoicesList />} />
                     <Route path="/invoices/new" element={<InvoiceForm />} />
                     <Route path="/invoices/:invoiceId/success" element={<PaymentSuccess />} />
+                    <Route path="/invoices/:id" element={<InvoiceForm />} />
                     {/* Legacy : /invoices/premium redirige vers /invoices/new */}
                     <Route path="/invoices/premium" element={<InvoiceForm />} />
                     <Route path="/finance" element={<FinancialDashboard />} />

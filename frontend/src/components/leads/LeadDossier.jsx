@@ -245,6 +245,14 @@ export default function LeadDossier() {
     }
   };
 
+  // ⚠️ Tous les HOOKS doivent être appelés AVANT les return conditionnels
+  // (règle des hooks React — sinon erreur #310 « rendered more hooks than
+  // during the previous render »).
+  const parsedBrief = useMemo(
+    () => parseStructuredMessage(lead?.message),
+    [lead?.message]
+  );
+
   if (loading && !lead) {
     return (
       <div className="dsr-root" style={{ padding: 60, textAlign: 'center' }}>
@@ -287,9 +295,6 @@ export default function LeadDossier() {
   const mainQuote = quotes[0];
   const quoteAmount = mainQuote?.amount || 0;
   const quoteTTC = quoteAmount * 1.2;
-
-  // Parse du brief structuré (message du calculateur)
-  const parsedBrief = useMemo(() => parseStructuredMessage(lead.message), [lead.message]);
 
   // Formatage distance & engagement pour affichage
   const fmtRel = (iso) => {
