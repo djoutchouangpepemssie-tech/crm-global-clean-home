@@ -1996,6 +1996,161 @@ async def _osrm_route(origin: Tuple[float, float], dest: Tuple[float, float]) ->
         return None
 
 
+# ============= TRACKING EMAIL/DEVIS OUVERTS =============
+# Système pixel + lien tracké pour mesurer précisément :
+#   - Combien de fois un client ouvre l'email (pixel 1x1 GIF invisible)
+#   - Combien de fois il clique sur le lien du devis (redirection)
+# Chaque ouverture/clic est stocké en DB avec timestamp, IP, user-agent.
+
+TRACKING_PIXEL_GIF = bytes([
+    0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00,
+    0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0x21,
+    0xF9, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2C, 0x00, 0x00,
+    0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x44,
+    0x01, 0x00, 0x3B,
+])  # 43 octets : GIF 1x1 transparent
+
+
+def _public_backend_url() -> str:
+    """Base URL du backend pour les liens tracking embarqués dans les emails."""
+    return os.environ.get("PUBLIC_BACKEND_URL", "https://crm-global-clean-home-production.up.railway.app").rstrip("/")
+
+
+async def create_tracking_token(kind: str, lead_id: str, target_id: str, target_type: str = "quote") -> str:
+    """Génère un token unique lié à un lead+cible et le stocke en DB.
+    kind : 'pixel' (ouverture email) | 'link' (clic sur devis).
+    """
+    token = secrets_module.token_urlsafe(16)
+    await db.tracking_tokens.insert_one({
+        "token":       token,
+        "kind":        kind,
+        "lead_id":     lead_id,
+        "target_id":   target_id,
+        "target_type": target_type,
+        "created_at":  datetime.now(timezone.utc).isoformat(),
+        "hits":        0,
+    })
+    return token
+
+
+async def _log_tracking_hit(token_doc: Dict[str, Any], request: Request, event_kind: str) -> None:
+    """Enregistre un hit (ouverture ou clic) + incrémente le compteur du token."""
+    now = datetime.now(timezone.utc).isoformat()
+    ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "") or ""
+    if "," in ip: ip = ip.split(",")[0].strip()
+    user_agent = request.headers.get("user-agent", "")[:500]
+
+    # Incrémente le compteur du token (utile pour stats rapides par cible)
+    await db.tracking_tokens.update_one(
+        {"token": token_doc["token"]},
+        {"$inc": {"hits": 1}, "$set": {"last_hit_at": now}},
+    )
+
+    # Enregistre l'event détaillé (pour timeline et analytics)
+    await db.email_tracking_events.insert_one({
+        "event_kind":  event_kind,          # email_open | quote_view
+        "token":       token_doc["token"],
+        "lead_id":     token_doc.get("lead_id"),
+        "target_id":   token_doc.get("target_id"),
+        "target_type": token_doc.get("target_type"),
+        "ip":          ip,
+        "user_agent":  user_agent,
+        "created_at":  now,
+    })
+
+
+@app.get("/api/track/pixel/{token}")
+async def track_email_open(token: str, request: Request):
+    """Pixel 1x1 embarqué dans les emails. Chaque chargement = une ouverture
+    détectée. Retourne toujours un GIF transparent, même si le token n'existe
+    pas (pour ne pas casser l'email)."""
+    try:
+        doc = await db.tracking_tokens.find_one({"token": token, "kind": "pixel"})
+        if doc:
+            await _log_tracking_hit(doc, request, "email_open")
+    except Exception as e:
+        logger.warning(f"Pixel tracking failed: {e}")
+    return Response(
+        content=TRACKING_PIXEL_GIF,
+        media_type="image/gif",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+            "Pragma":        "no-cache",
+            "Expires":       "0",
+        },
+    )
+
+
+@app.get("/api/track/quote/{token}")
+async def track_quote_link(token: str, request: Request):
+    """Lien tracké qui redirige vers le PDF du devis. Log le clic avant redirect."""
+    doc = await db.tracking_tokens.find_one({"token": token, "kind": "link"})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Lien invalide ou expiré")
+    try:
+        await _log_tracking_hit(doc, request, "quote_view")
+    except Exception as e:
+        logger.warning(f"Link tracking failed: {e}")
+    # Redirige vers le PDF du devis (ou URL portail si dispo)
+    target = f"{_public_backend_url()}/api/quotes/{doc['target_id']}/pdf"
+    return RedirectResponse(url=target, status_code=302)
+
+
+@api_router.get("/leads/{lead_id}/engagement")
+async def get_lead_engagement(lead_id: str, request: Request):
+    """Statistiques d'engagement RÉELLES d'un lead : combien de fois il a ouvert
+    les emails envoyés, combien de fois il a cliqué sur les liens devis, etc."""
+    await require_auth(request)
+
+    # Compte total d'ouvertures (tous emails reçus par ce lead)
+    email_opens = await db.email_tracking_events.count_documents({
+        "lead_id":    lead_id,
+        "event_kind": "email_open",
+    })
+    # Compte total de clics sur devis
+    quote_views = await db.email_tracking_events.count_documents({
+        "lead_id":    lead_id,
+        "event_kind": "quote_view",
+    })
+    # Distincts — combien d'emails différents ont été ouverts (1 email peut être ouvert N fois)
+    pipeline_opens = await db.email_tracking_events.aggregate([
+        {"$match": {"lead_id": lead_id, "event_kind": "email_open"}},
+        {"$group": {"_id": "$target_id"}},
+        {"$count": "n"},
+    ]).to_list(1)
+    unique_emails_opened = pipeline_opens[0]["n"] if pipeline_opens else 0
+
+    # Nombre de devis envoyés à ce lead
+    quotes_sent = await db.quotes.count_documents({
+        "lead_id":    lead_id,
+        "status":     {"$in": ["envoyé", "accepté", "refusé"]},
+    })
+
+    # Dernière ouverture / dernier clic
+    last_open = await db.email_tracking_events.find_one(
+        {"lead_id": lead_id, "event_kind": "email_open"},
+        sort=[("created_at", -1)],
+    )
+    last_view = await db.email_tracking_events.find_one(
+        {"lead_id": lead_id, "event_kind": "quote_view"},
+        sort=[("created_at", -1)],
+    )
+
+    # Nombre d'interactions (appels/emails/notes/rdv) enregistrées
+    interactions_count = await db.interactions.count_documents({"lead_id": lead_id})
+
+    return {
+        "lead_id":               lead_id,
+        "email_opens":           email_opens,            # total hits du pixel
+        "unique_emails_opened":  unique_emails_opened,   # nb d'emails différents vus
+        "quote_views":           quote_views,            # total clics sur lien devis
+        "quotes_sent":           quotes_sent,
+        "interactions_count":    interactions_count,
+        "last_email_open_at":    (last_open or {}).get("created_at"),
+        "last_quote_view_at":    (last_view or {}).get("created_at"),
+    }
+
+
 @api_router.get("/leads/{lead_id}/distance")
 async def get_lead_distance(lead_id: str, request: Request):
     """Calcule la distance routière depuis le siège jusqu'à l'adresse du lead.
@@ -2402,7 +2557,7 @@ async def send_quote(quote_id: str, request: Request):
         {"$set": {"status": "devis_envoyé", "updated_at": now.isoformat()}}
     )
 
-    # Send email via Gmail WITH PDF attached
+    # Send email via Gmail WITH PDF attached + TRACKING (pixel ouverture + lien cliqué)
     email_sent = False
     lead = await db.leads.find_one({"lead_id": quote["lead_id"]}, {"_id": 0})
     if lead and lead.get("email"):
@@ -2417,14 +2572,32 @@ async def send_quote(quote_id: str, request: Request):
             except Exception as pdf_err:
                 logger.warning(f"PDF generation failed: {pdf_err}")
 
+            # Générer tokens de tracking (pixel + lien) — stockés côté DB pour compter les hits
+            pixel_token = await create_tracking_token("pixel", quote["lead_id"], quote_id, "quote")
+            link_token  = await create_tracking_token("link",  quote["lead_id"], quote_id, "quote")
+            base_url = _public_backend_url()
+            tracking = {
+                "pixel_url":    f"{base_url}/api/track/pixel/{pixel_token}",
+                "link_url":     f"{base_url}/api/track/quote/{link_token}",
+                "pixel_token":  pixel_token,
+                "link_token":   link_token,
+            }
+            # On enrichit le dict quote pour que le template email puisse injecter
+            # le pixel et le lien tracké (voir gmail_service.send_quote_email).
+            quote_for_mail = {**quote, "_tracking": tracking}
+            await db.quotes.update_one(
+                {"quote_id": quote_id},
+                {"$set": {"tracking_tokens": tracking}},
+            )
+
             from gmail_service import send_quote_email, _get_valid_access_token, _get_any_active_token
             token_ok = await _get_valid_access_token(user.user_id)
             if not token_ok:
                 token_ok, _ = await _get_any_active_token()
                 logger.info("Fallback Gmail token used")
             if token_ok:
-                email_sent = await send_quote_email(user.user_id, lead, quote, pdf_data=pdf_data)
-                logger.info(f"Email sent: {email_sent}, PDF: {len(pdf_data) if pdf_data else 0}b")
+                email_sent = await send_quote_email(user.user_id, lead, quote_for_mail, pdf_data=pdf_data)
+                logger.info(f"Email sent: {email_sent}, PDF: {len(pdf_data) if pdf_data else 0}b, tracking pixel={pixel_token[:8]}")
             else:
                 logger.error("No Gmail token - email NOT sent")
         except Exception as e:

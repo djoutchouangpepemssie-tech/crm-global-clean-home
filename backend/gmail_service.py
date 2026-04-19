@@ -13,6 +13,7 @@ from typing import Optional
 import base64
 import hashlib
 import os
+import secrets
 import logging
 import json
 import httpx
@@ -287,6 +288,30 @@ async def send_email(request: Request):
     access_token = await _get_valid_access_token(user.user_id)
     if not access_token:
         raise HTTPException(status_code=400, detail="Gmail non connecte. Connectez votre compte Gmail d'abord.")
+
+    # Injecte pixel de tracking si on a un lead_id — permet de compter les ouvertures
+    tracking_pixel_token = None
+    if lead_id:
+        try:
+            tracking_pixel_token = secrets.token_urlsafe(16)
+            await _db.tracking_tokens.insert_one({
+                "token":       tracking_pixel_token,
+                "kind":        "pixel",
+                "lead_id":     lead_id,
+                "target_id":   None,  # email direct, pas lié à un devis
+                "target_type": "email",
+                "created_at":  datetime.now(timezone.utc).isoformat(),
+                "hits":        0,
+            })
+            base_url = os.environ.get("PUBLIC_BACKEND_URL", "https://crm-global-clean-home-production.up.railway.app").rstrip("/")
+            pixel_tag = f'<img src="{base_url}/api/track/pixel/{tracking_pixel_token}" width="1" height="1" style="display:none!important;opacity:0;" alt="" />'
+            # Insère avant </body> si présent, sinon à la fin
+            if "</body>" in html.lower():
+                html = html.replace("</body>", f"{pixel_tag}</body>").replace("</BODY>", f"{pixel_tag}</BODY>")
+            else:
+                html = html + pixel_tag
+        except Exception as e:
+            logger.warning(f"Tracking pixel injection failed: {e}")
 
     message_id = await _send_gmail_message(access_token, to, subject, html)
 
@@ -612,7 +637,20 @@ async def send_quote_email(user_id: str, lead: dict, quote: dict, pdf_data: byte
   </div>
 
 </div><!-- /wrapper -->
+{f'<img src="{quote["_tracking"]["pixel_url"]}" width="1" height="1" style="display:none!important;opacity:0;width:1px;height:1px;" alt="" />' if quote.get("_tracking", {}).get("pixel_url") else ''}
 </body></html>"""
+
+    # Si on a un lien tracké, on remplace le lien direct vers le PDF (s'il existe
+    # dans le template) et on ajoute un gros CTA « Voir le devis en ligne ».
+    _t = quote.get("_tracking") or {}
+    if _t.get("link_url"):
+        # On insère un CTA tracké avant le </div><!-- /wrapper -->
+        cta = (
+            f'<div style="text-align:center;margin:24px 0;">'
+            f'<a href="{_t["link_url"]}" style="display:inline-block;background:linear-gradient(135deg,#f97316,#ea580c);color:white;text-decoration:none;padding:16px 32px;border-radius:12px;font-weight:700;font-size:14px;letter-spacing:0.3px;box-shadow:0 4px 12px rgba(249,115,22,0.35);">📄 Voir le devis en ligne →</a>'
+            f'</div>'
+        )
+        html = html.replace('</div><!-- /wrapper -->', cta + '</div><!-- /wrapper -->')
 
     try:
         # Nom fichier PDF professionnel

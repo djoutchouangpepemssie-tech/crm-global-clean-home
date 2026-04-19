@@ -729,19 +729,80 @@ function MiniMap({ lead }) {
 // ————————————————————————————————————————————————
 // ENGAGEMENT GRID
 // ————————————————————————————————————————————————
-function EngagementGrid({ engagement = {} }) {
+function EngagementGrid({ leadId }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!leadId) return;
+    let alive = true;
+    setLoading(true);
+    api.get(`/leads/${leadId}/engagement`)
+      .then(r => { if (alive) setData(r.data); })
+      .catch(() => { if (alive) setData({}); })
+      .finally(() => { if (alive) setLoading(false); });
+    // Refresh toutes les 60s pendant que la fiche est ouverte
+    const poll = setInterval(() => {
+      api.get(`/leads/${leadId}/engagement`).then(r => { if (alive) setData(r.data); }).catch(() => {});
+    }, 60000);
+    return () => { alive = false; clearInterval(poll); };
+  }, [leadId]);
+
+  const d = data || {};
+  const opens = d.email_opens ?? 0;
+  const uniqueOpens = d.unique_emails_opened ?? 0;
+  const views = d.quote_views ?? 0;
+  const sent = d.quotes_sent ?? 0;
+  const interactions = d.interactions_count ?? 0;
+  const lastOpen = d.last_email_open_at;
+  const lastView = d.last_quote_view_at;
+
+  const fmtRel = (iso) => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    const diff = (Date.now() - d.getTime()) / 1000;
+    if (diff < 60)    return 'à l\'instant';
+    if (diff < 3600)  return `il y a ${Math.floor(diff / 60)} min`;
+    if (diff < 86400) return `il y a ${Math.floor(diff / 3600)} h`;
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+  };
+
+  const openRate = sent > 0 ? Math.min(100, Math.round((uniqueOpens / sent) * 100)) : 0;
   const cells = [
-    { k: 'Ouvertures email', v: `${engagement.opens ?? 7}/${engagement.opensTotal ?? 7}`, s: '100% · Excellent', sc: 'var(--accent)' },
-    { k: 'Temps réponse moy.', v: `${engagement.responseHours ?? 2}h`, s: 'Très réactive', sc: 'var(--accent)' },
-    { k: 'Clics devis', v: engagement.clicks ?? 12, s: `Consulté ${engagement.quoteViews ?? 4} fois`, sc: 'var(--accent)' },
-    { k: 'RDV respectés', v: `${engagement.meetingsHonored ?? 1}/${engagement.meetingsTotal ?? 1}`, s: 'À l\'heure', sc: 'var(--accent)' },
+    {
+      k: 'Emails ouverts',
+      v: opens,
+      s: sent > 0 ? `${uniqueOpens}/${sent} unique · ${openRate}%` : (opens > 0 ? 'Tracking actif' : 'Aucun envoi tracké'),
+      sc: opens > 0 ? 'var(--accent)' : 'var(--ink-3)',
+    },
+    {
+      k: 'Devis consultés',
+      v: views,
+      s: views > 0 ? `Dernière vue ${fmtRel(lastView)}` : (sent > 0 ? 'Pas encore ouvert' : '—'),
+      sc: views > 0 ? 'var(--accent)' : 'var(--ink-3)',
+    },
+    {
+      k: 'Dernière ouverture',
+      v: lastOpen ? fmtRel(lastOpen) : '—',
+      s: lastOpen ? 'Tracking pixel email' : 'Aucune ouverture détectée',
+      sc: lastOpen ? 'var(--accent)' : 'var(--ink-3)',
+    },
+    {
+      k: 'Interactions',
+      v: interactions,
+      s: interactions > 0 ? 'Appels · emails · notes · RDV' : 'Aucune interaction',
+      sc: interactions > 0 ? 'var(--accent)' : 'var(--ink-3)',
+    },
   ];
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
       {cells.map((c, i) => (
         <div key={i} style={{ padding: 14, background: 'var(--surface-2)', borderRadius: 12 }}>
           <div className="ld-mono" style={{ fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--ink-3)', fontWeight: 500, marginBottom: 6 }}>{c.k}</div>
-          <div className="ld-display" style={{ fontWeight: 500, fontSize: 24, color: 'var(--ink)', letterSpacing: '-0.02em', fontFeatureSettings: '"tnum"' }}>{c.v}</div>
+          <div className="ld-display" style={{ fontWeight: 500, fontSize: 24, color: 'var(--ink)', letterSpacing: '-0.02em', fontFeatureSettings: '"tnum"' }}>
+            {loading ? '…' : c.v}
+          </div>
           <div className="ld-mono" style={{ fontSize: 10, color: c.sc, marginTop: 3 }}>{c.s}</div>
         </div>
       ))}
@@ -1023,7 +1084,48 @@ const LeadDetail = () => {
       .catch(e => window.alert(`Erreur : ${e?.message || 'impossible de changer le statut'}`));
   };
 
-  const handleSend = ({ channel: ch, subject, body }) => {
+  const handleSend = async ({ channel: ch, subject, body }) => {
+    // Pour les emails : envoi RÉEL via Gmail + tracking pixel automatique
+    if (ch === 'email') {
+      if (!lead?.email) { alert('Aucune adresse email pour ce lead.'); return; }
+      if (!subject?.trim() || !body?.trim()) { alert('Sujet et corps requis.'); return; }
+      try {
+        // Formatage basique HTML depuis le texte brut (sauts de ligne → <br>)
+        const htmlBody = body
+          .split('\n').map(l => `<p style="margin:0 0 12px;line-height:1.6;">${l.replace(/</g, '&lt;')}</p>`)
+          .join('');
+        const html = `
+<div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:640px;margin:0 auto;padding:32px 24px;background:#ffffff;color:#1e293b;">
+  <div style="border-bottom:2px solid #f97316;padding-bottom:16px;margin-bottom:24px;">
+    <div style="font-size:18px;font-weight:800;color:#0f172a;">Global Clean Home</div>
+    <div style="font-size:12px;color:#64748b;margin-top:4px;">Nettoyage professionnel Paris &amp; IDF</div>
+  </div>
+  <div style="font-size:14px;line-height:1.6;color:#334155;">
+    ${htmlBody}
+  </div>
+  <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;">
+    Cordialement — Global Clean Home<br/>
+    📞 <a href="tel:+33100000000" style="color:#64748b;text-decoration:none;">Contact</a> ·
+    ✉ <a href="mailto:contact@globalcleanhome.com" style="color:#64748b;text-decoration:none;">contact@globalcleanhome.com</a>
+  </div>
+</div>`;
+        await api.post('/emails/send', {
+          to:       lead.email,
+          subject:  subject.trim(),
+          html,
+          type:     'custom',
+          lead_id:  id,
+          // Le backend ajoutera auto le pixel de tracking (cf. /emails/send)
+        });
+        alert(`✓ Email envoyé à ${lead.email}`);
+        setRetryCount(c => c + 1);
+        return;
+      } catch (e) {
+        alert(`Erreur envoi email : ${e?.message || 'inconnue'}. Vérifie que ton compte Gmail est connecté dans les paramètres.`);
+        return;
+      }
+    }
+    // Pour les autres canaux (sms/note/rdv/appel) : juste logger l'interaction
     api.post('/interactions', { lead_id: id, type: ch, content: [subject, body].filter(Boolean).join('\n') })
       .then(() => setRetryCount(c => c + 1))
       .catch(e => console.error(e));
@@ -1128,7 +1230,7 @@ const LeadDetail = () => {
             </Panel>
 
             <Panel title="Score" em=" d'engagement">
-              <EngagementGrid engagement={engagement} />
+              <EngagementGrid leadId={id} />
             </Panel>
 
             <Panel title="Localisation" em=" — trajet">
