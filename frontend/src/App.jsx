@@ -9,6 +9,7 @@ import { LayoutDashboard, Users, FileText, MoreHorizontal, X, LogOut, Trello, Cr
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import PWAInstallBanner, { OfflineIndicator } from './components/pwa/PWAInstallBanner';
+import CommandPalette from './components/shared/CommandPalette';
 
 import { startKeepAlive } from './lib/keepAlive.js';
 
@@ -82,7 +83,8 @@ const prefetchPages = () => {
 if (typeof window !== 'undefined') {
   window.addEventListener('load', () => setTimeout(prefetchPages, 1000));
 }
-const Dashboard = lazy(() => import('./components/dashboard/Dashboard'));
+const Dashboard = lazy(() => import('./components/dashboard/DynamicDashboard'));
+const DashboardLegacy = lazy(() => import('./components/dashboard/Dashboard'));
 const LeadsList = lazy(() => import('./components/leads/LeadsList'));
 const LeadDetail = lazy(() => import('./components/leads/LeadDetail'));
 const LeadForm = lazy(() => import('./components/leads/LeadForm'));
@@ -453,12 +455,14 @@ function AppRouter() {
                 </div>
                 <div className="flex-1 overflow-y-auto overflow-x-hidden pb-16 lg:pb-0" style={{background:"var(--bg-app)"}}>
                   <PWAInstallBanner />
+                  <CommandPalette />
         <ErrorBoundary>
         <Suspense fallback={
           <div style={{padding:'24px',minHeight:'100vh',opacity:0.5}} />
         }>
         <Routes>
                     <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/dashboard/legacy" element={<DashboardLegacy />} />
                     <Route path="/director" element={<DirectorDashboard />} />
                     <Route path="/seo" element={<SEODashboard />} />
                     <Route path="/rentabilite" element={<RentabiliteModule />} />

@@ -2190,6 +2190,143 @@ async def send_quote(quote_id: str, request: Request):
 # n'est pas encore branché. Dès qu'on implémente réellement, on remplace.
 
 
+# ============= DYNAMIC LAYOUTS (dashboard personnalisable) =============
+# Chaque utilisateur a son propre layout par "scope" (dashboard, director, etc.)
+# Layout = liste ordonnée de blocs avec type, largeur (1-12) et config.
+
+DEFAULT_LAYOUTS = {
+    "dashboard": [
+        {"id": "cover",      "type": "cover",          "w": 12},
+        {"id": "quickact",   "type": "quick-actions",  "w": 12},
+        {"id": "hero-rev",   "type": "hero-revenue",   "w": 8},
+        {"id": "kpi-leads",  "type": "kpi-leads",      "w": 4},
+        {"id": "pipeline",   "type": "pipeline",       "w": 12},
+        {"id": "activity",   "type": "activity-feed",  "w": 6},
+        {"id": "insights",   "type": "ai-insights",    "w": 6},
+    ],
+}
+
+
+@api_router.get("/layouts/{scope}")
+async def get_user_layout(scope: str, request: Request):
+    """Layout persistant de l'utilisateur pour un scope donné (dashboard, director…)."""
+    user = await require_auth(request)
+    doc = await db.user_layouts.find_one(
+        {"user_id": user.user_id, "scope": scope}, {"_id": 0}
+    )
+    if doc and doc.get("blocks"):
+        return {"scope": scope, "blocks": doc["blocks"]}
+    # Fallback : layout par défaut (copie, pas de persistance tant que l'user ne sauve pas)
+    return {"scope": scope, "blocks": DEFAULT_LAYOUTS.get(scope, [])}
+
+
+@api_router.put("/layouts/{scope}")
+async def save_user_layout(scope: str, payload: Dict[str, Any], request: Request):
+    """Sauvegarde le layout de l'utilisateur."""
+    user = await require_auth(request)
+    blocks = payload.get("blocks")
+    if not isinstance(blocks, list):
+        raise HTTPException(status_code=400, detail="Le champ 'blocks' doit être une liste.")
+    # Sanitize : chaque bloc a au moins id + type ; w default 12
+    cleaned = []
+    for b in blocks:
+        if not isinstance(b, dict) or not b.get("type"):
+            continue
+        cleaned.append({
+            "id":     str(b.get("id") or uuid.uuid4().hex[:8]),
+            "type":   str(b["type"])[:50],
+            "w":      max(1, min(12, int(b.get("w") or 12))),
+            "config": b.get("config") or {},
+        })
+    await db.user_layouts.update_one(
+        {"user_id": user.user_id, "scope": scope},
+        {"$set": {
+            "user_id":    user.user_id,
+            "scope":      scope,
+            "blocks":     cleaned,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
+    return {"scope": scope, "blocks": cleaned}
+
+
+@api_router.delete("/layouts/{scope}")
+async def reset_user_layout(scope: str, request: Request):
+    """Réinitialise le layout au défaut (supprime la personnalisation)."""
+    user = await require_auth(request)
+    await db.user_layouts.delete_one({"user_id": user.user_id, "scope": scope})
+    return {"scope": scope, "blocks": DEFAULT_LAYOUTS.get(scope, [])}
+
+
+# ============= LIVE ACTIVITY FEED =============
+# Agrège les événements récents à travers tout le CRM pour un feed temps réel.
+
+
+@api_router.get("/activity/live")
+async def get_live_activity(request: Request, limit: int = 20):
+    """Feed des événements récents (leads créés, devis envoyés, factures payées, etc.)."""
+    await require_auth(request)
+
+    since = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
+
+    # Leads récents
+    leads = await db.leads.find(
+        {"deleted_at": {"$exists": False}, "created_at": {"$gte": since}},
+        {"_id": 0, "lead_id": 1, "name": 1, "service_type": 1, "created_at": 1, "status": 1, "source": 1},
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+
+    # Devis récents
+    quotes = await db.quotes.find(
+        {"deleted_at": {"$exists": False}, "created_at": {"$gte": since}},
+        {"_id": 0, "quote_id": 1, "quote_number": 1, "lead_name": 1, "amount": 1, "status": 1, "created_at": 1},
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+
+    # Factures récentes
+    invoices = await db.invoices.find(
+        {"deleted_at": {"$exists": False}, "created_at": {"$gte": since}},
+        {"_id": 0, "invoice_id": 1, "invoice_number": 1, "lead_name": 1, "amount_ttc": 1, "amount": 1, "status": 1, "created_at": 1, "paid_at": 1},
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+
+    events = []
+    for l in leads:
+        events.append({
+            "id": f"lead-{l['lead_id']}",
+            "kind": "lead",
+            "label": f"Nouveau lead : {l.get('name', '—')}",
+            "sub": f"{l.get('service_type', '—')} · {l.get('source') or 'Direct'} · {l.get('status', 'nouveau')}",
+            "at": l.get("created_at"),
+            "link": f"/leads/{l['lead_id']}",
+            "icon": "🎯",
+        })
+    for q in quotes:
+        amt = q.get("amount") or 0
+        events.append({
+            "id": f"quote-{q['quote_id']}",
+            "kind": "quote",
+            "label": f"Devis {q.get('quote_number') or q['quote_id'][-8:]} — {q.get('lead_name', '—')}",
+            "sub": f"{amt:,.0f} € · {q.get('status', 'brouillon')}".replace(',', ' '),
+            "at": q.get("created_at"),
+            "link": f"/quotes/{q['quote_id']}",
+            "icon": "📄",
+        })
+    for i in invoices:
+        amt = i.get("amount_ttc") or i.get("amount") or 0
+        paid = i.get("status") in ("payée", "payee")
+        events.append({
+            "id": f"invoice-{i['invoice_id']}",
+            "kind": "invoice",
+            "label": f"Facture {i.get('invoice_number') or i['invoice_id'][-8:]} — {i.get('lead_name', '—')}",
+            "sub": f"{amt:,.0f} € · {i.get('status', 'en_attente')}".replace(',', ' '),
+            "at": i.get("paid_at") if paid else i.get("created_at"),
+            "link": f"/invoices/{i['invoice_id']}",
+            "icon": "✅" if paid else "💶",
+        })
+
+    events.sort(key=lambda e: e.get("at") or "", reverse=True)
+    return {"items": events[:limit], "total": len(events)}
+
+
 @api_router.get("/notifications/unread-count")
 async def stub_unread_count(request: Request):
     await require_auth(request)
