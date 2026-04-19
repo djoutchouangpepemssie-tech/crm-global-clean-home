@@ -53,6 +53,176 @@ const tokenStyle = `
   .ld-panel-row:hover { background: var(--surface-2); }
 `;
 
+// ─────────────────────────────────────────────────────────────────
+// PARSER — transforme les messages structurés du calculateur de devis
+// (=== BLOCS ===, --- SECTIONS ---, Key: Value, • bullets) en objet
+// hiérarchique pour affichage en cartes propres.
+// ─────────────────────────────────────────────────────────────────
+function parseStructuredMessage(text) {
+  if (!text || typeof text !== 'string') return null;
+  // Détection rapide : si pas de marqueur ===/--- on ne tente pas
+  if (!/^[=\-]{2,}/m.test(text)) return null;
+
+  const raw = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const result = { header: null, date: null, sections: [] };
+  let section = null, subsection = null;
+
+  for (const line of raw) {
+    let m;
+    if ((m = line.match(/^={2,}\s*(.+?)\s*={2,}$/))) {
+      result.header = m[1];
+      continue;
+    }
+    if ((m = line.match(/^-{3,}\s*(.+?)\s*-{3,}$/))) {
+      section = { title: m[1], items: [] };
+      subsection = null;
+      result.sections.push(section);
+      continue;
+    }
+    if ((m = line.match(/^-{2}\s*([^-].*?)\s*-{2}$/))) {
+      subsection = { type: 'sub', title: m[1], items: [] };
+      if (section) section.items.push(subsection);
+      continue;
+    }
+    if ((m = line.match(/^[•·*]\s+(.+)$/))) {
+      const target = subsection || section;
+      if (target) target.items.push({ type: 'bullet', text: m[1] });
+      continue;
+    }
+    if ((m = line.match(/^([^:]{1,40}):\s*(.*)$/))) {
+      const key = m[1].trim();
+      const value = m[2].trim();
+      if (key.toLowerCase() === 'date' && !result.date) { result.date = value; continue; }
+      const target = subsection || section;
+      if (target) { target.items.push({ type: 'kv', key, value: value || '—' }); continue; }
+    }
+    // ligne texte brut
+    const target = subsection || section;
+    if (target) target.items.push({ type: 'text', text: line });
+  }
+
+  return result.sections.length ? result : null;
+}
+
+// Génère un résumé court lisible depuis le parsing (pour la synthèse IA)
+function buildBriefSummary(parsed) {
+  if (!parsed) return null;
+  let total, surface, freq, service, address;
+  const walk = (items) => items.forEach(it => {
+    if (it.type === 'kv') {
+      const k = it.key.toLowerCase();
+      if (!total   && /(total|prix estim|prix\/j)/i.test(k)) total   = it.value;
+      if (!surface && /surface/i.test(k))                     surface = it.value;
+      if (!freq    && /frequence|fréquence/i.test(k))          freq    = it.value;
+      if (!address && /adresse/i.test(k))                      address = it.value;
+    }
+    if (it.type === 'bullet' && !service) service = it.text.split(':')[0].trim();
+    if (it.items) walk(it.items);
+  });
+  parsed.sections.forEach(s => walk(s.items));
+  return [service, surface, freq, total ? `total ${total}` : null].filter(Boolean).join(' · ');
+}
+
+// Iconographie selon le titre de la section (fallback : point)
+const SECTION_ICONS = {
+  services:     '🧽',
+  calcul:       '🧮',
+  intervention: '📍',
+  client:       '👤',
+};
+
+function StructuredBrief({ parsed }) {
+  if (!parsed) return null;
+
+  const renderItem = (it, i) => {
+    if (it.type === 'bullet') {
+      return (
+        <div key={i} style={{ display: 'flex', gap: 8, padding: '6px 0', fontSize: 13, color: 'var(--ink-2)' }}>
+          <span style={{ color: 'var(--accent)', flexShrink: 0 }}>•</span>
+          <span style={{ flex: 1, lineHeight: 1.5 }}>{it.text}</span>
+        </div>
+      );
+    }
+    if (it.type === 'kv') {
+      return (
+        <div key={i} style={{
+          display: 'grid', gridTemplateColumns: '120px 1fr', gap: 12,
+          padding: '6px 0', borderBottom: '1px dashed var(--line-2)', alignItems: 'baseline',
+        }}>
+          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--ink-3)', fontWeight: 500 }}>
+            {it.key}
+          </span>
+          <span style={{ fontFamily: 'Fraunces, serif', fontSize: 14, color: 'var(--ink)', fontWeight: 500, lineHeight: 1.4 }}>
+            {it.value}
+          </span>
+        </div>
+      );
+    }
+    if (it.type === 'sub') {
+      return (
+        <div key={i} style={{
+          marginTop: 14, paddingTop: 10, paddingLeft: 12,
+          borderLeft: '2px solid var(--accent)', marginLeft: 2,
+        }}>
+          <div style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 13, color: 'var(--accent)', fontWeight: 500, marginBottom: 6 }}>
+            {it.title}
+          </div>
+          <div>{it.items.map(renderItem)}</div>
+        </div>
+      );
+    }
+    return (
+      <div key={i} style={{ padding: '6px 0', fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>
+        {it.text}
+      </div>
+    );
+  };
+
+  return (
+    <div style={{
+      background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16,
+      padding: 24, marginBottom: 32,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid var(--line-2)' }}>
+        <div>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--ink-3)', fontWeight: 500, marginBottom: 4 }}>
+            Brief initial
+          </div>
+          <div style={{ fontFamily: 'Fraunces, serif', fontSize: 22, fontWeight: 500, letterSpacing: '-0.015em', color: 'var(--ink)' }}>
+            {parsed.header || 'Demande de devis'}
+          </div>
+        </div>
+        {parsed.date && (
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: 'var(--ink-3)', textAlign: 'right' }}>
+            Reçue le<br/>
+            <span style={{ color: 'var(--ink-2)', fontWeight: 600 }}>{parsed.date}</span>
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
+        {parsed.sections.map((sec, i) => {
+          const ico = SECTION_ICONS[sec.title.toLowerCase()] || '○';
+          return (
+            <div key={i} style={{
+              background: 'var(--surface-2)', borderRadius: 12, padding: 16,
+              border: '1px solid var(--line-2)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid var(--line)' }}>
+                <span style={{ fontSize: 16 }}>{ico}</span>
+                <span style={{ fontFamily: 'Fraunces, serif', fontSize: 15, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--ink)' }}>
+                  {sec.title}
+                </span>
+              </div>
+              <div>{sec.items.map(renderItem)}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 const STAGES = [
   { key: 'nouveau',       label: 'Nouveau' },
   { key: 'contacté',      label: 'Contacté' },
@@ -596,11 +766,16 @@ const LeadDetail = () => {
       const score = raw.score ?? 50;
       const temperature = score >= 75 ? 'hot' : score >= 45 ? 'warm' : 'cold';
 
+      // Parse le message structuré si format reconnu (=== / --- / Key: Value)
+      const parsedBrief = parseStructuredMessage(raw.message);
+      const briefSummary = buildBriefSummary(parsedBrief);
+
       const lead = {
         code: raw.lead_id,
         firstName,
         lastName,
-        summary: raw.message || `${raw.service_type}${raw.address ? ' — ' + raw.address : ''}`,
+        parsedBrief,
+        summary: briefSummary || raw.message || `${raw.service_type}${raw.address ? ' — ' + raw.address : ''}`,
         temperature,
         aiScore: score,
         aiScoreDelta: 0,
@@ -646,10 +821,16 @@ const LeadDetail = () => {
         status: STATUS_Q[q.status] || 'draft',
       }));
 
+      // Synthèse courte et lisible — utilise le brief structuré si dispo,
+      // sinon le message brut tronqué, sinon une synthèse générée.
+      const synthesisText = briefSummary
+        ? `${firstName} ${lastName} — ${briefSummary}. <em>Source ${raw.source || 'inconnue'}</em>. Score IA <strong>${score}/100</strong>.`
+        : raw.message
+          ? `${firstName} ${lastName} — ${raw.service_type}. ${raw.message.length > 200 ? raw.message.slice(0, 200) + '…' : raw.message}`
+          : `${firstName} ${lastName} est un prospect ${raw.service_type} (${raw.source || 'source inconnue'}). Score IA : ${score}/100. Statut : ${raw.status}.`;
+
       const synthesis = {
-        summary: raw.message
-          ? `${firstName} ${lastName} — ${raw.service_type}. ${raw.message}`
-          : `${firstName} ${lastName} est un prospect ${raw.service_type} (${raw.source || 'source inconnue'}). Score IA : ${score}/100. Statut : ${raw.status}.`,
+        summary: synthesisText,
         nextAction: {
           text: score >= 70
             ? `Relancer ${firstName} pour valider le devis et confirmer le démarrage.`
@@ -807,6 +988,7 @@ const LeadDetail = () => {
 
           {/* LEFT */}
           <div>
+            {lead.parsedBrief && <StructuredBrief parsed={lead.parsedBrief} />}
             <AISynthesisPanel synthesis={synthesis} onRunAction={a => handleAction(a?.type || 'call')} />
             <Composer lead={lead} channel={channel} setChannel={setChannel} onSend={handleSend} />
             <SectionHeader num="01" title="Chronologie" em="toutes les interactions"
