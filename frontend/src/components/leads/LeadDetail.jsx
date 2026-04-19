@@ -789,29 +789,46 @@ function DistanceStats({ leadId }) {
     );
   }
 
-  const { distance_km, duration_min, method, origin, geocoding_method } = data;
+  const { distance_km, duration_min, method, origin, geocoding_method, destination_label } = data;
   const gmapsHref = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(data.destination || '')}&travelmode=driving`;
-  const isApproximate = geocoding_method === 'approximate';
+
+  // Niveau de précision du géocodage
+  const precision =
+    geocoding_method === 'ban_precise'  ? { label: 'Précision BAN · numéro', color: 'var(--accent)', icon: '✓' } :
+    geocoding_method === 'ban_street'   ? { label: 'Précision BAN · rue',    color: 'var(--accent)', icon: '✓' } :
+    geocoding_method?.startsWith('ban_') ? { label: `Précision BAN · ${geocoding_method.replace('ban_', '')}`, color: 'var(--gold)', icon: 'ⓘ' } :
+    geocoding_method === 'nominatim'    ? { label: 'Précision OSM',          color: 'var(--gold)', icon: 'ⓘ' } :
+    null;
 
   return (
     <>
       <div style={{ display: 'flex', gap: 14 }}>
-        <Cell k="Distance" v={`${distance_km} km`} note={method === 'osrm' ? 'Trajet voiture' : 'Vol d\'oiseau × 1.3'} />
+        <Cell k="Distance" v={`${distance_km} km`} note={method === 'osrm' ? 'Trajet voiture' : 'Estimation'} />
         <Cell k="Durée" v={`${duration_min} min`} note="Estimation" />
         <Cell k="Départ" v="Saint-Thibault" note="77400" />
       </div>
-      {isApproximate && (
-        <div style={{
-          marginTop: 10, padding: '8px 12px', borderRadius: 8,
-          background: 'var(--gold-soft, rgba(251, 191, 36, 0.15))', fontSize: 11, color: 'var(--ink-2)',
-          border: '1px solid var(--gold, oklch(0.72 0.13 85))',
-        }}>
-          ⓘ Adresse exacte non trouvée. Distance estimée depuis la ville (code postal).
+
+      {/* Adresse exacte trouvée + niveau de précision */}
+      {destination_label && (
+        <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: 'var(--surface-2)', fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.5 }}>
+          <span className="ld-mono" style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', marginRight: 6, color: 'var(--ink-4)' }}>Localisation</span>
+          <span style={{ color: 'var(--ink-2)', fontFamily: 'Fraunces, serif' }}>{destination_label}</span>
+          {precision && (
+            <span style={{
+              marginLeft: 8, fontFamily: 'JetBrains Mono, monospace', fontSize: 9,
+              padding: '1px 6px', borderRadius: 999,
+              background: `${precision.color}`, color: 'white', fontWeight: 600,
+              letterSpacing: '0.05em',
+            }}>
+              {precision.icon} {precision.label}
+            </span>
+          )}
         </div>
       )}
+
       <a href={gmapsHref} target="_blank" rel="noopener noreferrer" style={{
         display: 'inline-flex', alignItems: 'center', gap: 6,
-        marginTop: 12, padding: '7px 12px', borderRadius: 999,
+        marginTop: 10, padding: '7px 12px', borderRadius: 999,
         fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase',
         background: 'var(--accent-soft)', color: 'var(--accent)', border: '1px solid var(--accent)',
         textDecoration: 'none', fontWeight: 600,

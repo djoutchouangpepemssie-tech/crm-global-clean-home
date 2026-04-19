@@ -1808,30 +1808,68 @@ _reference_coords_cache: Optional[Dict[str, Any]] = None  # set à la 1ère util
 
 
 def _clean_address(raw: str) -> str:
-    """Nettoie une adresse : espaces multiples, caractères bizarres, virgules."""
+    """Nettoie une adresse : espaces multiples, virgules, fautes courantes."""
     if not raw:
         return ""
     s = re.sub(r"\s+", " ", raw).strip()
-    # Enlève les caractères non utiles fréquents dans les formulaires web
     s = s.replace(";", ",").replace("  ", " ")
     return s
 
 
 def _extract_postal_city(address: str) -> Optional[str]:
-    """Extrait 'CODE_POSTAL VILLE' si reconnaissable dans l'adresse."""
+    """Extrait 'CODE_POSTAL VILLE' depuis une adresse."""
     if not address:
         return None
-    # Pattern : 5 chiffres suivis d'un nom de ville (au moins 2 caractères)
     m = re.search(r"(\d{5})\s+([A-Za-zÀ-ÿ'\-\s]{2,40})", address)
     if m:
         return f"{m.group(1)} {m.group(2).strip()}"
     return None
 
 
-async def _nominatim_query(q: str) -> Optional[Tuple[float, float]]:
-    """Un appel Nominatim. Retourne None si aucun résultat."""
+async def _ban_query(q: str) -> Optional[Dict[str, Any]]:
+    """Interroge la Base Adresse Nationale française (api-adresse.data.gouv.fr).
+    Service officiel de l'État français, GRATUIT, TRÈS précis pour adresses FR.
+    Tolère les fautes de frappe (distance d'édition interne).
+    Retourne {coords: (lat, lon), label, score, type} ou None.
+    """
     try:
-        async with httpx.AsyncClient(timeout=12) as client:
+        async with httpx.AsyncClient(timeout=10) as client:
+            res = await client.get(
+                "https://api-adresse.data.gouv.fr/search/",
+                params={"q": q, "limit": 1, "autocomplete": 0},
+                headers={"User-Agent": "GlobalCleanHomeCRM/1.0"},
+            )
+            if res.status_code != 200:
+                logger.warning(f"BAN HTTP {res.status_code} pour '{q[:60]}'")
+                return None
+            data = res.json()
+            features = data.get("features") or []
+            if not features:
+                return None
+            f = features[0]
+            geom = f.get("geometry") or {}
+            coords = geom.get("coordinates") or []
+            if len(coords) != 2:
+                return None
+            props = f.get("properties") or {}
+            return {
+                # BAN retourne [lon, lat] — on retourne (lat, lon) comme partout
+                "coords":  (float(coords[1]), float(coords[0])),
+                "label":   props.get("label") or "",
+                "score":   float(props.get("score") or 0),
+                "type":    props.get("type") or "",
+                "city":    props.get("city") or "",
+                "postcode": props.get("postcode") or "",
+            }
+    except Exception as e:
+        logger.warning(f"BAN error for '{q[:60]}': {e}")
+        return None
+
+
+async def _nominatim_query(q: str) -> Optional[Tuple[float, float]]:
+    """Fallback Nominatim si BAN échoue (adresses non-FR ou incomplètes)."""
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
             res = await client.get(
                 "https://nominatim.openstreetmap.org/search",
                 params={"q": q, "format": "json", "limit": 1, "countrycodes": "fr"},
@@ -1840,60 +1878,66 @@ async def _nominatim_query(q: str) -> Optional[Tuple[float, float]]:
                     "Accept-Language": "fr",
                 },
             )
-            if res.status_code != 200:
-                logger.warning(f"Nominatim HTTP {res.status_code} for '{q[:60]}'")
+            if res.status_code != 200 or not res.json():
                 return None
             data = res.json()
-            if not data:
-                return None
             return (float(data[0]["lat"]), float(data[0]["lon"]))
     except Exception as e:
-        logger.warning(f"Nominatim error for '{q[:60]}': {e}")
+        logger.warning(f"Nominatim error: {e}")
         return None
 
 
-async def _geocode_nominatim(address: str) -> Optional[Tuple[float, float]]:
-    """Géocodage robuste avec stratégie multi-variantes.
-    Essaie dans l'ordre :
-      1. Adresse nettoyée + ', France'
-      2. Adresse nettoyée (sans suffixe)
-      3. 'CODE_POSTAL VILLE' extrait de l'adresse (fallback grossier)
-    Nominatim a du mal avec les fautes de frappe mineures, donc on multiplie
-    les tentatives avant d'abandonner.
+async def _geocode_address(address: str) -> Optional[Dict[str, Any]]:
+    """Géocode une adresse française avec la BAN officielle.
+    Stratégie : 3 tentatives BAN successives, puis Nominatim en dernier recours.
+    Toujours retourne {coords, method, label, score} ou None en cas d'échec total.
     """
     if not address or not address.strip():
         return None
-
     cleaned = _clean_address(address)
-    attempts = []
+    attempts = [cleaned]
 
-    # 1. Adresse complète + France
-    if "france" not in cleaned.lower():
-        attempts.append(f"{cleaned}, France")
-    else:
-        attempts.append(cleaned)
+    # Variante sans 'France' si présent
+    if "france" in cleaned.lower():
+        attempts.append(re.sub(r",?\s*france\b", "", cleaned, flags=re.IGNORECASE).strip())
 
-    # 2. Adresse telle quelle (sans le suffixe France)
-    if attempts[0] != cleaned:
-        attempts.append(cleaned)
-
-    # 3. Fallback postal + ville uniquement
+    # Variante juste postal + ville
     pc_city = _extract_postal_city(cleaned)
-    if pc_city:
-        attempts.append(f"{pc_city}, France")
+    if pc_city and pc_city not in attempts:
+        attempts.append(pc_city)
 
-    for i, q in enumerate(attempts):
-        # Petit délai entre les appels pour respecter le rate limit Nominatim (1 req/s)
-        if i > 0:
-            import asyncio
-            await asyncio.sleep(1.1)
+    # 1. Tentatives BAN (API française officielle)
+    best = None
+    for q in attempts:
+        r = await _ban_query(q)
+        if r and r["coords"]:
+            # Prend le meilleur score (BAN attribue 0.0 → 1.0)
+            if not best or r["score"] > best["score"]:
+                best = r
+            # Si on a un housenumber avec bon score, c'est parfait
+            if r["type"] == "housenumber" and r["score"] >= 0.6:
+                logger.info(f"BAN OK (housenumber, score={r['score']:.2f}): '{r['label']}'")
+                return {"coords": r["coords"], "method": "ban_precise", "label": r["label"], "score": r["score"]}
+
+    if best and best["score"] >= 0.4:
+        method = "ban_precise" if best["type"] == "housenumber" else f"ban_{best['type'] or 'city'}"
+        logger.info(f"BAN OK ({best['type']}, score={best['score']:.2f}): '{best['label']}'")
+        return {"coords": best["coords"], "method": method, "label": best["label"], "score": best["score"]}
+
+    # 2. Dernier recours : Nominatim
+    logger.info(f"BAN n'a rien trouvé de fiable, bascule sur Nominatim pour : {cleaned[:60]}")
+    for q in attempts:
         coords = await _nominatim_query(q)
         if coords:
-            logger.info(f"Nominatim OK via variante #{i+1}: '{q[:60]}'")
-            return coords
+            return {"coords": coords, "method": "nominatim", "label": q, "score": 0.5}
 
-    logger.warning(f"Nominatim : échec après {len(attempts)} tentatives pour '{address[:80]}'")
     return None
+
+
+# Wrapper rétro-compat : renvoie juste les coords
+async def _geocode_nominatim(address: str) -> Optional[Tuple[float, float]]:
+    r = await _geocode_address(address)
+    return r["coords"] if r else None
 
 
 async def _get_reference_coords() -> Tuple[float, float]:
@@ -1957,38 +2001,32 @@ async def get_lead_distance(lead_id: str, request: Request):
     if not address.strip():
         raise HTTPException(status_code=422, detail="Adresse du lead manquante")
 
-    # Coordonnées du lead — cache dans le document
+    # Coordonnées du lead — cache dans le document après 1er appel réussi
     lead_coords = lead.get("coords")
-    geocoding_method = "cached"
+    geocoding_method = lead.get("geocoding_method", "cached")
+    geocoding_label = lead.get("geocoding_label")
+
     if not lead_coords or not isinstance(lead_coords, (list, tuple)) or len(lead_coords) != 2:
-        geocoded = await _geocode_nominatim(address)
-        geocoding_method = "precise"
-        if not geocoded:
-            # Ultime fallback : on géocode juste la ville/code postal pour avoir
-            # une estimation grossière plutôt que 0.
-            pc_city = _extract_postal_city(address)
-            if pc_city:
-                geocoded = await _nominatim_query(f"{pc_city}, France")
-                if geocoded:
-                    geocoding_method = "approximate"
-                    logger.info(f"Géocodage approximatif (ville) pour lead {lead_id}: {pc_city}")
-        if not geocoded:
+        geo = await _geocode_address(address)
+        if not geo:
             raise HTTPException(
                 status_code=422,
-                detail=f"Adresse non géolocalisable : « {address[:80]} ». Ajoute le code postal (5 chiffres) + la ville dans l'adresse du lead.",
+                detail=f"Adresse non géolocalisable : « {address[:80]} ». Vérifie qu'elle contient le code postal + la ville (ex: « 10 rue Victor Hugo, 75016 Paris »).",
             )
-        lead_coords = list(geocoded)
+        lead_coords = list(geo["coords"])
+        geocoding_method = geo["method"]
+        geocoding_label = geo["label"]
         await db.leads.update_one(
             {"lead_id": lead_id},
             {"$set": {
-                "coords":             lead_coords,
-                "geocoded_at":        datetime.now(timezone.utc).isoformat(),
-                "geocoding_method":   geocoding_method,
+                "coords":            lead_coords,
+                "geocoded_at":       datetime.now(timezone.utc).isoformat(),
+                "geocoding_method":  geocoding_method,
+                "geocoding_label":   geocoding_label,
             }},
         )
     else:
         lead_coords = tuple(lead_coords)
-        geocoding_method = lead.get("geocoding_method", "cached")
 
     # Coordonnées de référence (siège)
     ref_coords = await _get_reference_coords()
@@ -2007,15 +2045,16 @@ async def get_lead_distance(lead_id: str, request: Request):
         }
 
     return {
-        "lead_id":         lead_id,
-        "origin":          REFERENCE_ADDRESS,
-        "origin_coords":   list(ref_coords),
-        "destination":         address,
-        "destination_coords":  list(lead_coords),
-        "distance_km":     route["distance_km"],
-        "duration_min":    route["duration_min"],
-        "method":          route["method"],
-        "geocoding_method": geocoding_method,
+        "lead_id":            lead_id,
+        "origin":             REFERENCE_ADDRESS,
+        "origin_coords":      list(ref_coords),
+        "destination":        address,
+        "destination_coords": list(lead_coords),
+        "destination_label":  geocoding_label,
+        "distance_km":        route["distance_km"],
+        "duration_min":       route["duration_min"],
+        "method":             route["method"],
+        "geocoding_method":   geocoding_method,
     }
 
 
