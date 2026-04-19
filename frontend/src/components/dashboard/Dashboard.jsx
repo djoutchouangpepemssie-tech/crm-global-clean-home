@@ -460,14 +460,17 @@ export default function Dashboard() {
     (async () => {
       setLoading(true);
       try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('token') || localStorage.getItem('session_token');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const [dashRes, insRes] = await Promise.all([
-          axios.get(`${API}/api/dashboard?range=${range}`, { headers, withCredentials: true }).catch(() => ({ data: {} })),
+        const periodMap = { today: '1d', '7d': '7d', '30d': '30d', '3m': '90d', year: '1y' };
+        const period = periodMap[range] || '30d';
+        const [dashRes, finRes, insRes] = await Promise.all([
+          axios.get(`${API}/api/stats/dashboard`, { params: { period }, headers, withCredentials: true }).catch(() => ({ data: {} })),
+          axios.get(`${API}/api/stats/financial`, { params: { period }, headers, withCredentials: true }).catch(() => ({ data: {} })),
           axios.get(`${API}/api/ai/insights`, { headers, withCredentials: true }).catch(() => ({ data: { insights: [] } })),
         ]);
         if (!cancelled) {
-          setData({ ...dashRes.data, insights: insRes.data.insights || [] });
+          setData({ ...dashRes.data, financial: finRes.data, insights: insRes.data.insights || [] });
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -477,31 +480,32 @@ export default function Dashboard() {
   }, [range]);
 
   const d = data || {};
+  const fin = d.financial || {};
   const firstName = user && (user.firstName || user.first_name || (user.name && user.name.split(' ')[0])) || '';
-  const revenue = d.revenue || 0;
-  const encaisse = d.encaisse || revenue * 0.66;
-  const enAttente = d.enAttente || revenue * 0.24;
-  const retard = d.retard || revenue * 0.10;
-  const devisOuverts = d.devisOuverts || d.pending_quotes_count || 0;
-  const delta = d.revenueDelta || d.revenue_delta || 0;
-  const sparkData = d.sparkData || d.spark_data || [];
+  const revenue = fin.total_revenue || 0;
+  const encaisse = fin.total_revenue || 0;
+  const enAttente = fin.total_pending || 0;
+  const retard = fin.total_overdue || 0;
+  const devisOuverts = d.sent_quotes || 0;
+  const delta = 0;
+  const sparkData = (fin.revenue_by_day || []).map(p => p.revenue);
 
-  const newLeads = d.newLeads || d.new_leads || d.leads_count || 0;
-  const leadsGoal = d.leadsGoal || d.leads_goal || 20;
-  const conversion = d.conversion || d.conversion_rate || 0;
-  const interventionsToday = d.interventionsToday || d.interventions_today || 0;
-  const interventionsPlanned = d.interventionsPlanned || d.interventions_planned || Math.max(interventionsToday + 2, 3);
-  const leadsScore = d.leadsScore || d.leads_score || 0;
-  const pendingQuotes = d.pendingQuotes || d.pending_quotes || 0;
-  const tomorrowInterventions = d.tomorrowInterventions || d.tomorrow_interventions || 0;
+  const newLeads = d.new_leads || 0;
+  const leadsGoal = 20;
+  const conversion = d.conversion_lead_to_quote || 0;
+  const interventionsToday = d.pending_tasks || 0;
+  const interventionsPlanned = Math.max(interventionsToday, 0);
+  const leadsScore = d.avg_lead_score || 0;
+  const pendingQuotes = d.sent_quotes || 0;
+  const tomorrowInterventions = 0;
 
-  const pipelineStages = d.pipelineStages || d.pipeline_stages || [
-    { name: 'Nouveau', count: 0 },
-    { name: 'Contacté', count: 0 },
-    { name: 'Qualifié', count: 0 },
-    { name: 'Devis', count: 0 },
-    { name: 'Négo.', count: 0 },
-    { name: 'Gagné', count: 0 },
+  const pipelineStages = [
+    { name: 'Nouveau', count: d.new_leads || 0 },
+    { name: 'Contacté', count: d.contacted_leads || 0 },
+    { name: 'Devis', count: d.total_quotes || 0 },
+    { name: 'Envoyé', count: d.sent_quotes || 0 },
+    { name: 'Accepté', count: d.accepted_quotes || 0 },
+    { name: 'Gagné', count: d.won_leads || 0 },
   ];
 
   const insights = (d.insights && d.insights.length) ? d.insights : [

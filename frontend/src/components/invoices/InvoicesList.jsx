@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../../lib/api';
 
 /**
@@ -72,6 +72,7 @@ const initials = (n) => (n || '').split(' ').map(x => x[0]).slice(0, 2).join('')
 
 const InvoicesList = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('all');
@@ -96,7 +97,7 @@ const InvoicesList = () => {
       if (alive) setLoading(false);
     });
     return () => { alive = false; };
-  }, []);
+  }, [location.key]);
 
   const d = data || FALLBACK;
   const stats = d.stats || FALLBACK.stats;

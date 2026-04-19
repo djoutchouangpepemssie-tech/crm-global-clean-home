@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../../lib/api';
 import {
   Plus, Search, X, FileText, Send, Trash2, CheckSquare, Square,
@@ -222,6 +222,7 @@ function StatusBadge({ status }) {
 /* ─── Main ─────────────────────────────────────────────────────── */
 export default function QuotesList() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [quotes, setQuotes]     = useState([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(null);
@@ -247,7 +248,7 @@ export default function QuotesList() {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); }, [load, location.key]);
 
   /* ── Stats calculées à partir des données ── */
   const stats = useMemo(() => {

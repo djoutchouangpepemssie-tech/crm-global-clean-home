@@ -634,6 +634,7 @@ export default function QuoteForm() {
   const [step, setStep] = useState(1);
   const [leads, setLeads] = useState(DEMO_LEADS);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
   const [lastSaved, setLastSaved] = useState(null);
   const [formData, setFormData] = useState({
     lead_id: null, title: '', description: '',
@@ -643,7 +644,7 @@ export default function QuoteForm() {
   const [groups, setGroups] = useState([newGroup('Prestations principales')]);
 
   useEffect(() => {
-    api.get('/leads', { params: { page_size: 500 } })
+    api.get('/leads', { params: { page_size: 200, period: 'all' } })
       .then(r => {
         const raw = r.data?.items || r.data || [];
         const mapped = (Array.isArray(raw) ? raw : []).map(l => ({
@@ -653,9 +654,9 @@ export default function QuoteForm() {
           email: l.email || '',
           phone: l.phone || '',
         }));
-        setLeads(mapped.length ? mapped : DEMO_LEADS);
+        setLeads(mapped);
       })
-      .catch(() => setLeads(DEMO_LEADS));
+      .catch(() => setLeads([]));
   }, []);
 
   useEffect(() => {
@@ -729,11 +730,13 @@ export default function QuoteForm() {
       status: andSend ? 'envoyé' : 'brouillon',
     };
     try {
+      setSaveError(null);
       if (isEdit) await api.patch(`/quotes/${id}`, payload);
       else await api.post('/quotes', payload);
       navigate('/quotes');
-    } catch {
-      setLastSaved(new Date());
+    } catch (e) {
+      const detail = e?.response?.data?.detail || e?.response?.data?.message || e?.message || 'Erreur inconnue';
+      setSaveError(typeof detail === 'string' ? detail : JSON.stringify(detail));
     } finally {
       setSaving(false);
     }
@@ -764,6 +767,17 @@ export default function QuoteForm() {
         </div>
         <Sidebar groups={groups} formData={formData} leads={leads} />
       </div>
+
+      {saveError && (
+        <div style={{ position: 'fixed', bottom: 80, left: 24, right: 24, zIndex: 101, background: 'oklch(0.94 0.08 25)', border: '1.5px solid oklch(0.55 0.18 25)', color: 'oklch(0.25 0.15 25)', padding: '12px 18px', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 6px 20px rgba(0,0,0,0.08)' }}>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>
+            <strong style={{ marginRight: 6 }}>Échec de l'enregistrement :</strong>{saveError}
+          </div>
+          <button onClick={() => setSaveError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', opacity: 0.6 }}>
+            <X style={{ width: 14, height: 14 }} />
+          </button>
+        </div>
+      )}
 
       <div className="qf-footbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

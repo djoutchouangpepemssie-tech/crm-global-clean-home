@@ -1557,12 +1557,15 @@ async def get_leads(
     status: Optional[str] = None,
     service_type: Optional[str] = None,
     source: Optional[str] = None,
-    period: Optional[str] = "30d",
+    period: Optional[str] = None,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
     include_deleted: bool = Query(default=False),
 ):
-    """Get all leads with filters. Returns paginated results."""
+    """Get all leads with filters. Returns paginated results.
+
+    period: "1d" | "7d" | "30d" | "90d" | "all" | None (None/all = no date filter → tous les leads).
+    """
     await require_auth(request)
 
     query = {}
@@ -1578,19 +1581,14 @@ async def get_leads(
     if source:
         query["source"] = source
 
-    # Period filter
-    if period:
+    # Period filter — n'applique PAS de filtre par défaut (tous les leads)
+    if period and period not in ("all", "ALL"):
         now = datetime.now(timezone.utc)
-        if period == "1d":
-            start_date = now - timedelta(days=1)
-        elif period == "7d":
-            start_date = now - timedelta(days=7)
-        elif period == "30d":
-            start_date = now - timedelta(days=30)
-        else:
-            start_date = now - timedelta(days=30)
-
-        query["created_at"] = {"$gte": start_date.isoformat()}
+        days_map = {"1d": 1, "7d": 7, "30d": 30, "90d": 90, "1y": 365}
+        days = days_map.get(period)
+        if days:
+            start_date = now - timedelta(days=days)
+            query["created_at"] = {"$gte": start_date.isoformat()}
 
     total = await db.leads.count_documents(query)
     skip = (page - 1) * page_size
@@ -2822,6 +2820,116 @@ async def get_dashboard_stats(request: Request, period: str = "30d"):
         },
         "source_performance": source_performance
     }
+
+@api_router.get("/director/dashboard")
+async def get_director_dashboard(request: Request, range: str = "month"):
+    """Dashboard consolidé pour la direction — données réelles agrégées."""
+    await require_auth(request)
+
+    now = datetime.now(timezone.utc)
+    days_map = {"week": 7, "month": 30, "quarter": 90, "year": 365}
+    days = days_map.get(range, 30)
+    start = now - timedelta(days=days)
+    prev_start = start - timedelta(days=days)
+    start_iso, prev_start_iso = start.isoformat(), prev_start.isoformat()
+
+    # Période courante
+    total_leads = await db.leads.count_documents({
+        "deleted_at": {"$exists": False},
+        "created_at": {"$gte": start_iso},
+    })
+    qualified_leads = await db.leads.count_documents({
+        "deleted_at": {"$exists": False},
+        "created_at": {"$gte": start_iso},
+        "status": {"$in": ["contacté", "en_attente", "devis_envoyé", "gagné"]},
+    })
+    won_leads = await db.leads.count_documents({
+        "deleted_at": {"$exists": False},
+        "created_at": {"$gte": start_iso},
+        "status": "gagné",
+    })
+    quotes_sent = await db.quotes.count_documents({
+        "created_at": {"$gte": start_iso},
+        "status": {"$in": ["envoyé", "accepté"]},
+    })
+    active_projects = await db.invoices.count_documents({
+        "status": {"$in": ["en_attente", "en_retard"]},
+    })
+
+    # Revenue (factures payées)
+    paid_invoices = await db.invoices.find(
+        {"status": {"$in": ["payée", "payee"]}, "created_at": {"$gte": start_iso}},
+        {"_id": 0},
+    ).to_list(10000)
+    revenue_realized = sum(i.get("amount_ttc") or i.get("amount") or 0 for i in paid_invoices)
+
+    # Période précédente (pour comparaison)
+    prev_paid = await db.invoices.find(
+        {"status": {"$in": ["payée", "payee"]}, "created_at": {"$gte": prev_start_iso, "$lt": start_iso}},
+        {"_id": 0},
+    ).to_list(10000)
+    prev_revenue = sum(i.get("amount_ttc") or i.get("amount") or 0 for i in prev_paid)
+    revenue_trend = round((revenue_realized - prev_revenue) / prev_revenue * 100, 1) if prev_revenue > 0 else 0
+
+    prev_leads = await db.leads.count_documents({
+        "deleted_at": {"$exists": False},
+        "created_at": {"$gte": prev_start_iso, "$lt": start_iso},
+    })
+    prev_won = await db.leads.count_documents({
+        "deleted_at": {"$exists": False},
+        "created_at": {"$gte": prev_start_iso, "$lt": start_iso},
+        "status": "gagné",
+    })
+    conversion_rate = round(won_leads / total_leads * 100, 1) if total_leads > 0 else 0
+    prev_conversion = round(prev_won / prev_leads * 100, 1) if prev_leads > 0 else 0
+    conversion_trend = round(conversion_rate - prev_conversion, 1)
+
+    # Ticket moyen
+    avg_ticket = round(revenue_realized / len(paid_invoices)) if paid_invoices else 0
+
+    # Health score (synthétique à partir des indicateurs)
+    health_score = min(100, round(
+        (conversion_rate * 0.4) +
+        (min(100, revenue_realized / 1000) * 0.3) +
+        (min(100, quotes_sent * 2) * 0.3)
+    ))
+
+    # Funnel
+    nouveau = await db.leads.count_documents({"status": "nouveau", "deleted_at": {"$exists": False}, "created_at": {"$gte": start_iso}})
+    contacte = await db.leads.count_documents({"status": "contacté", "deleted_at": {"$exists": False}, "created_at": {"$gte": start_iso}})
+    devis = await db.leads.count_documents({"status": "devis_envoyé", "deleted_at": {"$exists": False}, "created_at": {"$gte": start_iso}})
+    gagne = won_leads
+
+    return {
+        "range": range,
+        "conversion_rate": conversion_rate,
+        "conversion_trend": conversion_trend,
+        "revenue": revenue_realized,
+        "revenueRealized": revenue_realized,
+        "revenue_trend": revenue_trend,
+        "health": health_score,
+        "healthScore": health_score,
+        "health_trend": 0,
+        "qualified_leads": qualified_leads,
+        "qualifiedLeads": qualified_leads,
+        "quotes_sent": quotes_sent,
+        "quotesSent": quotes_sent,
+        "active_projects": active_projects,
+        "activeProjects": active_projects,
+        "avg_ticket": avg_ticket,
+        "avgTicket": avg_ticket,
+        "funnel": [
+            {"label": "Nouveau", "count": nouveau},
+            {"label": "Contacté", "count": contacte},
+            {"label": "Devis envoyé", "count": devis},
+            {"label": "Gagné", "count": gagne},
+        ],
+        "subscores": [],
+        "financial_cells": [],
+        "top_areas": [],
+        "signals": [],
+    }
+
 
 # ============= INTEGRATION STATUS ENDPOINTS =============
 

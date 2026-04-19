@@ -812,7 +812,9 @@ export default function DirectorDashboard() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    axios.get(`${API}/api/director/dashboard`, { params: { range }, withCredentials: true })
+    const token = localStorage.getItem('token') || localStorage.getItem('session_token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    axios.get(`${API}/api/director/dashboard`, { params: { range }, headers, withCredentials: true })
       .then(res => { if (!cancelled) setData(res.data); })
       .catch(() => { if (!cancelled) setData({}); })
       .finally(() => { if (!cancelled) setLoading(false); });
@@ -821,18 +823,18 @@ export default function DirectorDashboard() {
 
   const d = data || {};
 
-  const conversionRate = d.conversionRate || d.conversion_rate || 32;
-  const conversionTrend = d.conversionTrend || d.conversion_trend || 4;
-  const revenueRealized = d.revenueRealized || d.revenue || d.ca_realise || 187450;
-  const revenueTrend = d.revenueTrend || d.revenue_trend || 12;
-  const healthScore = d.healthScore || d.health || 87;
-  const healthTrend = d.healthTrend || d.health_trend || 3;
+  const conversionRate = d.conversionRate ?? d.conversion_rate ?? 0;
+  const conversionTrend = d.conversionTrend ?? d.conversion_trend ?? 0;
+  const revenueRealized = d.revenueRealized ?? d.revenue ?? d.ca_realise ?? 0;
+  const revenueTrend = d.revenueTrend ?? d.revenue_trend ?? 0;
+  const healthScore = d.healthScore ?? d.health ?? 0;
+  const healthTrend = d.healthTrend ?? d.health_trend ?? 0;
 
   const ribbonItems = [
-    { label: 'Leads qualifiés · période', value: (d.qualifiedLeads || d.qualified_leads || 142).toLocaleString('fr-FR') },
-    { label: 'Devis envoyés', value: (d.quotesSent || d.quotes_sent || 86).toLocaleString('fr-FR') },
-    { label: 'Chantiers actifs', value: (d.activeProjects || d.active_projects || 23).toLocaleString('fr-FR') },
-    { label: 'Ticket moyen', value: (d.avgTicket || d.avg_ticket || '12 450') + ' €' },
+    { label: 'Leads qualifiés · période', value: (d.qualifiedLeads ?? d.qualified_leads ?? 0).toLocaleString('fr-FR') },
+    { label: 'Devis envoyés', value: (d.quotesSent ?? d.quotes_sent ?? 0).toLocaleString('fr-FR') },
+    { label: 'Chantiers actifs', value: (d.activeProjects ?? d.active_projects ?? 0).toLocaleString('fr-FR') },
+    { label: 'Ticket moyen', value: (d.avgTicket ?? d.avg_ticket ?? 0).toLocaleString('fr-FR') + ' €' },
   ];
 
   const rangeDays = range === 'week' ? '7' : range === 'month' ? '30' : range === 'quarter' ? '90' : '365';
