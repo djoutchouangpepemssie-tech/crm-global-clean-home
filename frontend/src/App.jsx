@@ -104,6 +104,7 @@ const ClientPortal = lazy(() => import('./components/portal/ClientPortal'));
 const IntervenantPortal = lazy(() => import('./components/portal/IntervenantPortal'));
 const IntervenantsManager = lazy(() => import('./components/planning/IntervenantsManager'));
 const PlanningCalendar = lazy(() => import('./components/planning/PlanningCalendar'));
+const PlanningFil = lazy(() => import('./components/planning/PlanningFil'));
 const Integrations = lazy(() => import('./components/integrations/Integrations'));
 const AdsDashboard = lazy(() => import('./components/ads/AdsDashboard'));
 const AICenter = lazy(() => import('./components/ai/AICenter'));
@@ -405,7 +406,8 @@ function AppRouter() {
                     <Route path="/accounting-enterprise" element={<AccountingEnterprise />} />
                     {/* PayrollModule moved to AccountingERP/payroll-rh */}
                     <Route path="/stock" element={<StockTable />} />
-                    <Route path="/planning" element={<PlanningCalendar />} />
+                    <Route path="/planning" element={<PlanningFil />} />
+                    <Route path="/planning/calendar" element={<PlanningCalendar />} />
                     <Route path="/intervenants" element={<IntervenantsManager />} />
                     <Route path="/integrations" element={<Integrations />} />
                     <Route path="/ads" element={<AdsDashboard />} />

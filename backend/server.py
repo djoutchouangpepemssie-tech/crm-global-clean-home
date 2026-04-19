@@ -3399,6 +3399,148 @@ async def stub_planning_bookings(request: Request):
     return {"items": [], "total": 0}
 
 
+@api_router.get("/planning/day")
+async def planning_day(request: Request, date: Optional[str] = None):
+    """Planning du jour — agrège tâches + interventions par équipe.
+    Si pas de données : renvoie une structure vide avec un message d'état.
+    Format date : YYYY-MM-DD (défaut: aujourd'hui UTC)."""
+    await require_auth(request)
+
+    try:
+        target_date = datetime.fromisoformat(date).date() if date else datetime.now(timezone.utc).date()
+    except Exception:
+        target_date = datetime.now(timezone.utc).date()
+
+    day_start = datetime.combine(target_date, datetime.min.time()).replace(tzinfo=timezone.utc)
+    day_end   = day_start + timedelta(days=1)
+
+    # Toutes les tâches dont due_date tombe sur la journée cible (ISO string compare)
+    day_start_iso = day_start.isoformat()
+    day_end_iso   = day_end.isoformat()
+    tasks = await db.tasks.find(
+        {
+            "deleted_at": {"$exists": False},
+            "$or": [
+                {"due_date": {"$gte": day_start_iso, "$lt": day_end_iso}},
+                {"scheduled_at": {"$gte": day_start_iso, "$lt": day_end_iso}},
+            ],
+        },
+        {"_id": 0},
+    ).to_list(500)
+
+    # Interventions (si la collection existe)
+    try:
+        interventions = await db.interventions.find(
+            {
+                "deleted_at": {"$exists": False},
+                "$or": [
+                    {"start_at":     {"$gte": day_start_iso, "$lt": day_end_iso}},
+                    {"scheduled_at": {"$gte": day_start_iso, "$lt": day_end_iso}},
+                ],
+            },
+            {"_id": 0},
+        ).to_list(500)
+    except Exception:
+        interventions = []
+
+    # Normalise en « missions » unifiées
+    missions = []
+    now_iso = datetime.now(timezone.utc).isoformat()
+    for t in tasks + interventions:
+        start = t.get("scheduled_at") or t.get("start_at") or t.get("due_date")
+        if not start:
+            continue
+        duration = t.get("duration_min") or 60
+        try:
+            sdt = datetime.fromisoformat(start.replace("Z", "+00:00") if isinstance(start, str) else start.isoformat())
+            edt = sdt + timedelta(minutes=duration)
+        except Exception:
+            continue
+
+        status = "done" if edt.isoformat() < now_iso else ("current" if sdt.isoformat() <= now_iso <= edt.isoformat() else "upcoming")
+        kind = (t.get("kind") or t.get("type") or "").lower()
+        mission_type = (
+            "pause"     if kind in ("pause", "conge", "congé") else
+            "visite"    if kind in ("visite", "devis", "estimation") else
+            "recurrent" if kind in ("recurrent", "récurrent") else
+            "syndic"    if kind == "syndic" else
+            "pro"       if kind in ("pro", "entreprise") else
+            "particulier"
+        )
+
+        # Lead associé pour titre/localisation lisibles
+        client = t.get("client_name") or t.get("lead_name") or ""
+        location = t.get("location") or ""
+        lead_id = t.get("lead_id")
+        if lead_id and not client:
+            lead = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0, "name": 1, "address": 1})
+            if lead:
+                client = lead.get("name") or client
+                if not location:
+                    addr = lead.get("address") or ""
+                    m = re.search(r"\d{5}\s+([A-Za-zÀ-ÿ'\-\s]{2,40})", addr)
+                    location = (m.group(1).strip() if m else addr.split(",")[-1].strip())
+
+        assigned = t.get("assigned_to") or t.get("team") or "Non assigné"
+
+        missions.append({
+            "id":         t.get("task_id") or t.get("intervention_id") or uuid.uuid4().hex[:8],
+            "team_id":    assigned,
+            "team_name":  assigned,
+            "title":      t.get("title") or t.get("description") or "Mission",
+            "client":     client or "—",
+            "location":   location or "",
+            "start":      sdt.strftime("%H:%M"),
+            "end":        edt.strftime("%H:%M"),
+            "start_iso":  sdt.isoformat(),
+            "end_iso":    edt.isoformat(),
+            "duration":   duration,
+            "type":       mission_type,
+            "status":     status,
+        })
+
+    # Regroupement par équipe
+    teams_map: Dict[str, Any] = {}
+    for m in missions:
+        tid = m["team_id"]
+        if tid not in teams_map:
+            initials = "".join(w[0] for w in (m["team_name"] or "?").split()[:2]).upper() or "?"
+            teams_map[tid] = {
+                "id":       tid,
+                "name":     m["team_name"],
+                "initials": initials,
+                "missions": [],
+                "km":       0,
+                "count":    0,
+            }
+        teams_map[tid]["missions"].append(m)
+        teams_map[tid]["count"] += 1
+
+    teams = sorted(teams_map.values(), key=lambda t: t["name"])
+
+    # Summary
+    total_min = sum(m["duration"] for m in missions)
+    h, mi = divmod(total_min, 60)
+    summary = {
+        "total_missions":   len(missions),
+        "total_hours_str":  f"{h}h{mi:02d}",
+        "total_minutes":    total_min,
+        "total_km":         0,  # À connecter à la logique distance quand dispo
+        "capacity_hours":   32,   # par jour (équipe × 8h)
+        "capacity_used_pct": min(100, round(total_min / 60 / 32 * 100)) if total_min else 0,
+        "ca_estimated":     0,    # à calculer si amount sur tasks/interventions
+        "risk_level":       "faible" if len([m for m in missions if m["type"] not in ("pause",)]) < 12 else "tendu",
+        "risk_detail":      f"{len(missions)} mission{'s' if len(missions) > 1 else ''} planifiée{'s' if len(missions) > 1 else ''}",
+    }
+
+    return {
+        "date":    target_date.isoformat(),
+        "teams":   teams,
+        "summary": summary,
+        "empty":   len(missions) == 0,
+    }
+
+
 @api_router.get("/analytics-data/overview")
 async def stub_analytics_overview(request: Request, days: int = 30):
     await require_auth(request)
