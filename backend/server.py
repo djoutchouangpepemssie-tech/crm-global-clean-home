@@ -1807,29 +1807,93 @@ REFERENCE_ADDRESS = "5 rue de l'Étang de la Loy, 77400 Saint-Thibault-des-Vigne
 _reference_coords_cache: Optional[Dict[str, Any]] = None  # set à la 1ère utilisation
 
 
-async def _geocode_nominatim(address: str) -> Optional[Tuple[float, float]]:
-    """Transforme une adresse texte en (lat, lon) via Nominatim OSM. None si échec."""
-    if not address or not address.strip():
+def _clean_address(raw: str) -> str:
+    """Nettoie une adresse : espaces multiples, caractères bizarres, virgules."""
+    if not raw:
+        return ""
+    s = re.sub(r"\s+", " ", raw).strip()
+    # Enlève les caractères non utiles fréquents dans les formulaires web
+    s = s.replace(";", ",").replace("  ", " ")
+    return s
+
+
+def _extract_postal_city(address: str) -> Optional[str]:
+    """Extrait 'CODE_POSTAL VILLE' si reconnaissable dans l'adresse."""
+    if not address:
         return None
+    # Pattern : 5 chiffres suivis d'un nom de ville (au moins 2 caractères)
+    m = re.search(r"(\d{5})\s+([A-Za-zÀ-ÿ'\-\s]{2,40})", address)
+    if m:
+        return f"{m.group(1)} {m.group(2).strip()}"
+    return None
+
+
+async def _nominatim_query(q: str) -> Optional[Tuple[float, float]]:
+    """Un appel Nominatim. Retourne None si aucun résultat."""
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with httpx.AsyncClient(timeout=12) as client:
             res = await client.get(
                 "https://nominatim.openstreetmap.org/search",
-                params={"q": address, "format": "json", "limit": 1, "addressdetails": 0},
+                params={"q": q, "format": "json", "limit": 1, "countrycodes": "fr"},
                 headers={
                     "User-Agent": "GlobalCleanHomeCRM/1.0 (contact@globalcleanhome.com)",
                     "Accept-Language": "fr",
                 },
             )
             if res.status_code != 200:
+                logger.warning(f"Nominatim HTTP {res.status_code} for '{q[:60]}'")
                 return None
             data = res.json()
             if not data:
                 return None
             return (float(data[0]["lat"]), float(data[0]["lon"]))
     except Exception as e:
-        logger.warning(f"Nominatim geocoding failed for '{address[:50]}': {e}")
+        logger.warning(f"Nominatim error for '{q[:60]}': {e}")
         return None
+
+
+async def _geocode_nominatim(address: str) -> Optional[Tuple[float, float]]:
+    """Géocodage robuste avec stratégie multi-variantes.
+    Essaie dans l'ordre :
+      1. Adresse nettoyée + ', France'
+      2. Adresse nettoyée (sans suffixe)
+      3. 'CODE_POSTAL VILLE' extrait de l'adresse (fallback grossier)
+    Nominatim a du mal avec les fautes de frappe mineures, donc on multiplie
+    les tentatives avant d'abandonner.
+    """
+    if not address or not address.strip():
+        return None
+
+    cleaned = _clean_address(address)
+    attempts = []
+
+    # 1. Adresse complète + France
+    if "france" not in cleaned.lower():
+        attempts.append(f"{cleaned}, France")
+    else:
+        attempts.append(cleaned)
+
+    # 2. Adresse telle quelle (sans le suffixe France)
+    if attempts[0] != cleaned:
+        attempts.append(cleaned)
+
+    # 3. Fallback postal + ville uniquement
+    pc_city = _extract_postal_city(cleaned)
+    if pc_city:
+        attempts.append(f"{pc_city}, France")
+
+    for i, q in enumerate(attempts):
+        # Petit délai entre les appels pour respecter le rate limit Nominatim (1 req/s)
+        if i > 0:
+            import asyncio
+            await asyncio.sleep(1.1)
+        coords = await _nominatim_query(q)
+        if coords:
+            logger.info(f"Nominatim OK via variante #{i+1}: '{q[:60]}'")
+            return coords
+
+    logger.warning(f"Nominatim : échec après {len(attempts)} tentatives pour '{address[:80]}'")
+    return None
 
 
 async def _get_reference_coords() -> Tuple[float, float]:
@@ -1895,17 +1959,36 @@ async def get_lead_distance(lead_id: str, request: Request):
 
     # Coordonnées du lead — cache dans le document
     lead_coords = lead.get("coords")
+    geocoding_method = "cached"
     if not lead_coords or not isinstance(lead_coords, (list, tuple)) or len(lead_coords) != 2:
         geocoded = await _geocode_nominatim(address)
+        geocoding_method = "precise"
         if not geocoded:
-            raise HTTPException(status_code=422, detail="Adresse non géolocalisable (vérifie qu'elle soit complète avec code postal et ville)")
+            # Ultime fallback : on géocode juste la ville/code postal pour avoir
+            # une estimation grossière plutôt que 0.
+            pc_city = _extract_postal_city(address)
+            if pc_city:
+                geocoded = await _nominatim_query(f"{pc_city}, France")
+                if geocoded:
+                    geocoding_method = "approximate"
+                    logger.info(f"Géocodage approximatif (ville) pour lead {lead_id}: {pc_city}")
+        if not geocoded:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Adresse non géolocalisable : « {address[:80]} ». Ajoute le code postal (5 chiffres) + la ville dans l'adresse du lead.",
+            )
         lead_coords = list(geocoded)
         await db.leads.update_one(
             {"lead_id": lead_id},
-            {"$set": {"coords": lead_coords, "geocoded_at": datetime.now(timezone.utc).isoformat()}},
+            {"$set": {
+                "coords":             lead_coords,
+                "geocoded_at":        datetime.now(timezone.utc).isoformat(),
+                "geocoding_method":   geocoding_method,
+            }},
         )
     else:
         lead_coords = tuple(lead_coords)
+        geocoding_method = lead.get("geocoding_method", "cached")
 
     # Coordonnées de référence (siège)
     ref_coords = await _get_reference_coords()
@@ -1924,14 +2007,15 @@ async def get_lead_distance(lead_id: str, request: Request):
         }
 
     return {
-        "lead_id":       lead_id,
-        "origin":        REFERENCE_ADDRESS,
-        "origin_coords": list(ref_coords),
+        "lead_id":         lead_id,
+        "origin":          REFERENCE_ADDRESS,
+        "origin_coords":   list(ref_coords),
         "destination":         address,
         "destination_coords":  list(lead_coords),
-        "distance_km":   route["distance_km"],
-        "duration_min":  route["duration_min"],
-        "method":        route["method"],
+        "distance_km":     route["distance_km"],
+        "duration_min":    route["duration_min"],
+        "method":          route["method"],
+        "geocoding_method": geocoding_method,
     }
 
 

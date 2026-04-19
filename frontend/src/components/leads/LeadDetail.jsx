@@ -789,16 +789,26 @@ function DistanceStats({ leadId }) {
     );
   }
 
-  const { distance_km, duration_min, method, origin } = data;
+  const { distance_km, duration_min, method, origin, geocoding_method } = data;
   const gmapsHref = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(data.destination || '')}&travelmode=driving`;
+  const isApproximate = geocoding_method === 'approximate';
 
   return (
     <>
       <div style={{ display: 'flex', gap: 14 }}>
-        <Cell k="Distance" v={`${distance_km} km`} note={method === 'osrm' ? 'Trajet voiture' : 'Estimation'} />
-        <Cell k="Durée" v={`${duration_min} min`} note="Estimation trafic" />
-        <Cell k="Départ" v="Saint-Thibault-des-Vignes" note="77400" />
+        <Cell k="Distance" v={`${distance_km} km`} note={method === 'osrm' ? 'Trajet voiture' : 'Vol d\'oiseau × 1.3'} />
+        <Cell k="Durée" v={`${duration_min} min`} note="Estimation" />
+        <Cell k="Départ" v="Saint-Thibault" note="77400" />
       </div>
+      {isApproximate && (
+        <div style={{
+          marginTop: 10, padding: '8px 12px', borderRadius: 8,
+          background: 'var(--gold-soft, rgba(251, 191, 36, 0.15))', fontSize: 11, color: 'var(--ink-2)',
+          border: '1px solid var(--gold, oklch(0.72 0.13 85))',
+        }}>
+          ⓘ Adresse exacte non trouvée. Distance estimée depuis la ville (code postal).
+        </div>
+      )}
       <a href={gmapsHref} target="_blank" rel="noopener noreferrer" style={{
         display: 'inline-flex', alignItems: 'center', gap: 6,
         marginTop: 12, padding: '7px 12px', borderRadius: 999,
