@@ -87,6 +87,7 @@ if (typeof window !== 'undefined') {
 const Dashboard = lazy(() => import('./components/dashboard/CockpitDashboard'));
 const DashboardCustom = lazy(() => import('./components/dashboard/DynamicDashboard'));
 const DashboardLegacy = lazy(() => import('./components/dashboard/Dashboard'));
+const PipelineRiver = lazy(() => import('./components/pipeline/PipelineRiver'));
 const LeadsList = lazy(() => import('./components/leads/LeadsList'));
 const LeadDetail = lazy(() => import('./components/leads/LeadDetail'));
 const LeadForm = lazy(() => import('./components/leads/LeadForm'));
@@ -377,6 +378,7 @@ function AppRouter() {
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/dashboard/custom" element={<DashboardCustom />} />
                     <Route path="/dashboard/legacy" element={<DashboardLegacy />} />
+                    <Route path="/pipeline" element={<PipelineRiver />} />
                     <Route path="/director" element={<DirectorDashboard />} />
                     <Route path="/seo" element={<SEODashboard />} />
                     <Route path="/rentabilite" element={<RentabiliteModule />} />

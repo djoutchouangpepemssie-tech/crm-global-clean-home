@@ -37,7 +37,7 @@ const NAV_GROUPS = [
       { to: '/dashboard',    icon: LayoutDashboard, label: 'Dashboard' },
       { to: '/director',     icon: Sparkles,        label: 'Vue Directeur' },
       { to: '/leads',        icon: Users,           label: 'Leads',    badge: 'leads' },
-      { to: '/kanban',       icon: Trello,          label: 'Pipeline' },
+      { to: '/pipeline',     icon: Trello,          label: 'Pipeline' },
     ],
   },
   {
