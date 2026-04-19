@@ -3724,6 +3724,44 @@ async def get_tracking_stats(request: Request, period: str = "7d"):
 # ============= DASHBOARD STATS ENDPOINTS =============
 
 
+@api_router.get("/stats/dashboard/debug")
+async def debug_dashboard_stats(request: Request):
+    """Diagnostic : renvoie les comptes bruts par collection, sans filtres.
+    À utiliser pour vérifier si la DB contient des leads alors que le dashboard
+    affiche 0 — permet de détecter un problème de filtre."""
+    await require_auth(request)
+    now = datetime.now(timezone.utc)
+    start_30d = (now - timedelta(days=30)).isoformat()
+
+    # Sample du 1er lead pour voir le format exact de created_at / deleted_at
+    sample = await db.leads.find_one({}, {"_id": 0, "lead_id": 1, "name": 1, "status": 1, "created_at": 1, "deleted_at": 1})
+
+    return {
+        "now": now.isoformat(),
+        "start_30d": start_30d,
+        "collections": {
+            "leads": {
+                "total_raw":          await db.leads.count_documents({}),
+                "no_deleted_field":   await db.leads.count_documents({"deleted_at": {"$exists": False}}),
+                "deleted_null":       await db.leads.count_documents({"deleted_at": None}),
+                "not_deleted_all":    await db.leads.count_documents({"$or": [
+                    {"deleted_at": {"$exists": False}},
+                    {"deleted_at": {"$in": [None, False, ""]}},
+                ]}),
+                "in_30d":             await db.leads.count_documents({"created_at": {"$gte": start_30d}}),
+                "sample":             sample,
+                "by_status": {
+                    s: await db.leads.count_documents({"status": s})
+                    for s in ["nouveau", "contacté", "en_attente", "devis_envoyé", "gagné", "perdu"]
+                },
+            },
+            "quotes":   {"total_raw": await db.quotes.count_documents({})},
+            "invoices": {"total_raw": await db.invoices.count_documents({})},
+            "tasks":    {"total_raw": await db.tasks.count_documents({})},
+        },
+    }
+
+
 @api_router.get("/stats/dashboard")
 async def get_dashboard_stats(request: Request, period: str = "30d"):
     """Get dashboard statistics."""
@@ -3736,45 +3774,61 @@ async def get_dashboard_stats(request: Request, period: str = "30d"):
     start_date = now - timedelta(days=days_map.get(period, 30))
     start_iso = start_date.isoformat()
 
-    not_deleted = {"deleted_at": {"$exists": False}}
-    in_period   = {"created_at": {"$gte": start_iso}}
+    # Filtre « non supprimé » ROBUSTE : matche à la fois les docs sans le champ
+    # deleted_at (sortie normale) ET les docs avec deleted_at null/false/empty
+    # (selon comment les leads ont été insérés en DB).
+    not_deleted = {"deleted_at": {"$in": [None, False, ""]}}  # PLUS {"$exists": False}
+    # Version encore plus permissive (si ça ne suffit pas) :
+    not_deleted_or_missing = {"$or": [
+        {"deleted_at": {"$exists": False}},
+        {"deleted_at": {"$in": [None, False, ""]}},
+    ]}
+    in_period = {"created_at": {"$gte": start_iso}}
 
-    # Helper : combine filtres simplement (tous nos created_at sont ISO string,
-    # vérifié dans tous les endpoints create_* du backend)
     def Q(*parts):
         out = {}
         for p in parts: out.update(p)
         return out
 
-    # Count leads (exclut les supprimés)
-    total_leads      = await db.leads.count_documents(Q(not_deleted, in_period))
-    new_leads        = await db.leads.count_documents(Q(not_deleted, in_period, {"status": "nouveau"}))
-    contacted_leads  = await db.leads.count_documents(Q(not_deleted, in_period, {"status": "contacté"}))
-    won_leads        = await db.leads.count_documents(Q(not_deleted, in_period, {"status": "gagné"}))
+    # DIAGNOSTIC : compte brut sans aucun filtre (pour détecter les problèmes)
+    raw_total_leads = await db.leads.count_documents({})
+    raw_not_deleted_simple = await db.leads.count_documents(not_deleted_or_missing)
 
-    # FALLBACK : si period filtre trop strict et que la DB a des leads sans
-    # filtre date, on garde le compte all-time pour que le dashboard ne
-    # renvoie pas 0 à tort (ex: leads avec created_at en datetime natif).
-    if total_leads == 0:
-        total_all = await db.leads.count_documents(not_deleted)
-        if total_all > 0:
-            logger.info(f"Dashboard: 0 leads en {period} mais {total_all} au total — fallback all-time")
-            total_leads      = total_all
-            new_leads        = await db.leads.count_documents(Q(not_deleted, {"status": "nouveau"}))
-            contacted_leads  = await db.leads.count_documents(Q(not_deleted, {"status": "contacté"}))
-            won_leads        = await db.leads.count_documents(Q(not_deleted, {"status": "gagné"}))
+    logger.info(f"Dashboard[{period}]: raw_total={raw_total_leads}, not_deleted={raw_not_deleted_simple}")
 
-    # Count quotes (exclut supprimés)
-    total_quotes     = await db.quotes.count_documents(Q(not_deleted, in_period))
-    sent_quotes      = await db.quotes.count_documents(Q(not_deleted, in_period, {"status": "envoyé"}))
-    accepted_quotes  = await db.quotes.count_documents(Q(not_deleted, in_period, {"status": "accepté"}))
+    # Count leads dans la période
+    total_leads = await db.leads.count_documents(Q(not_deleted_or_missing, in_period))
+    new_leads = await db.leads.count_documents(Q(not_deleted_or_missing, in_period, {"status": "nouveau"}))
+    contacted_leads = await db.leads.count_documents(Q(not_deleted_or_missing, in_period, {"status": "contacté"}))
+    won_leads = await db.leads.count_documents(Q(not_deleted_or_missing, in_period, {"status": "gagné"}))
+
+    # FALLBACK 1 : si période = 0 mais DB a des leads → utiliser all-time
+    if total_leads == 0 and raw_not_deleted_simple > 0:
+        logger.info(f"Dashboard: FALLBACK all-time (période vide, {raw_not_deleted_simple} leads en DB)")
+        total_leads = raw_not_deleted_simple
+        new_leads = await db.leads.count_documents(Q(not_deleted_or_missing, {"status": "nouveau"}))
+        contacted_leads = await db.leads.count_documents(Q(not_deleted_or_missing, {"status": "contacté"}))
+        won_leads = await db.leads.count_documents(Q(not_deleted_or_missing, {"status": "gagné"}))
+
+    # FALLBACK 2 : si encore 0 mais raw_total > 0 → on ignore deleted_at aussi
+    if total_leads == 0 and raw_total_leads > 0:
+        logger.warning(f"Dashboard: FALLBACK RAW (deleted_at filter problématique, raw={raw_total_leads})")
+        total_leads = raw_total_leads
+        new_leads = await db.leads.count_documents({"status": "nouveau"})
+        contacted_leads = await db.leads.count_documents({"status": "contacté"})
+        won_leads = await db.leads.count_documents({"status": "gagné"})
+
+    # Count quotes (même stratégie)
+    total_quotes = await db.quotes.count_documents(Q(not_deleted_or_missing, in_period))
+    sent_quotes = await db.quotes.count_documents(Q(not_deleted_or_missing, in_period, {"status": "envoyé"}))
+    accepted_quotes = await db.quotes.count_documents(Q(not_deleted_or_missing, in_period, {"status": "accepté"}))
 
     if total_quotes == 0:
-        total_q_all = await db.quotes.count_documents(not_deleted)
+        total_q_all = await db.quotes.count_documents({})
         if total_q_all > 0:
-            total_quotes    = total_q_all
-            sent_quotes     = await db.quotes.count_documents(Q(not_deleted, {"status": "envoyé"}))
-            accepted_quotes = await db.quotes.count_documents(Q(not_deleted, {"status": "accepté"}))
+            total_quotes = total_q_all
+            sent_quotes = await db.quotes.count_documents({"status": "envoyé"})
+            accepted_quotes = await db.quotes.count_documents({"status": "accepté"})
 
     # Conversion rates
     conversion_lead_to_quote = (total_quotes / total_leads * 100) if total_leads > 0 else 0
@@ -3783,10 +3837,10 @@ async def get_dashboard_stats(request: Request, period: str = "30d"):
     # Leads by source + par service — récupère la liste une seule fois.
     # Si période vide → récupère tous les leads non supprimés pour garder
     # les charts significatifs.
-    source_query = Q(not_deleted, in_period)
+    source_query = Q(not_deleted_or_missing, in_period)
     sample_count = await db.leads.count_documents(source_query)
     if sample_count == 0:
-        source_query = not_deleted
+        source_query = {} if raw_not_deleted_simple == 0 else not_deleted_or_missing
     all_leads = await db.leads.find(source_query, {"_id": 0, "source": 1, "service_type": 1, "created_at": 1}).to_list(2000)
 
     leads_by_source = {}
@@ -3825,17 +3879,17 @@ async def get_dashboard_stats(request: Request, period: str = "30d"):
     })
 
     # Average lead score
-    score_query = Q(not_deleted, in_period)
+    score_query = Q(not_deleted_or_missing, in_period)
     all_leads_full = await db.leads.find(score_query, {"_id": 0, "score": 1}).to_list(2000)
     if not all_leads_full:
-        all_leads_full = await db.leads.find(not_deleted, {"_id": 0, "score": 1}).to_list(2000)
+        all_leads_full = await db.leads.find({}, {"_id": 0, "score": 1}).to_list(2000)
     avg_score = sum([lead.get("score", 50) for lead in all_leads_full]) / len(all_leads_full) if all_leads_full else 50
 
     # Top performing source (by conversion rate)
     source_performance = {}
-    perf_query = Q(not_deleted, in_period)
+    perf_query = Q(not_deleted_or_missing, in_period)
     perf_sample = await db.leads.count_documents(perf_query)
-    if perf_sample == 0: perf_query = not_deleted
+    if perf_sample == 0: perf_query = {}
     for lead in await db.leads.find(perf_query, {"_id": 0, "lead_id": 1, "source": 1, "status": 1}).to_list(2000):
         source = lead.get("source", "Direct")
         if source not in source_performance:
