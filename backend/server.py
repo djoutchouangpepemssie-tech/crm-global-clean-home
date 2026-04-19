@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
+import json
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr, ConfigDict, field_validator
@@ -2302,6 +2303,291 @@ AVAILABLE_BLOCKS = {
 
 class LayoutCommand(BaseModel):
     instruction: str = Field(..., max_length=500, description="Instruction en langage naturel")
+
+
+# ============= AGENT VOCAL — contrôle complet du CRM ==============
+# L'agent combine des outils READ (search_*) exécutés côté backend et des
+# outils PLAN (plan_navigation, plan_action) qui produisent un plan exécuté
+# par le frontend avec l'auth de l'utilisateur. Chaque action destructive
+# requiert confirmation côté frontend.
+
+
+class VoiceAgentCommand(BaseModel):
+    instruction: str = Field(..., max_length=1000)
+
+
+async def _agent_search_leads(query: str, user_id: str) -> List[Dict[str, Any]]:
+    """Recherche leads par nom/email/téléphone. Lecture seule."""
+    pattern = re.compile(re.escape(query), re.IGNORECASE)
+    cursor = db.leads.find(
+        {
+            "deleted_at": {"$exists": False},
+            "$or": [
+                {"name": pattern}, {"email": pattern},
+                {"phone": pattern}, {"address": pattern},
+            ],
+        },
+        {"_id": 0, "lead_id": 1, "name": 1, "email": 1, "phone": 1, "service_type": 1, "status": 1, "address": 1},
+    ).sort("created_at", -1).limit(10)
+    leads = await cursor.to_list(10)
+    return leads
+
+
+async def _agent_search_quotes(query: str, user_id: str) -> List[Dict[str, Any]]:
+    pattern = re.compile(re.escape(query), re.IGNORECASE)
+    cursor = db.quotes.find(
+        {
+            "deleted_at": {"$exists": False},
+            "$or": [
+                {"quote_number": pattern}, {"lead_name": pattern},
+                {"title": pattern}, {"service_type": pattern},
+            ],
+        },
+        {"_id": 0, "quote_id": 1, "quote_number": 1, "lead_id": 1, "lead_name": 1, "title": 1, "amount": 1, "status": 1, "created_at": 1},
+    ).sort("created_at", -1).limit(10)
+    return await cursor.to_list(10)
+
+
+async def _agent_search_invoices(query: str, user_id: str) -> List[Dict[str, Any]]:
+    pattern = re.compile(re.escape(query), re.IGNORECASE)
+    cursor = db.invoices.find(
+        {
+            "deleted_at": {"$exists": False},
+            "$or": [
+                {"invoice_number": pattern}, {"lead_name": pattern},
+                {"project": pattern},
+            ],
+        },
+        {"_id": 0, "invoice_id": 1, "invoice_number": 1, "lead_id": 1, "lead_name": 1, "amount_ttc": 1, "amount": 1, "status": 1, "due_date": 1, "created_at": 1},
+    ).sort("created_at", -1).limit(10)
+    return await cursor.to_list(10)
+
+
+VOICE_AGENT_SYSTEM = """Tu es un agent de contrôle vocal pour un CRM français (Global Clean Home — société de nettoyage).
+Tu reçois une instruction en français et tu dois exécuter ce que l'utilisateur demande en enchaînant des outils.
+
+OUTILS DE RECHERCHE (read-only, exécutés côté backend) :
+- search_leads(query) : trouve des leads/prospects par nom, email, téléphone.
+- search_quotes(query) : trouve des devis par numéro ou nom de client.
+- search_invoices(query) : trouve des factures.
+
+OUTILS DE PLANIFICATION (produisent des actions exécutées par le navigateur) :
+- plan_navigation(path, description) : navigue vers une page du CRM.
+  Routes courantes : /dashboard, /leads, /leads/{lead_id}, /leads/new,
+  /quotes, /quotes/{quote_id}, /quotes/new?leadId={lead_id},
+  /invoices, /invoices/{invoice_id}, /invoices/new?leadId={lead_id},
+  /planning, /tasks, /director.
+- plan_action(action, params, description, destructive) : exécute une action.
+  Actions disponibles :
+    * "send_quote"        params={quote_id}         → POST /quotes/{id}/send
+    * "mark_invoice_paid" params={invoice_id}       → POST /invoices/{id}/mark-paid
+    * "send_reminder"     params={invoice_id}       → POST /invoices/{id}/remind
+    * "update_lead_status" params={lead_id, status} → PATCH /leads/{id} (status: nouveau|contacté|en_attente|devis_envoyé|gagné|perdu)
+    * "add_interaction"   params={lead_id, type, content} → POST /interactions (type: appel|email|sms|note|rdv)
+  destructive=true pour celles qui envoient quelque chose au client ou modifient un statut
+  (send_quote, send_reminder, mark_invoice_paid, update_lead_status).
+
+DÉMARCHE :
+1. Identifie l'entité concernée (lead, devis, facture) → utilise search_* si besoin.
+2. Si plusieurs matches ambigus → renvoie un plan avec plan_navigation vers la liste et demande à l'user de préciser (dans ton `final_answer`).
+3. Si un seul match → chaîne les actions (par ex : search_leads puis plan_navigation vers son détail).
+4. Pour créer un devis/facture : plan_navigation vers /quotes/new?leadId=X ou /invoices/new?leadId=X.
+5. Termine TOUJOURS par un appel à `final_answer(summary)` résumant en 1 phrase ce qui a été fait/planifié.
+
+RÈGLES :
+- Jamais supprimer d'entité sans demande explicite ET confirmation.
+- Si l'instruction est ambiguë ou irréalisable, utilise final_answer pour expliquer au lieu de deviner.
+- Toujours en français, ton professionnel et concis.
+"""
+
+
+VOICE_AGENT_TOOLS = [
+    {
+        "name": "search_leads",
+        "description": "Cherche des leads/prospects par nom, email ou téléphone.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"query": {"type": "string"}},
+            "required": ["query"],
+        },
+    },
+    {
+        "name": "search_quotes",
+        "description": "Cherche des devis par numéro ou nom de client.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"query": {"type": "string"}},
+            "required": ["query"],
+        },
+    },
+    {
+        "name": "search_invoices",
+        "description": "Cherche des factures par numéro ou nom de client.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"query": {"type": "string"}},
+            "required": ["query"],
+        },
+    },
+    {
+        "name": "plan_navigation",
+        "description": "Planifie une navigation vers une URL du CRM.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path":        {"type": "string"},
+                "description": {"type": "string"},
+            },
+            "required": ["path", "description"],
+        },
+    },
+    {
+        "name": "plan_action",
+        "description": "Planifie une action (envoi, marquage payé, relance, changement de statut…).",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "action":      {"type": "string", "enum": ["send_quote", "mark_invoice_paid", "send_reminder", "update_lead_status", "add_interaction"]},
+                "params":      {"type": "object"},
+                "description": {"type": "string"},
+                "destructive": {"type": "boolean"},
+            },
+            "required": ["action", "params", "description"],
+        },
+    },
+    {
+        "name": "final_answer",
+        "description": "Réponse finale à l'utilisateur. DOIT être appelé en dernier.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "summary": {"type": "string", "description": "1-2 phrases en français, ton pro."},
+            },
+            "required": ["summary"],
+        },
+    },
+]
+
+
+@api_router.post("/voice/agent")
+async def voice_agent(payload: VoiceAgentCommand, request: Request):
+    """Agent vocal : transforme une instruction française en plan d'actions
+    exécutable par le frontend. Boucle Claude + tool_use jusqu'à final_answer.
+    """
+    import httpx
+
+    user = await require_auth(request)
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not anthropic_key:
+        raise HTTPException(
+            status_code=503,
+            detail="Mode agent vocal indisponible : ANTHROPIC_API_KEY manquant. L'agent requiert Claude pour comprendre les instructions complexes.",
+        )
+
+    # Historique de la conversation Claude ↔ backend (tools roundtrip)
+    messages: List[Dict[str, Any]] = [{"role": "user", "content": payload.instruction}]
+    actions: List[Dict[str, Any]] = []  # le plan d'actions retourné au frontend
+    summary: Optional[str] = None
+    max_rounds = 6
+
+    async with httpx.AsyncClient(timeout=25) as client:
+        for _round in range(max_rounds):
+            res = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": anthropic_key,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": "claude-sonnet-4-6",
+                    "max_tokens": 2000,
+                    "system": VOICE_AGENT_SYSTEM,
+                    "tools": VOICE_AGENT_TOOLS,
+                    "messages": messages,
+                },
+            )
+            if res.status_code != 200:
+                logger.error(f"Voice agent Claude error {res.status_code}: {res.text[:500]}")
+                raise HTTPException(status_code=502, detail=f"Claude a refusé la requête ({res.status_code})")
+
+            data = res.json()
+            stop_reason = data.get("stop_reason")
+            content_blocks = data.get("content", [])
+
+            # Ajoute la réponse de Claude à l'historique
+            messages.append({"role": "assistant", "content": content_blocks})
+
+            # Collecte les tool_uses de ce round
+            tool_uses = [b for b in content_blocks if b.get("type") == "tool_use"]
+            if not tool_uses:
+                # Claude a répondu en texte sans outil — on termine
+                for b in content_blocks:
+                    if b.get("type") == "text" and not summary:
+                        summary = (b.get("text") or "").strip()
+                break
+
+            # Exécute chaque tool_use
+            tool_results = []
+            ended = False
+            for tu in tool_uses:
+                name = tu.get("name")
+                tu_id = tu.get("id")
+                tu_input = tu.get("input") or {}
+
+                try:
+                    if name == "search_leads":
+                        result = await _agent_search_leads(str(tu_input.get("query", ""))[:200], user.user_id)
+                    elif name == "search_quotes":
+                        result = await _agent_search_quotes(str(tu_input.get("query", ""))[:200], user.user_id)
+                    elif name == "search_invoices":
+                        result = await _agent_search_invoices(str(tu_input.get("query", ""))[:200], user.user_id)
+                    elif name == "plan_navigation":
+                        path = str(tu_input.get("path", "")).strip()
+                        desc = str(tu_input.get("description", "")).strip()
+                        if path and path.startswith("/"):
+                            actions.append({"type": "navigate", "path": path, "description": desc})
+                        result = {"status": "planned", "path": path}
+                    elif name == "plan_action":
+                        act = str(tu_input.get("action", ""))
+                        params = tu_input.get("params") or {}
+                        desc = str(tu_input.get("description", "")).strip()
+                        destructive = bool(tu_input.get("destructive", False))
+                        actions.append({
+                            "type": "api_call", "action": act, "params": params,
+                            "description": desc, "destructive": destructive,
+                        })
+                        result = {"status": "planned", "action": act}
+                    elif name == "final_answer":
+                        summary = str(tu_input.get("summary", "")).strip() or summary
+                        ended = True
+                        result = {"status": "completed"}
+                    else:
+                        result = {"error": f"Outil inconnu : {name}"}
+                except Exception as e:
+                    logger.error(f"Agent tool {name} failed: {e}", exc_info=True)
+                    result = {"error": str(e)[:200]}
+
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": tu_id,
+                    "content": json.dumps(result, ensure_ascii=False, default=str),
+                })
+
+            # Renvoie les résultats à Claude pour continuer la boucle
+            messages.append({"role": "user", "content": tool_results})
+
+            if ended or stop_reason == "end_turn":
+                break
+
+    if not summary:
+        summary = "Action planifiée." if actions else "Je n'ai rien compris à faire — reformule."
+
+    return {
+        "instruction": payload.instruction,
+        "actions": actions,
+        "summary": summary,
+    }
 
 
 def _local_layout_command(instruction: str, current_blocks: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
