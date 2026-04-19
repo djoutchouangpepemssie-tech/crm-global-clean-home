@@ -88,10 +88,12 @@ const Dashboard = lazy(() => import('./components/dashboard/CockpitDashboard'));
 const DashboardCustom = lazy(() => import('./components/dashboard/DynamicDashboard'));
 const DashboardLegacy = lazy(() => import('./components/dashboard/Dashboard'));
 const PipelineRiver = lazy(() => import('./components/pipeline/PipelineRiver'));
+const LeadsRegister = lazy(() => import('./components/leads/LeadsRegister'));
 const LeadsList = lazy(() => import('./components/leads/LeadsList'));
 const LeadDossier = lazy(() => import('./components/leads/LeadDossier'));
 const LeadDetail = lazy(() => import('./components/leads/LeadDetail'));
 const LeadForm = lazy(() => import('./components/leads/LeadForm'));
+const QuotesCahier = lazy(() => import('./components/quotes/QuotesCahier'));
 const QuotesList = lazy(() => import('./components/quotes/QuotesList'));
 const QuoteForm = lazy(() => import('./components/quotes/QuoteForm'));
 const TasksList = lazy(() => import('./components/tasks/TasksList'));
@@ -388,11 +390,13 @@ function AppRouter() {
                     <Route path="/leads/new" element={<LeadForm />} />
                     <Route path="/leads/:id" element={<LeadDossier />} />
                     <Route path="/leads/:id/legacy" element={<LeadDetail />} />
-                    <Route path="/leads" element={<LeadsList />} />
+                    <Route path="/leads" element={<LeadsRegister />} />
+                    <Route path="/leads/legacy" element={<LeadsList />} />
                     <Route path="/quotes/new" element={<QuoteForm />} />
                     {/* Legacy : /quotes/premium redirige vers /quotes/new (même composant unifié) */}
                     <Route path="/quotes/premium" element={<QuoteForm />} />
-                    <Route path="/quotes" element={<QuotesList />} />
+                    <Route path="/quotes" element={<QuotesCahier />} />
+                    <Route path="/quotes/legacy" element={<QuotesList />} />
                     <Route path="/tasks" element={<TasksList />} />
                     <Route path="/activity" element={<ActivityLog />} />
                     <Route path="/kanban" element={<KanbanBoard />} />
