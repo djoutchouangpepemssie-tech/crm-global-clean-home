@@ -11,6 +11,7 @@ import {
   Search, Plus, RefreshCw, ChevronDown, Pencil, ArrowRight,
 } from 'lucide-react';
 import axios from 'axios';
+import api from '../../lib/api';
 
 const API = (typeof process !== 'undefined' && process.env.REACT_APP_API_URL) || '';
 
@@ -33,9 +34,12 @@ const tokenStyle = `
     --gold: oklch(0.72 0.13 85);
   }
   .cockpit-root {
-    background: var(--bg); min-height: 100vh; color: var(--ink);
+    background: var(--bg); color: var(--ink);
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
+    /* Pas de min-height:100vh — laisse le contenu déterminer la hauteur
+       pour que le parent overflow-y:auto puisse scroller naturellement */
+    padding-bottom: 40px;
   }
   .ck-display { font-family: 'Fraunces', serif; letter-spacing: -0.02em; }
   .ck-mono    { font-family: 'JetBrains Mono', ui-monospace, monospace; font-feature-settings: "tnum"; }
@@ -61,9 +65,14 @@ const tokenStyle = `
 
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
   .ck-fade { animation: fadeIn .3s ease; }
 
   /* Responsive */
+  @media (max-width: 1100px) {
+    .ck-insights-grid { grid-template-columns: 1fr 1fr !important; }
+    .ck-quick-grid    { grid-template-columns: 1fr 1fr !important; }
+  }
   @media (max-width: 960px) {
     .ck-main-grid { grid-template-columns: 1fr !important; }
     .ck-hero-number { font-size: 56px !important; }
@@ -73,6 +82,7 @@ const tokenStyle = `
     .ck-pipeline-flow { overflow-x: auto; }
     .ck-pipeline-stages { min-width: 680px; }
     .ck-container { padding: 20px !important; }
+    .ck-insights-grid, .ck-quick-grid { grid-template-columns: 1fr !important; }
   }
 `;
 
@@ -123,6 +133,198 @@ const getWeekNumber = (d) => {
   const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
   return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
 };
+
+/* ─────── Section header éditorial (utilisé sous la fold) ─────── */
+function SectionHeader({ num, title, italic, annot }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+      padding: '36px 0 18px', borderBottom: '1px solid var(--line)', marginBottom: 24,
+      flexWrap: 'wrap', gap: 12,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
+        <span className="ck-mono" style={{ fontSize: 10, color: 'var(--ink-3)' }}>N° {num}</span>
+        <h2 className="ck-display" style={{ fontSize: 28, fontWeight: 400, margin: 0 }}>
+          {title} <em className="ck-italic">{italic}</em>
+        </h2>
+      </div>
+      {annot && (
+        <span style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--ink-3)' }}>
+          {annot}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/* ───────── Card « Activité en direct » (feed temps réel) ───────── */
+function LiveActivityCard() {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    const load = () => {
+      api.get('/activity/live', { params: { limit: 8 } })
+        .then(r => { if (alive) setItems(r.data?.items || []); })
+        .catch(() => { if (alive) setItems([]); })
+        .finally(() => { if (alive) setLoading(false); });
+    };
+    load();
+    const id = setInterval(() => { if (document.visibilityState === 'visible') load(); }, 30000);
+    return () => { alive = false; clearInterval(id); };
+  }, []);
+
+  const fmtRel = (iso) => {
+    if (!iso) return '';
+    const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (diff < 60)    return 'à l\'instant';
+    if (diff < 3600)  return `il y a ${Math.floor(diff / 60)} min`;
+    if (diff < 86400) return `il y a ${Math.floor(diff / 3600)} h`;
+    return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+  };
+
+  return (
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        <span style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--accent)', animation: 'pulse 2s infinite' }} />
+        <div className="ck-label">Activité en direct</div>
+      </div>
+      {loading ? (
+        <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: 13 }}>Chargement…</div>
+      ) : items.length === 0 ? (
+        <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: 13 }}>Aucune activité récente.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {items.slice(0, 6).map(ev => (
+            <Link key={ev.id} to={ev.link || '#'} style={{
+              display: 'grid', gridTemplateColumns: '28px 1fr auto', gap: 10, alignItems: 'center',
+              padding: '10px 12px', borderRadius: 10, background: 'var(--surface-2)',
+              textDecoration: 'none', color: 'var(--ink)', transition: 'background .1s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-soft)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'var(--surface-2)'}>
+              <span style={{ fontSize: 16 }}>{ev.icon}</span>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 500, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {ev.label}
+                </div>
+                <div className="ck-mono" style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 2 }}>{ev.sub}</div>
+              </div>
+              <span className="ck-mono" style={{ fontSize: 10, color: 'var(--ink-3)', whiteSpace: 'nowrap' }}>
+                {fmtRel(ev.at)}
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ───────── Card « Leads récents » ───────── */
+function RecentLeadsCard() {
+  const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    api.get('/leads', { params: { page_size: 6, period: 'all' } })
+      .then(r => { if (alive) setLeads(r.data?.items || []); })
+      .catch(() => { if (alive) setLeads([]); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, []);
+
+  const scoreColor = (s) => s >= 70 ? 'var(--accent)' : s >= 45 ? 'var(--gold)' : 'var(--ink-3)';
+  const initials = (name) => (name || '—').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+
+  return (
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div className="ck-label">Leads récents</div>
+        <Link to="/leads" className="ck-mono" style={{
+          fontSize: 10, color: 'var(--accent)', textDecoration: 'none', letterSpacing: '0.1em', textTransform: 'uppercase',
+        }}>
+          Tout voir →
+        </Link>
+      </div>
+      {loading ? (
+        <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: 13 }}>Chargement…</div>
+      ) : leads.length === 0 ? (
+        <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: 13 }}>Aucun lead pour l'instant.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {leads.slice(0, 5).map(l => (
+            <Link key={l.lead_id} to={`/leads/${l.lead_id}`} style={{
+              display: 'grid', gridTemplateColumns: '32px 1fr 40px', gap: 10, alignItems: 'center',
+              padding: '10px 12px', borderRadius: 10, background: 'var(--surface-2)',
+              textDecoration: 'none', color: 'var(--ink)',
+            }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: '50%',
+                background: 'var(--accent-soft)', color: 'var(--accent)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: 'Fraunces, serif', fontSize: 13, fontWeight: 600,
+              }}>{initials(l.name)}</div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {l.name || 'Sans nom'}
+                </div>
+                <div className="ck-mono" style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 2 }}>
+                  {l.service_type || '—'} · {l.status || 'nouveau'}
+                </div>
+              </div>
+              <span className="ck-display" style={{
+                fontSize: 16, fontWeight: 500, textAlign: 'right',
+                color: scoreColor(l.score || 50),
+              }}>{l.score || 50}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ───────── Card « Répartition par service » (barres horizontales) ───────── */
+function TopServicesCard({ data }) {
+  const rawServices = data?.leads_by_service || {};
+  const entries = Object.entries(rawServices)
+    .filter(([k]) => k && k !== 'null')
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6);
+  const total = entries.reduce((s, [_, v]) => s + v, 0);
+
+  return (
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 24 }}>
+      <div className="ck-label" style={{ marginBottom: 18 }}>Répartition par service</div>
+      {entries.length === 0 ? (
+        <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: 13 }}>Aucune donnée pour l'instant.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {entries.map(([svc, count], i) => {
+            const pct = total > 0 ? Math.round(count / total * 100) : 0;
+            const colors = ['var(--accent)', 'var(--warm)', 'var(--gold)', 'oklch(0.60 0.10 220)', 'oklch(0.58 0.14 300)', 'var(--ink-3)'];
+            return (
+              <div key={svc}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                  <span style={{ fontSize: 13, color: 'var(--ink-2)', fontWeight: 500 }}>{svc}</span>
+                  <span className="ck-mono" style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+                    <strong style={{ color: 'var(--ink)' }}>{count}</strong> · {pct}%
+                  </span>
+                </div>
+                <div style={{ height: 6, background: 'var(--line-2)', borderRadius: 999, overflow: 'hidden' }}>
+                  <div style={{ width: `${pct}%`, height: '100%', background: colors[i % colors.length], transition: 'width .4s' }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /* ─────────────── Mini sparkline SVG inline ─────────────── */
 function Sparkline({ data, color = 'var(--accent)', width = 120, height = 42 }) {
@@ -514,6 +716,58 @@ export default function CockpitDashboard() {
 
           </div>
         </div>
+
+        {/* ═══════════════════════ FLUX & INSIGHTS ═══════════════════════ */}
+        <SectionHeader
+          num="02"
+          title="Flux &"
+          italic="intelligence"
+          annot="Rafraîchi automatiquement toutes les 30 s"
+        />
+        <div className="ck-insights-grid" style={{
+          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 32,
+        }}>
+          <LiveActivityCard />
+          <RecentLeadsCard />
+          <TopServicesCard data={d} />
+        </div>
+
+        {/* ═══════════════════════ RACCOURCIS ═══════════════════════ */}
+        <SectionHeader
+          num="03"
+          title="Actions"
+          italic="rapides"
+        />
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 40,
+        }} className="ck-quick-grid">
+          {[
+            { to: '/leads/new',    label: 'Nouveau lead',        kbd: 'N', desc: 'Ajouter un prospect manuellement' },
+            { to: '/quotes/new',   label: 'Créer un devis',       kbd: 'D', desc: 'Rédiger un nouveau devis' },
+            { to: '/invoices/new', label: 'Nouvelle facture',     kbd: 'F', desc: 'Émettre une facture client' },
+            { to: '/planning',     label: 'Planning',             kbd: 'P', desc: 'Voir le fil de la journée' },
+          ].map((q, i) => (
+            <Link key={q.to} to={q.to} style={{
+              display: 'block', padding: 20, borderRadius: 14,
+              background: 'var(--surface)', border: '1px solid var(--line)',
+              textDecoration: 'none', color: 'var(--ink)', transition: 'all .15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--accent-soft)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.background = 'var(--surface)'; }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                <span className="ck-display" style={{ fontSize: 18, fontWeight: 500 }}>{q.label}</span>
+                <span className="ck-mono" style={{
+                  fontSize: 9, padding: '2px 6px', borderRadius: 4,
+                  border: '1px solid var(--line)', color: 'var(--ink-3)',
+                }}>{q.kbd}</span>
+              </div>
+              <div style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 12, color: 'var(--ink-3)', lineHeight: 1.4 }}>
+                {q.desc}
+              </div>
+            </Link>
+          ))}
+        </div>
+
       </div>
     </div>
   );
