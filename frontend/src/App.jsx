@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import PWAInstallBanner, { OfflineIndicator } from './components/pwa/PWAInstallBanner';
 import CommandPalette from './components/shared/CommandPalette';
+import VoiceFab from './components/shared/VoiceFab';
 
 import { startKeepAlive } from './lib/keepAlive.js';
 
@@ -456,6 +457,7 @@ function AppRouter() {
                 <div className="flex-1 overflow-y-auto overflow-x-hidden pb-16 lg:pb-0" style={{background:"var(--bg-app)"}}>
                   <PWAInstallBanner />
                   <CommandPalette />
+                  <VoiceFab />
         <ErrorBoundary>
         <Suspense fallback={
           <div style={{padding:'24px',minHeight:'100vh',opacity:0.5}} />

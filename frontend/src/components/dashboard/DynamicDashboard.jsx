@@ -10,9 +10,10 @@ import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import {
   Pencil, Save, Plus, X, GripVertical, Trash2, Undo2, RotateCcw, RefreshCw, Minus,
-  Sparkles, Send, Loader,
+  Sparkles, Send, Loader, Mic, MicOff,
 } from 'lucide-react';
 import api from '../../lib/api';
+import useVoiceInput from '../../lib/useVoiceInput';
 import { BLOCK_REGISTRY, DEFAULT_BLOCKS } from './blocks';
 
 const API = (typeof process !== 'undefined' && process.env.REACT_APP_API_URL) || '';
@@ -275,7 +276,7 @@ function AddBlockModal({ open, onClose, onAdd, existingTypes }) {
   );
 }
 
-/* ───── Barre de commande Claude (langage naturel) ─────────────── */
+/* ───── Barre de commande Claude (texte + vocal) ───────────────── */
 function ClaudeCommandBar({ send, pending, error, lastExplanation, clearExplanation, clearError }) {
   const [text, setText] = useState('');
   const inputRef = useRef(null);
@@ -287,6 +288,27 @@ function ClaudeCommandBar({ send, pending, error, lastExplanation, clearExplanat
     'Enlève les actions rapides',
   ];
 
+  // Capture vocale — au final de la reconnaissance, on auto-soumet
+  const voice = useVoiceInput({
+    lang: 'fr-FR',
+    continuous: false,
+    interimResults: true,
+    silenceTimeoutMs: 1800,
+    onFinal: (finalText) => {
+      // Auto-submit dès qu'une phrase complète est reconnue
+      const instr = (text ? text + ' ' : '') + finalText;
+      setText(''); // vide l'input
+      send(instr.trim());
+    },
+  });
+
+  // Affichage live pendant que l'user parle
+  useEffect(() => {
+    if (voice.listening && voice.transcript) {
+      setText(voice.transcript);
+    }
+  }, [voice.listening, voice.transcript]);
+
   const submit = async (e) => {
     e?.preventDefault?.();
     if (!text.trim() || pending) return;
@@ -294,6 +316,14 @@ function ClaudeCommandBar({ send, pending, error, lastExplanation, clearExplanat
     setText('');
     const r = await send(typed);
     if (!r) setText(typed); // remet le texte si échec pour que l'user puisse retenter
+  };
+
+  const toggleVoice = () => {
+    if (!voice.supported) {
+      alert('Reconnaissance vocale non supportée par ce navigateur. Utilise Chrome, Edge ou Safari.');
+      return;
+    }
+    voice.toggle();
   };
 
   return (
@@ -309,22 +339,54 @@ function ClaudeCommandBar({ send, pending, error, lastExplanation, clearExplanat
           Demander à Claude
         </span>
         <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: 'var(--accent)', opacity: 0.6, letterSpacing: '0.1em' }}>
-          BÊTA
+          BÊTA · Voix + Texte
         </span>
+        {voice.listening && (
+          <span style={{
+            marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6,
+            fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: '#DC2626',
+            padding: '3px 10px', borderRadius: 999,
+            background: 'rgba(220, 38, 38, 0.1)', border: '1px solid rgba(220, 38, 38, 0.3)',
+          }}>
+            <span style={{
+              width: 6, height: 6, background: '#DC2626', borderRadius: 999,
+              animation: 'pulse 1s ease-in-out infinite',
+            }} />
+            ÉCOUTE…
+          </span>
+        )}
       </div>
 
       <form onSubmit={submit} style={{ display: 'flex', gap: 8 }}>
+        {/* Bouton micro */}
+        <button type="button" onClick={toggleVoice} disabled={pending || !voice.supported}
+          title={voice.supported ? (voice.listening ? 'Arrêter l\'écoute' : 'Parler à Claude') : 'Vocal non supporté'}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: 44, height: 44, borderRadius: 10, border: 'none',
+            background: voice.listening ? '#DC2626' : (voice.supported ? 'var(--ink)' : 'var(--line)'),
+            color: 'white', cursor: voice.supported ? 'pointer' : 'not-allowed',
+            opacity: (!voice.supported || pending) ? 0.5 : 1, flexShrink: 0,
+            transition: 'all .15s',
+            animation: voice.listening ? 'pulse 1.4s ease-in-out infinite' : 'none',
+            boxShadow: voice.listening ? '0 0 0 4px rgba(220, 38, 38, 0.25)' : 'none',
+          }}>
+          {voice.listening ? <MicOff style={{ width: 18, height: 18 }} /> : <Mic style={{ width: 18, height: 18 }} />}
+        </button>
+
         <input
           ref={inputRef}
           value={text}
           onChange={e => setText(e.target.value)}
           disabled={pending}
-          placeholder="Ex : mets le pipeline en haut et ajoute l'activité en direct à côté…"
+          placeholder={voice.listening ? 'Parle maintenant…' : 'Ex : mets le pipeline en haut et ajoute l\'activité en direct…'}
           style={{
             flex: 1, padding: '11px 14px', borderRadius: 10,
-            border: '1.5px solid var(--accent)', background: 'white', fontSize: 14,
+            border: `1.5px solid ${voice.listening ? '#DC2626' : 'var(--accent)'}`,
+            background: 'white', fontSize: 14,
             outline: 'none', fontFamily: 'inherit',
             opacity: pending ? 0.6 : 1,
+            transition: 'border-color .15s',
           }}
         />
         <button type="submit" disabled={!text.trim() || pending}
@@ -338,6 +400,21 @@ function ClaudeCommandBar({ send, pending, error, lastExplanation, clearExplanat
           {pending ? 'Claude réfléchit…' : 'Appliquer'}
         </button>
       </form>
+
+      {/* Erreur vocale (permission refusée, pas de micro, etc.) */}
+      {voice.error && (
+        <div style={{
+          marginTop: 10, padding: '8px 12px', borderRadius: 8,
+          background: 'rgba(220, 38, 38, 0.08)', border: '1px solid rgba(220, 38, 38, 0.25)',
+          color: '#991B1B', fontSize: 12,
+          display: 'flex', justifyContent: 'space-between', gap: 10,
+        }}>
+          <span><strong>🎙 </strong>{voice.error}</span>
+          <button onClick={voice.clearError} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}>
+            <X style={{ width: 12, height: 12 }} />
+          </button>
+        </div>
+      )}
 
       {/* Suggestions cliquables */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
