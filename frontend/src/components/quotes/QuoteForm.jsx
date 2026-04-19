@@ -218,6 +218,18 @@ const tokenStyle = `
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
   .qf-fadein { animation: fadeIn .25s ease; }
+
+  /* Responsive : mobile (≤ 768px) */
+  @media (max-width: 768px) {
+    .qf-layout { flex-direction: column !important; padding: 14px !important; gap: 14px !important; }
+    .qf-sidebar { position: static !important; width: 100% !important; }
+    .qf-section { padding: 16px !important; }
+    .qf-poste-row { grid-template-columns: 1fr 60px 70px 70px 30px !important; gap: 4px !important; font-size: 12px !important; }
+    .qf-footbar { padding: 10px 12px !important; gap: 6px !important; }
+    .qf-footbar-btn { padding: 8px 12px !important; font-size: 11px !important; }
+    .qf-stepper-row { overflow-x: auto !important; padding: 12px 14px !important; }
+    .qf-step-label { display: none !important; }
+  }
 `;
 
 /* ─── Demo data ────────────────────────────────────────────────── */
@@ -899,7 +911,7 @@ export default function QuoteForm() {
 
       <Stepper current={step} />
 
-      <div style={{ display: 'flex', gap: 24, padding: '24px', alignItems: 'flex-start', maxWidth: 1100, margin: '0 auto' }}>
+      <div className="qf-layout" style={{ display: 'flex', gap: 24, padding: '24px', alignItems: 'flex-start', maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           {step === 1 && <Step1Client data={formData} setData={setFormData} leads={leads} />}
           {step === 2 && <Step2Prestations groups={groups} setGroups={setGroups} />}

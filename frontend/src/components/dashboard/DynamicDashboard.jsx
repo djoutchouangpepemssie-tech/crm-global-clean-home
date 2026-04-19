@@ -45,6 +45,17 @@ const tokenStyle = `
   }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Responsive : mobile (≤ 768px) → une colonne + paddings réduits */
+  @media (max-width: 768px) {
+    .dyn-grid { grid-template-columns: 1fr !important; gap: 14px !important; }
+    .dyn-grid > * { grid-column: span 1 !important; }
+    .dyn-toolbar { padding: 10px 16px !important; flex-wrap: wrap !important; gap: 8px !important; }
+    .dyn-toolbar-title { font-size: 14px !important; width: 100% !important; flex: none !important; }
+    .dyn-container { padding: 16px !important; }
+    .dyn-command-bar { padding: 14px !important; }
+  }
+
   .dyn-block-edit {
     position: relative;
     border: 2px dashed var(--line);
@@ -545,12 +556,12 @@ export default function DynamicDashboard() {
       <style>{tokenStyle}</style>
 
       {/* Barre d'outils du dashboard */}
-      <div style={{
+      <div className="dyn-toolbar" style={{
         position: 'sticky', top: 0, zIndex: 20,
         background: 'var(--bg)', borderBottom: '1px solid var(--line)',
         padding: '14px 40px', display: 'flex', alignItems: 'center', gap: 10,
       }}>
-        <div style={{ fontFamily: 'Fraunces, serif', fontSize: 18, fontWeight: 500, flex: 1 }}>
+        <div className="dyn-toolbar-title" style={{ fontFamily: 'Fraunces, serif', fontSize: 18, fontWeight: 500, flex: 1 }}>
           {editMode ? (
             <span><em style={{ color: 'var(--accent)', fontStyle: 'italic' }}>Mode édition</em> · glissez, redimensionnez, ajoutez vos blocs</span>
           ) : (
@@ -588,7 +599,7 @@ export default function DynamicDashboard() {
       </div>
 
       {/* Grille des blocs */}
-      <div style={{ padding: '32px 40px 120px', maxWidth: 1440, margin: '0 auto' }}>
+      <div className="dyn-container" style={{ padding: '32px 40px 120px', maxWidth: 1440, margin: '0 auto' }}>
         {editMode && (
           <ClaudeCommandBar
             send={claude.send}
@@ -600,7 +611,7 @@ export default function DynamicDashboard() {
           />
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 20, alignItems: 'start' }}>
+        <div className="dyn-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 20, alignItems: 'start' }}>
           {blocks.length === 0 && (
             <div style={{
               gridColumn: 'span 12', padding: 60, textAlign: 'center',

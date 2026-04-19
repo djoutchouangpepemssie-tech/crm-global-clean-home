@@ -51,6 +51,21 @@ const tokenStyle = `
   .ld-cta-btn:hover { background: var(--ink) !important; color: var(--bg) !important; border-color: var(--ink) !important; }
   .ld-tl-item { transition: background .1s; }
   .ld-panel-row:hover { background: var(--surface-2); }
+
+  /* Responsive : mobile (≤ 768px) */
+  @media (max-width: 768px) {
+    .ld-root { font-size: 14px; }
+    .ld-container { padding: 16px !important; }
+    .ld-main-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
+    .ld-hero-kpis { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
+    .ld-hero-title { font-size: 32px !important; line-height: 1.05 !important; }
+    .ld-cta-row { gap: 6px !important; padding: 10px 0 14px !important; }
+    .ld-cta-btn { padding: 8px 12px !important; font-size: 10px !important; }
+    .ld-brief-card { padding: 16px !important; }
+    .ld-brief-sections { grid-template-columns: 1fr !important; gap: 12px !important; }
+    .ld-breadcrumb { margin-bottom: 16px !important; font-size: 9px !important; flex-wrap: wrap !important; }
+    .ld-panel { padding: 16px !important; margin-bottom: 14px !important; }
+  }
 `;
 
 // ─────────────────────────────────────────────────────────────────
@@ -179,11 +194,11 @@ function StructuredBrief({ parsed }) {
   };
 
   return (
-    <div style={{
+    <div className="ld-brief-card" style={{
       background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16,
       padding: 24, marginBottom: 32,
     }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid var(--line-2)' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid var(--line-2)', flexWrap: 'wrap', gap: 8 }}>
         <div>
           <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--ink-3)', fontWeight: 500, marginBottom: 4 }}>
             Brief initial
@@ -200,7 +215,7 @@ function StructuredBrief({ parsed }) {
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
+      <div className="ld-brief-sections" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
         {parsed.sections.map((sec, i) => {
           const ico = SECTION_ICONS[sec.title.toLowerCase()] || '○';
           return (
@@ -282,7 +297,7 @@ function SectionHeader({ num, title, em, annot }) {
 // ————————————————————————————————————————————————
 function Panel({ title, em, action, children }) {
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 22, padding: 24, marginBottom: 18 }}>
+    <div className="ld-panel" style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 22, padding: 24, marginBottom: 18 }}>
       <h3 className="ld-display" style={{
         fontWeight: 500, fontSize: 17, color: 'var(--ink)', letterSpacing: '-0.015em',
         margin: '0 0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
@@ -381,7 +396,7 @@ function HeroKPIs({ lead }) {
   ];
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr', borderBottom: '1px solid var(--line)' }}>
+    <div className="ld-hero-kpis" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr', borderBottom: '1px solid var(--line)' }}>
       {cells.map((c, i) => (
         <div key={i} style={{ padding: '32px 32px 28px', borderRight: i < 3 ? '1px solid var(--line-2)' : 0 }}>
           <span className="ld-label" style={{ display: 'block', marginBottom: 14 }}>{c.label}</span>
@@ -413,7 +428,7 @@ function CtaRow({ onAction }) {
   const ai = { ...base, background: 'var(--accent-soft)', color: 'var(--accent)', borderColor: 'var(--accent)' };
 
   return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '16px 0 18px', borderBottom: '1px solid var(--line-2)', marginBottom: 32, flexWrap: 'wrap' }}>
+    <div className="ld-cta-row" style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '16px 0 18px', borderBottom: '1px solid var(--line-2)', marginBottom: 32, flexWrap: 'wrap' }}>
       <button className="ld-cta-btn" onClick={() => onAction?.('call')} style={primary}>✆ Appeler</button>
       <button className="ld-cta-btn" onClick={() => onAction?.('email')} style={base}>✉ Email</button>
       <button className="ld-cta-btn" onClick={() => onAction?.('sms')} style={base}>💬 SMS</button>
@@ -958,10 +973,10 @@ const LeadDetail = () => {
   return (
     <div className="ld-root">
       <style>{tokenStyle}</style>
-      <div style={{ padding: '40px 56px 120px', maxWidth: 1520, margin: '0 auto' }}>
+      <div className="ld-container" style={{ padding: '40px 56px 120px', maxWidth: 1520, margin: '0 auto' }}>
 
         {/* BREADCRUMB */}
-        <div className="ld-mono" style={{
+        <div className="ld-mono ld-breadcrumb" style={{
           fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase',
           color: 'var(--ink-3)', marginBottom: 28, display: 'flex', alignItems: 'center', gap: 10
         }}>
@@ -984,7 +999,7 @@ const LeadDetail = () => {
         <CtaRow onAction={handleAction} />
 
         {/* GRID */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 32 }}>
+        <div className="ld-main-grid" style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 32 }}>
 
           {/* LEFT */}
           <div>

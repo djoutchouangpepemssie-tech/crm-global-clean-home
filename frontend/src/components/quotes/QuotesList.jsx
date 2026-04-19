@@ -52,6 +52,19 @@ const tokenStyle = `
   .ql-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-feature-settings: "tnum"; }
   .ql-label { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-3); font-weight:500; }
 
+  /* Responsive : mobile (≤ 768px) */
+  @media (max-width: 768px) {
+    .ql-cover { padding: 24px 16px !important; }
+    .ql-cover h1 { font-size: 32px !important; line-height: 1.1 !important; }
+    .ql-hero-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    .ql-hero-cell { border-right: none !important; border-bottom: 1px solid var(--line-2) !important; padding: 14px !important; }
+    .ql-toolbar { padding: 12px 14px !important; flex-direction: column !important; align-items: stretch !important; }
+    .ql-tab { font-size: 11px !important; padding: 6px 10px !important; }
+    .ql-search-box { width: 100% !important; }
+    .ql-table-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+    .ql-bulk-bar { left: 8px !important; right: 8px !important; transform: none !important; min-width: 0 !important; flex-wrap: wrap !important; font-size: 11px !important; }
+  }
+
   .ql-cover {
     background: var(--ink); color: var(--bg);
     padding: 48px 48px 40px; position: relative; overflow: hidden;
@@ -413,7 +426,7 @@ export default function QuotesList() {
 
       {/* Hero 4 chiffres */}
       <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--line)' }}>
-        <div style={{ display: 'flex', alignItems: 'stretch', maxWidth: '100%' }}>
+        <div className="ql-hero-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', alignItems: 'stretch' }}>
           {[
             { Icon: Euro,        label: 'CA en attente',      value: fmtAmount(stats.caAttente),  sub: 'devis envoyés non signés', accent: 'var(--accent)' },
             { Icon: BarChart3,   label: 'Devis sur 30 jours', value: stats.total30,               sub: 'nouveaux dossiers',        accent: 'var(--warm)' },
@@ -433,7 +446,7 @@ export default function QuotesList() {
       </div>
 
       {/* Toolbar */}
-      <div style={{ padding: '16px 24px', background: 'var(--surface)', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+      <div className="ql-toolbar" style={{ padding: '16px 24px', background: 'var(--surface)', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: 4, flex: 1, flexWrap: 'wrap' }}>
           {TABS.map(t => (
             <button
@@ -494,7 +507,7 @@ export default function QuotesList() {
             </p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div className="ql-table-wrap" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800 }}>
               <thead>
                 <tr>

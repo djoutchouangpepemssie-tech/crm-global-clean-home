@@ -107,7 +107,13 @@ export default function Sidebar() {
   const { prefs, updateTheme } = useTheme();
   const isDark = prefs.theme === 'dark';
 
-  const [collapsed, setCollapsed] = useState(false);
+  // Sur mobile, la sidebar démarre masquée et s'ouvre via bouton hamburger
+  const [collapsed, setCollapsed] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
+  // Ferme automatiquement la sidebar mobile à chaque navigation
+  useEffect(() => { if (isMobile) setMobileOpen(false); }, [location.pathname, isMobile]);
   const [openGroups, setOpenGroups] = useState(() =>
     Object.fromEntries(NAV_GROUPS.map((g) => [g.label, g.defaultOpen]))
   );
@@ -147,21 +153,45 @@ export default function Sidebar() {
   const initials = user?.name?.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() || 'U';
 
   return (
+    <>
+      {/* Bouton hamburger mobile — toujours accessible, position fixe top-left */}
+      {isMobile && (
+        <>
+          <button
+            onClick={() => setMobileOpen(o => !o)}
+            aria-label="Menu"
+            style={{
+              position: 'fixed', top: 10, left: 10, zIndex: 60,
+              width: 40, height: 40, borderRadius: 10, border: 'none',
+              background: C.bg, color: C.text, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            }}>
+            <span style={{ fontSize: 18, lineHeight: 1 }}>{mobileOpen ? '×' : '☰'}</span>
+          </button>
+          {mobileOpen && (
+            <div onClick={() => setMobileOpen(false)} style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 50,
+            }} />
+          )}
+        </>
+      )}
     <aside style={{
-      width: collapsed ? '64px' : '240px',
-      minWidth: collapsed ? '64px' : '240px',
+      width: isMobile ? (mobileOpen ? '260px' : '0px') : (collapsed ? '64px' : '240px'),
+      minWidth: isMobile ? (mobileOpen ? '260px' : '0px') : (collapsed ? '64px' : '240px'),
       background: C.bg,
       borderRight: `1px solid ${C.border}`,
       display: 'flex',
       flexDirection: 'column',
       height: '100vh',
-      position: 'sticky',
+      position: isMobile ? 'fixed' : 'sticky',
       top: 0,
+      left: 0,
       transition: 'width 0.25s cubic-bezier(0.4,0,0.2,1), min-width 0.25s cubic-bezier(0.4,0,0.2,1)',
       overflow: 'hidden',
-      zIndex: 40,
+      zIndex: 55,
       fontFamily: 'var(--font-body)',
-    }}>
+    }} onClick={isMobile ? () => { /* ferme au clic sur un lien */ } : undefined}>
 
       {/* Logo + Collapse */}
       <div style={{
@@ -502,6 +532,7 @@ export default function Sidebar() {
         )}
       </div>
     </aside>
+    </>
   );
 }
 // Atelier direction - Sidebar

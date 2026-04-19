@@ -241,10 +241,10 @@ const InvoicesList = () => {
 
   return (
     <div className="min-h-screen bg-[#faf7f2]">
-      <div className="px-14 pt-10 pb-32 max-w-[1640px] mx-auto">
+      <div className="px-4 md:px-14 pt-6 md:pt-10 pb-32 max-w-[1640px] mx-auto">
 
         {/* COVER */}
-        <div className="grid grid-cols-[1fr_auto] gap-12 items-end pb-8 border-b border-neutral-300 mb-10">
+        <div className="flex flex-col md:grid md:grid-cols-[1fr_auto] gap-4 md:gap-12 items-start md:items-end pb-6 md:pb-8 border-b border-neutral-300 mb-6 md:mb-10">
           <div>
             <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-neutral-500 mb-4 flex items-center gap-6">
               <span>Atelier · ERP</span>
@@ -253,7 +253,7 @@ const InvoicesList = () => {
               <span className="w-8 h-px bg-neutral-300" />
               <span>Édition {new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</span>
             </div>
-            <h1 className="font-display font-light text-[84px] leading-[0.92] tracking-[-0.02em] m-0 mb-4 text-neutral-900">
+            <h1 className="font-display font-light text-[40px] md:text-[84px] leading-[0.95] md:leading-[0.92] tracking-[-0.02em] m-0 mb-4 text-neutral-900">
               Le registre<br/>des <em className="italic font-normal text-terracotta-800">factures</em>
             </h1>
             <p className="font-display italic text-[22px] text-neutral-700 font-light max-w-[640px]">
@@ -268,7 +268,7 @@ const InvoicesList = () => {
         </div>
 
         {/* BARRE ACTIONS PRIMAIRES */}
-        <div className="flex items-center gap-4 py-5 px-6 bg-[#f5ede0] border border-neutral-300 border-l-[3px] border-l-neutral-900 mb-10">
+        <div className="flex flex-wrap items-center gap-3 md:gap-4 py-4 md:py-5 px-4 md:px-6 bg-[#f5ede0] border border-neutral-300 border-l-[3px] border-l-neutral-900 mb-6 md:mb-10">
           <button onClick={() => navigate('/invoices/new')}
             className="inline-flex items-center gap-3 px-6 py-4 bg-neutral-900 text-[#faf7f2] border-0 cursor-pointer font-mono text-[13px] tracking-[0.12em] uppercase font-medium rounded-sm hover:bg-brand-900 transition-colors">
             <span className="font-display text-lg leading-none">+</span>
@@ -301,13 +301,13 @@ const InvoicesList = () => {
         </div>
 
         {/* HERO 4 CHIFFRES */}
-        <div className="grid grid-cols-[1.4fr_1fr_1fr_1fr] border-t border-b border-neutral-300 mb-10">
+        <div className="grid grid-cols-2 md:grid-cols-[1.4fr_1fr_1fr_1fr] border-t border-b border-neutral-300 mb-6 md:mb-10">
           <div className="px-7 py-8 border-r border-neutral-300">
             <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-neutral-500 mb-4 flex items-center gap-2">
               <span className="font-display italic text-[13px] text-terracotta-800 font-medium normal-case tracking-normal">i.</span>
               <span>CA facturé · {new Date().toLocaleDateString('fr-FR', { month: 'long' })}</span>
             </div>
-            <div className="font-display font-light text-[84px] leading-[0.95] tracking-[-0.02em] text-neutral-900 tabular-nums">
+            <div className="font-display font-light text-[40px] md:text-[84px] leading-[0.95] tracking-[-0.02em] text-neutral-900 tabular-nums">
               {fmtK(stats.caBilled)}<span className="text-[22px] text-neutral-500 font-normal italic ml-1">k€</span>
             </div>
             <div className="mt-4 font-mono text-[11px] text-neutral-500 flex items-center gap-2">
@@ -388,7 +388,7 @@ const InvoicesList = () => {
         )}
 
         {/* RUBAN ANNOTATIONS */}
-        <div className="grid grid-cols-4 py-5 border-t border-b border-neutral-300 mb-10">
+        <div className="grid grid-cols-2 md:grid-cols-4 py-5 border-t border-b border-neutral-300 mb-6 md:mb-10">
           <div className="px-7 border-r border-dashed border-neutral-300 flex flex-col gap-1.5">
             <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-neutral-500">Taux de recouvrement</span>
             <span className="font-display text-[22px] font-medium text-neutral-900 tabular-nums flex items-baseline gap-1.5">{stats.recoveryRate}<em className="text-xs text-neutral-500 italic font-normal">%</em></span>
@@ -441,7 +441,8 @@ const InvoicesList = () => {
         </div>
 
         {/* TABLE */}
-        <table className="w-full border-collapse mt-0">
+        <div className="overflow-x-auto -mx-4 md:mx-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <table className="w-full border-collapse mt-0 min-w-[920px]">
           <thead>
             <tr>
               <th className="w-8 py-4 px-3" />
@@ -558,6 +559,7 @@ const InvoicesList = () => {
             })}
           </tbody>
         </table>
+        </div>
 
         {/* FOOTER NOTE */}
         <div className="mt-12 pt-6 border-t border-dashed border-neutral-300 flex justify-between font-mono text-[10px] tracking-[0.1em] uppercase text-neutral-500">

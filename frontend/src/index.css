@@ -3,6 +3,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ══════ Responsive global — évite le scroll horizontal indésirable
+   sur mobile. Tous les composants qui veulent scroller horizontalement
+   doivent avoir overflow-x:auto sur un wrapper interne. ══════ */
+html, body { overflow-x: hidden; max-width: 100vw; }
+* { -webkit-tap-highlight-color: transparent; }
+
+/* Inputs / buttons : pas de zoom forcé sur iOS (taille min 16px) */
+@media (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important; /* empêche le zoom auto Safari iOS */
+  }
+}
+
 /* ══════════════════════════════════════════════════════════════
    ATELIER DIRECTION — v2.0
    Global Clean Home CRM
