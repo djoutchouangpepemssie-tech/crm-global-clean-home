@@ -224,7 +224,17 @@ function PayslipsTab(){
   const [sending,setSending]=useState(null);
   const [saving,setSaving]=useState(false);
   const now=new Date();
-  const [form,setForm]=useState({employee_id:'',period_month:now.getMonth()+1,period_year:now.getFullYear(),salary_brut_override:'',notes:''});
+  const [form,setForm]=useState({
+    employee_id:'',
+    period_month:now.getMonth()+1,
+    period_year:now.getFullYear(),
+    salary_brut_override:'',
+    prime:'',
+    heures_sup:'',
+    heures_sup_taux:'25',
+    absences:'',
+    notes:'',
+  });
 
   const load=useCallback(async()=>{
     setLoading(true);
@@ -264,19 +274,39 @@ function PayslipsTab(){
     return{brut,retraite,vieillP,vieillD,csgD,csgND,crds,prev,totalCotis,netAvant,pas,net,totalPat,coutTotal:brut+totalPat};
   };
 
-  const brutVal=parseFloat(form.salary_brut_override)||0;
+  const selectedEmp=employees.find(e=>e.employee_id===form.employee_id);
+  const baseBrut=parseFloat(form.salary_brut_override)||selectedEmp?.base_salary||0;
+  const taux=parseFloat(form.heures_sup_taux||25)/100;
+  const tauxHoraire=baseBrut/151.67; // 35h/sem
+  const heuresSupMontant=(parseFloat(form.heures_sup)||0)*tauxHoraire*(1+taux);
+  const absencesMontant=(parseFloat(form.absences)||0)*tauxHoraire*7; // 7h/jour
+  const primeMontant=parseFloat(form.prime)||0;
+  const brutVal=Math.max(0, baseBrut+heuresSupMontant+primeMontant-absencesMontant);
   const prevData=brutVal>0?calcPreview(brutVal):null;
 
   const handleCreate=async()=>{
     if(!form.employee_id)return toast.error('Sélectionnez un intervenant');
+    if(brutVal<=0)return toast.error('Le salaire brut calculé doit être supérieur à 0');
     setSaving(true);
     try{
-      const payload={employee_id:form.employee_id,period_month:parseInt(form.period_month),period_year:parseInt(form.period_year),notes:form.notes};
-      if(form.salary_brut_override)payload.salary_brut_override=parseFloat(form.salary_brut_override);
+      const notesComplet=[
+        form.notes,
+        primeMontant>0?`Prime : ${fmt(primeMontant)}`:null,
+        heuresSupMontant>0?`Heures supplémentaires : ${form.heures_sup}h à +${form.heures_sup_taux}% = ${fmt(heuresSupMontant)}`:null,
+        absencesMontant>0?`Absences : ${form.absences}j = -${fmt(absencesMontant)}`:null,
+      ].filter(Boolean).join('\n');
+
+      const payload={
+        employee_id:form.employee_id,
+        period_month:parseInt(form.period_month),
+        period_year:parseInt(form.period_year),
+        notes:notesComplet,
+        salary_brut_override:brutVal,
+      };
       await axios.post(`${API}/payslips`,payload,{withCredentials:true});
       toast.success('Fiche de paie créée !');
       setModal(false);
-      setForm({employee_id:'',period_month:now.getMonth()+1,period_year:now.getFullYear(),salary_brut_override:'',notes:''});
+      setForm({employee_id:'',period_month:now.getMonth()+1,period_year:now.getFullYear(),salary_brut_override:'',prime:'',heures_sup:'',heures_sup_taux:'25',absences:'',notes:''});
       load();
     }catch(e){toast.error(e.response?.data?.detail||'Erreur');}
     setSaving(false);
@@ -366,80 +396,361 @@ function PayslipsTab(){
       }
 
       {modal&&(
-        <Modal title="Nouvelle fiche de paie" onClose={()=>setModal(false)} wide>
-          <Section title="Intervenant & Période">
-            <F label="Intervenant" required>
-              <Sel value={form.employee_id} onChange={v=>setForm(p=>({...p,employee_id:v}))} options={[{value:'',label:'-- Sélectionner un intervenant --'},...employees.map(e=>({value:e.employee_id,label:`${e.full_name} — ${e.function||''}${e.base_salary?` (${fmt(e.base_salary)}/mois)`:''}`}))]}/>
-            </F>
-            <Grid cols={3}>
-              <F label="Mois">
-                <Sel value={form.period_month} onChange={v=>setForm(p=>({...p,period_month:v}))} options={MONTHS.map((m,i)=>({value:i+1,label:m}))}/>
-              </F>
-              <F label="Année"><Inp value={form.period_year} onChange={v=>setForm(p=>({...p,period_year:v}))} type="number" min="2020"/></F>
-              <F label="Salaire brut (€) — optionnel"><Inp value={form.salary_brut_override} onChange={v=>setForm(p=>({...p,salary_brut_override:v}))} type="number" min="0" step="0.01" placeholder="Auto depuis contrat"/></F>
-            </Grid>
-          </Section>
+        <Modal title="✍️ Nouvelle fiche de paie" onClose={()=>setModal(false)} wide>
+          <style>{`
+            .psl-hero {
+              background: linear-gradient(135deg, oklch(0.22 0.018 60) 0%, oklch(0.30 0.03 60) 100%);
+              color: oklch(0.95 0.01 80);
+              border-radius: 14px; padding: 22px 26px; margin-bottom: 20px;
+              position: relative; overflow: hidden;
+            }
+            .psl-hero::before {
+              content: ''; position: absolute; top: -30px; right: -30px;
+              width: 200px; height: 200px; border-radius: 999px;
+              background: radial-gradient(circle, oklch(0.72 0.13 85 / 0.2) 0%, transparent 70%);
+            }
+            .psl-step-label {
+              font-family: 'JetBrains Mono', monospace; font-size: 10px;
+              letter-spacing: 0.14em; text-transform: uppercase;
+              color: oklch(0.52 0.010 60); font-weight: 500;
+              margin-bottom: 8px;
+            }
+            .psl-section {
+              background: oklch(0.985 0.008 85);
+              border: 1px solid oklch(0.85 0.012 75);
+              border-radius: 12px; padding: 18px 20px; margin-bottom: 16px;
+            }
+            .psl-section-title {
+              display: flex; align-items: center; gap: 10px;
+              font-family: 'Fraunces', serif; font-size: 17px;
+              font-weight: 500; color: oklch(0.165 0.012 60);
+              margin-bottom: 14px; letter-spacing: -0.01em;
+            }
+            .psl-section-num {
+              width: 26px; height: 26px; border-radius: 999px;
+              background: oklch(0.22 0.018 60); color: oklch(0.72 0.13 85);
+              display: flex; align-items: center; justify-content: center;
+              font-family: 'Fraunces', serif; font-size: 13px; font-weight: 500;
+              flex-shrink: 0;
+            }
+            .psl-emp-grid {
+              display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+              gap: 10px; max-height: 240px; overflow-y: auto;
+              padding: 4px;
+            }
+            .psl-emp-card {
+              border: 1.5px solid oklch(0.85 0.012 75);
+              background: white; border-radius: 10px;
+              padding: 12px 14px; cursor: pointer;
+              transition: all .15s;
+              display: flex; gap: 10px; align-items: center;
+            }
+            .psl-emp-card:hover { border-color: oklch(0.52 0.13 165); transform: translateY(-1px); }
+            .psl-emp-card.selected {
+              border-color: oklch(0.22 0.018 60); background: oklch(0.93 0.05 165);
+              box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            }
+            .psl-emp-avatar {
+              width: 38px; height: 38px; border-radius: 999px;
+              background: linear-gradient(135deg, oklch(0.93 0.05 165), oklch(0.85 0.08 165));
+              color: oklch(0.22 0.07 160);
+              display: flex; align-items: center; justify-content: center;
+              font-family: 'Fraunces', serif; font-size: 15px; font-weight: 500;
+              flex-shrink: 0;
+            }
+            .psl-input {
+              width: 100%; padding: 10px 14px; border-radius: 8px;
+              border: 1.5px solid oklch(0.85 0.012 75); background: white;
+              font-family: 'JetBrains Mono', monospace; font-size: 13px;
+              color: oklch(0.165 0.012 60); outline: none;
+              transition: border-color .15s;
+            }
+            .psl-input:focus { border-color: oklch(0.52 0.13 165); }
+            .psl-kpi-big {
+              background: linear-gradient(135deg, oklch(0.52 0.13 165) 0%, oklch(0.38 0.14 160) 100%);
+              color: white; border-radius: 14px; padding: 22px 26px;
+              text-align: center;
+            }
+            .psl-preview-table {
+              width: 100%; border-collapse: collapse;
+              background: white; border-radius: 10px; overflow: hidden;
+              border: 1px solid oklch(0.85 0.012 75);
+            }
+            .psl-preview-table thead { background: oklch(0.22 0.018 60); color: white; }
+            .psl-preview-table thead th {
+              padding: 10px 12px; text-align: left;
+              font-family: 'JetBrains Mono', monospace; font-size: 10px;
+              letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500;
+            }
+            .psl-preview-table thead th.right { text-align: right; }
+            .psl-preview-table tbody tr { border-top: 1px solid oklch(0.92 0.010 78); }
+            .psl-preview-table tbody td { padding: 8px 12px; font-size: 12px; }
+          `}</style>
 
-          {prevData&&(
-            <Section title="Prévisualisation des calculs — Taux URSSAF 2024">
-              <div style={{background:'var(--bg-muted)',borderRadius:'var(--radius-md)',padding:'16px',fontSize:'12px'}}>
-                <table style={{width:'100%',borderCollapse:'collapse'}}>
-                  <thead>
-                    <tr style={{background:'#1e3a5f',color:'white'}}>
-                      <th style={{padding:'8px 10px',textAlign:'left',fontSize:'11px'}}>Rubrique</th>
-                      <th style={{padding:'8px 10px',textAlign:'right',fontSize:'11px'}}>Taux</th>
-                      <th style={{padding:'8px 10px',textAlign:'right',fontSize:'11px'}}>Salarié</th>
-                      <th style={{padding:'8px 10px',textAlign:'right',fontSize:'11px'}}>Patronal</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      ['Retraite complémentaire AGIRC-ARRCO','3,15%',prevData.retraite,'4,86%'],
-                      ['Assurance vieillesse (plafonnée)','6,90%',prevData.vieillP,'8,45%'],
-                      ['Assurance vieillesse (déplafonnée)','0,40%',prevData.vieillD,'1,90%'],
-                      ['Maladie-Maternité','—','0,00 €','13,00%'],
-                      ['Allocations familiales','—','0,00 €','5,25%'],
-                      ['Accidents du travail','—','0,00 €','2,30%'],
-                      ['Assurance chômage','—','0,00 €','4,05%'],
-                      ['Prévoyance','0,70%',prevData.prev,'—'],
-                      ['CSG déductible','6,80%',prevData.csgD,'—'],
-                      ['CSG non déductible','2,40%',prevData.csgND,'—'],
-                      ['CRDS','0,50%',prevData.crds,'—'],
-                    ].map(([name,rate,sal,pat],i)=>(
-                      <tr key={i} style={{background:i%2===0?'white':'var(--bg-muted)'}}>
-                        <td style={{padding:'6px 10px',fontSize:'11px',color:'var(--text-secondary)'}}>{name}</td>
-                        <td style={{padding:'6px 10px',fontSize:'11px',textAlign:'right',color:'var(--text-muted)'}}>{rate}</td>
-                        <td style={{padding:'6px 10px',fontSize:'11px',textAlign:'right',color:'#c2410c'}}>{typeof sal==='number'?`- ${fmt(sal)}`:sal}</td>
-                        <td style={{padding:'6px 10px',fontSize:'11px',textAlign:'right',color:'var(--text-muted)'}}>{pat}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <div style={{marginTop:'12px',display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'8px'}}>
-                  {[
-                    ['Salaire brut',fmt(prevData.brut),'var(--text-primary)'],
-                    ['Total cotisations',`- ${fmt(prevData.totalCotis)}`,'#c2410c'],
-                    ['Net avant PAS',fmt(prevData.netAvant),'var(--text-secondary)'],
-                    ['Prélèvement source (11%)',`- ${fmt(prevData.pas)}`,'#f59e0b'],
-                    ['NET À PAYER',fmt(prevData.net),'var(--brand)'],
-                    ['Coût total employeur',fmt(prevData.coutTotal),'var(--text-muted)'],
-                  ].map(([k,v,c])=>(
-                    <div key={k} style={{background:'var(--bg-card)',borderRadius:'8px',padding:'10px 12px',border:'1px solid var(--border-default)'}}>
-                      <p style={{fontSize:'10px',color:'var(--text-muted)',margin:'0 0 3px',textTransform:'uppercase',letterSpacing:'0.05em'}}>{k}</p>
-                      <p style={{fontSize:'15px',fontWeight:700,color:c,margin:0,fontFamily:'var(--font-display)'}}>{v}</p>
+          {/* Hero : résumé en live */}
+          <div className="psl-hero">
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:14,position:'relative'}}>
+              <div>
+                <div style={{fontFamily:'JetBrains Mono, monospace',fontSize:10,letterSpacing:'0.14em',textTransform:'uppercase',color:'oklch(0.78 0.04 85)',marginBottom:8}}>
+                  {selectedEmp?`${selectedEmp.full_name} · ${MONTHS[form.period_month-1]} ${form.period_year}`:'Sélectionnez un intervenant'}
+                </div>
+                <div style={{fontFamily:'Fraunces, serif',fontSize:44,fontWeight:300,lineHeight:1,color:'oklch(0.72 0.13 85)',letterSpacing:'-0.02em'}}>
+                  {prevData?fmt(prevData.net):'0,00 €'}
+                  <span style={{fontSize:18,color:'oklch(0.85 0.05 85)',fontStyle:'italic',marginLeft:8}}>net à payer</span>
+                </div>
+                {prevData&&(
+                  <div style={{marginTop:8,display:'flex',gap:18,fontFamily:'JetBrains Mono, monospace',fontSize:11,color:'oklch(0.78 0.04 85)',letterSpacing:'0.06em'}}>
+                    <span>Brut {fmt(prevData.brut)}</span>
+                    <span>Cotisations -{fmt(prevData.totalCotis)}</span>
+                    <span>PAS -{fmt(prevData.pas)}</span>
+                  </div>
+                )}
+              </div>
+              {prevData&&(
+                <div style={{textAlign:'right'}}>
+                  <div style={{fontFamily:'JetBrains Mono, monospace',fontSize:10,letterSpacing:'0.14em',textTransform:'uppercase',color:'oklch(0.78 0.04 85)',marginBottom:4}}>
+                    Coût employeur
+                  </div>
+                  <div style={{fontFamily:'Fraunces, serif',fontSize:22,fontWeight:400,color:'oklch(0.95 0.01 80)'}}>
+                    {fmt(prevData.coutTotal)}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── 1 · INTERVENANT ── */}
+          <div className="psl-section">
+            <div className="psl-section-title">
+              <span className="psl-section-num">1</span>
+              Intervenant
+            </div>
+            {employees.length===0?(
+              <p style={{color:'var(--text-muted)',fontStyle:'italic',padding:16,textAlign:'center'}}>
+                Aucun intervenant enregistré. Ajoutez-en un dans l'onglet <strong>Salariés</strong>.
+              </p>
+            ):(
+              <div className="psl-emp-grid">
+                {employees.map(e=>{
+                  const init=(e.full_name||'?').split(' ').slice(0,2).map(w=>w[0]?.toUpperCase()||'').join('');
+                  const sel=form.employee_id===e.employee_id;
+                  return (
+                    <div key={e.employee_id}
+                      className={`psl-emp-card ${sel?'selected':''}`}
+                      onClick={()=>setForm(p=>({...p,employee_id:e.employee_id}))}
+                    >
+                      <div className="psl-emp-avatar">{init}</div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontFamily:'Fraunces, serif',fontSize:14,fontWeight:500,color:'oklch(0.165 0.012 60)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                          {e.full_name}
+                        </div>
+                        <div style={{fontFamily:'JetBrains Mono, monospace',fontSize:10,color:'oklch(0.52 0.010 60)',letterSpacing:'0.04em',marginTop:2}}>
+                          {e.function||'Intervenant'} {e.base_salary?`· ${fmt(e.base_salary)}`:''}
+                        </div>
+                      </div>
                     </div>
-                  ))}
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* ── 2 · PÉRIODE ── */}
+          <div className="psl-section">
+            <div className="psl-section-title">
+              <span className="psl-section-num">2</span>
+              Période de paie
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+              <div>
+                <div className="psl-step-label">Mois</div>
+                <select className="psl-input" value={form.period_month} onChange={e=>setForm(p=>({...p,period_month:e.target.value}))}>
+                  {MONTHS.map((m,i)=><option key={i} value={i+1}>{m}</option>)}
+                </select>
+              </div>
+              <div>
+                <div className="psl-step-label">Année</div>
+                <input className="psl-input" type="number" min="2020" value={form.period_year} onChange={e=>setForm(p=>({...p,period_year:e.target.value}))}/>
+              </div>
+            </div>
+          </div>
+
+          {/* ── 3 · ÉLÉMENTS DE PAIE ── */}
+          <div className="psl-section">
+            <div className="psl-section-title">
+              <span className="psl-section-num">3</span>
+              Éléments de paie
+            </div>
+
+            <div style={{display:'grid',gridTemplateColumns:'1fr',gap:14}}>
+              <div>
+                <div className="psl-step-label">Salaire de base (€)</div>
+                <input className="psl-input" type="number" min="0" step="0.01"
+                  placeholder={selectedEmp?.base_salary?`Par défaut : ${fmt(selectedEmp.base_salary)}`:'Ex : 1800'}
+                  value={form.salary_brut_override}
+                  onChange={e=>setForm(p=>({...p,salary_brut_override:e.target.value}))}
+                />
+                <div style={{fontSize:10,color:'oklch(0.52 0.010 60)',marginTop:4,fontStyle:'italic',fontFamily:'Fraunces, serif'}}>
+                  {selectedEmp?.base_salary?`Laisser vide pour utiliser le salaire du contrat (${fmt(selectedEmp.base_salary)}).`:'Montant brut mensuel avant ajouts/déductions.'}
                 </div>
               </div>
-            </Section>
+
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                <div>
+                  <div className="psl-step-label">+ Prime (€)</div>
+                  <input className="psl-input" type="number" min="0" step="0.01"
+                    placeholder="Ex : 150"
+                    value={form.prime}
+                    onChange={e=>setForm(p=>({...p,prime:e.target.value}))}
+                  />
+                </div>
+                <div>
+                  <div className="psl-step-label">− Absences (jours)</div>
+                  <input className="psl-input" type="number" min="0" step="0.5"
+                    placeholder="Ex : 2"
+                    value={form.absences}
+                    onChange={e=>setForm(p=>({...p,absences:e.target.value}))}
+                  />
+                </div>
+              </div>
+
+              <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:10}}>
+                <div>
+                  <div className="psl-step-label">+ Heures supplémentaires</div>
+                  <input className="psl-input" type="number" min="0" step="0.5"
+                    placeholder="Nombre d'heures (Ex : 8)"
+                    value={form.heures_sup}
+                    onChange={e=>setForm(p=>({...p,heures_sup:e.target.value}))}
+                  />
+                </div>
+                <div>
+                  <div className="psl-step-label">Majoration (%)</div>
+                  <select className="psl-input" value={form.heures_sup_taux} onChange={e=>setForm(p=>({...p,heures_sup_taux:e.target.value}))}>
+                    <option value="25">+25% (8 premières)</option>
+                    <option value="50">+50% (au-delà)</option>
+                    <option value="100">+100% (dim./férié)</option>
+                  </select>
+                </div>
+              </div>
+
+              {(heuresSupMontant>0||absencesMontant>0||primeMontant>0)&&(
+                <div style={{
+                  background:'oklch(0.93 0.05 165)',border:'1px dashed oklch(0.52 0.13 165)',
+                  borderRadius:10,padding:'14px 16px',marginTop:4,
+                }}>
+                  <div className="psl-step-label" style={{color:'oklch(0.38 0.14 160)',marginBottom:6}}>Brut calculé</div>
+                  <div style={{display:'flex',flexDirection:'column',gap:3,fontSize:12,fontFamily:'JetBrains Mono, monospace',color:'oklch(0.165 0.012 60)'}}>
+                    <div style={{display:'flex',justifyContent:'space-between'}}>
+                      <span>Base</span><span>{fmt(baseBrut)}</span>
+                    </div>
+                    {primeMontant>0&&(
+                      <div style={{display:'flex',justifyContent:'space-between',color:'oklch(0.52 0.13 165)'}}>
+                        <span>+ Prime</span><span>+{fmt(primeMontant)}</span>
+                      </div>
+                    )}
+                    {heuresSupMontant>0&&(
+                      <div style={{display:'flex',justifyContent:'space-between',color:'oklch(0.52 0.13 165)'}}>
+                        <span>+ Heures sup. ({form.heures_sup}h × {fmt(tauxHoraire)}/h × 1,{form.heures_sup_taux})</span><span>+{fmt(heuresSupMontant)}</span>
+                      </div>
+                    )}
+                    {absencesMontant>0&&(
+                      <div style={{display:'flex',justifyContent:'space-between',color:'oklch(0.55 0.18 25)'}}>
+                        <span>− Absences ({form.absences}j)</span><span>-{fmt(absencesMontant)}</span>
+                      </div>
+                    )}
+                    <div style={{
+                      display:'flex',justifyContent:'space-between',paddingTop:6,
+                      borderTop:'1px solid oklch(0.52 0.13 165)',
+                      fontFamily:'Fraunces, serif',fontSize:15,fontWeight:500,
+                    }}>
+                      <span>= Brut total</span><span>{fmt(brutVal)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── 4 · PRÉVISUALISATION URSSAF ── */}
+          {prevData&&(
+            <div className="psl-section">
+              <div className="psl-section-title">
+                <span className="psl-section-num">4</span>
+                Cotisations &amp; prélèvements
+                <span style={{marginLeft:'auto',fontFamily:'JetBrains Mono, monospace',fontSize:9,letterSpacing:'0.08em',color:'oklch(0.52 0.010 60)',fontWeight:400,textTransform:'uppercase'}}>Taux URSSAF 2024</span>
+              </div>
+              <table className="psl-preview-table">
+                <thead>
+                  <tr>
+                    <th>Rubrique</th>
+                    <th className="right">Taux</th>
+                    <th className="right">Salarié</th>
+                    <th className="right">Patronal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ['Retraite complémentaire','3,15%',prevData.retraite,'4,86%'],
+                    ['Vieillesse (plafonnée)','6,90%',prevData.vieillP,'8,45%'],
+                    ['Vieillesse (déplafonnée)','0,40%',prevData.vieillD,'1,90%'],
+                    ['Maladie-Maternité','—','—','13,00%'],
+                    ['Allocations familiales','—','—','5,25%'],
+                    ['Accidents du travail','—','—','2,30%'],
+                    ['Assurance chômage','—','—','4,05%'],
+                    ['Prévoyance','0,70%',prevData.prev,'—'],
+                    ['CSG déductible','6,80%',prevData.csgD,'—'],
+                    ['CSG non déductible','2,40%',prevData.csgND,'—'],
+                    ['CRDS','0,50%',prevData.crds,'—'],
+                  ].map(([name,rate,sal,pat],i)=>(
+                    <tr key={i}>
+                      <td style={{fontFamily:'Fraunces, serif',color:'oklch(0.32 0.012 60)'}}>{name}</td>
+                      <td className="right" style={{fontFamily:'JetBrains Mono, monospace',color:'oklch(0.52 0.010 60)'}}>{rate}</td>
+                      <td className="right" style={{fontFamily:'JetBrains Mono, monospace',color:typeof sal==='number'?'oklch(0.55 0.18 25)':'oklch(0.52 0.010 60)',fontWeight:600}}>
+                        {typeof sal==='number'?`-${fmt(sal)}`:sal}
+                      </td>
+                      <td className="right" style={{fontFamily:'JetBrains Mono, monospace',color:'oklch(0.52 0.010 60)'}}>{pat}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div style={{marginTop:14,display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(130px, 1fr))',gap:8}}>
+                {[
+                  ['Brut',fmt(prevData.brut),'oklch(0.165 0.012 60)'],
+                  ['Cotisations',`-${fmt(prevData.totalCotis)}`,'oklch(0.55 0.18 25)'],
+                  ['Net avant PAS',fmt(prevData.netAvant),'oklch(0.32 0.012 60)'],
+                  ['PAS (11%)',`-${fmt(prevData.pas)}`,'oklch(0.58 0.13 78)'],
+                  ['NET À PAYER',fmt(prevData.net),'oklch(0.52 0.13 165)'],
+                  ['Coût employeur',fmt(prevData.coutTotal),'oklch(0.22 0.018 60)'],
+                ].map(([k,v,c],i)=>(
+                  <div key={i} style={{
+                    background:i===4?'oklch(0.93 0.05 165)':'white',
+                    border:i===4?'1.5px solid oklch(0.52 0.13 165)':'1px solid oklch(0.85 0.012 75)',
+                    borderRadius:10,padding:'12px 14px',
+                  }}>
+                    <div style={{fontSize:9,letterSpacing:'0.1em',textTransform:'uppercase',color:'oklch(0.52 0.010 60)',fontFamily:'JetBrains Mono, monospace',marginBottom:4}}>{k}</div>
+                    <div style={{fontFamily:'Fraunces, serif',fontSize:16,fontWeight:500,color:c}}>{v}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
-          <Section title="Notes">
-            <F label="Observations"><Txt value={form.notes} onChange={v=>setForm(p=>({...p,notes:v}))} placeholder="Notes optionnelles (primes, absences, etc.)"/></F>
-          </Section>
-          <div style={{display:'flex',justifyContent:'flex-end',gap:'8px',paddingTop:'8px',borderTop:'1px solid var(--border-default)'}}>
+          {/* ── 5 · OBSERVATIONS ── */}
+          <div className="psl-section">
+            <div className="psl-section-title">
+              <span className="psl-section-num">5</span>
+              Observations
+            </div>
+            <Txt value={form.notes} onChange={v=>setForm(p=>({...p,notes:v}))} placeholder="Notes libres (contexte, commentaires internes, etc.)" rows={2}/>
+          </div>
+
+          <div style={{display:'flex',justifyContent:'flex-end',gap:10,paddingTop:12,borderTop:'1px solid oklch(0.85 0.012 75)'}}>
             <Btn variant="secondary" onClick={()=>setModal(false)}>Annuler</Btn>
-            <Btn onClick={handleCreate} disabled={saving}><Check size={14}/>{saving?'Création...':'Créer la fiche de paie'}</Btn>
+            <Btn onClick={handleCreate} disabled={saving||!form.employee_id||brutVal<=0}>
+              <Check size={14}/>
+              {saving?'Création en cours…':'Créer la fiche de paie'}
+            </Btn>
           </div>
         </Modal>
       )}

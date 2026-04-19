@@ -90,7 +90,7 @@ const tokenStyle = `
 const STAGES = [
   { key: 'nouveau',       label: 'Nouveau',       color: 'oklch(0.52 0.13 165)' },
   { key: 'contacté',      label: 'Contacté',      color: 'oklch(0.62 0.14 45)'  },
-  { key: 'en_attente',    label: 'Qualifié',      color: 'oklch(0.72 0.13 85)'  },
+  { key: 'qualifié',      label: 'Qualifié',      color: 'oklch(0.72 0.13 85)'  },
   { key: 'devis_envoyé',  label: 'Devis envoyé',  color: 'oklch(0.58 0.14 220)' },
   { key: 'gagné',         label: 'Gagné',         color: 'oklch(0.50 0.15 145)' },
   { key: 'perdu',         label: 'Perdu',         color: 'oklch(0.52 0.010 60)' },
@@ -147,7 +147,7 @@ function RiverCurve() {
 }
 
 /* ─────────────── Card lead individuel ─────────────── */
-function LeadCard({ lead, onClick }) {
+function LeadCard({ lead, onClick, onDragStart, onDragEnd, dragging }) {
   const score = lead.score ?? 50;
   const isHot = score >= 70;
   const city = cityFromAddress(lead.address);
@@ -156,7 +156,14 @@ function LeadCard({ lead, onClick }) {
   const amount = lead.estimated_amount || lead.budget || 0;
 
   return (
-    <div className="pr-card pr-fade" onClick={onClick}>
+    <div
+      className="pr-card pr-fade"
+      onClick={onClick}
+      draggable
+      onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; onDragStart?.(lead); }}
+      onDragEnd={() => onDragEnd?.()}
+      style={dragging ? { opacity: 0.35, transform: 'rotate(-1deg)' } : {}}
+    >
       {/* Ligne 1 : nom + score IA */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -200,12 +207,43 @@ function LeadCard({ lead, onClick }) {
 }
 
 /* ─────────────── Colonne de statut ─────────────── */
-function StageColumn({ stage, leads, onLeadClick }) {
+function StageColumn({ stage, leads, onLeadClick, onDragStart, onDragEnd, draggingLead, onDropLead, dragOver, setDragOver }) {
   const count = leads.length;
   const totalAmount = leads.reduce((s, l) => s + (l.estimated_amount || l.budget || 0), 0);
+  const isHere = dragOver === stage.key;
+  const canDrop = draggingLead && draggingLead.status !== stage.key;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 260 }}>
+    <div
+      style={{
+        display: 'flex', flexDirection: 'column', gap: 14, minWidth: 260,
+        borderRadius: 14,
+        background: isHere && canDrop ? `color-mix(in oklch, ${stage.color} 8%, transparent)` : 'transparent',
+        outline: isHere && canDrop ? `2px dashed ${stage.color}` : '2px dashed transparent',
+        outlineOffset: 4,
+        transition: 'background .15s, outline-color .15s',
+        padding: isHere && canDrop ? 8 : 0,
+      }}
+      onDragOver={(e) => {
+        if (!draggingLead) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (dragOver !== stage.key) setDragOver(stage.key);
+      }}
+      onDragLeave={(e) => {
+        // Ne déclencher que si on quitte VRAIMENT la colonne
+        if (!e.currentTarget.contains(e.relatedTarget)) {
+          if (dragOver === stage.key) setDragOver(null);
+        }
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        if (draggingLead && draggingLead.status !== stage.key) {
+          onDropLead(draggingLead, stage.key);
+        }
+        setDragOver(null);
+      }}
+    >
       {/* Header colonne */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -226,16 +264,25 @@ function StageColumn({ stage, leads, onLeadClick }) {
       </div>
 
       {/* Cards */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minHeight: 40 }}>
         {leads.length === 0 ? (
           <div className="pr-mono" style={{
             padding: 20, textAlign: 'center', color: 'var(--ink-4)', fontSize: 10,
             letterSpacing: '0.1em', border: '1.5px dashed var(--line)', borderRadius: 12,
           }}>
-            AUCUN LEAD
+            {isHere && canDrop ? '↓ LÂCHER ICI' : 'AUCUN LEAD'}
           </div>
         ) : (
-          leads.map(l => <LeadCard key={l.lead_id} lead={l} onClick={() => onLeadClick(l)} />)
+          leads.map(l => (
+            <LeadCard
+              key={l.lead_id}
+              lead={l}
+              onClick={() => onLeadClick(l)}
+              onDragStart={onDragStart}
+              onDragEnd={onDragEnd}
+              dragging={draggingLead?.lead_id === l.lead_id}
+            />
+          ))
         )}
       </div>
 
@@ -306,6 +353,30 @@ export default function PipelineRiver() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [view, setView] = useState('river');  // 'river' | 'table'
+  const [draggingLead, setDraggingLead] = useState(null);
+  const [dragOver, setDragOver] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (msg, tone = 'emerald') => {
+    setToast({ msg, tone });
+    setTimeout(() => setToast(null), 2500);
+  };
+
+  const handleDropLead = useCallback(async (lead, newStatus) => {
+    const prevStatus = lead.status;
+    // Optimistic update
+    setLeads(prev => prev.map(l => l.lead_id === lead.lead_id ? { ...l, status: newStatus } : l));
+    try {
+      await api.patch(`/leads/${lead.lead_id}`, { status: newStatus });
+      const stage = STAGES.find(s => s.key === newStatus);
+      showToast(`✓ ${lead.name || 'Lead'} → ${stage?.label || newStatus}`);
+    } catch (e) {
+      // Rollback
+      setLeads(prev => prev.map(l => l.lead_id === lead.lead_id ? { ...l, status: prevStatus } : l));
+      showToast('✗ Déplacement impossible', 'danger');
+    }
+    setDraggingLead(null);
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -438,12 +509,32 @@ export default function PipelineRiver() {
                 stage={stage}
                 leads={grouped[stage.key] || []}
                 onLeadClick={handleLeadClick}
+                onDragStart={setDraggingLead}
+                onDragEnd={() => { setDraggingLead(null); setDragOver(null); }}
+                draggingLead={draggingLead}
+                onDropLead={handleDropLead}
+                dragOver={dragOver}
+                setDragOver={setDragOver}
               />
             ))}
           </div>
         </div>
       ) : (
         <LeadsTable leads={leads} onRowClick={handleLeadClick} />
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 24, right: 24, zIndex: 100,
+          padding: '12px 18px', borderRadius: 10,
+          background: toast.tone === 'danger' ? 'oklch(0.48 0.15 25)' : 'var(--ink)',
+          color: 'var(--bg)',
+          fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 14,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+        }}>
+          {toast.msg}
+        </div>
       )}
     </div>
   );

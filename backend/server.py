@@ -2508,6 +2508,30 @@ async def get_quotes(
     }
 
 
+@api_router.get("/quotes/{quote_id}")
+async def get_quote(quote_id: str, request: Request):
+    """Récupère un devis avec le lead associé enrichi (pour l'affichage détail)."""
+    await require_auth(request)
+    quote = await db.quotes.find_one(
+        {"quote_id": quote_id, "deleted_at": {"$exists": False}},
+        {"_id": 0}
+    )
+    if not quote:
+        raise HTTPException(status_code=404, detail="Devis introuvable")
+
+    # Enrichit avec les infos du lead (nom, email, adresse)
+    if quote.get("lead_id"):
+        lead = await db.leads.find_one({"lead_id": quote["lead_id"]}, {"_id": 0})
+        if lead:
+            quote["lead_name"] = lead.get("name") or lead.get("full_name")
+            quote["lead_email"] = lead.get("email")
+            quote["lead_phone"] = lead.get("phone")
+            quote["lead_address"] = lead.get("address")
+            quote["lead_city"] = lead.get("city")
+
+    return quote
+
+
 @api_router.delete("/quotes/{quote_id}")
 async def delete_quote(quote_id: str, request: Request):
     """Soft-delete a quote."""

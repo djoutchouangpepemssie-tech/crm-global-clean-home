@@ -18,7 +18,7 @@
  * qui est partiellement stub côté backend).
  */
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useNavigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, Plus, Trash2, Save, User, FileText, Tag, Calculator, Calendar,
   ChevronDown,
@@ -106,8 +106,11 @@ function serializeDetails(client, serviceType, lines, totals, notes, paymentTerm
 export default function InvoiceForm() {
   const navigate = useNavigate();
   const location = useLocation();
+  const params = useParams();
   const [searchParams] = useSearchParams();
   const fromQuoteId = searchParams.get('from_quote');
+  const editInvoiceId = params.id;
+  const isEdit = Boolean(editInvoiceId);
 
   const seedLead = location.state?.lead || null;
 
@@ -135,9 +138,51 @@ export default function InvoiceForm() {
   const createInvoice = useCreateInvoice();
   const { data: allLeads = [] } = useLeadsList({ period: 'all', page: 1, page_size: 200 });
 
+  // Mode édition : charger la facture existante depuis l'API
+  useEffect(() => {
+    if (!isEdit) return;
+    (async () => {
+      try {
+        const { data } = await api.get(`/invoices/${editInvoiceId}`);
+        if (!data) return;
+        setClient({
+          name: data.client_name || data.lead_name || '',
+          email: data.client_email || data.lead_email || '',
+          phone: data.client_phone || data.lead_phone || '',
+          address: data.client_address || data.lead_address || '',
+          lead_id: data.lead_id || '',
+        });
+        if (data.service_type) setServiceType(data.service_type);
+        if (data.surface) setSurface(data.surface);
+        if (data.due_date) setDueDate(data.due_date.slice(0, 10));
+        if (data.tva_rate != null) setTvaRate(data.tva_rate);
+        if (data.notes) setNotes(data.notes);
+        if (data.payment_terms) setPaymentTerms(data.payment_terms);
+        if (Array.isArray(data.line_items) && data.line_items.length > 0) {
+          setLines(data.line_items.map((li, i) => newLine({
+            description: li.description || li.label || '',
+            quantity: li.quantity ?? li.qty ?? 1,
+            unit: li.unit || 'forfait',
+            unit_price: Number(li.unit_price ?? li.price ?? 0),
+            discount_percent: Number(li.discount_percent || 0),
+          })));
+        } else if (data.amount || data.total_ttc) {
+          setLines([
+            newLine({
+              description: `Prestation ${data.service_type || ''}`.trim() || 'Prestation',
+              unit_price: Number(data.amount || data.amount_ttc || data.total_ttc) || 0,
+            }),
+          ]);
+        }
+      } catch {
+        toast.error('Impossible de charger la facture');
+      }
+    })();
+  }, [editInvoiceId, isEdit]);
+
   // Si arrivé via ?from_quote={id}, on pré-remplit depuis le devis
   useEffect(() => {
-    if (!fromQuoteId) return;
+    if (!fromQuoteId || isEdit) return;
     (async () => {
       try {
         const { data } = await api.get(`/quotes/${fromQuoteId}`);
@@ -241,12 +286,21 @@ export default function InvoiceForm() {
     };
 
     try {
-      await createInvoice.mutateAsync(payload);
-      toast.success('Facture créée');
-      if (client.lead_id) navigate(`/leads/${client.lead_id}`);
-      else navigate('/invoices');
-    } catch {
-      /* erreur affichée par useCreateInvoice */
+      if (isEdit) {
+        await api.patch(`/invoices/${editInvoiceId}`, payload);
+        toast.success('Facture mise à jour');
+        navigate('/invoices');
+      } else {
+        await createInvoice.mutateAsync(payload);
+        toast.success('Facture créée');
+        if (client.lead_id) navigate(`/leads/${client.lead_id}`);
+        else navigate('/invoices');
+      }
+    } catch (e) {
+      if (isEdit) {
+        toast.error(`Mise à jour impossible${e?.response?.data?.detail ? ' : ' + e.response.data.detail : ''}`);
+      }
+      /* sinon erreur affichée par useCreateInvoice */
     }
   };
 
@@ -255,7 +309,7 @@ export default function InvoiceForm() {
       <PageHeader
         breadcrumbs={[
           { label: 'Factures', to: '/invoices' },
-          { label: 'Nouvelle facture' },
+          { label: isEdit ? `Modifier ${editInvoiceId}` : 'Nouvelle facture' },
         ]}
         title="Créer une facture"
         subtitle={

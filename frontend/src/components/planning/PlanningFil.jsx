@@ -163,25 +163,32 @@ function MissionBar({ mission, onClick }) {
 }
 
 /* ─────────────── Ligne équipe ─────────────── */
-function TeamRow({ team, now, onMissionClick }) {
+function TeamRow({ team, now, onMissionClick, onTeamClick, onTimelineClick }) {
   const initials = team.initials || team.name?.slice(0, 2).toUpperCase() || '?';
   return (
     <div style={{
       display: 'grid', gridTemplateColumns: '200px 1fr', borderBottom: '1px solid var(--line-2)',
       minHeight: 90, alignItems: 'stretch',
     }}>
-      {/* Colonne équipe */}
-      <div style={{
-        padding: '16px 18px', borderRight: '1px solid var(--line-2)',
-        display: 'flex', alignItems: 'center', gap: 12,
-      }}>
+      {/* Colonne équipe — cliquable pour assigner */}
+      <div
+        onClick={() => onTeamClick?.(team)}
+        style={{
+          padding: '16px 18px', borderRight: '1px solid var(--line-2)',
+          display: 'flex', alignItems: 'center', gap: 12,
+          cursor: 'pointer', transition: 'background .15s',
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--accent-soft)'}
+        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+        title={`Cliquer pour assigner une mission à ${team.name}`}
+      >
         <div style={{
           width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
           background: 'var(--accent-soft)', color: 'var(--accent)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: 'Fraunces, serif', fontSize: 14, fontWeight: 600,
         }}>{initials}</div>
-        <div style={{ minWidth: 0 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <div className="pf-display" style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {team.name}
           </div>
@@ -189,9 +196,31 @@ function TeamRow({ team, now, onMissionClick }) {
             {team.km ? `${team.km} KM · ` : ''}{team.count} MISS.
           </div>
         </div>
+        <div style={{
+          width: 22, height: 22, borderRadius: 999,
+          background: 'var(--accent)', color: 'var(--bg)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          opacity: 0.85,
+        }} title="Assigner une mission">
+          <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1, marginTop: -2 }}>+</span>
+        </div>
       </div>
-      {/* Zone timeline */}
-      <div style={{ position: 'relative' }}>
+      {/* Zone timeline — cliquable pour créer au créneau */}
+      <div
+        style={{ position: 'relative', cursor: 'copy' }}
+        onClick={(e) => {
+          // N'attrape que les clics sur zone vide (pas sur les mission bars)
+          if (e.target.closest('.pf-bar')) return;
+          const rect = e.currentTarget.getBoundingClientRect();
+          const pct = (e.clientX - rect.left) / rect.width;
+          const minutesFromStart = pct * (19 - 7) * 60; // 7h-19h = 12h
+          const totalMin = 7 * 60 + minutesFromStart;
+          const hh = Math.max(7, Math.min(18, Math.floor(totalMin / 60)));
+          const mm = Math.round((totalMin % 60) / 15) * 15; // quart d'heure
+          const time = `${String(hh).padStart(2, '0')}:${String(mm % 60).padStart(2, '0')}`;
+          onTimelineClick?.(team, time);
+        }}
+      >
         {team.missions.map(m => (
           <MissionBar key={m.id} mission={m} onClick={() => onMissionClick?.(m)} />
         ))}
@@ -210,6 +239,9 @@ export default function PlanningFil() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('jour');
+  const [assignOpen, setAssignOpen] = useState(null); // { team, time }
+  const [toast, setToast] = useState(null);
+  const showToast = (m, t = 'ok') => { setToast({ m, t }); setTimeout(() => setToast(null), 2800); };
 
   const reload = () => {
     setLoading(true);
@@ -392,7 +424,13 @@ export default function PlanningFil() {
               ) : (
                 <div style={{ position: 'relative' }}>
                   {teams.map(team => (
-                    <TeamRow key={team.id} team={team} onMissionClick={m => m.lead_id && navigate(`/leads/${m.lead_id}`)} />
+                    <TeamRow
+                      key={team.id}
+                      team={team}
+                      onMissionClick={m => m.lead_id && navigate(`/leads/${m.lead_id}`)}
+                      onTeamClick={(t) => setAssignOpen({ team: t, time: '09:00' })}
+                      onTimelineClick={(t, time) => setAssignOpen({ team: t, time })}
+                    />
                   ))}
                   {/* Overlay pour la ligne « maintenant » — même grid que les rows
                       pour que le % soit calculé sur la colonne timeline (1fr) */}
@@ -449,6 +487,250 @@ export default function PlanningFil() {
           ))}
         </div>
 
+      </div>
+
+      {/* ═══════════ MODALE ASSIGNER / CRÉER MISSION ═══════════ */}
+      {assignOpen && (
+        <PlanningAssignModal
+          team={assignOpen.team}
+          defaultTime={assignOpen.time}
+          defaultDate={date}
+          onClose={() => setAssignOpen(null)}
+          onDone={(msg) => { setAssignOpen(null); showToast(msg, 'ok'); reload(); }}
+          onError={(msg) => showToast(msg, 'err')}
+        />
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 24, right: 24, zIndex: 100,
+          padding: '12px 18px', borderRadius: 10,
+          background: toast.t === 'err' ? 'oklch(0.48 0.15 25)' : 'var(--ink)',
+          color: 'var(--bg)',
+          fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 14,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+        }}>
+          {toast.m}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═════════════ MODALE PLANNING : ASSIGNER / CRÉER MISSION ═════════════ */
+function PlanningAssignModal({ team, defaultTime, defaultDate, onClose, onDone, onError }) {
+  const [leads, setLeads] = useState([]);
+  const [leadSearch, setLeadSearch] = useState('');
+  const [form, setForm] = useState({
+    lead_id: '',
+    title: '',
+    description: '',
+    service_type: '',
+    address: '',
+    scheduled_date: defaultDate,
+    scheduled_time: defaultTime || '09:00',
+    duration_hours: 2,
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api.get('/leads', { params: { page_size: 200, period: 'all' } })
+      .then(r => setLeads(r.data?.items || r.data || []))
+      .catch(() => setLeads([]));
+  }, []);
+
+  const selectedLead = leads.find(l => l.lead_id === form.lead_id);
+  useEffect(() => {
+    if (selectedLead && !form.title) {
+      setForm(p => ({
+        ...p,
+        title: `${selectedLead.service_type || 'Intervention'} — ${selectedLead.name}`,
+        service_type: selectedLead.service_type || '',
+        address: selectedLead.address || '',
+      }));
+    }
+  }, [selectedLead]); // eslint-disable-line
+
+  const filteredLeads = useMemo(() => {
+    if (!leadSearch.trim()) return leads.slice(0, 30);
+    const q = leadSearch.toLowerCase();
+    return leads.filter(l =>
+      (l.name || '').toLowerCase().includes(q) ||
+      (l.email || '').toLowerCase().includes(q) ||
+      (l.address || '').toLowerCase().includes(q)
+    ).slice(0, 30);
+  }, [leads, leadSearch]);
+
+  const handleSubmit = async () => {
+    if (!form.lead_id) return onError('Sélectionnez un client');
+    if (!form.title.trim()) return onError('Ajoutez un titre');
+    setSaving(true);
+    try {
+      const payload = {
+        lead_id: form.lead_id,
+        title: form.title,
+        description: form.description || undefined,
+        service_type: form.service_type || undefined,
+        address: form.address || undefined,
+        scheduled_date: form.scheduled_date,
+        scheduled_time: form.scheduled_time,
+        duration_hours: Number(form.duration_hours) || 2,
+        team_id: team?.id || team?.team_id || undefined,
+      };
+      await api.post('/planning/interventions', payload);
+      onDone(`✓ Mission créée pour ${team.name}`);
+    } catch (e) {
+      onError(e?.response?.data?.detail || 'Création impossible');
+    }
+    setSaving(false);
+  };
+
+  const initials = team.initials || team.name?.slice(0, 2).toUpperCase() || '?';
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 90, padding: 20, backdropFilter: 'blur(2px)',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'var(--surface)', borderRadius: 16,
+          width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+        }}
+      >
+        <div style={{
+          padding: '22px 26px', borderBottom: '1px solid var(--line)',
+          display: 'flex', alignItems: 'center', gap: 14,
+        }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: 999,
+            background: 'var(--accent-soft)', color: 'var(--accent)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: 'Fraunces, serif', fontSize: 18, fontWeight: 500,
+            border: '2px solid var(--accent)',
+          }}>{initials}</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 4 }}>
+              Nouvelle mission
+            </div>
+            <div style={{ fontFamily: 'Fraunces, serif', fontSize: 20, fontWeight: 500, color: 'var(--ink)' }}>
+              pour <em style={{ color: 'var(--accent)' }}>{team.name}</em>
+            </div>
+          </div>
+          <button onClick={onClose} style={{
+            width: 32, height: 32, borderRadius: 999, border: '1px solid var(--line)',
+            background: 'var(--surface)', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'var(--ink-3)', fontSize: 18,
+          }}>×</button>
+        </div>
+
+        <div style={{ padding: '22px 26px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Client */}
+          <div>
+            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 8 }}>Client</div>
+            <input
+              value={leadSearch}
+              onChange={e => setLeadSearch(e.target.value)}
+              placeholder="Rechercher un client…"
+              style={{
+                width: '100%', padding: '9px 14px',
+                border: '1px solid var(--line)', borderRadius: 10, background: 'var(--surface-2)',
+                fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: 'var(--ink)', outline: 'none',
+                marginBottom: 8,
+              }}
+            />
+            <div style={{
+              maxHeight: 180, overflowY: 'auto',
+              border: '1px solid var(--line)', borderRadius: 10,
+              background: 'var(--surface-2)',
+            }}>
+              {filteredLeads.length === 0 ? (
+                <div style={{ padding: 20, textAlign: 'center', fontStyle: 'italic', color: 'var(--ink-3)', fontFamily: 'Fraunces, serif', fontSize: 13 }}>
+                  Aucun client trouvé
+                </div>
+              ) : filteredLeads.map(l => (
+                <div
+                  key={l.lead_id}
+                  onClick={() => setForm(p => ({ ...p, lead_id: l.lead_id }))}
+                  style={{
+                    padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--line-2)',
+                    background: form.lead_id === l.lead_id ? 'var(--accent-soft)' : 'transparent',
+                  }}
+                >
+                  <div style={{ fontFamily: 'Fraunces, serif', fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>
+                    {l.name || 'Sans nom'}
+                  </div>
+                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: 'var(--ink-3)', letterSpacing: '0.04em', marginTop: 2 }}>
+                    {l.address || l.email || l.phone || ''}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 6 }}>Titre</div>
+            <input
+              value={form.title}
+              onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
+              placeholder="Ex : Ménage hebdomadaire"
+              style={{
+                width: '100%', padding: '10px 14px',
+                border: '1px solid var(--line)', borderRadius: 10, background: 'var(--surface-2)',
+                fontFamily: 'Fraunces, serif', fontSize: 14, color: 'var(--ink)', outline: 'none',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr', gap: 10 }}>
+            <div>
+              <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 6 }}>Date</div>
+              <input type="date" value={form.scheduled_date} onChange={e => setForm(p => ({ ...p, scheduled_date: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--line)', borderRadius: 10, background: 'var(--surface-2)', fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: 'var(--ink)', outline: 'none' }} />
+            </div>
+            <div>
+              <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 6 }}>Heure</div>
+              <input type="time" value={form.scheduled_time} onChange={e => setForm(p => ({ ...p, scheduled_time: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--line)', borderRadius: 10, background: 'var(--surface-2)', fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: 'var(--ink)', outline: 'none' }} />
+            </div>
+            <div>
+              <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 6 }}>Durée (h)</div>
+              <input type="number" min="0.5" step="0.5" value={form.duration_hours} onChange={e => setForm(p => ({ ...p, duration_hours: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--line)', borderRadius: 10, background: 'var(--surface-2)', fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: 'var(--ink)', outline: 'none' }} />
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 6 }}>Notes</div>
+            <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} rows={3} placeholder="Instructions, code d'accès, matériel…" style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--line)', borderRadius: 10, background: 'var(--surface-2)', fontFamily: 'Fraunces, serif', fontSize: 13, color: 'var(--ink)', outline: 'none', resize: 'vertical' }} />
+          </div>
+        </div>
+
+        <div style={{
+          padding: '16px 26px', borderTop: '1px solid var(--line)',
+          display: 'flex', justifyContent: 'flex-end', gap: 10,
+        }}>
+          <button onClick={onClose} style={{
+            padding: '10px 18px', borderRadius: 999,
+            border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)',
+            fontFamily: 'JetBrains Mono, monospace', fontSize: 11, letterSpacing: '0.06em',
+            textTransform: 'uppercase', fontWeight: 500, cursor: 'pointer',
+          }}>Annuler</button>
+          <button onClick={handleSubmit} disabled={saving} style={{
+            padding: '10px 20px', borderRadius: 999, border: 'none',
+            background: 'var(--ink)', color: 'var(--bg)',
+            fontFamily: 'JetBrains Mono, monospace', fontSize: 11, letterSpacing: '0.06em',
+            textTransform: 'uppercase', fontWeight: 500,
+            cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1,
+          }}>
+            {saving ? 'Création…' : 'Créer la mission'}
+          </button>
+        </div>
       </div>
     </div>
   );

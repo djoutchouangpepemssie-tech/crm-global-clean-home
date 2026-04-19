@@ -3,13 +3,14 @@
 // disposition en grille avec skills en badges. Palette chaude (émeraude + terre)
 // pour évoquer l'équipe terrain d'une entreprise de ménage.
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAllTeamMembers } from '../../hooks/api';
 import {
   Search, Plus, Phone, Mail, MapPin, Star, Award, Users, Filter,
-  Briefcase, TrendingUp, Clock, Navigation,
+  Briefcase, TrendingUp, Clock, Navigation, X, Calendar, CheckCircle,
 } from 'lucide-react';
+import api from '../../lib/api';
 
 const tokenStyle = `
   .eqp-root {
@@ -107,6 +108,9 @@ export default function IntervenantsEquipage() {
   const { data: members = [], isLoading } = useAllTeamMembers();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
+  const [assignOpen, setAssignOpen] = useState(null); // intervenant en cours d'assignation
+  const [toast, setToast] = useState(null);
+  const showToast = (m, t = 'ok') => { setToast({ m, t }); setTimeout(() => setToast(null), 2800); };
 
   const filtered = useMemo(() => {
     let arr = [...(members || [])];
@@ -258,7 +262,13 @@ export default function IntervenantsEquipage() {
               const zones = m.zones || m.areas || [];
               const rating = m.rating || m.avg_rating;
               return (
-                <div key={m.id || m._id || m.email || i} className="eqp-card">
+                <div
+                  key={m.id || m._id || m.email || i}
+                  className="eqp-card"
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => setAssignOpen({ ...m, _name: name })}
+                  title="Cliquer pour assigner une mission"
+                >
                   <div className="eqp-medal">{initials(name)}</div>
                   <div className="eqp-display" style={{ fontSize: 20, fontWeight: 500, color: 'var(--ink)', marginBottom: 3 }}>
                     {name}
@@ -291,21 +301,336 @@ export default function IntervenantsEquipage() {
 
                   <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
                     {m.phone && (
-                      <a href={`tel:${m.phone}`} className="eqp-contact-btn" title={m.phone}>
+                      <a href={`tel:${m.phone}`} className="eqp-contact-btn" title={m.phone} onClick={e => e.stopPropagation()}>
                         <Phone style={{ width: 13, height: 13 }} />
                       </a>
                     )}
                     {m.email && (
-                      <a href={`mailto:${m.email}`} className="eqp-contact-btn" title={m.email}>
+                      <a href={`mailto:${m.email}`} className="eqp-contact-btn" title={m.email} onClick={e => e.stopPropagation()}>
                         <Mail style={{ width: 13, height: 13 }} />
                       </a>
                     )}
+                    <button
+                      className="eqp-contact-btn"
+                      onClick={e => { e.stopPropagation(); setAssignOpen({ ...m, _name: name }); }}
+                      title="Assigner une mission"
+                      style={{ marginLeft: 'auto', background: 'var(--emerald-soft)', color: 'var(--emerald)', borderColor: 'var(--emerald)' }}
+                    >
+                      <Briefcase style={{ width: 13, height: 13 }} />
+                    </button>
                   </div>
                 </div>
               );
             })}
           </div>
         )}
+      </div>
+
+      {/* ═══════════ MODALE ASSIGNER MISSION ═══════════ */}
+      {assignOpen && (
+        <AssignMissionModal
+          intervenant={assignOpen}
+          onClose={() => setAssignOpen(null)}
+          onDone={(msg) => { setAssignOpen(null); showToast(msg, 'ok'); }}
+          onError={(msg) => showToast(msg, 'err')}
+        />
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 24, right: 24, zIndex: 100,
+          padding: '12px 18px', borderRadius: 10,
+          background: toast.t === 'err' ? 'oklch(0.48 0.15 25)' : 'var(--ink)',
+          color: 'var(--bg)',
+          fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 14,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+        }}>
+          {toast.m}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═════════════ MODALE ASSIGNATION MISSION ═════════════ */
+function AssignMissionModal({ intervenant, onClose, onDone, onError }) {
+  const [leads, setLeads] = useState([]);
+  const [leadSearch, setLeadSearch] = useState('');
+  const [form, setForm] = useState({
+    lead_id: '',
+    title: '',
+    description: '',
+    service_type: '',
+    address: '',
+    scheduled_date: new Date().toISOString().slice(0, 10),
+    scheduled_time: '09:00',
+    duration_hours: 2,
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api.get('/leads', { params: { page_size: 200, period: 'all' } })
+      .then(r => setLeads(r.data?.items || r.data || []))
+      .catch(() => setLeads([]));
+  }, []);
+
+  const selectedLead = leads.find(l => l.lead_id === form.lead_id);
+  useEffect(() => {
+    if (selectedLead && !form.title) {
+      setForm(p => ({
+        ...p,
+        title: `${selectedLead.service_type || 'Intervention'} — ${selectedLead.name}`,
+        service_type: selectedLead.service_type || '',
+        address: selectedLead.address || '',
+      }));
+    }
+  }, [selectedLead]); // eslint-disable-line
+
+  const filteredLeads = useMemo(() => {
+    if (!leadSearch.trim()) return leads.slice(0, 30);
+    const q = leadSearch.toLowerCase();
+    return leads.filter(l =>
+      (l.name || '').toLowerCase().includes(q) ||
+      (l.email || '').toLowerCase().includes(q) ||
+      (l.address || '').toLowerCase().includes(q)
+    ).slice(0, 30);
+  }, [leads, leadSearch]);
+
+  const handleSubmit = async () => {
+    if (!form.lead_id) return onError('Sélectionnez un client');
+    if (!form.title.trim()) return onError('Ajoutez un titre');
+    if (!form.scheduled_date) return onError('Choisissez une date');
+    setSaving(true);
+    try {
+      const payload = {
+        lead_id: form.lead_id,
+        title: form.title,
+        description: form.description || undefined,
+        service_type: form.service_type || undefined,
+        address: form.address || undefined,
+        scheduled_date: form.scheduled_date,
+        scheduled_time: form.scheduled_time,
+        duration_hours: Number(form.duration_hours) || 2,
+        assigned_members: [intervenant.member_id || intervenant.id || intervenant._id || intervenant.email],
+      };
+      if (intervenant.team_id) payload.team_id = intervenant.team_id;
+      await api.post('/planning/interventions', payload);
+      onDone(`✓ Mission assignée à ${intervenant._name}`);
+    } catch (e) {
+      onError(e?.response?.data?.detail || 'Création impossible');
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 90, padding: 20, backdropFilter: 'blur(2px)',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'var(--paper)', borderRadius: 16,
+          width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+        }}
+      >
+        {/* Header */}
+        <div style={{
+          padding: '22px 26px', borderBottom: '1px solid var(--line)',
+          display: 'flex', alignItems: 'center', gap: 14,
+        }}>
+          <div style={{
+            width: 52, height: 52, borderRadius: 999,
+            background: 'linear-gradient(135deg, var(--terra-soft) 0%, var(--warm-soft) 100%)',
+            border: '2px solid var(--terra)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: 'Fraunces, serif', fontSize: 20, fontWeight: 500, color: 'var(--terra)',
+          }}>
+            {initials(intervenant._name)}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div className="eqp-label" style={{ marginBottom: 4 }}>Assigner une mission</div>
+            <div className="eqp-display" style={{ fontSize: 22, fontWeight: 500, color: 'var(--ink)' }}>
+              à <em className="eqp-italic">{intervenant._name}</em>
+            </div>
+          </div>
+          <button onClick={onClose} style={{
+            width: 34, height: 34, borderRadius: 999, border: '1px solid var(--line)',
+            background: 'var(--surface)', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <X style={{ width: 14, height: 14, color: 'var(--ink-3)' }} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '22px 26px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Client */}
+          <div>
+            <div className="eqp-label" style={{ marginBottom: 8 }}>Client</div>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10,
+              padding: '9px 14px', marginBottom: 8,
+            }}>
+              <Search style={{ width: 13, height: 13, color: 'var(--ink-3)' }} />
+              <input
+                value={leadSearch}
+                onChange={e => setLeadSearch(e.target.value)}
+                placeholder="Rechercher un client…"
+                className="eqp-mono"
+                style={{ flex: 1, border: 0, outline: 0, background: 'transparent', fontSize: 12, color: 'var(--ink)' }}
+              />
+            </div>
+            <div style={{
+              maxHeight: 180, overflowY: 'auto',
+              border: '1px solid var(--line)', borderRadius: 10,
+              background: 'var(--surface)',
+            }}>
+              {filteredLeads.length === 0 ? (
+                <div style={{ padding: 20, textAlign: 'center', fontStyle: 'italic', color: 'var(--ink-3)', fontFamily: 'Fraunces, serif', fontSize: 13 }}>
+                  Aucun client trouvé
+                </div>
+              ) : filteredLeads.map(l => (
+                <div
+                  key={l.lead_id}
+                  onClick={() => setForm(p => ({ ...p, lead_id: l.lead_id }))}
+                  style={{
+                    padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--line-2)',
+                    background: form.lead_id === l.lead_id ? 'var(--emerald-soft)' : 'transparent',
+                    transition: 'background .1s',
+                  }}
+                >
+                  <div style={{ fontFamily: 'Fraunces, serif', fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>
+                    {l.name || 'Sans nom'}
+                  </div>
+                  <div className="eqp-mono" style={{ fontSize: 10, color: 'var(--ink-3)', letterSpacing: '0.04em', marginTop: 2 }}>
+                    {l.address || l.email || l.phone || ''}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Titre */}
+          <div>
+            <div className="eqp-label" style={{ marginBottom: 6 }}>Titre de la mission</div>
+            <input
+              value={form.title}
+              onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
+              placeholder="Ex : Ménage appartement 3 pièces"
+              className="eqp-mono"
+              style={{
+                width: '100%', padding: '10px 14px',
+                border: '1px solid var(--line)', borderRadius: 10, background: 'var(--surface)',
+                fontSize: 13, color: 'var(--ink)', outline: 'none',
+                fontFamily: 'Fraunces, serif',
+              }}
+            />
+          </div>
+
+          {/* Date + Heure + Durée */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr', gap: 10 }}>
+            <div>
+              <div className="eqp-label" style={{ marginBottom: 6 }}>
+                <Calendar style={{ width: 11, height: 11, display: 'inline-block', verticalAlign: 'middle', marginRight: 4 }} /> Date
+              </div>
+              <input
+                type="date"
+                value={form.scheduled_date}
+                onChange={e => setForm(p => ({ ...p, scheduled_date: e.target.value }))}
+                className="eqp-mono"
+                style={{
+                  width: '100%', padding: '10px 14px',
+                  border: '1px solid var(--line)', borderRadius: 10, background: 'var(--surface)',
+                  fontSize: 12, color: 'var(--ink)', outline: 'none',
+                }}
+              />
+            </div>
+            <div>
+              <div className="eqp-label" style={{ marginBottom: 6 }}>
+                <Clock style={{ width: 11, height: 11, display: 'inline-block', verticalAlign: 'middle', marginRight: 4 }} /> Heure
+              </div>
+              <input
+                type="time"
+                value={form.scheduled_time}
+                onChange={e => setForm(p => ({ ...p, scheduled_time: e.target.value }))}
+                className="eqp-mono"
+                style={{
+                  width: '100%', padding: '10px 14px',
+                  border: '1px solid var(--line)', borderRadius: 10, background: 'var(--surface)',
+                  fontSize: 12, color: 'var(--ink)', outline: 'none',
+                }}
+              />
+            </div>
+            <div>
+              <div className="eqp-label" style={{ marginBottom: 6 }}>Durée (h)</div>
+              <input
+                type="number"
+                min="0.5"
+                step="0.5"
+                value={form.duration_hours}
+                onChange={e => setForm(p => ({ ...p, duration_hours: e.target.value }))}
+                className="eqp-mono"
+                style={{
+                  width: '100%', padding: '10px 14px',
+                  border: '1px solid var(--line)', borderRadius: 10, background: 'var(--surface)',
+                  fontSize: 12, color: 'var(--ink)', outline: 'none',
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <div className="eqp-label" style={{ marginBottom: 6 }}>Notes (optionnel)</div>
+            <textarea
+              value={form.description}
+              onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+              placeholder="Instructions, matériel nécessaire, code d'accès…"
+              rows={3}
+              style={{
+                width: '100%', padding: '10px 14px',
+                border: '1px solid var(--line)', borderRadius: 10, background: 'var(--surface)',
+                fontSize: 13, color: 'var(--ink)', outline: 'none',
+                fontFamily: 'Fraunces, serif', resize: 'vertical',
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: '16px 26px', borderTop: '1px solid var(--line)',
+          display: 'flex', justifyContent: 'flex-end', gap: 10,
+        }}>
+          <button onClick={onClose} style={{
+            padding: '10px 18px', borderRadius: 999,
+            border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)',
+            fontFamily: 'JetBrains Mono, monospace', fontSize: 11, letterSpacing: '0.06em',
+            textTransform: 'uppercase', fontWeight: 500, cursor: 'pointer',
+          }}>
+            Annuler
+          </button>
+          <button onClick={handleSubmit} disabled={saving} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '10px 20px', borderRadius: 999, border: 'none',
+            background: 'var(--ink)', color: 'var(--bg)',
+            fontFamily: 'JetBrains Mono, monospace', fontSize: 11, letterSpacing: '0.06em',
+            textTransform: 'uppercase', fontWeight: 500,
+            cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1,
+          }}>
+            <CheckCircle style={{ width: 13, height: 13 }} />
+            {saving ? 'Création…' : 'Assigner la mission'}
+          </button>
+        </div>
       </div>
     </div>
   );
