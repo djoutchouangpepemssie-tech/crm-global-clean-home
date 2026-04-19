@@ -1255,4 +1255,48 @@ tbody tr:last-child { border-bottom: none !important; }
   color: var(--text-muted);
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   DARK MODE — override des variables OKLCH de la palette Atelier
+   pour tous les composants récents (Dashboard dynamique, LeadDetail,
+   QuoteForm, QuotesList, DirectorDashboard…).
+
+   Principe : on inverse L (lightness) en gardant C (chroma) et H (hue),
+   ce qui préserve la cohérence chromatique entre clair et sombre.
+   Le texte reste parfaitement lisible, les accents gardent leur identité.
+══════════════════════════════════════════════════════════════════ */
+[data-theme="dark"] .atelier-root,
+[data-theme="dark"] .dyn-root,
+[data-theme="dark"] .ld-root,
+[data-theme="dark"] .qf-root,
+[data-theme="dark"] .ql-root,
+[data-theme="dark"] .dir-root {
+  --bg:          oklch(0.165 0.012 60);
+  --surface:     oklch(0.22 0.013 62);
+  --surface-2:  oklch(0.27 0.014 65);
+  --ink:         oklch(0.965 0.008 85);
+  --ink-2:      oklch(0.82 0.010 78);
+  --ink-3:      oklch(0.62 0.010 70);
+  --ink-4:      oklch(0.48 0.008 65);
+  --line:        oklch(0.32 0.015 62);
+  --line-2:     oklch(0.28 0.014 63);
+  --accent:      oklch(0.74 0.14 165);
+  --accent-soft: oklch(0.30 0.08 165);
+  --warm:        oklch(0.72 0.14 45);
+  --warm-soft:  oklch(0.35 0.08 45);
+  --gold:        oklch(0.80 0.14 85);
+  --gold-soft:  oklch(0.38 0.10 85);
+  --cool:        oklch(0.72 0.12 220);
+  --cool-soft:  oklch(0.32 0.06 220);
+}
+
+/* Image/SVG : atténue légèrement les icônes sombres → évite les contrastes
+   agressifs (les icônes pures noires deviennent dures sur fond sombre). */
+[data-theme="dark"] .dyn-root svg[stroke="currentColor"],
+[data-theme="dark"] .ld-root svg[stroke="currentColor"],
+[data-theme="dark"] .qf-root svg[stroke="currentColor"],
+[data-theme="dark"] .ql-root svg[stroke="currentColor"] { opacity: 0.95; }
+
+/* Bandeau top du dashboard dynamique — s'aligne au thème */
+[data-theme="dark"] .dyn-toolbar { border-bottom-color: var(--line) !important; }
+
 /* FIN — Atelier direction v2.0 */
