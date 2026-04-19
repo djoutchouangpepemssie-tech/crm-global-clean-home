@@ -730,50 +730,74 @@ export default function QuoteForm() {
   });
   const [groups, setGroups] = useState([newGroup('Prestations principales')]);
 
+  // Mapping uniforme d'un lead brut (backend) → format composant
+  const mapLead = (l) => {
+    const addr = l.address || '';
+    const cityMatch = addr.match(/\d{5}\s+([^,]+)/);
+    const city = cityMatch ? cityMatch[1].trim() : (addr.split(',').pop() || '').trim();
+    return {
+      id: l.lead_id,
+      full_name: l.name || l.full_name || 'Inconnu',
+      city,
+      address: addr,
+      email: l.email || '',
+      phone: l.phone || '',
+      service_type: l.service_type || '',
+      surface: l.surface || null,
+      message: l.message || '',
+    };
+  };
+
+  // Pré-remplit formData depuis un lead (non destructif : respecte ce qui est déjà saisi)
+  const prefillFromLead = useCallback((lead) => {
+    if (!lead) return;
+    setFormData(d => ({
+      ...d,
+      lead_id: lead.id,
+      service_type: d.service_type || lead.service_type || 'Autre',
+      title: d.title?.trim() ? d.title
+        : (lead.service_type ? `${lead.service_type} — ${lead.full_name}` : `Devis — ${lead.full_name}`),
+      description: d.description?.trim() ? d.description
+        : [lead.message, lead.surface ? `Surface : ${lead.surface} m²` : null].filter(Boolean).join('\n'),
+      client_name: lead.full_name,
+      client_email: lead.email,
+      client_phone: lead.phone,
+      client_address: lead.address,
+      client_city: lead.city,
+    }));
+  }, []);
+
+  // ⚡ Fetch direct du lead ciblé (rapide) — AVANT le chargement de toute la liste
+  useEffect(() => {
+    if (!prefillLeadId || isEdit) return;
+    api.get(`/leads/${prefillLeadId}`)
+      .then(r => {
+        if (!r.data) return;
+        const lead = mapLead(r.data);
+        // Ajoute ce lead à la liste pour que le dropdown l'affiche (même si la
+        // liste complète n'est pas encore chargée)
+        setLeads(prev => prev.some(l => l.id === lead.id) ? prev : [lead, ...prev]);
+        prefillFromLead(lead);
+      })
+      .catch(() => {});
+  }, [prefillLeadId, isEdit, prefillFromLead]);
+
+  // Chargement de la liste complète des leads (pour le dropdown)
   useEffect(() => {
     api.get('/leads', { params: { page_size: 200, period: 'all' } })
       .then(r => {
         const raw = r.data?.items || r.data || [];
-        const mapped = (Array.isArray(raw) ? raw : []).map(l => {
-          const addr = l.address || '';
-          const cityMatch = addr.match(/\d{5}\s+([^,]+)/);
-          const city = cityMatch ? cityMatch[1].trim() : (addr.split(',').pop() || '').trim();
-          return {
-            id: l.lead_id,
-            full_name: l.name || l.full_name || 'Inconnu',
-            city,
-            address: addr,
-            email: l.email || '',
-            phone: l.phone || '',
-            service_type: l.service_type || '',
-            surface: l.surface || null,
-            message: l.message || '',
-          };
+        const mapped = (Array.isArray(raw) ? raw : []).map(mapLead);
+        setLeads(prev => {
+          // Garde les leads déjà chargés (dont celui pré-sélectionné) en tête,
+          // puis ajoute les nouveaux non encore présents.
+          const ids = new Set(mapped.map(l => l.id));
+          const kept = prev.filter(l => !ids.has(l.id));
+          return [...kept, ...mapped];
         });
-        setLeads(mapped);
-        // Pré-sélection si ?leadId=XXX dans l'URL (ex: depuis LeadDetail "Convertir en devis")
-        if (prefillLeadId && !isEdit) {
-          const lead = mapped.find(l => l.id === prefillLeadId);
-          if (lead) {
-            setFormData(d => ({
-              ...d,
-              lead_id: prefillLeadId,
-              service_type: d.service_type || lead.service_type || 'Autre',
-              title: d.title?.trim() ? d.title
-                : (lead.service_type ? `${lead.service_type} — ${lead.full_name}` : `Devis — ${lead.full_name}`),
-              description: d.description?.trim() ? d.description
-                : [lead.message, lead.surface ? `Surface : ${lead.surface} m²` : null].filter(Boolean).join('\n'),
-              client_name: lead.full_name,
-              client_email: lead.email,
-              client_phone: lead.phone,
-              client_address: lead.address,
-              client_city: lead.city,
-            }));
-          }
-        }
       })
-      .catch(() => setLeads([]));
-  }, [prefillLeadId, isEdit]);
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!isEdit) return;
