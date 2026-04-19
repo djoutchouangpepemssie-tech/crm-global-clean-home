@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import BACKEND_URL from '../../config';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -55,7 +56,12 @@ const fmtPct = (n) => `${n >= 0 ? '+' : ''}${(n || 0).toFixed(1)}%`;
 // ═══════════════════════════════════════════════════════════
 
 export default function AccountingERP() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'dashboard');
+  useEffect(() => {
+    const t = searchParams.get('tab');
+    if (t && t !== activeTab) setActiveTab(t);
+  }, [searchParams, activeTab]);
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-6 space-y-4">

@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import axios from 'axios';
 import {
@@ -49,7 +50,13 @@ import PurgePanel from './PurgePanel';
 const SettingsPage = () => {
   const { user, login: setUser } = useAuth();
   const { prefs: themePrefs, updateTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState('profile');
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'profile';
+  const [activeTab, setActiveTab] = useState(initialTab);
+  useEffect(() => {
+    const t = searchParams.get('tab');
+    if (t && t !== activeTab) setActiveTab(t);
+  }, [searchParams, activeTab]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');

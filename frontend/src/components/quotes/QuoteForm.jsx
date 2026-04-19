@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import api from '../../lib/api';
 import {
   ChevronRight, ChevronDown, ChevronUp, Plus, Trash2, Sparkles,
-  MapPin, Check, AlertTriangle, Save, Send,
-  X, ArrowLeft, Loader,
+  MapPin, Check, AlertTriangle, Save, Send, Mail, Eye, Navigation,
+  X, ArrowLeft, Loader, Clock, FileText,
 } from 'lucide-react';
 
 /**
@@ -115,14 +115,35 @@ const tokenStyle = `
     top: 24px;
     width: 300px;
     flex-shrink: 0;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    padding-right: 4px;
   }
+  .qf-sidebar::-webkit-scrollbar { width: 6px; }
+  .qf-sidebar::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
   .qf-sidebar-card {
     background: var(--surface);
     border: 1.5px solid var(--line);
-    border-radius: 14px;
-    padding: 20px;
-    margin-bottom: 16px;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
   }
+  .qf-sidebar-card.compact { padding: 12px 14px; }
+  .qf-sidebar-card.tinted { background: var(--accent-soft); border-color: oklch(0.75 0.08 165); }
+  .qf-stat-mini {
+    display: flex; align-items: baseline; gap: 6px;
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--line-2);
+  }
+  .qf-stat-mini:last-child { border-bottom: 0; }
+  .qf-stat-mini-icon { width: 16px; height: 16px; color: var(--ink-3); flex-shrink: 0; }
+  .qf-brief-row {
+    display: flex; gap: 6px; align-items: flex-start;
+    padding: 5px 0;
+    font-size: 11px; color: var(--ink-2);
+    line-height: 1.4;
+  }
+  .qf-brief-emoji { font-size: 12px; flex-shrink: 0; line-height: 1.4; }
 
   .qf-proba-bar {
     height: 8px;
@@ -661,6 +682,26 @@ function Step4Recap({ formData, groups, leads }) {
   );
 }
 
+/* Parser du message structuré du lead (même logique que LeadDossier) */
+const BRIEF_EMOJIS = { services: '🧽', calcul: '🧮', intervention: '📍', client: '👤' };
+function parseBrief(text) {
+  if (!text || typeof text !== 'string') return null;
+  const sections = [];
+  const parts = text.split(/\n(?=(?:🧽|🧮|📍|👤|##\s))/);
+  for (const part of parts) {
+    const m = part.match(/^(🧽|🧮|📍|👤|##\s*)(.*)/);
+    if (m) {
+      const emoji = m[1].trim();
+      const kindMap = { '🧽': 'services', '🧮': 'calcul', '📍': 'intervention', '👤': 'client' };
+      const kind = kindMap[emoji] || 'services';
+      const body = part.slice(m[0].length).trim();
+      if (body) sections.push({ emoji: BRIEF_EMOJIS[kind] || '•', kind, body });
+    }
+  }
+  if (sections.length === 0 && text.trim()) return [{ emoji: '•', kind: 'note', body: text.trim().slice(0, 200) }];
+  return sections.length ? sections : null;
+}
+
 /* ─── Sidebar ──────────────────────────────────────────────────── */
 function Sidebar({ groups, formData, leads }) {
   const lead = leads.find(l => l.id === formData.lead_id);
@@ -671,50 +712,175 @@ function Sidebar({ groups, formData, leads }) {
   const ttc = base + tva;
   const proba = 87;
 
+  /* Cartes additionnelles : brief / engagement / distance */
+  const [engagement, setEngagement] = useState(null);
+  const [distance, setDistance] = useState(null);
+  const [leadFull, setLeadFull] = useState(null);
+
+  useEffect(() => {
+    if (!formData.lead_id) {
+      setEngagement(null); setDistance(null); setLeadFull(null);
+      return;
+    }
+    let alive = true;
+    Promise.all([
+      api.get(`/leads/${formData.lead_id}`).catch(() => ({ data: null })),
+      api.get(`/leads/${formData.lead_id}/distance`).catch(() => ({ data: null })),
+      api.get(`/leads/${formData.lead_id}/engagement`).catch(() => ({ data: null })),
+    ]).then(([l, d, e]) => {
+      if (!alive) return;
+      setLeadFull(l.data || null);
+      setDistance(d.data || null);
+      setEngagement(e.data || null);
+    });
+    return () => { alive = false; };
+  }, [formData.lead_id]);
+
+  const brief = useMemo(() => parseBrief(leadFull?.message || lead?.message), [leadFull, lead]);
+
+  const fmtAgo = (iso) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    const diff = Date.now() - d.getTime();
+    const days = Math.floor(diff / 86400000);
+    if (days === 0) return "aujourd'hui";
+    if (days === 1) return 'hier';
+    if (days < 7) return `il y a ${days}j`;
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+  };
+
   return (
     <div className="qf-sidebar">
+      {/* ── Totaux (compact) ── */}
       <div className="qf-sidebar-card">
-        <div className="qf-label" style={{ marginBottom: 10 }}>Totaux</div>
-        <div className="qf-mono" style={{ fontSize: 28, fontWeight: 800, color: 'var(--ink)', lineHeight: 1, marginBottom: 4 }}>{fmtEur(ttc)}</div>
-        <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 12 }}>TTC · {fmtEur(base)} HT</div>
+        <div className="qf-label" style={{ marginBottom: 8 }}>Totaux</div>
+        <div className="qf-mono" style={{ fontSize: 24, fontWeight: 800, color: 'var(--ink)', lineHeight: 1, marginBottom: 3 }}>{fmtEur(ttc)}</div>
+        <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 10 }}>TTC · {fmtEur(base)} HT</div>
         {[['Total HT', fmtEur(base)], [`TVA ${parseTva(formData.tva)}%`, parseTva(formData.tva) > 0 ? fmtEur(tva) : '—'], ['Total TTC', fmtEur(ttc)]].map(([l, v]) => (
-          <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--ink-2)', marginBottom: 3 }}>
+          <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--ink-2)', marginBottom: 2 }}>
             <span>{l}</span><span className="qf-mono" style={{ fontWeight: 600 }}>{v}</span>
           </div>
         ))}
       </div>
 
-      <div className="qf-sidebar-card">
-        <div className="qf-label" style={{ marginBottom: 8 }}>Probabilité de signature</div>
-        <div className="qf-mono" style={{ fontSize: 32, fontWeight: 800, color: 'var(--accent)', lineHeight: 1 }}>{proba}%</div>
+      {/* ── Probabilité (compact) ── */}
+      <div className="qf-sidebar-card compact">
+        <div className="qf-label" style={{ marginBottom: 6 }}>Probabilité</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+          <div className="qf-mono" style={{ fontSize: 26, fontWeight: 800, color: 'var(--accent)', lineHeight: 1 }}>{proba}%</div>
+          <div style={{ fontSize: 10, color: 'var(--ink-3)' }}>signature</div>
+        </div>
         <div className="qf-proba-bar"><div className="qf-proba-fill" style={{ width: `${proba}%` }} /></div>
-        <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>Basé sur les devis similaires</div>
       </div>
 
+      {/* ── Client (compact) ── */}
       {lead && (
-        <div className="qf-sidebar-card">
-          <div className="qf-label" style={{ marginBottom: 10 }}>Client</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--accent-soft)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontFamily: "'Fraunces', serif", fontWeight: 700, border: '1.5px solid oklch(0.8 0.07 165)', flexShrink: 0 }}>
+        <div className="qf-sidebar-card compact">
+          <div className="qf-label" style={{ marginBottom: 8 }}>Client</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--accent-soft)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontFamily: "'Fraunces', serif", fontWeight: 700, border: '1.5px solid oklch(0.8 0.07 165)', flexShrink: 0 }}>
               {(lead.full_name || '?').slice(0, 1).toUpperCase()}
             </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700 }}>{lead.full_name}</div>
-              <div className="qf-mono" style={{ fontSize: 10, color: 'var(--ink-4)' }}>{lead.city || ''}</div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.full_name}</div>
+              <div className="qf-mono" style={{ fontSize: 9, color: 'var(--ink-4)' }}>{lead.city || ''}</div>
             </div>
           </div>
         </div>
       )}
 
-      <div className="qf-sidebar-card">
-        <div className="qf-label" style={{ marginBottom: 10 }}>Devis similaires acceptés</div>
-        {DEMO_SIMILAR.map(s => (
-          <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: '1px solid var(--line-2)', fontSize: 12 }}>
-            <div>
-              <div className="qf-mono" style={{ color: 'var(--ink-3)', fontSize: 10 }}>{s.number}</div>
-              <div style={{ color: 'var(--ink-2)', fontWeight: 500 }}>{s.client}</div>
+      {/* ── Brief des besoins ── */}
+      {brief && brief.length > 0 && (
+        <div className="qf-sidebar-card compact">
+          <div className="qf-label" style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <FileText style={{ width: 11, height: 11 }} /> Brief client
+          </div>
+          {brief.slice(0, 4).map((s, i) => (
+            <div key={i} className="qf-brief-row">
+              <span className="qf-brief-emoji">{s.emoji}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                {s.body.split('\n').slice(0, 2).join(' · ').slice(0, 110)}
+                {s.body.length > 110 ? '…' : ''}
+              </span>
             </div>
-            <span className="qf-mono" style={{ fontWeight: 700, color: 'var(--accent)', fontSize: 13 }}>{fmtEur(s.amount)}</span>
+          ))}
+        </div>
+      )}
+
+      {/* ── Engagement (tracking) ── */}
+      {engagement && (engagement.email_opens > 0 || engagement.quote_views > 0 || engagement.interactions_count > 0) && (
+        <div className="qf-sidebar-card compact tinted">
+          <div className="qf-label" style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent)' }}>
+            <Eye style={{ width: 11, height: 11 }} /> Engagement
+          </div>
+          <div className="qf-stat-mini">
+            <Mail className="qf-stat-mini-icon" />
+            <span className="qf-mono" style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>{engagement.email_opens || 0}</span>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+              {(engagement.email_opens || 0) > 1 ? 'ouvertures' : 'ouverture'}
+            </span>
+          </div>
+          <div className="qf-stat-mini">
+            <Eye className="qf-stat-mini-icon" />
+            <span className="qf-mono" style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>{engagement.quote_views || 0}</span>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+              {(engagement.quote_views || 0) > 1 ? 'vues devis' : 'vue devis'}
+            </span>
+          </div>
+          {engagement.last_quote_view_at && (
+            <div style={{ fontSize: 10, color: 'var(--accent)', fontStyle: 'italic', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Clock style={{ width: 10, height: 10 }} />
+              Dernière vue {fmtAgo(engagement.last_quote_view_at)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Distance / trajet ── */}
+      {distance && distance.distance_km != null && (
+        <div className="qf-sidebar-card compact">
+          <div className="qf-label" style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Navigation style={{ width: 11, height: 11 }} /> Trajet
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
+            <span className="qf-mono" style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>
+              {distance.distance_km}
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)', fontStyle: 'italic' }}>km</span>
+            <span className="qf-mono" style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink-2)', marginLeft: 6 }}>
+              {distance.duration_min}
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)', fontStyle: 'italic' }}>min</span>
+          </div>
+          {distance.destination_label && (
+            <div style={{ fontSize: 10, color: 'var(--ink-3)', lineHeight: 1.3 }}>
+              {distance.destination_label}
+            </div>
+          )}
+          <a
+            href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(distance.origin || '')}&destination=${encodeURIComponent(distance.destination || '')}&travelmode=driving`}
+            target="_blank" rel="noopener noreferrer"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 6,
+              fontSize: 10, color: 'var(--accent)', textDecoration: 'none',
+              fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.04em',
+            }}
+          >
+            <MapPin style={{ width: 10, height: 10 }} /> Voir sur Maps →
+          </a>
+        </div>
+      )}
+
+      {/* ── Devis similaires (compact) ── */}
+      <div className="qf-sidebar-card compact">
+        <div className="qf-label" style={{ marginBottom: 8 }}>Devis similaires</div>
+        {DEMO_SIMILAR.slice(0, 3).map(s => (
+          <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: '1px solid var(--line-2)', fontSize: 11 }}>
+            <div style={{ minWidth: 0 }}>
+              <div className="qf-mono" style={{ color: 'var(--ink-3)', fontSize: 9 }}>{s.number}</div>
+              <div style={{ color: 'var(--ink-2)', fontWeight: 500, fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.client}</div>
+            </div>
+            <span className="qf-mono" style={{ fontWeight: 700, color: 'var(--accent)', fontSize: 12, flexShrink: 0 }}>{fmtEur(s.amount)}</span>
           </div>
         ))}
       </div>

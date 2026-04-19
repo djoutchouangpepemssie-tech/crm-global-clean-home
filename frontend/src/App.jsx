@@ -125,11 +125,13 @@ const SatisfactionEcho = lazy(() => import('./components/satisfaction/Satisfacti
 const DocumentsManager = lazy(() => import('./components/documents/DocumentsManager'));
 const BookingManager = lazy(() => import('./components/booking/BookingManager'));
 const SettingsPage = lazy(() => import('./components/settings/SettingsPage'));
+const SettingsEtabli = lazy(() => import('./components/settings/SettingsEtabli'));
 const InvoiceForm = lazy(() => import('./components/invoices/InvoiceForm'));
 const StockTable = lazy(() => import('./components/stock/StockTable'));
 const AccountingDashboard = lazy(() => import('./components/accounting/AccountingDashboard'));
 const AccountingEnterprise = lazy(() => import('./components/accounting/AccountingEnterprise'));
 const AccountingERP = lazy(() => import('./components/accounting/AccountingERP'));
+const AccountingGrimoire = lazy(() => import('./components/accounting/AccountingGrimoire'));
 const GlobalSearchFull = lazy(() =>
   import('./components/shared/GlobalSearch').then(m => ({ default: m.GlobalSearch || m.default }))
 );
@@ -420,7 +422,8 @@ function AppRouter() {
                     <Route path="/invoices/premium" element={<InvoiceForm />} />
                     <Route path="/finance" element={<FinanceCoffre />} />
                     <Route path="/finance/legacy" element={<FinancialDashboard />} />
-                    <Route path="/accounting-erp" element={<AccountingERP />} />
+                    <Route path="/accounting-erp" element={<AccountingGrimoire />} />
+                    <Route path="/accounting-erp/legacy" element={<AccountingERP />} />
                     <Route path="/accounting" element={<AccountingDashboard />} />
                     <Route path="/accounting-enterprise" element={<AccountingEnterprise />} />
                     {/* PayrollModule moved to AccountingERP/payroll-rh */}
@@ -439,7 +442,8 @@ function AppRouter() {
                     <Route path="/satisfaction/legacy" element={<SatisfactionDashboard />} />
                     <Route path="/documents" element={<DocumentsManager />} />
                     <Route path="/bookings" element={<BookingManager />} />
-                    <Route path="/settings" element={<SettingsPage />} />
+                    <Route path="/settings" element={<SettingsEtabli />} />
+                    <Route path="/settings/legacy" element={<SettingsPage />} />
                     <Route path="/" element={<Navigate to="/dashboard" replace />} />
                   </Routes>
         </Suspense>
