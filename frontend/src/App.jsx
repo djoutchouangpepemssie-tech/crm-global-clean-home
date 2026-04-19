@@ -132,6 +132,21 @@ const AccountingDashboard = lazy(() => import('./components/accounting/Accountin
 const AccountingEnterprise = lazy(() => import('./components/accounting/AccountingEnterprise'));
 const AccountingERP = lazy(() => import('./components/accounting/AccountingERP'));
 const AccountingGrimoire = lazy(() => import('./components/accounting/AccountingGrimoire'));
+const IntervenantsEquipage = lazy(() => import('./components/planning/IntervenantsEquipage'));
+const DocumentsBibliotheque = lazy(() => import('./components/documents/DocumentsBibliotheque'));
+const TicketsDoleances = lazy(() => import('./components/tickets/TicketsDoleances'));
+const ContractsActes = lazy(() => import('./components/contracts/ContractsActes'));
+const StockMagasin = lazy(() => import('./components/stock/StockMagasin'));
+const BookingRegistre = lazy(() => import('./components/booking/BookingRegistre'));
+const SEOAtlas = lazy(() => import('./components/seo/SEOAtlas'));
+const MapTerritoire = lazy(() => import('./components/map/MapTerritoire'));
+const AdsAffichage = lazy(() => import('./components/ads/AdsAffichage'));
+const RentabiliteBalance = lazy(() => import('./components/rentabilite/RentabiliteBalance'));
+const AICabinet = lazy(() => import('./components/ai/AICabinet'));
+const WorkflowsRouages = lazy(() => import('./components/workflows/WorkflowsRouages'));
+const ChatSalon = lazy(() => import('./components/chat/ChatSalon'));
+const IntegrationsConnexions = lazy(() => import('./components/integrations/IntegrationsConnexions'));
+const DirectorPasserelle = lazy(() => import('./components/dashboard/DirectorPasserelle'));
 const GlobalSearchFull = lazy(() =>
   import('./components/shared/GlobalSearch').then(m => ({ default: m.GlobalSearch || m.default }))
 );
@@ -391,10 +406,14 @@ function AppRouter() {
                     <Route path="/dashboard/custom" element={<DashboardCustom />} />
                     <Route path="/dashboard/legacy" element={<DashboardLegacy />} />
                     <Route path="/pipeline" element={<PipelineRiver />} />
-                    <Route path="/director" element={<DirectorDashboard />} />
-                    <Route path="/seo" element={<SEODashboard />} />
-                    <Route path="/rentabilite" element={<RentabiliteModule />} />
-                    <Route path="/chat" element={<ChatCenter />} />
+                    <Route path="/director" element={<DirectorPasserelle />} />
+                    <Route path="/director/legacy" element={<DirectorDashboard />} />
+                    <Route path="/seo" element={<SEOAtlas />} />
+                    <Route path="/seo/legacy" element={<SEODashboard />} />
+                    <Route path="/rentabilite" element={<RentabiliteBalance />} />
+                    <Route path="/rentabilite/legacy" element={<RentabiliteModule />} />
+                    <Route path="/chat" element={<ChatSalon />} />
+                    <Route path="/chat/legacy" element={<ChatCenter />} />
                     <Route path="/leads/new" element={<LeadForm />} />
                     <Route path="/leads/:id" element={<LeadDossier />} />
                     <Route path="/leads/:id/legacy" element={<LeadDetail />} />
@@ -427,21 +446,32 @@ function AppRouter() {
                     <Route path="/accounting" element={<AccountingDashboard />} />
                     <Route path="/accounting-enterprise" element={<AccountingEnterprise />} />
                     {/* PayrollModule moved to AccountingERP/payroll-rh */}
-                    <Route path="/stock" element={<StockTable />} />
+                    <Route path="/stock" element={<StockMagasin />} />
+                    <Route path="/stock/legacy" element={<StockTable />} />
                     <Route path="/planning" element={<PlanningFil />} />
                     <Route path="/planning/calendar" element={<PlanningCalendar />} />
-                    <Route path="/intervenants" element={<IntervenantsManager />} />
-                    <Route path="/integrations" element={<Integrations />} />
-                    <Route path="/ads" element={<AdsDashboard />} />
-                    <Route path="/ai" element={<AICenter />} />
-                    <Route path="/workflows" element={<WorkflowBuilder />} />
-                    <Route path="/tickets" element={<TicketsList />} />
-                    <Route path="/contracts" element={<ContractsList />} />
-                    <Route path="/map" element={<InterventionsMap />} />
+                    <Route path="/intervenants" element={<IntervenantsEquipage />} />
+                    <Route path="/intervenants/legacy" element={<IntervenantsManager />} />
+                    <Route path="/integrations" element={<IntegrationsConnexions />} />
+                    <Route path="/integrations/legacy" element={<Integrations />} />
+                    <Route path="/ads" element={<AdsAffichage />} />
+                    <Route path="/ads/legacy" element={<AdsDashboard />} />
+                    <Route path="/ai" element={<AICabinet />} />
+                    <Route path="/ai/legacy" element={<AICenter />} />
+                    <Route path="/workflows" element={<WorkflowsRouages />} />
+                    <Route path="/workflows/legacy" element={<WorkflowBuilder />} />
+                    <Route path="/tickets" element={<TicketsDoleances />} />
+                    <Route path="/tickets/legacy" element={<TicketsList />} />
+                    <Route path="/contracts" element={<ContractsActes />} />
+                    <Route path="/contracts/legacy" element={<ContractsList />} />
+                    <Route path="/map" element={<MapTerritoire />} />
+                    <Route path="/map/legacy" element={<InterventionsMap />} />
                     <Route path="/satisfaction" element={<SatisfactionEcho />} />
                     <Route path="/satisfaction/legacy" element={<SatisfactionDashboard />} />
-                    <Route path="/documents" element={<DocumentsManager />} />
-                    <Route path="/bookings" element={<BookingManager />} />
+                    <Route path="/documents" element={<DocumentsBibliotheque />} />
+                    <Route path="/documents/legacy" element={<DocumentsManager />} />
+                    <Route path="/bookings" element={<BookingRegistre />} />
+                    <Route path="/bookings/legacy" element={<BookingManager />} />
                     <Route path="/settings" element={<SettingsEtabli />} />
                     <Route path="/settings/legacy" element={<SettingsPage />} />
                     <Route path="/" element={<Navigate to="/dashboard" replace />} />

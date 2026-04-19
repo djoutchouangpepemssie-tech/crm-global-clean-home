@@ -8,3 +8,4 @@ export { default as PageHeader } from './PageHeader';
 export { default as EmptyState } from './EmptyState';
 export { default as ConfirmDialog, useConfirm } from './ConfirmDialog';
 export { default as StatusBadge, getStatusConfig } from './StatusBadge';
+export { default as MagazineShell } from './MagazineShell';
