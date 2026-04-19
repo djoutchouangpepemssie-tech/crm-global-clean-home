@@ -5,6 +5,10 @@
 
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  AreaChart, Area, LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
+} from 'recharts';
 import api from '../../lib/api';
 
 /* ───────────────── Helpers partagés ─────────────────────────────── */
@@ -142,25 +146,291 @@ function HeroRevenueBlock({ data }) {
   );
 }
 
-/* ───────────────── Bloc : KPI Leads (nouveaux / objectif) ───────── */
+/* ───────────────── Bloc : KPI Leads (total période + répartition) ─ */
 function LeadsKpiBlock({ data }) {
-  const newLeads = data?.new_leads || 0;
+  const totalLeads = data?.total_leads || 0;
+  const newLeads  = data?.new_leads   || 0;
+  const contactedLeads = data?.contacted_leads || 0;
+  const wonLeads  = data?.won_leads   || 0;
   const leadsGoal = 20;
-  const pct = Math.min(100, (newLeads / leadsGoal) * 100);
+  const pct = Math.min(100, (totalLeads / leadsGoal) * 100);
 
   return (
     <div style={cardCss}>
-      <div style={labelCss}>Nouveaux leads</div>
+      <div style={labelCss}>Leads · période</div>
       <div style={{ ...displayCss, fontSize: 56, fontWeight: 300, lineHeight: 1, color: 'var(--accent)' }}>
-        {newLeads}
+        {totalLeads}
       </div>
-      <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: 'var(--ink-3)', marginTop: 4, marginBottom: 16 }}>
-        / {leadsGoal} objectif mensuel
+      <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: 'var(--ink-3)', marginTop: 4, marginBottom: 14 }}>
+        / {leadsGoal} objectif · {Math.round(pct)}%
       </div>
-      <div style={{ height: 6, background: 'var(--line-2)', borderRadius: 999, overflow: 'hidden', marginBottom: 6 }}>
+      <div style={{ height: 6, background: 'var(--line-2)', borderRadius: 999, overflow: 'hidden', marginBottom: 14 }}>
         <div style={{ width: `${pct}%`, height: '100%', background: 'var(--accent)', transition: 'width .4s' }} />
       </div>
-      <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: 'var(--ink-3)' }}>{Math.round(pct)}% atteint</div>
+      {/* Mini breakdown par statut */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, paddingTop: 12, borderTop: '1px solid var(--line-2)' }}>
+        {[
+          { label: 'Nouveaux', val: newLeads,       color: 'var(--accent)' },
+          { label: 'Contactés',val: contactedLeads, color: 'var(--gold)' },
+          { label: 'Gagnés',   val: wonLeads,       color: 'var(--warm)' },
+        ].map(s => (
+          <div key={s.label}>
+            <div style={{ fontFamily: 'Fraunces, serif', fontSize: 20, fontWeight: 500, color: s.color, lineHeight: 1 }}>{s.val}</div>
+            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 2 }}>
+              {s.label}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ───────────── Bloc : Évolution leads (area chart recharts) ────── */
+function LeadsEvolutionBlock({ data }) {
+  const series = (data?.leads_by_day || []).map(d => ({
+    date: d.date?.slice(5) || '', // MM-DD
+    leads: d.count || 0,
+  }));
+  const total = series.reduce((s, p) => s + p.leads, 0);
+  const max = Math.max(...series.map(p => p.leads), 1);
+
+  return (
+    <div style={cardCss}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
+        <div>
+          <div style={labelCss}>Évolution des leads</div>
+          <div style={{ ...displayCss, fontSize: 28, fontWeight: 500, marginTop: 2 }}>
+            {total} <span style={{ fontSize: 13, color: 'var(--ink-3)', fontStyle: 'italic' }}>sur la période</span>
+          </div>
+        </div>
+        <span style={{
+          fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.12em',
+          textTransform: 'uppercase', color: 'var(--accent)', padding: '4px 10px',
+          background: 'var(--accent-soft)', borderRadius: 999,
+        }}>Pic · {max}/jour</span>
+      </div>
+      <div style={{ width: '100%', height: 220 }}>
+        <ResponsiveContainer>
+          <AreaChart data={series} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="leadGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stopColor="var(--accent)" stopOpacity={0.45} />
+                <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--line-2)" vertical={false} />
+            <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--ink-3)', fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
+            <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: 'var(--ink-3)', fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
+            <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 8, fontSize: 12 }} />
+            <Area type="monotone" dataKey="leads" stroke="var(--accent)" strokeWidth={2} fill="url(#leadGrad)" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+/* ───────────── Bloc : Leads par source (pie chart) ─────────────── */
+function LeadsBySourceBlock({ data }) {
+  const sources = Object.entries(data?.leads_by_source || {})
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
+  const total = sources.reduce((s, x) => s + x.value, 0);
+  const COLORS = ['#059669', '#c2410c', '#d97706', '#2563eb', '#7c3aed', '#be185d', '#0891b2', '#65a30d'];
+
+  return (
+    <div style={cardCss}>
+      <div style={labelCss}>Leads par source</div>
+      {total === 0 ? (
+        <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', padding: '30px 0', textAlign: 'center', fontSize: 13 }}>
+          Aucun lead sur cette période.
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: 14, alignItems: 'center', marginTop: 10 }}>
+          <div style={{ width: 140, height: 140 }}>
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie data={sources} dataKey="value" innerRadius={45} outerRadius={65} paddingAngle={2}>
+                  {sources.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                </Pie>
+                <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 8, fontSize: 12 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {sources.slice(0, 6).map((s, i) => (
+              <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12 }}>
+                <span style={{ width: 10, height: 10, background: COLORS[i % COLORS.length], borderRadius: 3, flexShrink: 0 }} />
+                <span style={{ flex: 1, color: 'var(--ink-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</span>
+                <span style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--ink)', fontWeight: 600 }}>{s.value}</span>
+                <span style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--ink-3)', fontSize: 10, minWidth: 34, textAlign: 'right' }}>
+                  {total > 0 ? Math.round((s.value / total) * 100) : 0}%
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ───────────── Bloc : Revenue chart (area, par jour) ───────────── */
+function RevenueChartBlock({ data }) {
+  const fin = data?.financial || {};
+  const series = (fin.revenue_by_day || []).map(d => ({
+    date: (d.date || '').slice(5),
+    revenue: Math.round(d.revenue || 0),
+  }));
+  const total = series.reduce((s, p) => s + p.revenue, 0);
+  const avg = series.length ? Math.round(total / series.length) : 0;
+
+  return (
+    <div style={cardCss}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
+        <div>
+          <div style={labelCss}>CA encaissé par jour</div>
+          <div style={{ ...displayCss, fontSize: 28, fontWeight: 500, marginTop: 2 }}>
+            {fmtMoney(total)} € <span style={{ fontSize: 13, color: 'var(--ink-3)', fontStyle: 'italic' }}>· moy. {fmtMoney(avg)}€/j</span>
+          </div>
+        </div>
+      </div>
+      <div style={{ width: '100%', height: 220 }}>
+        <ResponsiveContainer>
+          <AreaChart data={series} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+            <defs>
+              <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stopColor="var(--warm)" stopOpacity={0.45} />
+                <stop offset="100%" stopColor="var(--warm)" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--line-2)" vertical={false} />
+            <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--ink-3)', fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10, fill: 'var(--ink-3)', fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
+            <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 8, fontSize: 12 }} formatter={(v) => `${fmtMoney(v)} €`} />
+            <Area type="monotone" dataKey="revenue" stroke="var(--warm)" strokeWidth={2} fill="url(#revGrad)" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+/* ───────────── Bloc : Entonnoir de conversion (barres) ─────────── */
+function ConversionFunnelBlock({ data }) {
+  const steps = [
+    { name: 'Leads',    value: data?.total_leads     || 0, color: 'oklch(0.52 0.13 165)' },
+    { name: 'Devis',    value: data?.total_quotes    || 0, color: 'oklch(0.60 0.14 85)'  },
+    { name: 'Envoyés',  value: data?.sent_quotes     || 0, color: 'oklch(0.62 0.14 45)'  },
+    { name: 'Acceptés', value: data?.accepted_quotes || 0, color: 'oklch(0.50 0.14 25)'  },
+    { name: 'Gagnés',   value: data?.won_leads       || 0, color: 'oklch(0.52 0.13 165)' },
+  ];
+  const max = Math.max(...steps.map(s => s.value), 1);
+
+  return (
+    <div style={cardCss}>
+      <div style={labelCss}>Entonnoir de conversion</div>
+      <div style={{ ...displayCss, fontSize: 22, fontWeight: 500, marginTop: 2, marginBottom: 16 }}>
+        Taux conversion : <em style={{ color: 'var(--accent)', fontStyle: 'italic' }}>{(data?.conversion_lead_to_quote || 0).toFixed(1)}%</em>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {steps.map((s, i) => {
+          const prev = i > 0 ? steps[i - 1].value : s.value;
+          const rate = prev > 0 ? Math.round((s.value / prev) * 100) : 0;
+          const width = (s.value / max) * 100;
+          return (
+            <div key={s.name}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+                <span style={{ color: 'var(--ink-2)', fontWeight: 500 }}>{s.name}</span>
+                <span style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--ink-3)' }}>
+                  <strong style={{ color: 'var(--ink)' }}>{s.value}</strong> {i > 0 && <span style={{ marginLeft: 8, opacity: 0.6 }}>{rate}% du précédent</span>}
+                </span>
+              </div>
+              <div style={{ height: 22, background: 'var(--surface-2)', borderRadius: 6, overflow: 'hidden', position: 'relative' }}>
+                <div style={{
+                  width: `${Math.max(width, 2)}%`, height: '100%', background: s.color, transition: 'width .6s cubic-bezier(.16,1,.3,1)',
+                }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ───────────── Bloc : Tâches (aujourd'hui + retard) ────────────── */
+function TasksBlock({ data }) {
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const pending = data?.pending_tasks || 0;
+  const today = data?.tasks_today || 0;
+  const overdue = data?.tasks_overdue || 0;
+
+  useEffect(() => {
+    let alive = true;
+    api.get('/tasks', { params: { status: 'pending', limit: 6 } })
+      .then(r => {
+        const raw = r.data?.items || r.data || [];
+        if (alive) setTasks(Array.isArray(raw) ? raw.slice(0, 6) : []);
+      })
+      .catch(() => { if (alive) setTasks([]); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, []);
+
+  return (
+    <div style={cardCss}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
+        <div>
+          <div style={labelCss}>Tâches</div>
+          <div style={{ ...displayCss, fontSize: 28, fontWeight: 500, marginTop: 2 }}>
+            {pending} <span style={{ fontSize: 13, color: 'var(--ink-3)', fontStyle: 'italic' }}>en cours</span>
+          </div>
+        </div>
+        <Link to="/tasks" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--accent)', textDecoration: 'none' }}>
+          Voir tout →
+        </Link>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
+        <div style={{ padding: 10, background: 'var(--accent-soft)', borderRadius: 8 }}>
+          <div style={{ ...displayCss, fontSize: 22, fontWeight: 600, color: 'var(--accent)' }}>{today}</div>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Aujourd'hui</div>
+        </div>
+        <div style={{ padding: 10, background: overdue > 0 ? 'oklch(0.94 0.08 25)' : 'var(--surface-2)', borderRadius: 8 }}>
+          <div style={{ ...displayCss, fontSize: 22, fontWeight: 600, color: overdue > 0 ? 'oklch(0.55 0.18 25)' : 'var(--ink-3)' }}>{overdue}</div>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>En retard</div>
+        </div>
+        <div style={{ padding: 10, background: 'var(--surface-2)', borderRadius: 8 }}>
+          <div style={{ ...displayCss, fontSize: 22, fontWeight: 600, color: 'var(--ink)' }}>{Math.max(0, pending - today)}</div>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>À venir</div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div style={{ color: 'var(--ink-3)', fontSize: 12, fontStyle: 'italic' }}>Chargement…</div>
+      ) : tasks.length === 0 ? (
+        <div style={{ color: 'var(--ink-3)', fontSize: 12, fontStyle: 'italic' }}>Aucune tâche en cours. 🎉</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {tasks.slice(0, 5).map((t, i) => (
+            <Link key={t.task_id || i} to={t.lead_id ? `/leads/${t.lead_id}` : '/tasks'} style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
+              background: 'var(--surface-2)', borderRadius: 6, textDecoration: 'none', color: 'var(--ink)', fontSize: 12,
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: 999, background: t.type === 'relance' ? 'var(--warm)' : 'var(--accent)', flexShrink: 0 }} />
+              <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title || t.description || 'Tâche'}</span>
+              {t.due_date && (
+                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: 'var(--ink-3)' }}>
+                  {new Date(t.due_date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}
+                </span>
+              )}
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -391,14 +661,54 @@ export const BLOCK_REGISTRY = {
     icon: '🧑',
     defaultWidth: 6,
   },
+  'leads-evolution': {
+    component: LeadsEvolutionBlock,
+    title: 'Évolution des leads',
+    description: 'Graphique area avec l\'arrivée quotidienne de leads sur la période.',
+    icon: '📈',
+    defaultWidth: 8,
+  },
+  'leads-by-source': {
+    component: LeadsBySourceBlock,
+    title: 'Leads par source',
+    description: 'Camembert des sources d\'acquisition (Facebook, Google, Direct, etc.).',
+    icon: '🎯',
+    defaultWidth: 6,
+  },
+  'revenue-chart': {
+    component: RevenueChartBlock,
+    title: 'CA encaissé · courbe',
+    description: 'Graphique du chiffre d\'affaires encaissé jour par jour.',
+    icon: '💹',
+    defaultWidth: 8,
+  },
+  'conversion-funnel': {
+    component: ConversionFunnelBlock,
+    title: 'Entonnoir de conversion',
+    description: 'Taux de passage à chaque étape (Leads → Devis → Acceptés → Gagnés).',
+    icon: '🪣',
+    defaultWidth: 6,
+  },
+  'tasks': {
+    component: TasksBlock,
+    title: 'Tâches',
+    description: 'Résumé des tâches (aujourd\'hui, en retard, à venir) + liste.',
+    icon: '✓',
+    defaultWidth: 6,
+  },
 };
 
 export const DEFAULT_BLOCKS = [
-  { id: 'cover',     type: 'cover',         w: 12 },
-  { id: 'quickact',  type: 'quick-actions', w: 12 },
-  { id: 'hero-rev',  type: 'hero-revenue',  w: 8  },
-  { id: 'kpi-leads', type: 'kpi-leads',     w: 4  },
-  { id: 'pipeline',  type: 'pipeline',      w: 12 },
-  { id: 'activity',  type: 'activity-feed', w: 6  },
-  { id: 'insights',  type: 'ai-insights',   w: 6  },
+  { id: 'cover',        type: 'cover',              w: 12 },
+  { id: 'quickact',     type: 'quick-actions',      w: 12 },
+  { id: 'hero-rev',     type: 'hero-revenue',       w: 8  },
+  { id: 'kpi-leads',    type: 'kpi-leads',          w: 4  },
+  { id: 'leads-evo',    type: 'leads-evolution',    w: 8  },
+  { id: 'leads-src',    type: 'leads-by-source',    w: 4  },
+  { id: 'pipeline',     type: 'pipeline',           w: 8  },
+  { id: 'tasks',        type: 'tasks',              w: 4  },
+  { id: 'revenue-ch',   type: 'revenue-chart',      w: 8  },
+  { id: 'conv-funnel',  type: 'conversion-funnel',  w: 4  },
+  { id: 'activity',     type: 'activity-feed',      w: 6  },
+  { id: 'insights',     type: 'ai-insights',        w: 6  },
 ];

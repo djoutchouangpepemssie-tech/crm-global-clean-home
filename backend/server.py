@@ -2197,13 +2197,18 @@ async def send_quote(quote_id: str, request: Request):
 
 DEFAULT_LAYOUTS = {
     "dashboard": [
-        {"id": "cover",      "type": "cover",          "w": 12},
-        {"id": "quickact",   "type": "quick-actions",  "w": 12},
-        {"id": "hero-rev",   "type": "hero-revenue",   "w": 8},
-        {"id": "kpi-leads",  "type": "kpi-leads",      "w": 4},
-        {"id": "pipeline",   "type": "pipeline",       "w": 12},
-        {"id": "activity",   "type": "activity-feed",  "w": 6},
-        {"id": "insights",   "type": "ai-insights",    "w": 6},
+        {"id": "cover",       "type": "cover",              "w": 12},
+        {"id": "quickact",    "type": "quick-actions",      "w": 12},
+        {"id": "hero-rev",    "type": "hero-revenue",       "w": 8},
+        {"id": "kpi-leads",   "type": "kpi-leads",          "w": 4},
+        {"id": "leads-evo",   "type": "leads-evolution",    "w": 8},
+        {"id": "leads-src",   "type": "leads-by-source",    "w": 4},
+        {"id": "pipeline",    "type": "pipeline",           "w": 8},
+        {"id": "tasks",       "type": "tasks",              "w": 4},
+        {"id": "revenue-ch",  "type": "revenue-chart",      "w": 8},
+        {"id": "conv-funnel", "type": "conversion-funnel",  "w": 4},
+        {"id": "activity",    "type": "activity-feed",      "w": 6},
+        {"id": "insights",    "type": "ai-insights",        "w": 6},
     ],
 }
 
@@ -2266,38 +2271,19 @@ async def reset_user_layout(scope: str, request: Request):
 
 # Catalogue des blocs disponibles (synchro avec frontend/blocks.jsx BLOCK_REGISTRY)
 AVAILABLE_BLOCKS = {
-    "cover": {
-        "title": "Cover / accueil",
-        "description": "Bandeau d'accueil avec salutation contextuelle et résumé du jour.",
-    },
-    "quick-actions": {
-        "title": "Actions rapides",
-        "description": "4 CTA : nouveau lead, nouveau devis, planning, carte.",
-    },
-    "hero-revenue": {
-        "title": "Chiffre d'affaires",
-        "description": "Gros chiffre du CA + encaissé/attente/retard + sparkline.",
-    },
-    "kpi-leads": {
-        "title": "Nouveaux leads",
-        "description": "Compteur de leads du mois + progression vers l'objectif.",
-    },
-    "pipeline": {
-        "title": "Pipeline commercial",
-        "description": "Entonnoir des 6 étapes (Nouveau → Gagné).",
-    },
-    "activity-feed": {
-        "title": "Activité en direct",
-        "description": "Flux temps réel des derniers événements (leads, devis, factures).",
-    },
-    "ai-insights": {
-        "title": "Recommandations IA",
-        "description": "Suggestions d'actions basées sur les données.",
-    },
-    "recent-leads": {
-        "title": "Leads récents",
-        "description": "Liste cliquable des 8 derniers leads.",
-    },
+    "cover":              {"title": "Cover / accueil",             "description": "Bandeau d'accueil avec salutation contextuelle et résumé du jour."},
+    "quick-actions":      {"title": "Actions rapides",             "description": "4 CTA : nouveau lead, nouveau devis, planning, carte."},
+    "hero-revenue":       {"title": "Chiffre d'affaires",          "description": "Gros chiffre du CA + encaissé/attente/retard + sparkline."},
+    "kpi-leads":          {"title": "KPI leads",                   "description": "Total leads de la période + breakdown par statut (nouveaux/contactés/gagnés)."},
+    "pipeline":           {"title": "Pipeline commercial",         "description": "Entonnoir des 6 étapes (Nouveau → Gagné)."},
+    "activity-feed":      {"title": "Activité en direct",          "description": "Flux temps réel des derniers événements (leads, devis, factures)."},
+    "ai-insights":        {"title": "Recommandations IA",          "description": "Suggestions d'actions basées sur les données."},
+    "recent-leads":       {"title": "Leads récents",               "description": "Liste cliquable des 8 derniers leads."},
+    "leads-evolution":    {"title": "Évolution des leads",         "description": "Graphique area avec l'arrivée quotidienne de leads."},
+    "leads-by-source":    {"title": "Leads par source",            "description": "Camembert des sources (Facebook, Google, Direct, etc.)."},
+    "revenue-chart":      {"title": "CA encaissé · courbe",        "description": "Graphique du CA jour par jour."},
+    "conversion-funnel":  {"title": "Entonnoir de conversion",     "description": "Taux de passage à chaque étape du pipeline."},
+    "tasks":              {"title": "Tâches",                      "description": "Tâches aujourd'hui, en retard, à venir + liste."},
 }
 
 
@@ -3485,25 +3471,31 @@ async def get_dashboard_stats(request: Request, period: str = "30d"):
     now = datetime.now(timezone.utc)
 
     # Determine period
-    if period == "1d":
-        start_date = now - timedelta(days=1)
-    elif period == "7d":
-        start_date = now - timedelta(days=7)
-    elif period == "30d":
-        start_date = now - timedelta(days=30)
-    else:
-        start_date = now - timedelta(days=30)
+    days_map = {"1d": 1, "7d": 7, "30d": 30, "90d": 90, "1y": 365}
+    start_date = now - timedelta(days=days_map.get(period, 30))
 
-    # Count leads
-    total_leads = await db.leads.count_documents({"created_at": {"$gte": start_date.isoformat()}})
-    new_leads = await db.leads.count_documents({"status": "nouveau", "created_at": {"$gte": start_date.isoformat()}})
-    contacted_leads = await db.leads.count_documents({"status": "contacté", "created_at": {"$gte": start_date.isoformat()}})
-    won_leads = await db.leads.count_documents({"status": "gagné", "created_at": {"$gte": start_date.isoformat()}})
+    # Date filter robuste : created_at peut être stocké en ISO string OU
+    # en datetime natif selon les leads. On matche les deux formats.
+    def _date_gte(base_query, date_field="created_at"):
+        q = dict(base_query) if base_query else {}
+        q["$or"] = [
+            {date_field: {"$gte": start_date.isoformat()}},
+            {date_field: {"$gte": start_date}},
+        ]
+        return q
 
-    # Count quotes
-    total_quotes = await db.quotes.count_documents({"created_at": {"$gte": start_date.isoformat()}})
-    sent_quotes = await db.quotes.count_documents({"status": "envoyé", "created_at": {"$gte": start_date.isoformat()}})
-    accepted_quotes = await db.quotes.count_documents({"status": "accepté", "created_at": {"$gte": start_date.isoformat()}})
+    not_deleted = {"deleted_at": {"$exists": False}}
+
+    # Count leads (exclut les supprimés)
+    total_leads      = await db.leads.count_documents(_date_gte(not_deleted))
+    new_leads        = await db.leads.count_documents(_date_gte({**not_deleted, "status": "nouveau"}))
+    contacted_leads  = await db.leads.count_documents(_date_gte({**not_deleted, "status": "contacté"}))
+    won_leads        = await db.leads.count_documents(_date_gte({**not_deleted, "status": "gagné"}))
+
+    # Count quotes (exclut supprimés)
+    total_quotes     = await db.quotes.count_documents(_date_gte(not_deleted))
+    sent_quotes      = await db.quotes.count_documents(_date_gte({**not_deleted, "status": "envoyé"}))
+    accepted_quotes  = await db.quotes.count_documents(_date_gte({**not_deleted, "status": "accepté"}))
 
     # Conversion rates
     conversion_lead_to_quote = (total_quotes / total_leads * 100) if total_leads > 0 else 0
@@ -3511,7 +3503,7 @@ async def get_dashboard_stats(request: Request, period: str = "30d"):
 
     # Leads by source
     leads_by_source = {}
-    all_leads = await db.leads.find({"created_at": {"$gte": start_date.isoformat()}}, {"_id": 0, "source": 1}).to_list(500)
+    all_leads = await db.leads.find(_date_gte(not_deleted), {"_id": 0, "source": 1}).to_list(2000)
     for lead in all_leads:
         source = lead.get("source") or "Direct"
         leads_by_source[source] = leads_by_source.get(source, 0) + 1
@@ -3522,33 +3514,52 @@ async def get_dashboard_stats(request: Request, period: str = "30d"):
         service = lead.get("service_type", "Autre")
         leads_by_service[service] = leads_by_service.get(service, 0) + 1
 
-    # Leads by day (last 30 days)
+    # Leads by day (toute la période demandée, pour les courbes)
     leads_by_day = []
-    for i in range(30):
+    n_days = days_map.get(period, 30)
+    for i in range(n_days):
         day_start = (now - timedelta(days=i)).replace(hour=0, minute=0, second=0, microsecond=0)
         day_end = day_start + timedelta(days=1)
         count = await db.leads.count_documents({
-            "created_at": {
-                "$gte": day_start.isoformat(),
-                "$lt": day_end.isoformat()
-            }
+            "deleted_at": {"$exists": False},
+            "$or": [
+                {"created_at": {"$gte": day_start.isoformat(), "$lt": day_end.isoformat()}},
+                {"created_at": {"$gte": day_start,            "$lt": day_end}},
+            ],
         })
-        leads_by_day.append({
-            "date": day_start.strftime("%Y-%m-%d"),
-            "count": count
-        })
+        leads_by_day.append({"date": day_start.strftime("%Y-%m-%d"), "count": count})
     leads_by_day.reverse()
 
-    # Pending tasks
-    pending_tasks = await db.tasks.count_documents({"status": "pending"})
+    # Tâches (toutes celles qui restent à faire)
+    pending_tasks = await db.tasks.count_documents({
+        "status": {"$in": ["pending", "en_cours", "à_faire"]},
+        "deleted_at": {"$exists": False},
+    })
+    # Tâches dues aujourd'hui (pour le dashboard)
+    today_end = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    tasks_today = await db.tasks.count_documents({
+        "status": {"$in": ["pending", "en_cours", "à_faire"]},
+        "$or": [
+            {"due_date": {"$lte": today_end.isoformat()}},
+            {"due_date": {"$lte": today_end}},
+        ],
+    })
+    # Tâches en retard
+    tasks_overdue = await db.tasks.count_documents({
+        "status": {"$in": ["pending", "en_cours", "à_faire"]},
+        "$or": [
+            {"due_date": {"$lt": now.isoformat()}},
+            {"due_date": {"$lt": now}},
+        ],
+    })
 
     # Average lead score
-    all_leads_full = await db.leads.find({"created_at": {"$gte": start_date.isoformat()}}, {"_id": 0, "score": 1, "source": 1, "service_type": 1}).to_list(500)
+    all_leads_full = await db.leads.find(_date_gte(not_deleted), {"_id": 0, "score": 1, "source": 1, "service_type": 1}).to_list(2000)
     avg_score = sum([lead.get("score", 50) for lead in all_leads_full]) / len(all_leads_full) if all_leads_full else 50
 
     # Top performing source (by conversion rate)
     source_performance = {}
-    for lead in await db.leads.find({"created_at": {"$gte": start_date.isoformat()}}, {"_id": 0, "lead_id": 1, "source": 1, "status": 1}).to_list(500):
+    for lead in await db.leads.find(_date_gte(not_deleted), {"_id": 0, "lead_id": 1, "source": 1, "status": 1}).to_list(2000):
         source = lead.get("source", "Direct")
         if source not in source_performance:
             source_performance[source] = {"total": 0, "won": 0}
@@ -3578,6 +3589,8 @@ async def get_dashboard_stats(request: Request, period: str = "30d"):
         "leads_by_service": leads_by_service,
         "leads_by_day": leads_by_day,
         "pending_tasks": pending_tasks,
+        "tasks_today": tasks_today,
+        "tasks_overdue": tasks_overdue,
         "avg_lead_score": round(avg_score, 1),
         "best_source": {
             "name": best_source[0],
