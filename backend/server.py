@@ -2184,6 +2184,30 @@ async def send_quote(quote_id: str, request: Request):
 
     return {"message": "Devis envoye" + (" par email avec PDF" if email_sent else ""), "email_sent": email_sent}
 
+@api_router.get("/quotes/{quote_id}/pdf")
+async def download_quote_pdf(quote_id: str, request: Request):
+    """Génère et télécharge le PDF du devis."""
+    await require_auth(request)
+    quote = await db.quotes.find_one({"quote_id": quote_id}, {"_id": 0})
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+    lead = await db.leads.find_one({"lead_id": quote.get("lead_id")}, {"_id": 0}) or {}
+    try:
+        from integrations import generate_quote_pdf
+        pdf_buffer = generate_quote_pdf(quote, lead)
+        pdf_data = pdf_buffer.read()
+    except Exception as e:
+        logger.error(f"PDF generation failed for quote {quote_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Erreur génération PDF")
+
+    filename = f"{quote.get('quote_number') or quote_id}.pdf"
+    return Response(
+        content=pdf_data,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 # ============= INTERACTIONS ENDPOINTS =============
 
 

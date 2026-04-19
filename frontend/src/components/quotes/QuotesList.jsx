@@ -317,10 +317,53 @@ export default function QuotesList() {
   /* ── Suppression (soft-delete) ── */
   const deleteSelected = useCallback(async () => {
     if (!selected.size) return;
-    await Promise.allSettled([...selected].map(id => api.delete(`/quotes/${id}`)));
+    if (!window.confirm(`Supprimer ${selected.size} devis ? Cette action est réversible (corbeille).`)) return;
+    const results = await Promise.allSettled([...selected].map(id => api.delete(`/quotes/${id}`)));
+    const failed = results.filter(r => r.status === 'rejected').length;
     setSelected(new Set());
+    if (failed) setError(`${failed} devis n'ont pas pu être supprimés`);
     load();
   }, [selected, load]);
+
+  /* ── Envoi en masse (POST /quotes/:id/send) ── */
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const sendSelected = useCallback(async () => {
+    if (!selected.size || bulkBusy) return;
+    if (!window.confirm(`Envoyer ${selected.size} devis par email au client ?`)) return;
+    setBulkBusy(true);
+    const results = await Promise.allSettled([...selected].map(id => api.post(`/quotes/${id}/send`)));
+    const failed = results.filter(r => r.status === 'rejected').length;
+    const sent = results.length - failed;
+    setSelected(new Set());
+    setBulkBusy(false);
+    if (failed) setError(`${sent} devis envoyé(s), ${failed} échec(s)`);
+    load();
+  }, [selected, bulkBusy, load]);
+
+  /* ── Export PDF (téléchargement séquentiel) ── */
+  const exportSelected = useCallback(async () => {
+    if (!selected.size || bulkBusy) return;
+    setBulkBusy(true);
+    let failed = 0;
+    for (const id of [...selected]) {
+      try {
+        const r = await api.get(`/quotes/${id}/pdf`, { responseType: 'blob' });
+        const q = quotes.find(x => x.id === id);
+        const url = URL.createObjectURL(new Blob([r.data], { type: 'application/pdf' }));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${q?.number || id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (e) {
+        failed++;
+      }
+    }
+    setBulkBusy(false);
+    if (failed) setError(`${failed} PDF n'ont pas pu être générés`);
+  }, [selected, bulkBusy, quotes]);
 
   const TABS = [
     { key: 'all',      label: 'Tous' },
@@ -547,13 +590,16 @@ export default function QuotesList() {
             {selected.size} sélectionné{selected.size > 1 ? 's' : ''}
           </span>
           <div style={{ width: 1, height: 18, background: 'oklch(0.35 0.012 60)' }} />
-          <button className="ql-bulk-btn">
+          <button className="ql-bulk-btn" onClick={sendSelected} disabled={bulkBusy}
+                  style={{ opacity: bulkBusy ? 0.5 : 1, cursor: bulkBusy ? 'wait' : 'pointer' }}>
             <Send style={{ width: 13, height: 13 }} /> Envoyer
           </button>
-          <button className="ql-bulk-btn">
+          <button className="ql-bulk-btn" onClick={exportSelected} disabled={bulkBusy}
+                  style={{ opacity: bulkBusy ? 0.5 : 1, cursor: bulkBusy ? 'wait' : 'pointer' }}>
             <FileText style={{ width: 13, height: 13 }} /> Exporter PDF
           </button>
-          <button className="ql-bulk-btn ql-bulk-btn-danger" onClick={deleteSelected}>
+          <button className="ql-bulk-btn ql-bulk-btn-danger" onClick={deleteSelected} disabled={bulkBusy}
+                  style={{ opacity: bulkBusy ? 0.5 : 1, cursor: bulkBusy ? 'wait' : 'pointer' }}>
             <Trash2 style={{ width: 13, height: 13 }} /> Supprimer
           </button>
           <button onClick={() => setSelected(new Set())}
