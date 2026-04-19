@@ -99,12 +99,15 @@ const QuoteForm = lazy(() => import('./components/quotes/QuoteForm'));
 const TasksCarnet = lazy(() => import('./components/tasks/TasksCarnet'));
 const TasksList = lazy(() => import('./components/tasks/TasksList'));
 const ActivityLog = lazy(() => import('./components/activity/ActivityLog'));
+const ActivityChronique = lazy(() => import('./components/activity/ActivityChronique'));
 const KanbanBoard = lazy(() => import('./components/kanban/KanbanBoard'));
 const Analytics = lazy(() => import('./components/analytics/Analytics'));
+const AnalyticsBoussole = lazy(() => import('./components/analytics/AnalyticsBoussole'));
 const InvoicesGrandLivre = lazy(() => import('./components/invoices/InvoicesGrandLivre'));
 const InvoicesList = lazy(() => import('./components/invoices/InvoicesList'));
 const PaymentSuccess = lazy(() => import('./components/invoices/PaymentSuccess'));
 const FinancialDashboard = lazy(() => import('./components/invoices/FinancialDashboard'));
+const FinanceCoffre = lazy(() => import('./components/finance/FinanceCoffre'));
 const ClientPortal = lazy(() => import('./components/portal/ClientPortal'));
 const IntervenantPortal = lazy(() => import('./components/portal/IntervenantPortal'));
 const IntervenantsManager = lazy(() => import('./components/planning/IntervenantsManager'));
@@ -118,6 +121,7 @@ const TicketsList = lazy(() => import('./components/tickets/TicketsList'));
 const ContractsList = lazy(() => import('./components/contracts/ContractsList'));
 const InterventionsMap = lazy(() => import('./components/map/InterventionsMap'));
 const SatisfactionDashboard = lazy(() => import('./components/satisfaction/SatisfactionDashboard'));
+const SatisfactionEcho = lazy(() => import('./components/satisfaction/SatisfactionEcho'));
 const DocumentsManager = lazy(() => import('./components/documents/DocumentsManager'));
 const BookingManager = lazy(() => import('./components/booking/BookingManager'));
 const SettingsPage = lazy(() => import('./components/settings/SettingsPage'));
@@ -402,9 +406,11 @@ function AppRouter() {
                     <Route path="/quotes/:id" element={<QuoteForm />} />
                     <Route path="/tasks" element={<TasksCarnet />} />
                     <Route path="/tasks/legacy" element={<TasksList />} />
-                    <Route path="/activity" element={<ActivityLog />} />
+                    <Route path="/activity" element={<ActivityChronique />} />
+                    <Route path="/activity/legacy" element={<ActivityLog />} />
                     <Route path="/kanban" element={<KanbanBoard />} />
-                    <Route path="/analytics" element={<Analytics />} />
+                    <Route path="/analytics" element={<AnalyticsBoussole />} />
+                    <Route path="/analytics/legacy" element={<Analytics />} />
                     <Route path="/invoices" element={<InvoicesGrandLivre />} />
                     <Route path="/invoices/legacy" element={<InvoicesList />} />
                     <Route path="/invoices/new" element={<InvoiceForm />} />
@@ -412,7 +418,8 @@ function AppRouter() {
                     <Route path="/invoices/:id" element={<InvoiceForm />} />
                     {/* Legacy : /invoices/premium redirige vers /invoices/new */}
                     <Route path="/invoices/premium" element={<InvoiceForm />} />
-                    <Route path="/finance" element={<FinancialDashboard />} />
+                    <Route path="/finance" element={<FinanceCoffre />} />
+                    <Route path="/finance/legacy" element={<FinancialDashboard />} />
                     <Route path="/accounting-erp" element={<AccountingERP />} />
                     <Route path="/accounting" element={<AccountingDashboard />} />
                     <Route path="/accounting-enterprise" element={<AccountingEnterprise />} />
@@ -428,7 +435,8 @@ function AppRouter() {
                     <Route path="/tickets" element={<TicketsList />} />
                     <Route path="/contracts" element={<ContractsList />} />
                     <Route path="/map" element={<InterventionsMap />} />
-                    <Route path="/satisfaction" element={<SatisfactionDashboard />} />
+                    <Route path="/satisfaction" element={<SatisfactionEcho />} />
+                    <Route path="/satisfaction/legacy" element={<SatisfactionDashboard />} />
                     <Route path="/documents" element={<DocumentsManager />} />
                     <Route path="/bookings" element={<BookingManager />} />
                     <Route path="/settings" element={<SettingsPage />} />
