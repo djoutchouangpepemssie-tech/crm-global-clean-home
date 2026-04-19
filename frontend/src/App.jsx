@@ -84,7 +84,8 @@ const prefetchPages = () => {
 if (typeof window !== 'undefined') {
   window.addEventListener('load', () => setTimeout(prefetchPages, 1000));
 }
-const Dashboard = lazy(() => import('./components/dashboard/DynamicDashboard'));
+const Dashboard = lazy(() => import('./components/dashboard/CockpitDashboard'));
+const DashboardCustom = lazy(() => import('./components/dashboard/DynamicDashboard'));
 const DashboardLegacy = lazy(() => import('./components/dashboard/Dashboard'));
 const LeadsList = lazy(() => import('./components/leads/LeadsList'));
 const LeadDetail = lazy(() => import('./components/leads/LeadDetail'));
@@ -374,6 +375,7 @@ function AppRouter() {
         }>
         <Routes>
                     <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/dashboard/custom" element={<DashboardCustom />} />
                     <Route path="/dashboard/legacy" element={<DashboardLegacy />} />
                     <Route path="/director" element={<DirectorDashboard />} />
                     <Route path="/seo" element={<SEODashboard />} />
