@@ -10,6 +10,7 @@ import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import {
   Pencil, Save, Plus, X, GripVertical, Trash2, Undo2, RotateCcw, RefreshCw, Minus,
+  Sparkles, Send, Loader,
 } from 'lucide-react';
 import api from '../../lib/api';
 import { BLOCK_REGISTRY, DEFAULT_BLOCKS } from './blocks';
@@ -116,6 +117,14 @@ function useLayout(scope = 'dashboard') {
   const [history, setHistory] = useState([]); // pour undo
   const saveTimeout = useRef(null);
 
+  // Permet à la commande Claude de remplacer le layout sans créer de doublon d'historique
+  const replaceFromServer = useCallback((nextBlocks) => {
+    setBlocks(prev => {
+      if (prev) setHistory(h => [...h.slice(-20), prev]);
+      return nextBlocks;
+    });
+  }, []);
+
   useEffect(() => {
     api.get(`/layouts/${scope}`)
       .then(r => setBlocks(r.data?.blocks || DEFAULT_BLOCKS))
@@ -158,7 +167,37 @@ function useLayout(scope = 'dashboard') {
     } catch { /* ignore */ }
   }, [scope]);
 
-  return { blocks, update, undo, reset, canUndo: history.length > 0 };
+  return { blocks, update, undo, reset, replaceFromServer, canUndo: history.length > 0 };
+}
+
+/* ───── Commande Claude : instruction → nouveau layout ─────────── */
+function useClaudeCommand(scope, replaceFromServer) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState(null);
+  const [lastExplanation, setLastExplanation] = useState(null);
+
+  const send = useCallback(async (instruction) => {
+    if (!instruction?.trim() || pending) return null;
+    setPending(true);
+    setError(null);
+    try {
+      const r = await api.post(`/layouts/${scope}/command`, { instruction: instruction.trim() });
+      if (r.data?.blocks) {
+        replaceFromServer(r.data.blocks);
+        setLastExplanation(r.data.explanation || 'Mise à jour appliquée.');
+        return r.data;
+      }
+      throw new Error('Réponse Claude invalide');
+    } catch (e) {
+      const msg = e?.detail || e?.message || 'Erreur Claude';
+      setError(typeof msg === 'string' ? msg : 'Erreur Claude');
+      return null;
+    } finally {
+      setPending(false);
+    }
+  }, [scope, pending, replaceFromServer]);
+
+  return { send, pending, error, lastExplanation, clearExplanation: () => setLastExplanation(null), clearError: () => setError(null) };
 }
 
 /* ───── Widget : toolbar au-dessus de chaque bloc (en mode édition) */
@@ -236,10 +275,121 @@ function AddBlockModal({ open, onClose, onAdd, existingTypes }) {
   );
 }
 
+/* ───── Barre de commande Claude (langage naturel) ─────────────── */
+function ClaudeCommandBar({ send, pending, error, lastExplanation, clearExplanation, clearError }) {
+  const [text, setText] = useState('');
+  const inputRef = useRef(null);
+
+  const SUGGESTIONS = [
+    'Mets le pipeline en haut',
+    'Ajoute l\'activité en direct à côté des leads récents',
+    'Passe le chiffre d\'affaires en pleine largeur',
+    'Enlève les actions rapides',
+  ];
+
+  const submit = async (e) => {
+    e?.preventDefault?.();
+    if (!text.trim() || pending) return;
+    const typed = text;
+    setText('');
+    const r = await send(typed);
+    if (!r) setText(typed); // remet le texte si échec pour que l'user puisse retenter
+  };
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, oklch(0.985 0.008 85), oklch(0.93 0.05 165) 200%)',
+      border: '2px solid var(--accent)',
+      borderRadius: 14, padding: 18, marginBottom: 20,
+      boxShadow: '0 4px 20px oklch(0.52 0.13 165 / 0.12)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <Sparkles style={{ width: 16, height: 16, color: 'var(--accent)' }} />
+        <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--accent)' }}>
+          Demander à Claude
+        </span>
+        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: 'var(--accent)', opacity: 0.6, letterSpacing: '0.1em' }}>
+          BÊTA
+        </span>
+      </div>
+
+      <form onSubmit={submit} style={{ display: 'flex', gap: 8 }}>
+        <input
+          ref={inputRef}
+          value={text}
+          onChange={e => setText(e.target.value)}
+          disabled={pending}
+          placeholder="Ex : mets le pipeline en haut et ajoute l'activité en direct à côté…"
+          style={{
+            flex: 1, padding: '11px 14px', borderRadius: 10,
+            border: '1.5px solid var(--accent)', background: 'white', fontSize: 14,
+            outline: 'none', fontFamily: 'inherit',
+            opacity: pending ? 0.6 : 1,
+          }}
+        />
+        <button type="submit" disabled={!text.trim() || pending}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '11px 18px', borderRadius: 10, border: 'none',
+            background: 'var(--accent)', color: 'white', fontSize: 13, fontWeight: 600,
+            cursor: pending ? 'wait' : 'pointer', opacity: (!text.trim() || pending) ? 0.5 : 1,
+          }}>
+          {pending ? <Loader style={{ width: 14, height: 14, animation: 'spin 0.7s linear infinite' }} /> : <Send style={{ width: 14, height: 14 }} />}
+          {pending ? 'Claude réfléchit…' : 'Appliquer'}
+        </button>
+      </form>
+
+      {/* Suggestions cliquables */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+        {SUGGESTIONS.map(s => (
+          <button key={s} onClick={() => setText(s)} disabled={pending}
+            style={{
+              fontFamily: 'JetBrains Mono, monospace', fontSize: 10,
+              padding: '4px 10px', borderRadius: 999,
+              border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-3)',
+              cursor: 'pointer', transition: 'all .15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.color = 'var(--ink-3)'; }}>
+            {s}
+          </button>
+        ))}
+      </div>
+
+      {/* Feedback : explication / erreur */}
+      {lastExplanation && (
+        <div style={{
+          marginTop: 12, padding: '10px 14px', borderRadius: 8,
+          background: 'var(--accent-soft)', color: 'var(--ink-2)', fontSize: 13,
+          display: 'flex', justifyContent: 'space-between', gap: 10,
+        }}>
+          <span><strong style={{ color: 'var(--accent)' }}>✓ </strong>{lastExplanation}</span>
+          <button onClick={clearExplanation} style={{ background: 'none', border: 'none', color: 'var(--ink-3)', cursor: 'pointer' }}>
+            <X style={{ width: 14, height: 14 }} />
+          </button>
+        </div>
+      )}
+      {error && (
+        <div style={{
+          marginTop: 12, padding: '10px 14px', borderRadius: 8,
+          background: 'oklch(0.94 0.08 25)', color: 'oklch(0.25 0.15 25)', fontSize: 13,
+          display: 'flex', justifyContent: 'space-between', gap: 10,
+        }}>
+          <span><strong>⚠ </strong>{error}</span>
+          <button onClick={clearError} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}>
+            <X style={{ width: 14, height: 14 }} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ───── Composant principal ───────────────────────────────────── */
 export default function DynamicDashboard() {
   const { data, loading: dataLoading, refresh } = useDashboardData();
-  const { blocks, update, undo, reset, canUndo } = useLayout('dashboard');
+  const { blocks, update, undo, reset, replaceFromServer, canUndo } = useLayout('dashboard');
+  const claude = useClaudeCommand('dashboard', replaceFromServer);
   const [editMode, setEditMode] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [dragId, setDragId] = useState(null);
@@ -354,6 +504,17 @@ export default function DynamicDashboard() {
 
       {/* Grille des blocs */}
       <div style={{ padding: '32px 40px 120px', maxWidth: 1440, margin: '0 auto' }}>
+        {editMode && (
+          <ClaudeCommandBar
+            send={claude.send}
+            pending={claude.pending}
+            error={claude.error}
+            lastExplanation={claude.lastExplanation}
+            clearExplanation={claude.clearExplanation}
+            clearError={claude.clearError}
+          />
+        )}
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 20, alignItems: 'start' }}>
           {blocks.length === 0 && (
             <div style={{

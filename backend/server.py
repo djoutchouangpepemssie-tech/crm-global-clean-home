@@ -2259,6 +2259,192 @@ async def reset_user_layout(scope: str, request: Request):
     return {"scope": scope, "blocks": DEFAULT_LAYOUTS.get(scope, [])}
 
 
+# ============= COMMANDE CLAUDE — Phase 2 =============
+# L'utilisateur tape une instruction en langage naturel, Claude la transforme
+# en patch du layout via tool_use (sortie JSON garantie par l'API).
+
+# Catalogue des blocs disponibles (synchro avec frontend/blocks.jsx BLOCK_REGISTRY)
+AVAILABLE_BLOCKS = {
+    "cover": {
+        "title": "Cover / accueil",
+        "description": "Bandeau d'accueil avec salutation contextuelle et résumé du jour.",
+    },
+    "quick-actions": {
+        "title": "Actions rapides",
+        "description": "4 CTA : nouveau lead, nouveau devis, planning, carte.",
+    },
+    "hero-revenue": {
+        "title": "Chiffre d'affaires",
+        "description": "Gros chiffre du CA + encaissé/attente/retard + sparkline.",
+    },
+    "kpi-leads": {
+        "title": "Nouveaux leads",
+        "description": "Compteur de leads du mois + progression vers l'objectif.",
+    },
+    "pipeline": {
+        "title": "Pipeline commercial",
+        "description": "Entonnoir des 6 étapes (Nouveau → Gagné).",
+    },
+    "activity-feed": {
+        "title": "Activité en direct",
+        "description": "Flux temps réel des derniers événements (leads, devis, factures).",
+    },
+    "ai-insights": {
+        "title": "Recommandations IA",
+        "description": "Suggestions d'actions basées sur les données.",
+    },
+    "recent-leads": {
+        "title": "Leads récents",
+        "description": "Liste cliquable des 8 derniers leads.",
+    },
+}
+
+
+class LayoutCommand(BaseModel):
+    instruction: str = Field(..., max_length=500, description="Instruction en langage naturel")
+
+
+@api_router.post("/layouts/{scope}/command")
+async def layout_command(scope: str, payload: LayoutCommand, request: Request):
+    """Transforme une instruction en français en un nouveau layout via Claude."""
+    import httpx, json
+
+    user = await require_auth(request)
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not anthropic_key:
+        raise HTTPException(status_code=503, detail="Claude API non configurée (ANTHROPIC_API_KEY manquant)")
+
+    # Récupère le layout courant
+    doc = await db.user_layouts.find_one({"user_id": user.user_id, "scope": scope}, {"_id": 0})
+    current_blocks = (doc or {}).get("blocks") or DEFAULT_LAYOUTS.get(scope, [])
+
+    # Catalogue en texte pour le prompt
+    catalog = "\n".join([f"  - `{t}` — {m['title']} : {m['description']}" for t, m in AVAILABLE_BLOCKS.items()])
+    current_json = json.dumps(current_blocks, ensure_ascii=False)
+
+    system_prompt = f"""Tu es l'assistant de configuration du dashboard d'un CRM.
+L'utilisateur te donne une instruction en français pour modifier son dashboard.
+Tu dois renvoyer le NOUVEAU layout complet via l'outil `set_dashboard_layout`.
+
+SYSTÈME DE GRILLE :
+- Le dashboard est une grille de 12 colonnes.
+- Chaque bloc a une propriété `w` (largeur) entre 1 et 12.
+- Valeurs typiques : 4 (1/3), 6 (1/2), 8 (2/3), 12 (pleine largeur).
+- Les blocs s'affichent dans l'ordre du tableau, avec wrap automatique.
+
+BLOCS DISPONIBLES (types autorisés uniquement) :
+{catalog}
+
+LAYOUT ACTUEL DE L'UTILISATEUR :
+{current_json}
+
+RÈGLES :
+1. Ne jamais inventer de `type` hors de la liste ci-dessus.
+2. Chaque bloc doit avoir un `id` unique (conserve les IDs existants quand tu les garde, et génère un ID court `{{type}}-{{random4}}` pour les nouveaux).
+3. Préserve la cohérence : si l'utilisateur demande d'ajouter un bloc, ajoute-le SANS supprimer les autres sauf demande explicite.
+4. La somme des `w` sur une ligne ne peut dépasser 12 (les blocs passent à la ligne automatiquement, donc pense aux visuels côte à côte).
+5. Reformule en 1 phrase concise ce que tu as fait dans `explanation` (français, ton pro).
+"""
+
+    tool = {
+        "name": "set_dashboard_layout",
+        "description": "Applique un nouveau layout au dashboard de l'utilisateur.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "blocks": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id":   {"type": "string"},
+                            "type": {"type": "string", "enum": list(AVAILABLE_BLOCKS.keys())},
+                            "w":    {"type": "integer", "minimum": 1, "maximum": 12},
+                        },
+                        "required": ["id", "type", "w"],
+                    },
+                },
+                "explanation": {"type": "string", "description": "Résumé 1 phrase de la modification."},
+            },
+            "required": ["blocks", "explanation"],
+        },
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            res = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": anthropic_key,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": "claude-sonnet-4-6",
+                    "max_tokens": 2000,
+                    "system": system_prompt,
+                    "tools": [tool],
+                    "tool_choice": {"type": "tool", "name": "set_dashboard_layout"},
+                    "messages": [{"role": "user", "content": payload.instruction}],
+                },
+            )
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Claude trop lent à répondre")
+
+    if res.status_code != 200:
+        logger.error(f"Claude layout command failed: {res.status_code} {res.text[:500]}")
+        raise HTTPException(status_code=502, detail=f"Claude a refusé la requête ({res.status_code})")
+
+    data = res.json()
+
+    # Extraction de l'appel d'outil
+    tool_blocks = None
+    explanation = None
+    for block in data.get("content", []):
+        if block.get("type") == "tool_use" and block.get("name") == "set_dashboard_layout":
+            inp = block.get("input") or {}
+            tool_blocks = inp.get("blocks")
+            explanation = inp.get("explanation")
+            break
+
+    if not isinstance(tool_blocks, list):
+        raise HTTPException(status_code=502, detail="Claude n'a pas renvoyé de layout valide")
+
+    # Sanitize (comme PUT /layouts/{scope})
+    cleaned = []
+    for b in tool_blocks:
+        if not isinstance(b, dict) or not b.get("type") or b["type"] not in AVAILABLE_BLOCKS:
+            continue
+        cleaned.append({
+            "id":     str(b.get("id") or uuid.uuid4().hex[:8]),
+            "type":   b["type"],
+            "w":      max(1, min(12, int(b.get("w") or 12))),
+            "config": b.get("config") or {},
+        })
+
+    if not cleaned:
+        raise HTTPException(status_code=422, detail="Le layout produit est vide (aucun bloc valide)")
+
+    # Persiste
+    await db.user_layouts.update_one(
+        {"user_id": user.user_id, "scope": scope},
+        {"$set": {
+            "user_id":    user.user_id,
+            "scope":      scope,
+            "blocks":     cleaned,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
+
+    return {
+        "scope": scope,
+        "blocks": cleaned,
+        "explanation": explanation or "Mise à jour appliquée.",
+        "instruction": payload.instruction,
+    }
+
+
 # ============= LIVE ACTIVITY FEED =============
 # Agrège les événements récents à travers tout le CRM pour un feed temps réel.
 
