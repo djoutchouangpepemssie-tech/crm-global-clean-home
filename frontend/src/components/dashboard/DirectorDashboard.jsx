@@ -1,5 +1,6 @@
 // DirectorDashboard.jsx — Atelier edition (niveau Atelier.html pur)
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 
 const API = (typeof process !== 'undefined' && process.env.REACT_APP_API_URL) || '';
@@ -809,6 +810,9 @@ export default function DirectorDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const location = useLocation();
+  const [refreshTick, setRefreshTick] = useState(0);
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -819,7 +823,13 @@ export default function DirectorDashboard() {
       .catch(() => { if (!cancelled) setData({}); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [range]);
+  }, [range, location.key, refreshTick]);
+
+  useEffect(() => {
+    const onFocus = () => setRefreshTick(t => t + 1);
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
 
   const d = data || {};
 

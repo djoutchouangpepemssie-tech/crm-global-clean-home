@@ -1,8 +1,9 @@
 // Dashboard.jsx — Atelier edition (niveau Atelier.html pur)
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Plus, PenLine, Calendar, Map,
-  TrendingUp, AlertTriangle, Sparkles
+  TrendingUp, AlertTriangle, Sparkles, RefreshCw
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -455,29 +456,39 @@ export default function Dashboard() {
     setUser(u);
   }, []);
 
+  const location = useLocation();
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    const token = localStorage.getItem('token') || localStorage.getItem('session_token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const periodMap = { today: '1d', '7d': '7d', '30d': '30d', '3m': '90d', year: '1y' };
+    const period = periodMap[range] || '30d';
+    try {
+      const [dashRes, finRes, insRes] = await Promise.all([
+        axios.get(`${API}/api/stats/dashboard`, { params: { period }, headers, withCredentials: true }).catch(() => ({ data: {} })),
+        axios.get(`${API}/api/stats/financial`, { params: { period }, headers, withCredentials: true }).catch(() => ({ data: {} })),
+        axios.get(`${API}/api/ai/insights`, { headers, withCredentials: true }).catch(() => ({ data: { insights: [] } })),
+      ]);
+      setData({ ...dashRes.data, financial: finRes.data, insights: insRes.data.insights || [] });
+    } finally {
+      setLoading(false);
+    }
+  }, [range]);
+
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const token = localStorage.getItem('token') || localStorage.getItem('session_token');
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const periodMap = { today: '1d', '7d': '7d', '30d': '30d', '3m': '90d', year: '1y' };
-        const period = periodMap[range] || '30d';
-        const [dashRes, finRes, insRes] = await Promise.all([
-          axios.get(`${API}/api/stats/dashboard`, { params: { period }, headers, withCredentials: true }).catch(() => ({ data: {} })),
-          axios.get(`${API}/api/stats/financial`, { params: { period }, headers, withCredentials: true }).catch(() => ({ data: {} })),
-          axios.get(`${API}/api/ai/insights`, { headers, withCredentials: true }).catch(() => ({ data: { insights: [] } })),
-        ]);
-        if (!cancelled) {
-          setData({ ...dashRes.data, financial: finRes.data, insights: insRes.data.insights || [] });
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
+    (async () => { if (!cancelled) await fetchData(); })();
     return () => { cancelled = true; };
-  }, [range]);
+  }, [fetchData, location.key, refreshTick]);
+
+  // Refetch quand la fenêtre reprend le focus (user revient sur l'onglet)
+  useEffect(() => {
+    const onFocus = () => setRefreshTick(t => t + 1);
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
 
   const d = data || {};
   const fin = d.financial || {};
@@ -536,6 +547,22 @@ export default function Dashboard() {
           range={range}
           setRange={setRange}
         />
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -48, marginBottom: 24 }}>
+          <button onClick={() => setRefreshTick(t => t + 1)} disabled={loading}
+            title="Rafraîchir les données"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '7px 14px', borderRadius: 999,
+              background: 'var(--surface)', border: '1px solid var(--line)',
+              fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.12em',
+              textTransform: 'uppercase', color: 'var(--ink-3)', cursor: loading ? 'wait' : 'pointer',
+              opacity: loading ? 0.5 : 1,
+            }}>
+            <RefreshCw style={{ width: 12, height: 12, animation: loading ? 'spin 0.7s linear infinite' : 'none' }} />
+            Rafraîchir
+          </button>
+        </div>
 
         <QuickActions onAction={(k) => {
           const urls = { 'new-lead': '/leads', 'new-quote': '/quotes/new', 'planning': '/planning', 'map': '/map' };

@@ -459,6 +459,107 @@ async def add_reminder(invoice_id: str, request: Request):
     return {"reminders_done": current + 1}
 
 
+@invoices_router.post("/invoices/{invoice_id}/mark-paid")
+async def mark_invoice_paid(invoice_id: str, request: Request):
+    """Marque une facture comme payée (raccourci de PATCH status=payée)."""
+    user = await _require_auth(request)
+    now = datetime.now(timezone.utc).isoformat()
+    result = await _db.invoices.update_one(
+        {"invoice_id": invoice_id},
+        {"$set": {"status": "payée", "paid_at": now}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Facture introuvable")
+    await _log_activity(user.user_id, "mark_paid", "invoice", invoice_id, {"paid_at": now})
+    return {"status": "payée", "paid_at": now}
+
+
+@invoices_router.get("/invoices/export")
+async def export_invoices_csv(request: Request):
+    """Export CSV de toutes les factures (pour historique comptable)."""
+    from fastapi.responses import Response as FastResponse
+    import csv, io
+    await _require_auth(request)
+    invoices = await _db.invoices.find({"deleted_at": {"$exists": False}}, {"_id": 0}).sort("created_at", -1).to_list(10000)
+
+    buf = io.StringIO()
+    w = csv.writer(buf, delimiter=';')
+    w.writerow([
+        "Numéro", "Client", "Ville", "Projet", "Type", "Montant HT", "TVA",
+        "Montant TTC", "Statut", "Émise le", "Échéance", "Payée le", "Relances",
+    ])
+    for i in invoices:
+        tva = i.get("tva") or i.get("tva_rate") or 0
+        ht = i.get("amount_ht") or i.get("amount") or 0
+        ttc = i.get("amount_ttc") or (ht * (1 + tva / 100))
+        w.writerow([
+            i.get("invoice_number") or i.get("invoice_id", ""),
+            i.get("lead_name", ""),
+            i.get("lead_city", ""),
+            i.get("project", ""),
+            i.get("type", ""),
+            f"{ht:.2f}",
+            f"{tva}%",
+            f"{ttc:.2f}",
+            i.get("status", ""),
+            (i.get("created_at") or "")[:10],
+            (i.get("due_date") or "")[:10],
+            (i.get("paid_at") or "")[:10],
+            i.get("reminders_done", 0),
+        ])
+    csv_data = buf.getvalue().encode("utf-8-sig")  # BOM pour Excel
+    filename = f"factures_{datetime.now().strftime('%Y%m%d')}.csv"
+    return FastResponse(
+        content=csv_data,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@invoices_router.get("/invoices/{invoice_id}/pdf")
+async def download_invoice_pdf(invoice_id: str, request: Request):
+    """Génère et télécharge le PDF d'une facture (réutilise le template devis)."""
+    from fastapi.responses import Response as FastResponse
+    await _require_auth(request)
+    inv = await _db.invoices.find_one({"invoice_id": invoice_id}, {"_id": 0})
+    if not inv:
+        raise HTTPException(status_code=404, detail="Facture introuvable")
+    lead = await _db.leads.find_one({"lead_id": inv.get("lead_id")}, {"_id": 0}) or {}
+
+    # Adapte la facture au format attendu par generate_quote_pdf (même template)
+    tva = inv.get("tva") or inv.get("tva_rate") or 0
+    ht = inv.get("amount_ht") or inv.get("amount") or 0
+    ttc = inv.get("amount_ttc") or (ht * (1 + tva / 100))
+    quote_like = {
+        "quote_id": inv.get("invoice_id"),
+        "quote_number": inv.get("invoice_number") or f"FAC-{inv.get('invoice_id', '')[:8]}",
+        "service_type": inv.get("type", "Facture"),
+        "title": f"Facture · {inv.get('project') or inv.get('type', '')}".strip(" ·"),
+        "amount": ttc,
+        "amount_ht": ht,
+        "tva_rate": tva,
+        "created_at": inv.get("created_at"),
+        "expiry_date": inv.get("due_date"),
+        "details": inv.get("details") or inv.get("notes") or "",
+        "line_items": inv.get("line_items") or [],
+        "notes": inv.get("notes") or "",
+    }
+    try:
+        from integrations import generate_quote_pdf
+        pdf_buffer = generate_quote_pdf(quote_like, lead)
+        pdf_data = pdf_buffer.read()
+    except Exception as e:
+        logger.error(f"Invoice PDF failed {invoice_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Erreur génération PDF")
+
+    filename = f"{quote_like['quote_number']}.pdf"
+    return FastResponse(
+        content=pdf_data,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 # ============= STRIPE CHECKOUT =============
 
 @invoices_router.post("/invoices/{invoice_id}/checkout")

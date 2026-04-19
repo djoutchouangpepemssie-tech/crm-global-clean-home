@@ -54,13 +54,11 @@ const tokenStyle = `
 `;
 
 const STAGES = [
-  { key: 'nouveau',     label: 'Nouveau' },
-  { key: 'qualifie',   label: 'Qualifié' },
-  { key: 'visite',     label: 'Visite technique' },
-  { key: 'devis',      label: 'Devis envoyé' },
-  { key: 'negociation',label: 'Négociation' },
-  { key: 'signature',  label: 'Signature' },
-  { key: 'chantier',   label: 'Chantier' },
+  { key: 'nouveau',       label: 'Nouveau' },
+  { key: 'contacté',      label: 'Contacté' },
+  { key: 'en_attente',    label: 'Qualifié' },
+  { key: 'devis_envoyé',  label: 'Devis envoyé' },
+  { key: 'gagné',         label: 'Gagné' },
 ];
 
 const TL_TYPES = {
@@ -476,7 +474,7 @@ function Timeline({ groups }) {
 // ————————————————————————————————————————————————
 // PIPELINE STEPPER
 // ————————————————————————————————————————————————
-function Stepper({ currentStage, history = {} }) {
+function Stepper({ currentStage, history = {}, onChange }) {
   const currentIdx = STAGES.findIndex(s => s.key === currentStage);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', position: 'relative', paddingLeft: 16 }}>
@@ -486,7 +484,11 @@ function Stepper({ currentStage, history = {} }) {
         const current = s.key === currentStage;
         const date = history[s.key];
         return (
-          <div key={s.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '10px 0', position: 'relative' }}>
+          <div key={s.key} onClick={() => onChange?.(s.key)}
+               title={`Passer l'étape à « ${s.label} »`}
+               style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '10px 0', position: 'relative', cursor: onChange ? 'pointer' : 'default', borderRadius: 6, transition: 'background 0.1s' }}
+               onMouseEnter={e => { if (onChange) e.currentTarget.style.background = 'var(--surface-2)'; }}
+               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
             <span style={{
               position: 'absolute', left: -18, top: 14, width: 11, height: 11, borderRadius: 999,
               background: done ? 'var(--accent)' : 'var(--bg)',
@@ -684,6 +686,31 @@ const LeadDetail = () => {
   const handleAction = (type) => {
     if (['email', 'sms', 'note', 'rdv'].includes(type)) setChannel(type);
     if (type === 'quote') navigate(`/quotes/new?leadId=${id}`);
+    if (type === 'call' && lead?.phone) {
+      window.location.href = `tel:${lead.phone.replace(/\s/g, '')}`;
+    }
+    if (type === 'transfer') {
+      const email = window.prompt('Email du collaborateur à qui transférer ce lead :');
+      if (!email) return;
+      api.patch(`/leads/${id}`, { notes: `Transféré à ${email} le ${new Date().toLocaleDateString('fr-FR')}` })
+        .then(() => { setRetryCount(c => c + 1); })
+        .catch(e => window.alert(`Erreur : ${e?.message || 'impossible de transférer'}`));
+    }
+    if (type === 'ai') {
+      const suggestion = lead?.aiScore >= 70
+        ? `Lead chaud (score ${lead.aiScore}) — recommandé : appel rapide pour convertir.`
+        : `Lead à qualifier (score ${lead.aiScore}) — envoyer un email de découverte pour mieux cerner le besoin.`;
+      window.alert(`Suggestion IA : ${suggestion}`);
+    }
+  };
+
+  const handleStageChange = (newStage) => {
+    if (!newStage || newStage === lead?.currentStage) return;
+    const labelMap = STAGES.reduce((m, s) => ({ ...m, [s.key]: s.label }), {});
+    if (!window.confirm(`Passer ce lead au statut « ${labelMap[newStage] || newStage} » ?`)) return;
+    api.patch(`/leads/${id}`, { status: newStage })
+      .then(() => setRetryCount(c => c + 1))
+      .catch(e => window.alert(`Erreur : ${e?.message || 'impossible de changer le statut'}`));
   };
 
   const handleSend = ({ channel: ch, subject, body }) => {
@@ -786,7 +813,7 @@ const LeadDetail = () => {
             </Panel>
 
             <Panel title="Pipeline" em=" commercial">
-              <Stepper currentStage={lead.currentStage} history={lead.stageHistory} />
+              <Stepper currentStage={lead.currentStage} history={lead.stageHistory} onChange={handleStageChange} />
             </Panel>
 
             <Panel title="Score" em=" d'engagement">

@@ -79,8 +79,12 @@ const InvoicesList = () => {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(new Set());
 
-  useEffect(() => {
+  const [busy, setBusy] = useState(false);
+  const [actionMsg, setActionMsg] = useState(null);
+
+  const reload = () => {
     let alive = true;
+    setLoading(true);
     Promise.all([
       api.get('/invoices', { params: { page_size: 200 } }),
       api.get('/invoices/stats'),
@@ -97,7 +101,95 @@ const InvoicesList = () => {
       if (alive) setLoading(false);
     });
     return () => { alive = false; };
-  }, [location.key]);
+  };
+
+  useEffect(() => {
+    return reload();
+  }, [location.key]);  // eslint-disable-line
+
+  const downloadPdf = async (id, ref) => {
+    const r = await api.get(`/invoices/${id}/pdf`, { responseType: 'blob' });
+    const url = URL.createObjectURL(new Blob([r.data], { type: 'application/pdf' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = `${ref || id}.pdf`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const remindOverdue = async () => {
+    if (busy) return;
+    const list = (data?.invoices || []).filter(i => i.status === 'overdue');
+    if (!list.length) return;
+    if (!window.confirm(`Envoyer une relance pour ${list.length} facture(s) en retard ?`)) return;
+    setBusy(true);
+    const r = await Promise.allSettled(list.map(i => api.post(`/invoices/${i.id}/remind`)));
+    const ok = r.filter(x => x.status === 'fulfilled').length;
+    setActionMsg(`${ok} relance(s) envoyée(s)${r.length > ok ? `, ${r.length - ok} échec(s)` : ''}`);
+    setBusy(false);
+    reload();
+  };
+
+  const exportHistory = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const r = await api.get('/invoices/export', { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([r.data], { type: 'text/csv' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = `factures_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch { setActionMsg('Export impossible'); }
+    setBusy(false);
+  };
+
+  const bulkRemind = async () => {
+    if (!selected.size || busy) return;
+    if (!window.confirm(`Relancer ${selected.size} facture(s) ?`)) return;
+    setBusy(true);
+    const r = await Promise.allSettled([...selected].map(id => api.post(`/invoices/${id}/remind`)));
+    const ok = r.filter(x => x.status === 'fulfilled').length;
+    setSelected(new Set());
+    setActionMsg(`${ok} relance(s) envoyée(s)`);
+    setBusy(false);
+    reload();
+  };
+
+  const bulkMarkPaid = async () => {
+    if (!selected.size || busy) return;
+    if (!window.confirm(`Marquer ${selected.size} facture(s) comme payée(s) ?`)) return;
+    setBusy(true);
+    const r = await Promise.allSettled([...selected].map(id => api.post(`/invoices/${id}/mark-paid`)));
+    const ok = r.filter(x => x.status === 'fulfilled').length;
+    setSelected(new Set());
+    setActionMsg(`${ok} facture(s) marquée(s) payée(s)`);
+    setBusy(false);
+    reload();
+  };
+
+  const bulkExportPdf = async () => {
+    if (!selected.size || busy) return;
+    setBusy(true);
+    let failed = 0;
+    for (const id of [...selected]) {
+      const inv = data?.invoices?.find(x => x.id === id);
+      try { await downloadPdf(id, inv?.ref); } catch { failed++; }
+    }
+    setBusy(false);
+    if (failed) setActionMsg(`${failed} PDF en échec`);
+  };
+
+  const bulkCancel = async () => {
+    if (!selected.size || busy) return;
+    if (!window.confirm(`Annuler ${selected.size} facture(s) (soft delete) ?`)) return;
+    setBusy(true);
+    const r = await Promise.allSettled([...selected].map(id => api.delete(`/invoices/${id}`)));
+    const ok = r.filter(x => x.status === 'fulfilled').length;
+    setSelected(new Set());
+    setActionMsg(`${ok} facture(s) annulée(s)`);
+    setBusy(false);
+    reload();
+  };
 
   const d = data || FALLBACK;
   const stats = d.stats || FALLBACK.stats;
@@ -184,7 +276,8 @@ const InvoicesList = () => {
             <span className="ml-1 px-2 py-0.5 bg-white/15 border border-white/20 text-[10px] rounded-sm">N</span>
           </button>
           {overdueList.length > 0 && (
-            <button className="inline-flex items-center gap-3 px-[22px] py-[14px] bg-terracotta-800 text-[#faf7f2] border-0 cursor-pointer font-mono text-[12px] tracking-[0.12em] uppercase font-medium rounded-sm hover:bg-[#881337] transition-colors relative">
+            <button onClick={remindOverdue} disabled={busy}
+              className="inline-flex items-center gap-3 px-[22px] py-[14px] bg-terracotta-800 text-[#faf7f2] border-0 cursor-pointer font-mono text-[12px] tracking-[0.12em] uppercase font-medium rounded-sm hover:bg-[#881337] transition-colors relative disabled:opacity-50 disabled:cursor-wait">
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#881337] rounded-full border-2 border-[#f5ede0] animate-pulse" />
               <span className="font-semibold">↯</span>
               <span>Relancer {overdueList.length} impayés</span>
@@ -193,7 +286,8 @@ const InvoicesList = () => {
               </span>
             </button>
           )}
-          <button className="inline-flex items-center gap-3 px-[22px] py-[14px] bg-transparent text-neutral-900 border border-neutral-500 cursor-pointer font-mono text-[12px] tracking-[0.12em] uppercase font-medium rounded-sm hover:bg-neutral-100 hover:border-neutral-900 transition-colors">
+          <button onClick={exportHistory} disabled={busy}
+            className="inline-flex items-center gap-3 px-[22px] py-[14px] bg-transparent text-neutral-900 border border-neutral-500 cursor-pointer font-mono text-[12px] tracking-[0.12em] uppercase font-medium rounded-sm hover:bg-neutral-100 hover:border-neutral-900 transition-colors disabled:opacity-50 disabled:cursor-wait">
             <span className="font-semibold">↓</span>
             <span>Export · Historique</span>
           </button>
@@ -451,10 +545,12 @@ const InvoicesList = () => {
                       {st.label}
                     </span>
                   </td>
-                  <td className="py-4 px-3 align-top opacity-0 group-hover:opacity-100 transition-opacity">
+                  <td className="py-4 px-3 align-top opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
                     <div className="flex gap-1.5 justify-end">
-                      <span className="w-7 h-7 flex items-center justify-center border border-neutral-300 bg-[#faf7f2] cursor-pointer text-neutral-500 rounded-sm hover:text-neutral-900 hover:border-neutral-900">↗</span>
-                      <span className="w-7 h-7 flex items-center justify-center border border-neutral-300 bg-[#faf7f2] cursor-pointer text-neutral-500 rounded-sm hover:text-neutral-900 hover:border-neutral-900">⋯</span>
+                      <button onClick={() => navigate(`/invoices/${inv.id}`)} title="Ouvrir la fiche"
+                        className="w-7 h-7 flex items-center justify-center border border-neutral-300 bg-[#faf7f2] cursor-pointer text-neutral-500 rounded-sm hover:text-neutral-900 hover:border-neutral-900">↗</button>
+                      <button onClick={() => downloadPdf(inv.id, inv.ref).catch(() => setActionMsg('PDF indisponible'))} title="Télécharger PDF"
+                        className="w-7 h-7 flex items-center justify-center border border-neutral-300 bg-[#faf7f2] cursor-pointer text-neutral-500 rounded-sm hover:text-neutral-900 hover:border-neutral-900">↓</button>
                     </div>
                   </td>
                 </tr>
@@ -478,11 +574,22 @@ const InvoicesList = () => {
             {selected.size} facture{selected.size > 1 ? 's' : ''} sélectionnée{selected.size > 1 ? 's' : ''}
           </span>
           <span className="w-px h-6 bg-white/20" />
-          <button className="px-3 py-1.5 bg-brand-600 border border-brand-600 text-[#faf7f2] font-mono text-[10px] tracking-[0.1em] uppercase cursor-pointer rounded-sm hover:opacity-90">↯ Relancer</button>
-          <button className="px-3 py-1.5 bg-transparent border border-white/30 text-[#faf7f2] font-mono text-[10px] tracking-[0.1em] uppercase cursor-pointer rounded-sm hover:bg-white/10">✓ Marquer payée</button>
-          <button className="px-3 py-1.5 bg-transparent border border-white/30 text-[#faf7f2] font-mono text-[10px] tracking-[0.1em] uppercase cursor-pointer rounded-sm hover:bg-white/10">↓ Exporter PDF</button>
-          <button className="px-3 py-1.5 bg-[#881337] border border-[#881337] text-[#faf7f2] font-mono text-[10px] tracking-[0.1em] uppercase cursor-pointer rounded-sm hover:opacity-90">× Annuler</button>
+          <button onClick={bulkRemind} disabled={busy}
+            className="px-3 py-1.5 bg-brand-600 border border-brand-600 text-[#faf7f2] font-mono text-[10px] tracking-[0.1em] uppercase cursor-pointer rounded-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-wait">↯ Relancer</button>
+          <button onClick={bulkMarkPaid} disabled={busy}
+            className="px-3 py-1.5 bg-transparent border border-white/30 text-[#faf7f2] font-mono text-[10px] tracking-[0.1em] uppercase cursor-pointer rounded-sm hover:bg-white/10 disabled:opacity-50 disabled:cursor-wait">✓ Marquer payée</button>
+          <button onClick={bulkExportPdf} disabled={busy}
+            className="px-3 py-1.5 bg-transparent border border-white/30 text-[#faf7f2] font-mono text-[10px] tracking-[0.1em] uppercase cursor-pointer rounded-sm hover:bg-white/10 disabled:opacity-50 disabled:cursor-wait">↓ Exporter PDF</button>
+          <button onClick={bulkCancel} disabled={busy}
+            className="px-3 py-1.5 bg-[#881337] border border-[#881337] text-[#faf7f2] font-mono text-[10px] tracking-[0.1em] uppercase cursor-pointer rounded-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-wait">× Annuler</button>
           <span className="ml-2 cursor-pointer text-[18px] opacity-70 hover:opacity-100" onClick={() => setSelected(new Set())}>×</span>
+        </div>
+      )}
+
+      {actionMsg && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-neutral-900 text-[#faf7f2] px-5 py-3 rounded-sm shadow-lg z-50 font-mono text-[12px] tracking-[0.05em] flex items-center gap-3">
+          {actionMsg}
+          <button onClick={() => setActionMsg(null)} className="opacity-60 hover:opacity-100">×</button>
         </div>
       )}
     </div>
