@@ -2190,6 +2190,18 @@ async def send_quote(quote_id: str, request: Request):
 # n'est pas encore branché. Dès qu'on implémente réellement, on remplace.
 
 
+@api_router.get("/notifications/unread-count")
+async def stub_unread_count(request: Request):
+    await require_auth(request)
+    return {"count": 0, "unread": 0}
+
+
+@api_router.get("/notifications")
+async def stub_notifications(request: Request, limit: int = 50):
+    await require_auth(request)
+    return {"items": [], "total": 0, "unread": 0}
+
+
 @api_router.get("/bookings")
 async def stub_bookings(request: Request):
     await require_auth(request)

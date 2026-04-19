@@ -1,11 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import axios from "axios";
+import api from "../../lib/api";
 import { Bell, X, Check, CheckCheck, Trash2, ExternalLink, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import BACKEND_URL from "../../config.js";
-
-const API = BACKEND_URL + "/api";
 
 const NOTIF_CONFIG = {
   new_lead: {icon:"🎯", color:"#047857", bg:"rgba(4,120,87,0.08)"},
@@ -43,7 +40,7 @@ export function NotificationBell() {
 
   const fetchUnread = useCallback(async () => {
     try {
-      const res = await axios.get(API + "/notifications/unread-count", {withCredentials:true});
+      const res = await api.get("/notifications/unread-count");
       const newCount = res.data.count || 0;
       if (newCount > unread && unread > 0) {
         playNotificationSound();
@@ -240,8 +237,9 @@ export default function NotificationsPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(API + "/notifications/?limit=100", {withCredentials:true});
-      setNotifs(res.data || []);
+      const res = await api.get("/notifications", { params: { limit: 100 } });
+      const raw = res.data?.items || res.data || [];
+      setNotifs(Array.isArray(raw) ? raw : []);
     } catch(e) {} finally { setLoading(false); }
   };
 
