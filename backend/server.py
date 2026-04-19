@@ -3609,95 +3609,111 @@ async def get_dashboard_stats(request: Request, period: str = "30d"):
     now = datetime.now(timezone.utc)
 
     # Determine period
-    days_map = {"1d": 1, "7d": 7, "30d": 30, "90d": 90, "1y": 365}
+    days_map = {"1d": 1, "7d": 7, "30d": 30, "90d": 90, "1y": 365, "all": 36500}
     start_date = now - timedelta(days=days_map.get(period, 30))
-
-    # Date filter robuste : created_at peut être stocké en ISO string OU
-    # en datetime natif selon les leads. On matche les deux formats.
-    def _date_gte(base_query, date_field="created_at"):
-        q = dict(base_query) if base_query else {}
-        q["$or"] = [
-            {date_field: {"$gte": start_date.isoformat()}},
-            {date_field: {"$gte": start_date}},
-        ]
-        return q
+    start_iso = start_date.isoformat()
 
     not_deleted = {"deleted_at": {"$exists": False}}
+    in_period   = {"created_at": {"$gte": start_iso}}
+
+    # Helper : combine filtres simplement (tous nos created_at sont ISO string,
+    # vérifié dans tous les endpoints create_* du backend)
+    def Q(*parts):
+        out = {}
+        for p in parts: out.update(p)
+        return out
 
     # Count leads (exclut les supprimés)
-    total_leads      = await db.leads.count_documents(_date_gte(not_deleted))
-    new_leads        = await db.leads.count_documents(_date_gte({**not_deleted, "status": "nouveau"}))
-    contacted_leads  = await db.leads.count_documents(_date_gte({**not_deleted, "status": "contacté"}))
-    won_leads        = await db.leads.count_documents(_date_gte({**not_deleted, "status": "gagné"}))
+    total_leads      = await db.leads.count_documents(Q(not_deleted, in_period))
+    new_leads        = await db.leads.count_documents(Q(not_deleted, in_period, {"status": "nouveau"}))
+    contacted_leads  = await db.leads.count_documents(Q(not_deleted, in_period, {"status": "contacté"}))
+    won_leads        = await db.leads.count_documents(Q(not_deleted, in_period, {"status": "gagné"}))
+
+    # FALLBACK : si period filtre trop strict et que la DB a des leads sans
+    # filtre date, on garde le compte all-time pour que le dashboard ne
+    # renvoie pas 0 à tort (ex: leads avec created_at en datetime natif).
+    if total_leads == 0:
+        total_all = await db.leads.count_documents(not_deleted)
+        if total_all > 0:
+            logger.info(f"Dashboard: 0 leads en {period} mais {total_all} au total — fallback all-time")
+            total_leads      = total_all
+            new_leads        = await db.leads.count_documents(Q(not_deleted, {"status": "nouveau"}))
+            contacted_leads  = await db.leads.count_documents(Q(not_deleted, {"status": "contacté"}))
+            won_leads        = await db.leads.count_documents(Q(not_deleted, {"status": "gagné"}))
 
     # Count quotes (exclut supprimés)
-    total_quotes     = await db.quotes.count_documents(_date_gte(not_deleted))
-    sent_quotes      = await db.quotes.count_documents(_date_gte({**not_deleted, "status": "envoyé"}))
-    accepted_quotes  = await db.quotes.count_documents(_date_gte({**not_deleted, "status": "accepté"}))
+    total_quotes     = await db.quotes.count_documents(Q(not_deleted, in_period))
+    sent_quotes      = await db.quotes.count_documents(Q(not_deleted, in_period, {"status": "envoyé"}))
+    accepted_quotes  = await db.quotes.count_documents(Q(not_deleted, in_period, {"status": "accepté"}))
+
+    if total_quotes == 0:
+        total_q_all = await db.quotes.count_documents(not_deleted)
+        if total_q_all > 0:
+            total_quotes    = total_q_all
+            sent_quotes     = await db.quotes.count_documents(Q(not_deleted, {"status": "envoyé"}))
+            accepted_quotes = await db.quotes.count_documents(Q(not_deleted, {"status": "accepté"}))
 
     # Conversion rates
     conversion_lead_to_quote = (total_quotes / total_leads * 100) if total_leads > 0 else 0
     conversion_quote_to_client = (accepted_quotes / total_quotes * 100) if total_quotes > 0 else 0
 
-    # Leads by source
+    # Leads by source + par service — récupère la liste une seule fois.
+    # Si période vide → récupère tous les leads non supprimés pour garder
+    # les charts significatifs.
+    source_query = Q(not_deleted, in_period)
+    sample_count = await db.leads.count_documents(source_query)
+    if sample_count == 0:
+        source_query = not_deleted
+    all_leads = await db.leads.find(source_query, {"_id": 0, "source": 1, "service_type": 1, "created_at": 1}).to_list(2000)
+
     leads_by_source = {}
-    all_leads = await db.leads.find(_date_gte(not_deleted), {"_id": 0, "source": 1}).to_list(2000)
+    leads_by_service = {}
     for lead in all_leads:
         source = lead.get("source") or "Direct"
         leads_by_source[source] = leads_by_source.get(source, 0) + 1
+        svc = lead.get("service_type") or "Autre"
+        leads_by_service[svc] = leads_by_service.get(svc, 0) + 1
 
-    # Leads by service
-    leads_by_service = {}
-    for lead in all_leads:
-        service = lead.get("service_type", "Autre")
-        leads_by_service[service] = leads_by_service.get(service, 0) + 1
-
-    # Leads by day (toute la période demandée, pour les courbes)
+    # Leads by day — on cap à 90 jours max pour ne pas spammer Mongo
     leads_by_day = []
-    n_days = days_map.get(period, 30)
+    n_days = min(days_map.get(period, 30), 90)
     for i in range(n_days):
         day_start = (now - timedelta(days=i)).replace(hour=0, minute=0, second=0, microsecond=0)
         day_end = day_start + timedelta(days=1)
         count = await db.leads.count_documents({
             "deleted_at": {"$exists": False},
-            "$or": [
-                {"created_at": {"$gte": day_start.isoformat(), "$lt": day_end.isoformat()}},
-                {"created_at": {"$gte": day_start,            "$lt": day_end}},
-            ],
+            "created_at": {"$gte": day_start.isoformat(), "$lt": day_end.isoformat()},
         })
         leads_by_day.append({"date": day_start.strftime("%Y-%m-%d"), "count": count})
     leads_by_day.reverse()
 
     # Tâches (toutes celles qui restent à faire)
-    pending_tasks = await db.tasks.count_documents({
-        "status": {"$in": ["pending", "en_cours", "à_faire"]},
-        "deleted_at": {"$exists": False},
-    })
-    # Tâches dues aujourd'hui (pour le dashboard)
+    task_status_filter = {"status": {"$in": ["pending", "en_cours", "à_faire"]}}
+    pending_tasks = await db.tasks.count_documents(task_status_filter)
+
     today_end = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     tasks_today = await db.tasks.count_documents({
-        "status": {"$in": ["pending", "en_cours", "à_faire"]},
-        "$or": [
-            {"due_date": {"$lte": today_end.isoformat()}},
-            {"due_date": {"$lte": today_end}},
-        ],
+        **task_status_filter,
+        "due_date": {"$lte": today_end.isoformat()},
     })
-    # Tâches en retard
     tasks_overdue = await db.tasks.count_documents({
-        "status": {"$in": ["pending", "en_cours", "à_faire"]},
-        "$or": [
-            {"due_date": {"$lt": now.isoformat()}},
-            {"due_date": {"$lt": now}},
-        ],
+        **task_status_filter,
+        "due_date": {"$lt": now.isoformat()},
     })
 
     # Average lead score
-    all_leads_full = await db.leads.find(_date_gte(not_deleted), {"_id": 0, "score": 1, "source": 1, "service_type": 1}).to_list(2000)
+    score_query = Q(not_deleted, in_period)
+    all_leads_full = await db.leads.find(score_query, {"_id": 0, "score": 1}).to_list(2000)
+    if not all_leads_full:
+        all_leads_full = await db.leads.find(not_deleted, {"_id": 0, "score": 1}).to_list(2000)
     avg_score = sum([lead.get("score", 50) for lead in all_leads_full]) / len(all_leads_full) if all_leads_full else 50
 
     # Top performing source (by conversion rate)
     source_performance = {}
-    for lead in await db.leads.find(_date_gte(not_deleted), {"_id": 0, "lead_id": 1, "source": 1, "status": 1}).to_list(2000):
+    perf_query = Q(not_deleted, in_period)
+    perf_sample = await db.leads.count_documents(perf_query)
+    if perf_sample == 0: perf_query = not_deleted
+    for lead in await db.leads.find(perf_query, {"_id": 0, "lead_id": 1, "source": 1, "status": 1}).to_list(2000):
         source = lead.get("source", "Direct")
         if source not in source_performance:
             source_performance[source] = {"total": 0, "won": 0}
