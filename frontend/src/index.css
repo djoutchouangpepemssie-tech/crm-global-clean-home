@@ -1299,4 +1299,71 @@ tbody tr:last-child { border-bottom: none !important; }
 /* Bandeau top du dashboard dynamique — s'aligne au thème */
 [data-theme="dark"] .dyn-toolbar { border-bottom-color: var(--line) !important; }
 
+/* ══════════════════════════════════════════════════════════════════
+   DARK MODE — Tailwind neutral-* + fonds hardcodés (InvoicesList, etc.)
+══════════════════════════════════════════════════════════════════ */
+
+/* Textes neutral → inversion luminosité pour rester lisibles */
+[data-theme="dark"] .text-neutral-900 { color: #F5EFE3 !important; }
+[data-theme="dark"] .text-neutral-800 { color: #EDE6D2 !important; }
+[data-theme="dark"] .text-neutral-700 { color: #D4CBB5 !important; }
+[data-theme="dark"] .text-neutral-600 { color: #B8AE95 !important; }
+[data-theme="dark"] .text-neutral-500 { color: #968C76 !important; }
+[data-theme="dark"] .text-neutral-400 { color: #726A57 !important; }
+[data-theme="dark"] .text-neutral-300 { color: #5A5344 !important; }
+
+/* Fonds hardcodés (crèmes du design atelier) → teintes sombres */
+[data-theme="dark"] .bg-\[\#faf7f2\] { background: #1A1814 !important; color: #F5EFE3; }
+[data-theme="dark"] .bg-\[\#f5ede0\] { background: #26241F !important; }
+[data-theme="dark"] .bg-\[\#efe6d5\] { background: #2D2B26 !important; color: #D4CBB5; }
+
+/* Pastilles de statuts (bleu/rose/violet/pêche) → légère atténuation */
+[data-theme="dark"] .bg-\[\#dbeafe\] { background: rgba(30,64,175,0.22) !important; }
+[data-theme="dark"] .bg-\[\#fecdd3\] { background: rgba(136,19,55,0.28) !important; }
+[data-theme="dark"] .bg-\[\#f3e8ff\] { background: rgba(107,33,168,0.25) !important; }
+[data-theme="dark"] .bg-\[\#fce7f3\] { background: rgba(157,23,77,0.22) !important; }
+[data-theme="dark"] .bg-\[\#fff7ed\] { background: rgba(194,65,12,0.15) !important; }
+
+/* Texte des pastilles → on remonte la luminosité */
+[data-theme="dark"] .text-\[\#1e40af\] { color: #93C5FD !important; }
+[data-theme="dark"] .text-\[\#881337\] { color: #FDA4AF !important; }
+[data-theme="dark"] .text-\[\#6b21a8\] { color: #D8B4FE !important; }
+[data-theme="dark"] .text-\[\#9d174d\] { color: #F9A8D4 !important; }
+
+/* Bordures neutral → bordures dark */
+[data-theme="dark"] .border-neutral-200 { border-color: rgba(255,255,255,0.06) !important; }
+[data-theme="dark"] .border-neutral-300 { border-color: rgba(255,255,255,0.10) !important; }
+[data-theme="dark"] .border-neutral-400 { border-color: rgba(255,255,255,0.14) !important; }
+[data-theme="dark"] .border-neutral-500 { border-color: rgba(255,255,255,0.18) !important; }
+[data-theme="dark"] .border-neutral-900 { border-color: rgba(255,255,255,0.35) !important; }
+
+/* Inputs atelier avec fond blanc figé (ex: barre commande Claude) */
+[data-theme="dark"] .qf-field,
+[data-theme="dark"] input[style*="background: white"],
+[data-theme="dark"] input[style*="background:white"] {
+  background: var(--surface, #26241F) !important;
+  color: var(--ink, #F5EFE3) !important;
+  border-color: var(--line, rgba(255,255,255,0.1)) !important;
+}
+
+/* Placeholders plus pâles sur fond sombre */
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: rgba(245, 239, 227, 0.4) !important;
+}
+
+/* ═════ CommandPalette (Cmd+K) — dark mode ═════
+   Les inline styles ne peuvent pas être overridés via cascade classique,
+   mais les attribute selectors match les valeurs inline et !important
+   bat les styles inline non-!important. */
+[data-theme="dark"] .cmd-palette {
+  background: #22201c !important;
+  color: #F5EFE3;
+}
+[data-theme="dark"] .cmd-palette [style*="oklch(0.165"] { color: #F5EFE3 !important; }
+[data-theme="dark"] .cmd-palette [style*="oklch(0.52 0.010 60)"] { color: #A8A195 !important; }
+[data-theme="dark"] .cmd-palette [style*="oklch(0.85 0.012 75)"] { border-color: rgba(255,255,255,0.12) !important; }
+[data-theme="dark"] .cmd-palette [style*="oklch(0.93 0.05 165)"] { background: rgba(52,211,153,0.18) !important; }
+[data-theme="dark"] .cmd-palette [style*="oklch(0.88 0.01 75)"] { border-color: rgba(255,255,255,0.10) !important; }
+
 /* FIN — Atelier direction v2.0 */

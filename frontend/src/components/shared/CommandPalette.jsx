@@ -145,7 +145,7 @@ export default function CommandPalette() {
       display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
       paddingTop: 'max(10vh, 80px)',
     }}>
-      <div onClick={e => e.stopPropagation()} style={{
+      <div onClick={e => e.stopPropagation()} className="cmd-palette" style={{
         background: '#FDFCF9', borderRadius: 14, width: '95%', maxWidth: 640,
         boxShadow: '0 20px 60px rgba(0,0,0,0.3)', overflow: 'hidden',
         maxHeight: '70vh', display: 'flex', flexDirection: 'column',
