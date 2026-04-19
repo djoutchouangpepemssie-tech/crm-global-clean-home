@@ -262,72 +262,9 @@ function MobileTabBar() {
   const [moreOpen, setMoreOpen] = useState(false);
   const { logout } = useAuth();
 
-  return (
-    <>
-      {/* More menu overlay */}
-      {moreOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden" data-testid="more-menu-overlay">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setMoreOpen(false)} />
-          <div className="absolute bottom-0 left-0 right-0 rounded-t-2xl pb-safe animate-slide-up" style={{background:"hsl(224,71%,7%)",border:"1px solid rgba(255,255,255,0.08)",boxShadow:"0 -10px 40px rgba(0,0,0,0.5)"}}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
-              <h3 className="text-base font-bold text-slate-100" style={{fontFamily:"Manrope,sans-serif"}}>Menu</h3>
-              <button onClick={() => setMoreOpen(false)} className="p-2 rounded-lg hover:bg-white/10 transition-all" data-testid="more-menu-close">
-                <X className="w-5 h-5 text-slate-400" />
-              </button>
-            </div>
-            <AccordionMenu setMoreOpen={setMoreOpen} />
-            <div className="px-3 pb-4 pt-1 border-t border-white/5 mt-1">
-              <a
-                href="/portal"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block text-center text-xs text-slate-400 hover:text-violet-600 py-2"
-              >
-                Portail client
-              </a>
-              <button
-                onClick={logout}
-                data-testid="mobile-logout-btn"
-                className="w-full flex items-center justify-center gap-2 py-3 text-sm font-medium text-red-400 hover:bg-red-500/10 rounded-xl transition-colors touch-manipulation"
-              >
-                <LogOut className="w-4 h-4" />
-                Deconnexion
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Bottom tab bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 lg:hidden border-t safe-bottom"
-        style={{background:"rgba(9,15,35,0.97)",borderColor:"rgba(255,255,255,0.08)",backdropFilter:"blur(20px)"}}>
-        <div className="flex items-stretch justify-around h-16">
-          {[
-            {to:"/dashboard", icon:LayoutDashboard, label:"Dashboard", testId:"tab-dashboard"},
-            {to:"/leads",     icon:Users,            label:"Leads",     testId:"tab-leads"},
-            {to:"/planning",  icon:CalendarDays,     label:"Planning",  testId:"tab-planning"},
-            {to:"/tasks",     icon:CheckSquare,      label:"Tâches",    testId:"tab-tasks"},
-          ].map(tab => (
-            <NavLink key={tab.to} to={tab.to} data-testid={tab.testId}
-              className={({ isActive }) =>
-                `flex flex-col items-center justify-center flex-1 gap-1 text-[10px] font-semibold transition-all touch-manipulation rounded-xl mx-0.5 my-1 ${
-                  isActive ? 'text-violet-400' : 'text-slate-600'
-                }`
-              }
-              style={({isActive}) => isActive ? {background:"rgba(139,92,246,0.12)"} : {}}>
-              <tab.icon className="w-5 h-5" />
-              <span>{tab.label}</span>
-            </NavLink>
-          ))}
-          <button onClick={() => setMoreOpen(true)} data-testid="tab-more"
-            className="flex flex-col items-center justify-center flex-1 gap-1 text-[10px] font-semibold text-slate-600 touch-manipulation rounded-xl mx-0.5 my-1 hover:text-slate-400 hover:bg-white/5 transition-all">
-            <MoreHorizontal className="w-5 h-5" />
-            <span>Plus</span>
-          </button>
-        </div>
-      </nav>
-    </>
-  );
+  // Mobile nav retiré : on utilise exclusivement la sidebar (avec hamburger)
+  // sur toutes les tailles d'écran.
+  return null;
 }
 
 function NotificationHandler() {
@@ -423,38 +360,18 @@ function AppRouter() {
         element={
           <ProtectedRoute>
             <div className="flex h-screen w-full overflow-hidden" style={{background:"var(--bg-app)"}}>
-              {/* Sidebar - hidden on mobile */}
-              <div className="hidden lg:flex flex-shrink-0">
-                <Sidebar />
-              </div>
+              {/* Sidebar — visible partout (gère son mode mobile via hamburger interne) */}
+              <Sidebar />
               {/* Main content */}
               <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                {/* Mobile header */}
-                <div className="lg:hidden flex-shrink-0 sticky top-0 border-b border-white/5 px-4 py-3 flex items-center justify-between" style={{background:"hsl(224,71%,5%)",zIndex:9000,position:"sticky"}}>
-                  <h1 className="text-base font-bold text-slate-100" style={{fontFamily:"Manrope,sans-serif"}}>
-                    <span className="text-violet-400">Global</span> Clean Home
-                  </h1>
-                  <div className="flex items-center gap-2">
-                    <NotificationBell />
-                    <button
-                      onClick={() => setMobileMenuOpen(true)}
-                      className="p-2 rounded-lg text-slate-400 border border-white/10"
-                      style={{background:"rgba(255,255,255,0.05)",zIndex:9001,position:"relative",touchAction:"manipulation"}}>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Desktop header avec notifications */}
+                {/* Desktop header avec notifications — caché sur mobile */}
                 <div className="hidden lg:flex items-center justify-between px-6 py-3 border-b border-white/5 flex-shrink-0" style={{background:"hsl(224,71%,5%)",zIndex:9000,position:"relative"}}>
                   <React.Suspense fallback={null}>
                     <GlobalSearchTrigger />
                   </React.Suspense>
                   <NotificationBell />
                 </div>
-                <div className="flex-1 overflow-y-auto overflow-x-hidden pb-16 lg:pb-0" style={{background:"var(--bg-app)"}}>
+                <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{background:"var(--bg-app)"}}>
                   <PWAInstallBanner />
                   <CommandPalette />
                   <VoiceFab />
@@ -509,7 +426,6 @@ function AppRouter() {
         </Suspense>
         </ErrorBoundary>
                 </div>
-                <MobileTabBar />
               </div>
             </div>
           </ProtectedRoute>
