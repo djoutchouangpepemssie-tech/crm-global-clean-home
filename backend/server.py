@@ -2083,17 +2083,47 @@ async def track_email_open(token: str, request: Request):
 
 @app.get("/api/track/quote/{token}")
 async def track_quote_link(token: str, request: Request):
-    """Lien tracké qui redirige vers le PDF du devis. Log le clic avant redirect."""
+    """Lien PUBLIC (le client n'est pas authentifié admin). Sert directement
+    le PDF du devis après avoir vérifié que le token est valide. Pas de
+    redirect — servir le PDF inline ici évite le 401 de /api/quotes/{id}/pdf.
+    """
     doc = await db.tracking_tokens.find_one({"token": token, "kind": "link"})
     if not doc:
         raise HTTPException(status_code=404, detail="Lien invalide ou expiré")
+
+    target_id = doc.get("target_id")
+    target_type = doc.get("target_type", "quote")
+
+    # Log du clic (non bloquant)
     try:
         await _log_tracking_hit(doc, request, "quote_view")
     except Exception as e:
         logger.warning(f"Link tracking failed: {e}")
-    # Redirige vers le PDF du devis (ou URL portail si dispo)
-    target = f"{_public_backend_url()}/api/quotes/{doc['target_id']}/pdf"
-    return RedirectResponse(url=target, status_code=302)
+
+    # Récupère le document cible (devis ou facture) et génère le PDF
+    if target_type == "quote":
+        doc_data = await db.quotes.find_one({"quote_id": target_id}, {"_id": 0})
+        if not doc_data:
+            raise HTTPException(status_code=404, detail="Devis introuvable")
+        lead = await db.leads.find_one({"lead_id": doc_data.get("lead_id")}, {"_id": 0}) or {}
+        try:
+            from integrations import generate_quote_pdf
+            pdf_buffer = generate_quote_pdf(doc_data, lead)
+            pdf_bytes = pdf_buffer.read()
+        except Exception as e:
+            logger.error(f"PDF gen public failed: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Erreur génération PDF")
+        filename = f"{doc_data.get('quote_number') or target_id}.pdf"
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'inline; filename="{filename}"',  # inline : affichage navigateur
+                "Cache-Control": "private, max-age=300",
+            },
+        )
+    # Autres types à venir (invoices, etc.)
+    raise HTTPException(status_code=400, detail="Type de document non supporté")
 
 
 @api_router.get("/leads/{lead_id}/engagement")
