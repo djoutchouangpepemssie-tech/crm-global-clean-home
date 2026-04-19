@@ -10,9 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import BACKEND_URL from '../../config.js';
-const API_URL = (BACKEND_URL + '/api').replace('http://', 'https://');
-import axios from 'axios';
+import api from '../../lib/api';
 
 /* ═══ Palette Atelier (tokens durs pour inline styles) ═══ */
 const C = {
@@ -117,23 +115,23 @@ export default function Sidebar() {
 
   const fetchBadges = useCallback(async () => {
     try {
-      const [leadsRes, quotesRes, invoicesRes, ticketsRes] = await Promise.allSettled([
-        axios.get(`${API_URL}/leads?status=nouveau&limit=1`, { withCredentials: true }),
-        axios.get(`${API_URL}/quotes?status=pending&limit=1`, { withCredentials: true }),
-        axios.get(`${API_URL}/invoices?status=en_retard&limit=1`, { withCredentials: true }),
-        Promise.resolve({ status: 'fulfilled', value: { data: null } }),
+      const [leadsRes, quotesRes, invoicesRes] = await Promise.allSettled([
+        api.get('/leads', { params: { status: 'nouveau', page_size: 1, period: 'all' } }),
+        api.get('/quotes', { params: { status: 'envoyé', page_size: 1 } }),
+        api.get('/invoices', { params: { status: 'en_retard', page_size: 1 } }),
       ]);
-      const get = (res, keys) => {
+      const get = (res) => {
         if (res.status !== 'fulfilled') return null;
         const d = res.value.data;
-        for (const k of keys) if (d?.[k] !== undefined) return d[k];
-        return Array.isArray(d) ? d.length || null : null;
+        if (d?.total !== undefined) return d.total;
+        if (d?.count !== undefined) return d.count;
+        return Array.isArray(d) ? (d.length || null) : null;
       };
       setBadges({
-        leads:    get(leadsRes,    ['total', 'count']),
-        devis:    get(quotesRes,   ['total', 'count']),
-        factures: get(invoicesRes, ['total', 'count']),
-        tickets:  get(ticketsRes,  ['total', 'count']),
+        leads:    get(leadsRes),
+        devis:    get(quotesRes),
+        factures: get(invoicesRes),
+        tickets:  null,
       });
     } catch {}
   }, []);

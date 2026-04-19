@@ -2184,6 +2184,36 @@ async def send_quote(quote_id: str, request: Request):
 
     return {"message": "Devis envoye" + (" par email avec PDF" if email_sent else ""), "email_sent": email_sent}
 
+# ============= STUBS — features non implémentées côté backend =============
+# Ces endpoints renvoient des données vides pour éviter les 404/403/CORS
+# qui polluent la console frontend quand un module (bookings, ga4, analytics)
+# n'est pas encore branché. Dès qu'on implémente réellement, on remplace.
+
+
+@api_router.get("/bookings")
+async def stub_bookings(request: Request):
+    await require_auth(request)
+    return {"items": [], "total": 0}
+
+
+@api_router.get("/planning/bookings")
+async def stub_planning_bookings(request: Request):
+    await require_auth(request)
+    return {"items": [], "total": 0}
+
+
+@api_router.get("/analytics-data/overview")
+async def stub_analytics_overview(request: Request, days: int = 30):
+    await require_auth(request)
+    return {"days": days, "visits": 0, "users": 0, "sources": [], "pages": []}
+
+
+@api_router.get("/ga4/search-console")
+async def stub_ga4_search_console(request: Request, days: int = 30):
+    await require_auth(request)
+    return {"days": days, "queries": [], "pages": [], "clicks": 0, "impressions": 0}
+
+
 @api_router.get("/quotes/{quote_id}/pdf")
 async def download_quote_pdf(quote_id: str, request: Request):
     """Génère et télécharge le PDF du devis."""
