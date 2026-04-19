@@ -417,27 +417,37 @@ class SessionCreate(BaseModel):
 
 
 class Lead(BaseModel):
+    # Modèle volontairement permissif sur les documents stockés :
+    # - des leads historiques peuvent avoir des emails malformés, des champs
+    #   manquants, ou des types différents. On ne veut PAS renvoyer 422 sur
+    #   les GETs à cause de ça → Optional + permissif.
     model_config = ConfigDict(extra="ignore")
     lead_id: str
-    name: str
-    email: EmailStr
-    phone: str
-    service_type: str  # Ménage, Canapé, Matelas, Tapis, Bureaux
+    name: Optional[str] = ""
+    email: Optional[str] = None                    # Plus d'EmailStr strict (leads historiques)
+    phone: Optional[str] = ""
+    service_type: Optional[str] = "Autre"
     surface: Optional[float] = None
     address: Optional[str] = None
     message: Optional[str] = None
-    source: Optional[str] = None  # Google Ads, SEO, Meta Ads, Direct
+    source: Optional[str] = None
     campaign: Optional[str] = None
     utm_source: Optional[str] = None
     utm_medium: Optional[str] = None
     utm_campaign: Optional[str] = None
-    status: str = "nouveau"  # nouveau, contacté, en_attente, devis_envoyé, gagné, perdu
+    status: str = "nouveau"
     probability: int = 50
-    score: int = 50  # Score intelligent 0-100
-    tags: List[str] = []  # Tags personnalisables
-    created_at: datetime
-    updated_at: datetime
+    score: int = 50
+    tags: List[str] = []
+    created_at: Optional[datetime] = None          # Peut être ISO string → converti côté endpoint
+    updated_at: Optional[datetime] = None
     assigned_to: Optional[str] = None
+    notes: Optional[str] = None
+    coords: Optional[List[float]] = None           # Géocodage cache
+    geocoding_method: Optional[str] = None
+    geocoding_label: Optional[str] = None
+    geocoded_at: Optional[str] = None
+    deleted_at: Optional[str] = None
 
 
 class LeadCreate(BaseModel):

@@ -33,6 +33,31 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Normalise `data.detail` en STRING. FastAPI/Pydantic renvoie un ARRAY pour les
+// erreurs de validation (422) — ex: [{type, loc, msg, input, ctx, url}, …].
+// Si on passe ce tableau à un JSX {error.message}, React crash (« Objects are
+// not valid as a React child »). On le sérialise proprement.
+function normalizeDetailToString(detail) {
+  if (detail == null) return null;
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((e) => {
+      if (typeof e === 'string') return e;
+      if (e && typeof e === 'object') {
+        const loc = Array.isArray(e.loc) ? e.loc.slice(1).join('.') : '';
+        return loc ? `${loc} : ${e.msg || 'erreur'}` : (e.msg || JSON.stringify(e));
+      }
+      return String(e);
+    }).join(' · ');
+  }
+  if (typeof detail === 'object') {
+    if (detail.msg) return detail.msg;
+    if (detail.message) return detail.message;
+    return JSON.stringify(detail);
+  }
+  return String(detail);
+}
+
 // Normalisation des erreurs pour que React Query ait toujours un objet cohérent
 api.interceptors.response.use(
   (response) => response,
@@ -45,10 +70,14 @@ api.interceptors.response.use(
       });
     }
     const data = error.response.data || {};
+    const message = normalizeDetailToString(data.detail)
+      || normalizeDetailToString(data.message)
+      || error.message
+      || 'Erreur inconnue';
     return Promise.reject({
       status: error.response.status,
-      message: data.detail || data.message || error.message || 'Erreur inconnue',
-      detail: data,
+      message,        // ← TOUJOURS une string, safe pour JSX
+      detail: data,   // ← l'objet brut si besoin
     });
   }
 );
