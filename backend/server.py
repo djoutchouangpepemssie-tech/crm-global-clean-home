@@ -8,7 +8,7 @@ import json
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr, ConfigDict, field_validator
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 import uuid
 from datetime import datetime, timezone, timedelta
 import httpx
@@ -1795,6 +1795,144 @@ async def delete_lead(lead_id: str, request: Request):
     await write_audit_log("lead", lead_id, "delete", user.user_id)
 
     return {"message": "Lead deleted"}
+
+
+# ============= GÉOCODAGE & DISTANCE TRAJET ROUTIER =============
+# Référence : adresse du siège de Global Clean Home (Saint-Thibault-des-Vignes 77400)
+# Utilise Nominatim (OSM) pour le géocodage et OSRM public pour le routing —
+# 100% gratuit, pas de clé API. Cache les coordonnées dans chaque lead après
+# la première requête pour limiter les appels.
+
+REFERENCE_ADDRESS = "5 rue de l'Étang de la Loy, 77400 Saint-Thibault-des-Vignes, France"
+_reference_coords_cache: Optional[Dict[str, Any]] = None  # set à la 1ère utilisation
+
+
+async def _geocode_nominatim(address: str) -> Optional[Tuple[float, float]]:
+    """Transforme une adresse texte en (lat, lon) via Nominatim OSM. None si échec."""
+    if not address or not address.strip():
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            res = await client.get(
+                "https://nominatim.openstreetmap.org/search",
+                params={"q": address, "format": "json", "limit": 1, "addressdetails": 0},
+                headers={
+                    "User-Agent": "GlobalCleanHomeCRM/1.0 (contact@globalcleanhome.com)",
+                    "Accept-Language": "fr",
+                },
+            )
+            if res.status_code != 200:
+                return None
+            data = res.json()
+            if not data:
+                return None
+            return (float(data[0]["lat"]), float(data[0]["lon"]))
+    except Exception as e:
+        logger.warning(f"Nominatim geocoding failed for '{address[:50]}': {e}")
+        return None
+
+
+async def _get_reference_coords() -> Tuple[float, float]:
+    """Géocodage paresseux du siège (fait 1 fois puis gardé en mémoire)."""
+    global _reference_coords_cache
+    if _reference_coords_cache and _reference_coords_cache.get("coords"):
+        return _reference_coords_cache["coords"]
+    coords = await _geocode_nominatim(REFERENCE_ADDRESS)
+    if not coords:
+        # Fallback hardcodé — approximation centre Saint-Thibault-des-Vignes 77400
+        coords = (48.8556, 2.6800)
+    _reference_coords_cache = {"coords": coords, "address": REFERENCE_ADDRESS}
+    return coords
+
+
+def _haversine_km(a: Tuple[float, float], b: Tuple[float, float]) -> float:
+    """Distance à vol d'oiseau en km (fallback si OSRM indisponible)."""
+    import math
+    R = 6371.0
+    lat1, lon1, lat2, lon2 = map(math.radians, [a[0], a[1], b[0], b[1]])
+    dlat, dlon = lat2 - lat1, lon2 - lon1
+    h = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+    return round(2 * R * math.asin(math.sqrt(h)), 1)
+
+
+async def _osrm_route(origin: Tuple[float, float], dest: Tuple[float, float]) -> Optional[Dict[str, Any]]:
+    """Calcule la vraie distance routière (voiture) + durée via OSRM public."""
+    try:
+        async with httpx.AsyncClient(timeout=12) as client:
+            # OSRM attend lon,lat (pas lat,lon)
+            url = f"https://router.project-osrm.org/route/v1/driving/{origin[1]},{origin[0]};{dest[1]},{dest[0]}"
+            res = await client.get(url, params={"overview": "false", "alternatives": "false"})
+            if res.status_code != 200:
+                return None
+            data = res.json()
+            if data.get("code") != "Ok" or not data.get("routes"):
+                return None
+            r = data["routes"][0]
+            return {
+                "distance_km":  round(r["distance"] / 1000, 1),
+                "duration_min": round(r["duration"] / 60),
+                "method":       "osrm",
+            }
+    except Exception as e:
+        logger.warning(f"OSRM routing failed: {e}")
+        return None
+
+
+@api_router.get("/leads/{lead_id}/distance")
+async def get_lead_distance(lead_id: str, request: Request):
+    """Calcule la distance routière depuis le siège jusqu'à l'adresse du lead.
+
+    Cache les coordonnées géocodées dans le document lead (champ `coords`)
+    pour éviter les appels répétés à Nominatim.
+    """
+    await require_auth(request)
+    lead = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead introuvable")
+    address = lead.get("address") or ""
+    if not address.strip():
+        raise HTTPException(status_code=422, detail="Adresse du lead manquante")
+
+    # Coordonnées du lead — cache dans le document
+    lead_coords = lead.get("coords")
+    if not lead_coords or not isinstance(lead_coords, (list, tuple)) or len(lead_coords) != 2:
+        geocoded = await _geocode_nominatim(address)
+        if not geocoded:
+            raise HTTPException(status_code=422, detail="Adresse non géolocalisable (vérifie qu'elle soit complète avec code postal et ville)")
+        lead_coords = list(geocoded)
+        await db.leads.update_one(
+            {"lead_id": lead_id},
+            {"$set": {"coords": lead_coords, "geocoded_at": datetime.now(timezone.utc).isoformat()}},
+        )
+    else:
+        lead_coords = tuple(lead_coords)
+
+    # Coordonnées de référence (siège)
+    ref_coords = await _get_reference_coords()
+
+    # Routing via OSRM (trajet voiture réel)
+    route = await _osrm_route(ref_coords, tuple(lead_coords))
+
+    # Fallback : vol d'oiseau si OSRM ne répond pas
+    if not route:
+        straight = _haversine_km(ref_coords, tuple(lead_coords))
+        # Estimation voiture : ~1.3× vol d'oiseau en zone urbaine + vitesse moyenne 45 km/h
+        route = {
+            "distance_km":  round(straight * 1.3, 1),
+            "duration_min": round((straight * 1.3) / 45 * 60),
+            "method":       "estimate",
+        }
+
+    return {
+        "lead_id":       lead_id,
+        "origin":        REFERENCE_ADDRESS,
+        "origin_coords": list(ref_coords),
+        "destination":         address,
+        "destination_coords":  list(lead_coords),
+        "distance_km":   route["distance_km"],
+        "duration_min":  route["duration_min"],
+        "method":        route["method"],
+    }
 
 
 @api_router.post("/leads/{lead_id}/restore")

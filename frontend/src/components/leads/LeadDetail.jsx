@@ -750,6 +750,68 @@ function EngagementGrid({ engagement = {} }) {
 }
 
 // ————————————————————————————————————————————————
+// DISTANCE STATS — calcule le trajet réel (voiture) depuis le siège GCH
+function DistanceStats({ leadId }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true); setError(null);
+    api.get(`/leads/${leadId}/distance`)
+      .then(r => { if (alive) setData(r.data); })
+      .catch(e => { if (alive) setError(e?.message || 'Erreur'); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [leadId]);
+
+  const Cell = ({ k, v, note }) => (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <span className="ld-mono" style={{ fontSize: 10, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{k}</span>
+      <span className="ld-display" style={{ fontWeight: 500, fontSize: 14, color: 'var(--ink)', letterSpacing: '-0.01em' }}>{v}</span>
+      {note && <span className="ld-mono" style={{ fontSize: 9, color: 'var(--ink-4)', marginTop: 2 }}>{note}</span>}
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', gap: 14, fontStyle: 'italic', color: 'var(--ink-3)', fontSize: 12 }}>
+        Calcul du trajet routier…
+      </div>
+    );
+  }
+  if (error || !data) {
+    return (
+      <div style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic' }}>
+        Trajet indisponible {error ? `(${error})` : ''}. L'adresse du lead est peut-être incomplète.
+      </div>
+    );
+  }
+
+  const { distance_km, duration_min, method, origin } = data;
+  const gmapsHref = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(data.destination || '')}&travelmode=driving`;
+
+  return (
+    <>
+      <div style={{ display: 'flex', gap: 14 }}>
+        <Cell k="Distance" v={`${distance_km} km`} note={method === 'osrm' ? 'Trajet voiture' : 'Estimation'} />
+        <Cell k="Durée" v={`${duration_min} min`} note="Estimation trafic" />
+        <Cell k="Départ" v="Saint-Thibault-des-Vignes" note="77400" />
+      </div>
+      <a href={gmapsHref} target="_blank" rel="noopener noreferrer" style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        marginTop: 12, padding: '7px 12px', borderRadius: 999,
+        fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase',
+        background: 'var(--accent-soft)', color: 'var(--accent)', border: '1px solid var(--accent)',
+        textDecoration: 'none', fontWeight: 600,
+      }}>
+        Itinéraire Google Maps →
+      </a>
+    </>
+  );
+}
+
 // MAIN COMPONENT
 // ————————————————————————————————————————————————
 const LeadDetail = () => {
@@ -1042,16 +1104,9 @@ const LeadDetail = () => {
               <EngagementGrid engagement={engagement} />
             </Panel>
 
-            <Panel title="Localisation" em=" — Paris">
+            <Panel title="Localisation" em=" — trajet">
               <MiniMap lead={lead} />
-              <div style={{ display: 'flex', gap: 14 }}>
-                {[['Distance', '3,2 km'], ['Chantiers', '3 en cours'], ['Trajet', '14 min']].map(([k, v], i) => (
-                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <span className="ld-mono" style={{ fontSize: 10, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{k}</span>
-                    <span className="ld-display" style={{ fontWeight: 500, fontSize: 14, color: 'var(--ink)', letterSpacing: '-0.01em' }}>{v}</span>
-                  </div>
-                ))}
-              </div>
+              <DistanceStats leadId={id} />
             </Panel>
 
             <Panel title="Devis" em=" associés" action="+ Nouveau">
