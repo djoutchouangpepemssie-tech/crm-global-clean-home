@@ -490,6 +490,16 @@ export default function Dashboard() {
     return () => window.removeEventListener('focus', onFocus);
   }, []);
 
+  // Polling temps réel : refetch toutes les 30s tant que l'onglet est visible.
+  // Le dashboard est la vue maîtresse → doit refléter l'état en quasi-temps réel.
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState === 'visible') setRefreshTick(t => t + 1);
+    };
+    const id = setInterval(tick, 30000);
+    return () => clearInterval(id);
+  }, []);
+
   const d = data || {};
   const fin = d.financial || {};
   const firstName = user && (user.firstName || user.first_name || (user.name && user.name.split(' ')[0])) || '';

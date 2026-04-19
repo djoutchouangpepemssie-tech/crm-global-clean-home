@@ -831,6 +831,15 @@ export default function DirectorDashboard() {
     return () => window.removeEventListener('focus', onFocus);
   }, []);
 
+  // Polling temps réel : refetch toutes les 30s si l'onglet est visible.
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState === 'visible') setRefreshTick(t => t + 1);
+    };
+    const id = setInterval(tick, 30000);
+    return () => clearInterval(id);
+  }, []);
+
   const d = data || {};
 
   const conversionRate = d.conversionRate ?? d.conversion_rate ?? 0;

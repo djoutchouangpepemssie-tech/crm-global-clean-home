@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import api from '../../lib/api';
 import {
   ChevronRight, ChevronDown, ChevronUp, Plus, Trash2, Sparkles,
@@ -714,6 +714,8 @@ function Sidebar({ groups, formData, leads }) {
 export default function QuoteForm() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const prefillLeadId = searchParams.get('leadId');
   const isEdit = Boolean(id);
 
   const [step, setStep] = useState(1);
@@ -749,9 +751,29 @@ export default function QuoteForm() {
           };
         });
         setLeads(mapped);
+        // Pré-sélection si ?leadId=XXX dans l'URL (ex: depuis LeadDetail "Convertir en devis")
+        if (prefillLeadId && !isEdit) {
+          const lead = mapped.find(l => l.id === prefillLeadId);
+          if (lead) {
+            setFormData(d => ({
+              ...d,
+              lead_id: prefillLeadId,
+              service_type: d.service_type || lead.service_type || 'Autre',
+              title: d.title?.trim() ? d.title
+                : (lead.service_type ? `${lead.service_type} — ${lead.full_name}` : `Devis — ${lead.full_name}`),
+              description: d.description?.trim() ? d.description
+                : [lead.message, lead.surface ? `Surface : ${lead.surface} m²` : null].filter(Boolean).join('\n'),
+              client_name: lead.full_name,
+              client_email: lead.email,
+              client_phone: lead.phone,
+              client_address: lead.address,
+              client_city: lead.city,
+            }));
+          }
+        }
       })
       .catch(() => setLeads([]));
-  }, []);
+  }, [prefillLeadId, isEdit]);
 
   useEffect(() => {
     if (!isEdit) return;

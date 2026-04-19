@@ -686,8 +686,19 @@ const LeadDetail = () => {
   const handleAction = (type) => {
     if (['email', 'sms', 'note', 'rdv'].includes(type)) setChannel(type);
     if (type === 'quote') navigate(`/quotes/new?leadId=${id}`);
-    if (type === 'call' && lead?.phone) {
+    if (type === 'call') {
+      if (!lead?.phone) {
+        window.alert('Aucun téléphone renseigné pour ce lead.');
+        return;
+      }
+      // Déclenche l'appel (mobile) ou le gestionnaire d'appel par défaut (desktop)
       window.location.href = `tel:${lead.phone.replace(/\s/g, '')}`;
+      // Log automatique de l'appel comme interaction (trace dans la timeline)
+      api.post('/interactions', {
+        lead_id: id,
+        type: 'appel',
+        content: `Appel sortant déclenché vers ${lead.phone}`,
+      }).then(() => setRetryCount(c => c + 1)).catch(() => {});
     }
     if (type === 'transfer') {
       const email = window.prompt('Email du collaborateur à qui transférer ce lead :');
@@ -697,10 +708,24 @@ const LeadDetail = () => {
         .catch(e => window.alert(`Erreur : ${e?.message || 'impossible de transférer'}`));
     }
     if (type === 'ai') {
-      const suggestion = lead?.aiScore >= 70
-        ? `Lead chaud (score ${lead.aiScore}) — recommandé : appel rapide pour convertir.`
-        : `Lead à qualifier (score ${lead.aiScore}) — envoyer un email de découverte pour mieux cerner le besoin.`;
-      window.alert(`Suggestion IA : ${suggestion}`);
+      const score = lead?.aiScore ?? 50;
+      const nextStageMap = {
+        'nouveau': 'Contacté — premier appel',
+        'contacté': 'Qualifié — envoyer un devis',
+        'en_attente': 'Devis — relancer pour signature',
+        'devis_envoyé': 'Gagné — confirmer le démarrage',
+        'gagné': 'Chantier — créer les factures d\'acompte',
+      };
+      const nextStep = nextStageMap[lead?.currentStage] || 'Continuer la qualification';
+      const suggestion = [
+        `Score IA : ${score}/100 (${score >= 70 ? 'chaud' : score >= 45 ? 'tiède' : 'froid'})`,
+        `Statut actuel : ${lead?.currentStage}`,
+        `Prochaine action conseillée : ${nextStep}`,
+        score >= 70
+          ? `→ Appelez ${lead?.firstName || ''} aujourd\'hui, le score est haut.`
+          : `→ Envoyez un email de découverte pour qualifier le besoin.`,
+      ].join('\n\n');
+      window.alert(suggestion);
     }
   };
 
