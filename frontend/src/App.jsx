@@ -89,6 +89,7 @@ const DashboardCustom = lazy(() => import('./components/dashboard/DynamicDashboa
 const DashboardLegacy = lazy(() => import('./components/dashboard/Dashboard'));
 const PipelineRiver = lazy(() => import('./components/pipeline/PipelineRiver'));
 const LeadsList = lazy(() => import('./components/leads/LeadsList'));
+const LeadDossier = lazy(() => import('./components/leads/LeadDossier'));
 const LeadDetail = lazy(() => import('./components/leads/LeadDetail'));
 const LeadForm = lazy(() => import('./components/leads/LeadForm'));
 const QuotesList = lazy(() => import('./components/quotes/QuotesList'));
@@ -385,7 +386,8 @@ function AppRouter() {
                     <Route path="/rentabilite" element={<RentabiliteModule />} />
                     <Route path="/chat" element={<ChatCenter />} />
                     <Route path="/leads/new" element={<LeadForm />} />
-                    <Route path="/leads/:id" element={<LeadDetail />} />
+                    <Route path="/leads/:id" element={<LeadDossier />} />
+                    <Route path="/leads/:id/legacy" element={<LeadDetail />} />
                     <Route path="/leads" element={<LeadsList />} />
                     <Route path="/quotes/new" element={<QuoteForm />} />
                     {/* Legacy : /quotes/premium redirige vers /quotes/new (même composant unifié) */}
