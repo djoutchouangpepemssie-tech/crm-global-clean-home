@@ -640,17 +640,30 @@ async def send_quote_email(user_id: str, lead: dict, quote: dict, pdf_data: byte
 {f'<img src="{quote["_tracking"]["pixel_url"]}" width="1" height="1" style="display:none!important;opacity:0;width:1px;height:1px;" alt="" />' if quote.get("_tracking", {}).get("pixel_url") else ''}
 </body></html>"""
 
-    # Si on a un lien tracké, on remplace le lien direct vers le PDF (s'il existe
-    # dans le template) et on ajoute un gros CTA « Voir le devis en ligne ».
+    # CTAs trackés : « Voir le devis » (link_url → redirect PDF) et
+    # « Accéder à mon espace client » (portal_url → magic link 30j).
     _t = quote.get("_tracking") or {}
+    _portal_url = quote.get("_portal_url")
+    ctas = []
     if _t.get("link_url"):
-        # On insère un CTA tracké avant le </div><!-- /wrapper -->
-        cta = (
-            f'<div style="text-align:center;margin:24px 0;">'
-            f'<a href="{_t["link_url"]}" style="display:inline-block;background:linear-gradient(135deg,#f97316,#ea580c);color:white;text-decoration:none;padding:16px 32px;border-radius:12px;font-weight:700;font-size:14px;letter-spacing:0.3px;box-shadow:0 4px 12px rgba(249,115,22,0.35);">📄 Voir le devis en ligne →</a>'
-            f'</div>'
+        ctas.append(
+            f'<a href="{_t["link_url"]}" style="display:inline-block;background:linear-gradient(135deg,#f97316,#ea580c);color:white;text-decoration:none;padding:14px 26px;border-radius:12px;font-weight:700;font-size:14px;letter-spacing:0.3px;box-shadow:0 4px 12px rgba(249,115,22,0.35);margin:4px;">📄 Voir le devis →</a>'
         )
-        html = html.replace('</div><!-- /wrapper -->', cta + '</div><!-- /wrapper -->')
+    if _portal_url:
+        ctas.append(
+            f'<a href="{_portal_url}" style="display:inline-block;background:white;color:#0f172a;text-decoration:none;padding:14px 26px;border-radius:12px;font-weight:700;font-size:14px;letter-spacing:0.3px;border:2px solid #0f172a;margin:4px;">🔐 Mon espace client →</a>'
+        )
+    if ctas:
+        cta_block = (
+            '<div style="text-align:center;margin:28px 0 8px;">'
+            + ''.join(ctas)
+            + '</div>'
+            '<p style="text-align:center;margin:4px 0 20px;font-size:11px;color:#94a3b8;">'
+            'Votre espace client vous permet de <strong>consulter, accepter ou refuser le devis</strong>, '
+            'voir vos factures et discuter avec notre équipe. Lien privé valable 30 jours.'
+            '</p>'
+        )
+        html = html.replace('</div><!-- /wrapper -->', cta_block + '</div><!-- /wrapper -->')
 
     try:
         # Nom fichier PDF professionnel

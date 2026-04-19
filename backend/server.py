@@ -2582,12 +2582,37 @@ async def send_quote(quote_id: str, request: Request):
                 "pixel_token":  pixel_token,
                 "link_token":   link_token,
             }
-            # On enrichit le dict quote pour que le template email puisse injecter
-            # le pixel et le lien tracké (voir gmail_service.send_quote_email).
-            quote_for_mail = {**quote, "_tracking": tracking}
+
+            # Générer un magic link vers le portail client (valable 30 jours
+            # pour qu'un prospect puisse revenir au devis plusieurs fois)
+            import secrets as _sec
+            magic_token = _sec.token_urlsafe(36)
+            await db.magic_links.insert_one({
+                "token":      magic_token,
+                "email":      lead.get("email", ""),
+                "lead_id":    quote["lead_id"],
+                "lead_name":  lead.get("name", ""),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+                "used":       False,
+                "context":    {"type": "quote", "quote_id": quote_id},
+            })
+            frontend_url = (os.environ.get("FRONTEND_URL")
+                            or "https://crm.globalcleanhome.com").rstrip("/")
+            portal_url = f"{frontend_url}/portal?magic={magic_token}"
+
+            quote_for_mail = {
+                **quote,
+                "_tracking":   tracking,
+                "_portal_url": portal_url,
+            }
             await db.quotes.update_one(
                 {"quote_id": quote_id},
-                {"$set": {"tracking_tokens": tracking}},
+                {"$set": {
+                    "tracking_tokens":       tracking,
+                    "portal_magic_token":    magic_token,
+                    "portal_url":            portal_url,
+                }},
             )
 
             from gmail_service import send_quote_email, _get_valid_access_token, _get_any_active_token

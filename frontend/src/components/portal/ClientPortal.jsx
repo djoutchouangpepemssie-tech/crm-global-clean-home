@@ -55,7 +55,7 @@ const getServiceIcon = (type='') => {
 };
 
 /* ── PAGE LOGIN ── */
-const PortalLogin = ({ onAuth }) => {
+const PortalLogin = ({ onAuth, magicError }) => {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [token, setToken] = useState('');
@@ -110,6 +110,13 @@ const PortalLogin = ({ onAuth }) => {
           </h1>
           <p className="text-neutral-400 text-sm">Global Clean Home — Paris & IDF</p>
         </div>
+
+        {/* Alerte magic link expiré */}
+        {magicError && (
+          <div className="mb-4 p-3 rounded-xl text-xs" style={{background:'rgba(239,68,68,0.12)',border:'1px solid rgba(239,68,68,0.3)',color:'#fecaca'}}>
+            ⚠️ {magicError}
+          </div>
+        )}
 
         {/* Card */}
         <div className="rounded-2xl p-8" style={{background:'rgba(255,255,255,0.05)',border:'1px solid var(--border-default)',backdropFilter:'blur(20px)',boxShadow:'0 24px 80px rgba(0,0,0,0.4)'}}>
@@ -948,16 +955,47 @@ const PortalDashboard = ({ user, onLogout }) => {
 const ClientPortal = () => {
   const [user, setUser] = useState(null);
   const [checking, setChecking] = useState(true);
+  const [magicError, setMagicError] = useState(null);
 
   useEffect(() => {
-    const checkSession = async () => {
+    const init = async () => {
+      // 1. Si l'URL contient ?magic=XXX (lien email), on l'échange contre une session
+      const params = new URLSearchParams(window.location.search);
+      const magicToken = params.get('magic');
+
+      if (magicToken) {
+        try {
+          const res = await axios.post(`${API_URL}/auth/${magicToken}`);
+          const data = res.data;
+          if (data?.session_token) {
+            localStorage.setItem('portal_token', data.session_token);
+            portalAxios.defaults.headers.common['X-Portal-Token'] = data.session_token;
+            setUser({
+              email:     data.email,
+              lead_id:   data.lead_id,
+              lead_name: data.lead_name,
+            });
+            // Nettoie l'URL pour ne pas exposer le token dans l'historique
+            window.history.replaceState({}, '', '/portal');
+            toast.success(`Bienvenue ${data.lead_name || ''} !`);
+            setChecking(false);
+            return;
+          }
+        } catch (e) {
+          setMagicError('Lien expiré ou invalide. Demande un nouveau lien ci-dessous.');
+          // Nettoie l'URL
+          window.history.replaceState({}, '', '/portal');
+        }
+      }
+
+      // 2. Sinon on vérifie une session existante (cookie ou localStorage)
       try {
         const res = await portalAxios.get(`${API_URL}/me`);
         setUser(res.data);
       } catch {}
       finally { setChecking(false); }
     };
-    checkSession();
+    init();
   }, []);
 
   const handleLogout = async () => {
@@ -980,7 +1018,7 @@ const ClientPortal = () => {
     );
   }
 
-  if (!user) return <PortalLogin onAuth={data => { setUser(data); }} />;
+  if (!user) return <PortalLogin onAuth={data => { setUser(data); }} magicError={magicError} />;
   return <PortalDashboard user={user} onLogout={handleLogout} />;
 };
 
