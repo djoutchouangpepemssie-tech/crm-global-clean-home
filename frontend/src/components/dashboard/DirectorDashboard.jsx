@@ -897,7 +897,7 @@ export default function DirectorDashboard() {
         <ParisSection topAreas={d.topAreas || d.top_areas} />
 
         <Section num="04" title="Activité" titleItalic="commerciale" annot={`${rangeDays} derniers jours · cumul`} />
-        <ActivitySection funnelSteps={d.funnel || d.funnel_steps} />
+        <ActivitySection funnelSteps={d.funnel_steps || d.funnelSteps || d.funnel} />
 
         <Section num="05" title="Signaux &" titleItalic="opportunités" annot="Détection automatique · IA" />
         <SignalsSection signals={d.signals} />

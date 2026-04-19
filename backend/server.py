@@ -4171,7 +4171,8 @@ async def get_dashboard_stats(request: Request, period: str = "30d"):
 
 @api_router.get("/director/dashboard")
 async def get_director_dashboard(request: Request, range: str = "month"):
-    """Dashboard consolidé pour la direction — données réelles agrégées."""
+    """Dashboard direction — toutes données RÉELLES agrégées depuis la DB.
+    Remplace les fallbacks hardcodés côté frontend par du calculé live."""
     await require_auth(request)
 
     now = datetime.now(timezone.utc)
@@ -4181,101 +4182,233 @@ async def get_director_dashboard(request: Request, range: str = "month"):
     prev_start = start - timedelta(days=days)
     start_iso, prev_start_iso = start.isoformat(), prev_start.isoformat()
 
-    # Période courante
-    total_leads = await db.leads.count_documents({
-        "deleted_at": {"$exists": False},
-        "created_at": {"$gte": start_iso},
-    })
-    qualified_leads = await db.leads.count_documents({
-        "deleted_at": {"$exists": False},
-        "created_at": {"$gte": start_iso},
-        "status": {"$in": ["contacté", "en_attente", "devis_envoyé", "gagné"]},
-    })
-    won_leads = await db.leads.count_documents({
-        "deleted_at": {"$exists": False},
-        "created_at": {"$gte": start_iso},
-        "status": "gagné",
-    })
-    quotes_sent = await db.quotes.count_documents({
-        "created_at": {"$gte": start_iso},
-        "status": {"$in": ["envoyé", "accepté"]},
-    })
-    active_projects = await db.invoices.count_documents({
-        "status": {"$in": ["en_attente", "en_retard"]},
-    })
+    nd = {"$or": [
+        {"deleted_at": {"$exists": False}},
+        {"deleted_at": {"$in": [None, False, ""]}},
+    ]}
 
-    # Revenue (factures payées)
+    # ── LEADS (période courante)
+    total_leads      = await db.leads.count_documents({**nd, "created_at": {"$gte": start_iso}})
+    qualified_leads  = await db.leads.count_documents({**nd, "created_at": {"$gte": start_iso},
+                                                       "status": {"$in": ["contacté", "en_attente", "devis_envoyé", "gagné"]}})
+    won_leads        = await db.leads.count_documents({**nd, "created_at": {"$gte": start_iso}, "status": "gagné"})
+    lost_leads       = await db.leads.count_documents({**nd, "created_at": {"$gte": start_iso}, "status": "perdu"})
+    if total_leads == 0:  # fallback all-time
+        total_leads_all = await db.leads.count_documents(nd)
+        if total_leads_all > 0:
+            total_leads = total_leads_all
+            qualified_leads = await db.leads.count_documents({**nd, "status": {"$in": ["contacté", "en_attente", "devis_envoyé", "gagné"]}})
+            won_leads = await db.leads.count_documents({**nd, "status": "gagné"})
+            lost_leads = await db.leads.count_documents({**nd, "status": "perdu"})
+
+    # ── DEVIS
+    quotes_sent      = await db.quotes.count_documents({**nd, "created_at": {"$gte": start_iso},
+                                                        "status": {"$in": ["envoyé", "accepté"]}})
+    quotes_accepted  = await db.quotes.count_documents({**nd, "created_at": {"$gte": start_iso}, "status": "accepté"})
+    if quotes_sent == 0:
+        quotes_sent = await db.quotes.count_documents({**nd, "status": {"$in": ["envoyé", "accepté"]}})
+        quotes_accepted = await db.quotes.count_documents({**nd, "status": "accepté"})
+
+    # ── FACTURES
     paid_invoices = await db.invoices.find(
-        {"status": {"$in": ["payée", "payee"]}, "created_at": {"$gte": start_iso}},
-        {"_id": 0},
+        {**nd, "status": {"$in": ["payée", "payee"]}, "created_at": {"$gte": start_iso}},
+        {"_id": 0, "amount_ttc": 1, "amount": 1, "created_at": 1, "lead_name": 1, "lead_address": 1},
     ).to_list(10000)
-    revenue_realized = sum(i.get("amount_ttc") or i.get("amount") or 0 for i in paid_invoices)
+    revenue_realized = sum((i.get("amount_ttc") or i.get("amount") or 0) for i in paid_invoices)
 
-    # Période précédente (pour comparaison)
+    pending_invoices = await db.invoices.find({**nd, "status": "en_attente"}, {"_id": 0, "amount_ttc": 1, "amount": 1, "due_date": 1}).to_list(10000)
+    overdue_invoices = await db.invoices.find({**nd, "status": "en_retard"}, {"_id": 0, "amount_ttc": 1, "amount": 1, "due_date": 1, "lead_name": 1}).to_list(10000)
+    ca_pending = sum((i.get("amount_ttc") or i.get("amount") or 0) for i in pending_invoices)
+    ca_overdue = sum((i.get("amount_ttc") or i.get("amount") or 0) for i in overdue_invoices)
+
+    active_projects = len(pending_invoices) + len(overdue_invoices)
+
+    # ── PÉRIODE PRÉCÉDENTE (comparaison)
     prev_paid = await db.invoices.find(
-        {"status": {"$in": ["payée", "payee"]}, "created_at": {"$gte": prev_start_iso, "$lt": start_iso}},
-        {"_id": 0},
+        {**nd, "status": {"$in": ["payée", "payee"]}, "created_at": {"$gte": prev_start_iso, "$lt": start_iso}},
+        {"_id": 0, "amount_ttc": 1, "amount": 1},
     ).to_list(10000)
-    prev_revenue = sum(i.get("amount_ttc") or i.get("amount") or 0 for i in prev_paid)
+    prev_revenue = sum((i.get("amount_ttc") or i.get("amount") or 0) for i in prev_paid)
     revenue_trend = round((revenue_realized - prev_revenue) / prev_revenue * 100, 1) if prev_revenue > 0 else 0
 
-    prev_leads = await db.leads.count_documents({
-        "deleted_at": {"$exists": False},
-        "created_at": {"$gte": prev_start_iso, "$lt": start_iso},
-    })
-    prev_won = await db.leads.count_documents({
-        "deleted_at": {"$exists": False},
-        "created_at": {"$gte": prev_start_iso, "$lt": start_iso},
-        "status": "gagné",
-    })
+    prev_leads = await db.leads.count_documents({**nd, "created_at": {"$gte": prev_start_iso, "$lt": start_iso}})
+    prev_won = await db.leads.count_documents({**nd, "created_at": {"$gte": prev_start_iso, "$lt": start_iso}, "status": "gagné"})
     conversion_rate = round(won_leads / total_leads * 100, 1) if total_leads > 0 else 0
     prev_conversion = round(prev_won / prev_leads * 100, 1) if prev_leads > 0 else 0
     conversion_trend = round(conversion_rate - prev_conversion, 1)
 
-    # Ticket moyen
     avg_ticket = round(revenue_realized / len(paid_invoices)) if paid_invoices else 0
 
-    # Health score (synthétique à partir des indicateurs)
-    health_score = min(100, round(
-        (conversion_rate * 0.4) +
-        (min(100, revenue_realized / 1000) * 0.3) +
-        (min(100, quotes_sent * 2) * 0.3)
-    ))
+    # ── FUNNEL
+    nouveau = await db.leads.count_documents({**nd, "status": "nouveau", "created_at": {"$gte": start_iso}})
+    contacte = await db.leads.count_documents({**nd, "status": "contacté", "created_at": {"$gte": start_iso}})
+    attente = await db.leads.count_documents({**nd, "status": "en_attente", "created_at": {"$gte": start_iso}})
+    devis = await db.leads.count_documents({**nd, "status": "devis_envoyé", "created_at": {"$gte": start_iso}})
 
-    # Funnel
-    nouveau = await db.leads.count_documents({"status": "nouveau", "deleted_at": {"$exists": False}, "created_at": {"$gte": start_iso}})
-    contacte = await db.leads.count_documents({"status": "contacté", "deleted_at": {"$exists": False}, "created_at": {"$gte": start_iso}})
-    devis = await db.leads.count_documents({"status": "devis_envoyé", "deleted_at": {"$exists": False}, "created_at": {"$gte": start_iso}})
-    gagne = won_leads
+    funnel_top = max(total_leads, 1)
+    funnel_steps = [
+        {"name": "Leads",        "sub": "entrants",               "count": total_leads,     "pct": 100, "tone": "accent"},
+        {"name": "Qualifiés",    "sub": "contactés + en attente", "count": contacte + attente, "pct": round((contacte + attente) / funnel_top * 100), "tone": "warm"},
+        {"name": "Devis envoyés","sub": "en négociation",         "count": devis,           "pct": round(devis / funnel_top * 100),     "tone": "gold"},
+        {"name": "Gagnés",       "sub": "signés",                 "count": won_leads,       "pct": round(won_leads / funnel_top * 100), "tone": "accent"},
+    ]
+
+    # ── TOP ZONES (arrondissements / villes les plus rentables)
+    ville_counter: Dict[str, Dict[str, float]] = {}
+    all_leads_with_addr = await db.leads.find(nd, {"_id": 0, "lead_id": 1, "name": 1, "address": 1, "status": 1}).to_list(5000)
+    for l in all_leads_with_addr:
+        addr = (l.get("address") or "").strip()
+        if not addr: continue
+        # Extrait « CODE_POSTAL VILLE » via regex
+        m = re.search(r"(\d{5})\s+([A-Za-zÀ-ÿ'\-\s]{2,40})", addr)
+        if not m: continue
+        city = m.group(2).strip()
+        if city not in ville_counter:
+            ville_counter[city] = {"leads": 0, "won": 0, "ca": 0.0, "postcode": m.group(1)}
+        ville_counter[city]["leads"] += 1
+        if l.get("status") == "gagné":
+            ville_counter[city]["won"] += 1
+    # CA par ville : somme des factures payées dont lead_name matche
+    for inv in paid_invoices:
+        addr_inv = (inv.get("lead_address") or "")
+        m = re.search(r"(\d{5})\s+([A-Za-zÀ-ÿ'\-\s]{2,40})", addr_inv)
+        if m:
+            city = m.group(2).strip()
+            if city in ville_counter:
+                ville_counter[city]["ca"] += (inv.get("amount_ttc") or inv.get("amount") or 0)
+    top_areas = sorted(ville_counter.items(), key=lambda x: x[1]["ca"] or x[1]["leads"], reverse=True)[:6]
+    top_areas_data = [
+        {
+            "rank": i + 1,
+            "name": city,
+            "num":  data["postcode"],
+            "sub":  f"{int(data['leads'])} leads · {int(data['won'])} gagnés",
+            "leads": int(data["leads"]),
+            "ca":    round(data["ca"]),
+            "top":   i == 0,
+        }
+        for i, (city, data) in enumerate(top_areas)
+    ]
+
+    # ── SUBSCORES (santé business synthétique)
+    # Chaque score 0-100, calculé à partir d'indicateurs réels.
+    finance_score = min(100, round(
+        (min(100, revenue_realized / 5000) * 0.5) +
+        (max(0, 100 - (ca_overdue / max(revenue_realized, 1)) * 100) * 0.5)
+    ))
+    pipeline_score = min(100, round(conversion_rate * 2))   # 50% conv → 100
+    clients_score = min(100, round((won_leads / max(total_leads, 1)) * 150))
+    ops_score = min(100, round((active_projects * 10) + (60 if active_projects > 0 else 0)))
+
+    def tone_for(s):
+        return "accent" if s >= 70 else "warm" if s >= 50 else "gold"
+
+    subscores = [
+        {"cap": "I",   "name": "Finance",      "value": finance_score,  "tone": tone_for(finance_score)},
+        {"cap": "II",  "name": "Pipeline",     "value": pipeline_score, "tone": tone_for(pipeline_score)},
+        {"cap": "III", "name": "Clients",      "value": clients_score,  "tone": tone_for(clients_score)},
+        {"cap": "IV",  "name": "Opérationnel", "value": ops_score,      "tone": tone_for(ops_score)},
+    ]
+
+    health_score = round((finance_score + pipeline_score + clients_score + ops_score) / 4)
+
+    # ── FINANCIAL CELLS (détails financiers)
+    financial_cells = [
+        {"cap": "i",   "value": round(revenue_realized / 1000, 1), "unit": "k€", "context": "CA réalisé",       "trend": revenue_trend,              "dot": "accent", "neg": revenue_trend < 0},
+        {"cap": "ii",  "value": len(pending_invoices),              "unit": "",   "context": "Factures ouvertes", "trend": 0,                          "dot": "warm",   "neg": False, "subtext": f"{round(ca_pending):,} € en attente".replace(",", " ")},
+        {"cap": "iii", "value": avg_ticket,                         "unit": "€",  "context": "Ticket moyen",     "trend": 0,                          "dot": "gold",   "neg": False},
+        {"cap": "iv",  "value": round(ca_overdue / 1000, 1) if ca_overdue else 0, "unit": "k€", "context": "Impayés", "trend": 0, "dot": "warm", "neg": ca_overdue > 0, "subtext": f"{len(overdue_invoices)} factures"},
+    ]
+
+    # ── SIGNAUX (opportunités/alertes automatiquement détectées)
+    signals = []
+    if ca_overdue > 0:
+        signals.append({
+            "tag": "alr", "tagLabel": "Alerte",
+            "text": f"{len(overdue_invoices)} facture{'s' if len(overdue_invoices) > 1 else ''} en retard",
+            "sub":  f"{round(ca_overdue):,} € à recouvrer".replace(",", " "),
+            "cta":  "Voir les impayés",
+        })
+    if nouveau > 0:
+        signals.append({
+            "tag": "opp", "tagLabel": "Opportunité",
+            "text": f"{nouveau} lead{'s' if nouveau > 1 else ''} à contacter",
+            "sub":  "Statut nouveau, aucune prise de contact",
+            "cta":  "Traiter",
+        })
+    if devis > 0:
+        signals.append({
+            "tag": "opp", "tagLabel": "Opportunité",
+            "text": f"{devis} devis en cours",
+            "sub":  "Relance possible · 48h conseillées",
+            "cta":  "Relancer",
+        })
+    if conversion_trend < -5:
+        signals.append({
+            "tag": "alr", "tagLabel": "Tendance",
+            "text": f"Conversion en baisse ({conversion_trend:+.0f}pt)",
+            "sub":  "Périod vs précédente",
+            "cta":  "Analyser",
+        })
+    elif conversion_trend > 5:
+        signals.append({
+            "tag": "act", "tagLabel": "Performance",
+            "text": f"Conversion en hausse ({conversion_trend:+.0f}pt)",
+            "sub":  "Continuez sur cette lancée",
+            "cta":  None,
+        })
+    if active_projects == 0 and revenue_realized == 0:
+        signals.append({
+            "tag": "info", "tagLabel": "Info",
+            "text": "Aucune activité facturée sur la période",
+            "sub":  "Lancez vos premiers chantiers pour alimenter les KPIs",
+            "cta":  None,
+        })
+    if not signals:
+        signals = [{"tag": "info", "tagLabel": "Info", "text": "Aucun signal critique", "sub": "Le business tourne normalement.", "cta": None}]
+
+    # ── FUNNEL LEGACY (rétrocompat avec l'ancien format "count+label")
+    funnel_legacy = [
+        {"label": "Nouveau",      "count": nouveau},
+        {"label": "Contacté",     "count": contacte},
+        {"label": "Devis envoyé", "count": devis},
+        {"label": "Gagné",        "count": won_leads},
+    ]
 
     return {
         "range": range,
-        "conversion_rate": conversion_rate,
-        "conversion_trend": conversion_trend,
-        "revenue": revenue_realized,
-        "revenueRealized": revenue_realized,
-        "revenue_trend": revenue_trend,
-        "health": health_score,
-        "healthScore": health_score,
-        "health_trend": 0,
-        "qualified_leads": qualified_leads,
-        "qualifiedLeads": qualified_leads,
-        "quotes_sent": quotes_sent,
-        "quotesSent": quotes_sent,
-        "active_projects": active_projects,
-        "activeProjects": active_projects,
-        "avg_ticket": avg_ticket,
-        "avgTicket": avg_ticket,
-        "funnel": [
-            {"label": "Nouveau", "count": nouveau},
-            {"label": "Contacté", "count": contacte},
-            {"label": "Devis envoyé", "count": devis},
-            {"label": "Gagné", "count": gagne},
-        ],
-        "subscores": [],
-        "financial_cells": [],
-        "top_areas": [],
-        "signals": [],
+        # KPIs hero
+        "conversion_rate":     conversion_rate,
+        "conversionRate":      conversion_rate,
+        "conversion_trend":    conversion_trend,
+        "conversionTrend":     conversion_trend,
+        "revenue":             revenue_realized,
+        "revenueRealized":     revenue_realized,
+        "revenue_trend":       revenue_trend,
+        "revenueTrend":        revenue_trend,
+        "health":              health_score,
+        "healthScore":         health_score,
+        "health_trend":        0,
+        "healthTrend":         0,
+        # Ribbon
+        "qualified_leads":     qualified_leads,
+        "qualifiedLeads":      qualified_leads,
+        "quotes_sent":         quotes_sent,
+        "quotesSent":          quotes_sent,
+        "active_projects":     active_projects,
+        "activeProjects":      active_projects,
+        "avg_ticket":          avg_ticket,
+        "avgTicket":           avg_ticket,
+        # Sections riches
+        "subscores":           subscores,
+        "financial_cells":     financial_cells,
+        "financialCells":      financial_cells,
+        "top_areas":           top_areas_data,
+        "topAreas":            top_areas_data,
+        "funnel":              funnel_legacy,
+        "funnel_steps":        funnel_steps,
+        "funnelSteps":         funnel_steps,
+        "signals":             signals,
     }
 
 
