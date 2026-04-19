@@ -426,16 +426,19 @@ async def send_quote_email(user_id: str, lead: dict, quote: dict, pdf_data: byte
     amount_ht = quote.get("amount", 0)
     prenom = lead.get("name", "").split()[0] if lead.get("name") else "Client"
     nom_complet = lead.get("name", "Client")
-    service_type = quote.get("service_type", lead.get("service_type", "Nettoyage"))
+    service_type_raw = quote.get("service_type", lead.get("service_type", "Nettoyage"))
+    # Libellé humain normalisé (ex: "Ménage" → "ménage à domicile")
+    service_type = _normalize_service_label(service_type_raw).capitalize()
     quote_id = quote.get("quote_id", "—")
     adresse = lead.get("address", lead.get("adresse", "—"))
     telephone = lead.get("phone", lead.get("telephone", "—"))
     date_devis = datetime.now().strftime("%d/%m/%Y")
     validite = "30 jours"
 
-    # Emoji service
-    service_icons = {"Ménage":"🏠","menage":"🏠","Canapé":"🛋️","canape":"🛋️","Matelas":"🛏️","matelas":"🛏️","Tapis":"🪣","tapis":"🪣","Bureaux":"🏢","bureaux":"🏢"}
-    svc_icon = next((v for k,v in service_icons.items() if k.lower() in service_type.lower()), "🧹")
+    # Emoji service (matche sur la forme normalisée)
+    _svc_lower = service_type.lower()
+    service_icons = {"ménage":"🏠","canapé":"🛋️","matelas":"🛏️","tapis":"🪣","bureaux":"🏢","vitres":"🪟","chantier":"🏗️","déménagement":"📦"}
+    svc_icon = next((v for k,v in service_icons.items() if k in _svc_lower), "🧹")
 
     # Détails prestations
     details_text = quote.get("details", "")
@@ -466,10 +469,15 @@ async def send_quote_email(user_id: str, lead: dict, quote: dict, pdf_data: byte
             elif line_c:
                 details_rows += f'<tr><td colspan="2" style="padding:6px 16px;color:#475569;font-size:13px;">• {line_c}</td></tr>'
 
-    steps_html = ''.join([
-        f'<div style="flex:1;text-align:center;"><div style="width:36px;height:36px;background:linear-gradient(135deg,#f97316,#ea580c);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin:0 auto 8px;color:white;font-weight:900;font-size:14px;">' + str(n) + '</div><p style="color:#64748b;font-size:11px;margin:0;font-weight:600;">' + s + '</p></div>'
+    # Étapes : table 4 colonnes (compatible tous clients email — flex exclu)
+    steps_cells = ''.join([
+        f'<td style="text-align:center;padding:0 4px;width:25%;vertical-align:top;">'
+        f'<div style="width:36px;height:36px;background:linear-gradient(135deg,#f97316,#ea580c);border-radius:50%;margin:0 auto 8px;color:white;font-weight:900;font-size:14px;line-height:36px;">{n}</div>'
+        f'<p style="color:#64748b;font-size:11px;margin:0;font-weight:600;">{s}</p>'
+        f'</td>'
         for n, s in [("1","Vous acceptez"),("2","On planifie"),("3","On intervient"),("4","Satisfait")]
     ])
+    steps_html = f'<table role="presentation" border="0" cellspacing="0" cellpadding="0" width="100%"><tr>{steps_cells}</tr></table>'
     now_dt_email = datetime.now()
     short_ref = quote_id.replace('quote_','').upper()[:6]
     gch_ref = f"GCH-{now_dt_email.strftime('%m%Y')}-{short_ref}"
@@ -581,44 +589,49 @@ async def send_quote_email(user_id: str, lead: dict, quote: dict, pdf_data: byte
       <!-- ÉTAPES SUIVANTES -->
       <div style="margin:0 0 28px;">
         <p style="color:#0f172a;font-size:13px;font-weight:700;margin:0 0 16px;text-transform:uppercase;letter-spacing:1px;">📌 Prochaines étapes</p>
-        <div style="display:flex;gap:0;position:relative;">
-          {steps_html}
-        </div>
+        {steps_html}
       </div>
 
-      <!-- CTA BOUTONS -->
-      <div style="text-align:center;margin:28px 0 8px;">
-        <p style="color:#64748b;font-size:13px;margin:0 0 16px;">Des questions ? Contactez-nous directement :</p>
-        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-          <a href="tel:+33622665308"
-            style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#f97316,#ea580c);color:white;padding:14px 24px;border-radius:12px;text-decoration:none;font-weight:700;font-size:14px;box-shadow:0 4px 16px rgba(249,115,22,0.35);">
-            📞 06 22 66 53 08
-          </a>
-          <a href="https://wa.me/33622665308?text=Bonjour%2C%20j%27ai%20re%C3%A7u%20mon%20devis%20{gch_ref}"
-            style="display:inline-flex;align-items:center;gap:8px;background:#25D366;color:white;padding:14px 24px;border-radius:12px;text-decoration:none;font-weight:700;font-size:14px;box-shadow:0 4px 16px rgba(37,211,102,0.35);">
-            💬 WhatsApp
-          </a>
-          <a href="mailto:info@globalcleanhome.com"
-            style="display:inline-flex;align-items:center;gap:8px;background:#0f172a;color:white;padding:14px 24px;border-radius:12px;text-decoration:none;font-weight:700;font-size:14px;">
-            ✉️ Email
-          </a>
-        </div>
+      <!-- CTA BOUTONS CONTACT — layout table (compatible Outlook/Gmail/Apple Mail) -->
+      <div style="margin:32px 0 8px;text-align:center;">
+        <p style="color:#64748b;font-size:13px;margin:0 0 18px;">Une question sur ce devis ? Nous sommes joignables :</p>
+        <table role="presentation" border="0" cellspacing="0" cellpadding="0" align="center" style="margin:0 auto;">
+          <tr>
+            <td style="padding:6px;">
+              <a href="tel:+33622665308" style="display:block;background:linear-gradient(135deg,#f97316,#ea580c);color:#ffffff;padding:14px 22px;border-radius:10px;text-decoration:none;font-weight:700;font-size:13px;white-space:nowrap;box-shadow:0 4px 14px rgba(249,115,22,0.30);">
+                📞&nbsp;&nbsp;06 22 66 53 08
+              </a>
+            </td>
+            <td style="padding:6px;">
+              <a href="https://wa.me/33622665308?text=Bonjour%2C%20j%27ai%20une%20question%20sur%20le%20devis%20{gch_ref}" style="display:block;background:#25D366;color:#ffffff;padding:14px 22px;border-radius:10px;text-decoration:none;font-weight:700;font-size:13px;white-space:nowrap;box-shadow:0 4px 14px rgba(37,211,102,0.30);">
+                💬&nbsp;&nbsp;WhatsApp
+              </a>
+            </td>
+            <td style="padding:6px;">
+              <a href="mailto:contact@globalcleanhome.com?subject=Devis%20{gch_ref}" style="display:block;background:#0f172a;color:#ffffff;padding:14px 22px;border-radius:10px;text-decoration:none;font-weight:700;font-size:13px;white-space:nowrap;">
+                ✉️&nbsp;&nbsp;Email
+              </a>
+            </td>
+          </tr>
+        </table>
       </div>
 
     </div><!-- /corps -->
 
     <!-- FOOTER CARD -->
     <div style="background:#0f172a;padding:24px 36px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-        <div>
-          <p style="color:white;font-weight:800;margin:0 0 3px;font-size:14px;">Global Clean Home</p>
-          <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0;">231 rue Saint-Honoré, 75001 Paris</p>
-        </div>
-        <div style="text-align:right;">
-          <p style="color:rgba(255,255,255,0.5);font-size:11px;margin:0 0 2px;">www.globalcleanhome.com</p>
-          <p style="color:rgba(255,255,255,0.5);font-size:11px;margin:0;">info@globalcleanhome.com</p>
-        </div>
-      </div>
+      <table role="presentation" border="0" cellspacing="0" cellpadding="0" width="100%">
+        <tr>
+          <td style="vertical-align:top;">
+            <p style="color:#ffffff;font-weight:800;margin:0 0 4px;font-size:14px;">Global Clean Home</p>
+            <p style="color:rgba(255,255,255,0.5);font-size:11px;margin:0;line-height:1.5;">5 rue de l'Étang de la Loy<br/>77400 Saint-Thibault-des-Vignes</p>
+          </td>
+          <td style="vertical-align:top;text-align:right;">
+            <p style="color:rgba(255,255,255,0.5);font-size:11px;margin:0 0 4px;"><a href="https://www.globalcleanhome.com" style="color:rgba(255,255,255,0.7);text-decoration:none;">www.globalcleanhome.com</a></p>
+            <p style="color:rgba(255,255,255,0.5);font-size:11px;margin:0;"><a href="mailto:contact@globalcleanhome.com" style="color:rgba(255,255,255,0.7);text-decoration:none;">contact@globalcleanhome.com</a></p>
+          </td>
+        </tr>
+      </table>
       <div style="border-top:1px solid rgba(255,255,255,0.08);margin-top:16px;padding-top:16px;text-align:center;">
         <p style="color:rgba(255,255,255,0.25);font-size:10px;margin:0;">
           Ce devis a été établi suite à votre demande. Il est confidentiel et valable 30 jours.
@@ -1274,23 +1287,41 @@ async def get_email_stats(request: Request):
         "total_followups": total_followups,
     }
 
+def _normalize_service_label(service_type: str) -> str:
+    """Renvoie un libellé humain complet pour un service_type, quelle que soit
+    la casse ou la variante d'entrée.
+    Ex : 'Ménage', 'menage', 'menage-domicile' → 'ménage à domicile'
+         'Bureaux', 'nettoyage-bureaux'        → 'nettoyage de bureaux'
+    """
+    if not service_type:
+        return "prestation de nettoyage"
+    s = service_type.strip().lower()
+    # Enlève les accents pour la comparaison
+    import unicodedata
+    s_norm = "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
+
+    # Mapping priorisé : plus spécifique d'abord
+    table = [
+        (("menage a domicile", "menage-domicile", "menage domicile", "menage"),          "ménage à domicile"),
+        (("canape", "nettoyage-canape", "nettoyage de canape", "nettoyage canape"),      "nettoyage de canapé"),
+        (("matelas", "nettoyage-matelas", "nettoyage de matelas", "nettoyage matelas"), "nettoyage de matelas"),
+        (("tapis", "nettoyage-tapis", "nettoyage de tapis", "nettoyage tapis"),          "nettoyage de tapis"),
+        (("bureaux", "nettoyage-bureaux", "nettoyage de bureaux", "nettoyage bureaux", "locaux"), "nettoyage de bureaux"),
+        (("vitres", "lavage-vitres", "nettoyage-vitres"),                                 "nettoyage de vitres"),
+        (("fin de chantier", "fin-chantier", "fin chantier", "nettoyage fin de chantier"), "nettoyage fin de chantier"),
+        (("demenagement", "déménagement", "nettoyage demenagement"),                      "nettoyage déménagement"),
+        (("entretien", "entretien-regulier"),                                             "entretien régulier"),
+    ]
+    for keys, label in table:
+        if s_norm in keys or any(s_norm.startswith(k) for k in keys) or any(k in s_norm for k in keys):
+            return label
+    # Fallback : on renvoie la valeur d'origine, juste capitalisée proprement
+    return service_type[:1].upper() + service_type[1:] if service_type else "Prestation"
+
+
 async def send_confirmation_email(to_email: str, client_name: str, service_type: str, services: list = None):
     """Envoie un email de confirmation automatique au prospect."""
-    
-    # Mapping des types de services
-    services_map = {
-        'menage': 'ménage à domicile',
-        'menage-domicile': 'ménage à domicile',
-        'nettoyage-canape': 'nettoyage de canapé',
-        'canape': 'nettoyage de canapé',
-        'nettoyage-matelas': 'nettoyage de matelas',
-        'matelas': 'nettoyage de matelas',
-        'nettoyage-tapis': 'nettoyage de tapis',
-        'tapis': 'nettoyage de tapis',
-        'nettoyage-bureaux': 'nettoyage de bureaux',
-        'bureaux': 'nettoyage de bureaux',
-    }
-    service_label = services_map.get(service_type, service_type)
+    service_label = _normalize_service_label(service_type)
     prenom = client_name.split()[0] if client_name else 'cher(e) client(e)'
     
     subject = "Votre demande de devis a bien ete recue - Global Clean Home"
