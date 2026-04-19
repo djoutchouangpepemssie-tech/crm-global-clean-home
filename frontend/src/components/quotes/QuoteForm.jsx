@@ -283,27 +283,69 @@ function Stepper({ current }) {
 /* ─── Step 1 : Client ──────────────────────────────────────────── */
 function Step1Client({ data, setData, leads }) {
   const selected = leads.find(l => l.id === data.lead_id);
+
+  const handleSelectLead = (leadId) => {
+    if (!leadId) {
+      setData(d => ({ ...d, lead_id: null }));
+      return;
+    }
+    const lead = leads.find(l => l.id === leadId);
+    if (!lead) { setData(d => ({ ...d, lead_id: leadId })); return; }
+    setData(d => ({
+      ...d,
+      lead_id: leadId,
+      title: d.title?.trim()
+        ? d.title
+        : (lead.service_type ? `${lead.service_type} — ${lead.full_name}` : `Devis — ${lead.full_name}`),
+      description: d.description?.trim()
+        ? d.description
+        : [lead.message, lead.surface ? `Surface : ${lead.surface} m²` : null].filter(Boolean).join('\n'),
+      client_name: lead.full_name,
+      client_email: lead.email,
+      client_phone: lead.phone,
+      client_address: lead.address,
+      client_city: lead.city,
+    }));
+  };
+
   return (
     <div className="qf-section qf-fadein">
       <h2 className="qf-display" style={{ fontSize: 22, marginBottom: 20, fontStyle: 'italic' }}>Sélectionner le client</h2>
       <div style={{ marginBottom: 16 }}>
         <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Prospect *</label>
-        <select className="qf-field" value={data.lead_id || ''} onChange={e => setData(d => ({ ...d, lead_id: e.target.value || null }))}>
+        <select className="qf-field" value={data.lead_id || ''} onChange={e => handleSelectLead(e.target.value || null)}>
           <option value="">— Choisir un prospect —</option>
-          {leads.map(l => <option key={l.id} value={l.id}>{l.full_name} · {l.city || ''}</option>)}
+          {leads.map(l => <option key={l.id} value={l.id}>{l.full_name}{l.city ? ` · ${l.city}` : ''}</option>)}
         </select>
       </div>
       {selected && (
-        <div className="qf-fadein" style={{ background: 'var(--accent-soft)', border: '1.5px solid oklch(0.75 0.08 165)', borderRadius: 12, padding: 16, display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
-          <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontFamily: "'Fraunces', serif", fontWeight: 700, flexShrink: 0 }}>
-            {(selected.full_name || '?').slice(0, 1).toUpperCase()}
-          </div>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>{selected.full_name}</div>
-            <div className="qf-mono" style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 2 }}>
-              <MapPin style={{ width: 10, height: 10, display: 'inline', marginRight: 3 }} />{selected.city || '—'}
+        <div className="qf-fadein" style={{ background: 'var(--accent-soft)', border: '1.5px solid oklch(0.75 0.08 165)', borderRadius: 12, padding: 16, marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 10 }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontFamily: "'Fraunces', serif", fontWeight: 700, flexShrink: 0 }}>
+              {(selected.full_name || '?').slice(0, 1).toUpperCase()}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 4 }}>{selected.email} · {selected.phone}</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>{selected.full_name}</div>
+              {selected.service_type && (
+                <div className="qf-mono" style={{ fontSize: 10, color: 'var(--accent)', marginTop: 2, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  {selected.service_type}{selected.surface ? ` · ${selected.surface} m²` : ''}
+                </div>
+              )}
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12, color: 'var(--ink-2)' }}>
+            {selected.email && (
+              <div><span className="qf-label" style={{ fontSize: 9, marginRight: 6 }}>Email</span>{selected.email}</div>
+            )}
+            {selected.phone && (
+              <div><span className="qf-label" style={{ fontSize: 9, marginRight: 6 }}>Tél.</span>{selected.phone}</div>
+            )}
+            {selected.address && (
+              <div style={{ gridColumn: '1 / span 2' }}>
+                <MapPin style={{ width: 10, height: 10, display: 'inline', marginRight: 4, color: 'var(--ink-3)' }} />
+                {selected.address}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -647,13 +689,22 @@ export default function QuoteForm() {
     api.get('/leads', { params: { page_size: 200, period: 'all' } })
       .then(r => {
         const raw = r.data?.items || r.data || [];
-        const mapped = (Array.isArray(raw) ? raw : []).map(l => ({
-          id: l.lead_id,
-          full_name: l.name || l.full_name || 'Inconnu',
-          city: l.address || l.city || '',
-          email: l.email || '',
-          phone: l.phone || '',
-        }));
+        const mapped = (Array.isArray(raw) ? raw : []).map(l => {
+          const addr = l.address || '';
+          const cityMatch = addr.match(/\d{5}\s+([^,]+)/);
+          const city = cityMatch ? cityMatch[1].trim() : (addr.split(',').pop() || '').trim();
+          return {
+            id: l.lead_id,
+            full_name: l.name || l.full_name || 'Inconnu',
+            city,
+            address: addr,
+            email: l.email || '',
+            phone: l.phone || '',
+            service_type: l.service_type || '',
+            surface: l.surface || null,
+            message: l.message || '',
+          };
+        });
         setLeads(mapped);
       })
       .catch(() => setLeads([]));

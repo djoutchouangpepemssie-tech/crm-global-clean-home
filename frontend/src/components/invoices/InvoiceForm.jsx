@@ -133,7 +133,7 @@ export default function InvoiceForm() {
   ]);
 
   const createInvoice = useCreateInvoice();
-  const { data: allLeads = [] } = useLeadsList({ period: '90d', page: 1, page_size: 200 });
+  const { data: allLeads = [] } = useLeadsList({ period: 'all', page: 1, page_size: 200 });
 
   // Si arrivé via ?from_quote={id}, on pré-remplit depuis le devis
   useEffect(() => {
