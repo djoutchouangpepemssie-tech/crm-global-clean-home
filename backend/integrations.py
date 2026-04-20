@@ -330,87 +330,196 @@ def generate_quote_pdf(quote_data: dict, lead_data: dict) -> BytesIO:
     elements.append(two_col)
     elements.append(Spacer(1, 14))
 
-    # PRESTATION
+    # ── BANDEAU RECURRENCE (si applicable) ──
+    frequency = quote_data.get('frequency') or 'unique'
+    interventions_count = int(quote_data.get('interventions_count') or 1)
+    billing_mode = quote_data.get('billing_mode') or 'per_visit'
+    start_date = quote_data.get('start_date')
+    preferred_day = quote_data.get('preferred_day')
+    freq_labels = {
+        'unique': 'Unique', 'quotidien': 'Quotidien', 'hebdomadaire': 'Hebdomadaire',
+        'bimensuelle': 'Bimensuelle', 'mensuel': 'Mensuel', 'trimestriel': 'Trimestriel', 'annuel': 'Annuel',
+    }
+    billing_labels = {
+        'per_visit': 'Facturation par passage',
+        'monthly':   'Facturation mensuelle',
+        'upfront':   'Forfait global à l\'avance',
+    }
+
+    if frequency != 'unique' and interventions_count > 1:
+        rec_rows = [[
+            Paragraph("FREQUENCE", S('RH', fontSize=8, textColor=WHITE, fontName='Helvetica-Bold')),
+            Paragraph("NB INTERVENTIONS", S('RH2', fontSize=8, textColor=WHITE, fontName='Helvetica-Bold')),
+            Paragraph("DEBUT", S('RH3', fontSize=8, textColor=WHITE, fontName='Helvetica-Bold')),
+            Paragraph("FACTURATION", S('RH4', fontSize=8, textColor=WHITE, fontName='Helvetica-Bold')),
+        ], [
+            Paragraph(freq_labels.get(frequency, frequency).upper() + (f" ({preferred_day})" if preferred_day else ""),
+                      S('RV', fontSize=10, textColor=ORANGE_DARK, fontName='Helvetica-Bold')),
+            Paragraph(str(interventions_count), S('RV2', fontSize=14, textColor=DARK, fontName='Helvetica-Bold')),
+            Paragraph(start_date or "À convenir", S('RV3', fontSize=10, textColor=DARK, fontName='Helvetica')),
+            Paragraph(billing_labels.get(billing_mode, billing_mode), S('RV4', fontSize=9, textColor=DARK, fontName='Helvetica')),
+        ]]
+        rec_t = Table(rec_rows, colWidths=[W * 0.28, W * 0.22, W * 0.22, W * 0.28])
+        rec_t.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), SLATE),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#fff7ed')),
+            ('BOX', (0, 0), (-1, -1), 1, ORANGE),
+            ('TOPPADDING', (0, 0), (-1, -1), 10), ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+            ('LEFTPADDING', (0, 0), (-1, -1), 12), ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        elements.append(rec_t)
+        elements.append(Spacer(1, 8))
+
+    # ── TABLEAU DETAILLE DES LIGNES ──
     sec_h = Table([[Paragraph("DETAIL DE LA PRESTATION", S('SH', fontSize=9, textColor=WHITE, fontName='Helvetica-Bold'))]], colWidths=[W])
     sec_h.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), SLATE), ('TOPPADDING', (0, 0), (-1, -1), 8), ('BOTTOMPADDING', (0, 0), (-1, -1), 8), ('LEFTPADDING', (0, 0), (-1, -1), 14)]))
     elements.append(sec_h)
 
-    prest = Table([
-        [Paragraph("Prestation", S('TH', fontSize=9, textColor=WHITE, fontName='Helvetica-Bold')),
-         Paragraph("Montant", S('TH2', fontSize=9, textColor=WHITE, fontName='Helvetica-Bold', alignment=TA_RIGHT))],
-        [Paragraph(service, S('PL', fontSize=10, textColor=DARK, fontName='Helvetica-Bold')),
-         Paragraph(f"{amount:,.2f} EUR", S('PM', fontSize=13, textColor=ORANGE_DARK, fontName='Helvetica-Bold', alignment=TA_RIGHT))],
-    ], colWidths=[W * 0.72, W * 0.28])
-    prest.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), SLATE), ('TOPPADDING', (0, 0), (-1, 0), 9), ('BOTTOMPADDING', (0, 0), (-1, 0), 9),
-        ('LEFTPADDING', (0, 0), (-1, 0), 14), ('RIGHTPADDING', (-1, 0), (-1, 0), 14),
-        ('BACKGROUND', (0, 1), (-1, -1), WHITE), ('TOPPADDING', (0, 1), (-1, -1), 14), ('BOTTOMPADDING', (0, 1), (-1, -1), 14),
-        ('LEFTPADDING', (0, 1), (-1, -1), 14), ('RIGHTPADDING', (-1, 1), (-1, -1), 14),
-        ('LINEBELOW', (0, 0), (-1, -1), 0.5, GRAY_BORDER), ('BOX', (0, 0), (-1, -1), 1, GRAY_BORDER), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-    ]))
-    elements.append(prest)
-    elements.append(Spacer(1, 8))
+    line_items = quote_data.get('line_items') or []
+    tva_rate = float(quote_data.get('tva_rate') or 0)
+    discount_pct = float(quote_data.get('discount') or 0)
 
-    # DETAILS PARSES
-    details_text = quote_data.get('details', '')
-    detail_rows = []
-    skip_prefixes = ('CLIENT', 'Email :', 'Telephone :', 'Adresse :', 'Date souhaitee', 'CONDITIONS', '- Devis valable', '- Paiement', '- Intervention sous', '- Produits')
-    in_prestations = False
-    for line in details_text.split('\n'):
-        line = line.strip()
-        if not line: continue
-        if '===' in line:
-            in_prestations = 'PRESTATION' in line.upper() or 'MENAGE' in line.upper() or 'NETTOYAGE' in line.upper()
-            continue
-        if any(line.startswith(p) for p in skip_prefixes): continue
-        if in_prestations:
-            line_clean = line.lstrip('bullet- ').replace('\u2022', '').strip()
-            if ':' in line_clean:
-                parts = line_clean.split(':', 1)
-                lbl = parts[0].strip().replace('-', '').strip().title()
-                val = parts[1].strip()
-                if lbl and val:
-                    detail_rows.append([
-                        Paragraph(lbl, S('DL', fontSize=9, textColor=GRAY, fontName='Helvetica-Bold')),
-                        Paragraph(val, S('DV', fontSize=9, textColor=DARK, fontName='Helvetica'))
-                    ])
-            elif line_clean:
-                detail_rows.append([
-                    Paragraph('', S('DE', fontSize=9)),
-                    Paragraph(f"  {line_clean}", S('DI', fontSize=9, textColor=DARK, fontName='Helvetica'))
+    if line_items:
+        # Table avec entête + lignes groupées
+        rows = [[
+            Paragraph("DÉSIGNATION", S('TH1', fontSize=9, textColor=WHITE, fontName='Helvetica-Bold')),
+            Paragraph("QTÉ", S('TH2', fontSize=9, textColor=WHITE, fontName='Helvetica-Bold', alignment=TA_RIGHT)),
+            Paragraph("UNITÉ", S('TH3', fontSize=9, textColor=WHITE, fontName='Helvetica-Bold')),
+            Paragraph("PU HT", S('TH4', fontSize=9, textColor=WHITE, fontName='Helvetica-Bold', alignment=TA_RIGHT)),
+            Paragraph("TOTAL HT", S('TH5', fontSize=9, textColor=WHITE, fontName='Helvetica-Bold', alignment=TA_RIGHT)),
+        ]]
+
+        last_group = None
+        base_ht = 0.0
+        for li in line_items:
+            grp = li.get('group') or 'Prestations'
+            if grp != last_group:
+                rows.append([
+                    Paragraph(f"<b>{grp.upper()}</b>", S('GR', fontSize=8, textColor=ORANGE_DARK, fontName='Helvetica-Bold')),
+                    '', '', '', '',
                 ])
+                last_group = grp
+            label = li.get('label') or li.get('description') or ''
+            qty = float(li.get('qty') or li.get('quantity') or 1)
+            unit = li.get('unit') or 'forfait'
+            price = float(li.get('price') or li.get('unit_price') or 0)
+            line_total = qty * price
+            base_ht += line_total
+            rows.append([
+                Paragraph(label, S('LL', fontSize=9, textColor=DARK, fontName='Helvetica')),
+                Paragraph(f"{qty:g}", S('LQ', fontSize=9, textColor=DARK, fontName='Helvetica', alignment=TA_RIGHT)),
+                Paragraph(unit, S('LU', fontSize=9, textColor=GRAY, fontName='Helvetica')),
+                Paragraph(f"{price:,.2f} €", S('LP', fontSize=9, textColor=DARK, fontName='Helvetica', alignment=TA_RIGHT)),
+                Paragraph(f"{line_total:,.2f} €", S('LT', fontSize=9, textColor=DARK, fontName='Helvetica-Bold', alignment=TA_RIGHT)),
+            ])
 
-    if detail_rows:
-        dh = Table([[Paragraph("INFORMATIONS DE LA PRESTATION", S('DPH', fontSize=9, textColor=WHITE, fontName='Helvetica-Bold'))]], colWidths=[W])
-        dh.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#334155')), ('TOPPADDING', (0, 0), (-1, -1), 7), ('BOTTOMPADDING', (0, 0), (-1, -1), 7), ('LEFTPADDING', (0, 0), (-1, -1), 14)]))
-        elements.append(dh)
-        dt = Table(detail_rows, colWidths=[W * 0.30, W * 0.70])
-        dt.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), GRAY_LIGHT),
-            ('TOPPADDING', (0, 0), (-1, -1), 7), ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
-            ('LEFTPADDING', (0, 0), (0, -1), 14), ('LEFTPADDING', (1, 0), (1, -1), 8),
-            ('LINEBELOW', (0, 0), (-1, -2), 0.3, GRAY_BORDER),
-            ('BOX', (0, 0), (-1, -1), 0.5, GRAY_BORDER), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        lines_t = Table(rows, colWidths=[W * 0.44, W * 0.10, W * 0.14, W * 0.14, W * 0.18])
+        lines_t.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), SLATE),
+            ('TOPPADDING', (0, 0), (-1, 0), 9), ('BOTTOMPADDING', (0, 0), (-1, 0), 9),
+            ('LEFTPADDING', (0, 0), (-1, 0), 12), ('RIGHTPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), WHITE),
+            ('TOPPADDING', (0, 1), (-1, -1), 6), ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+            ('LEFTPADDING', (0, 1), (-1, -1), 12), ('RIGHTPADDING', (0, 1), (-1, -1), 12),
+            ('LINEBELOW', (0, 0), (-1, -1), 0.3, GRAY_BORDER),
+            ('BOX', (0, 0), (-1, -1), 0.5, GRAY_BORDER),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
-        elements.append(dt)
+        elements.append(lines_t)
+    else:
+        # Fallback : une seule ligne globale
+        base_ht = float(quote_data.get('amount_ht') or amount / (1 + tva_rate / 100 if tva_rate else 1))
+        one_row = Table([[
+            Paragraph(service, S('PL', fontSize=10, textColor=DARK, fontName='Helvetica-Bold')),
+            Paragraph(f"{base_ht:,.2f} € HT", S('PM', fontSize=13, textColor=ORANGE_DARK, fontName='Helvetica-Bold', alignment=TA_RIGHT)),
+        ]], colWidths=[W * 0.72, W * 0.28])
+        one_row.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), WHITE),
+            ('BOX', (0, 0), (-1, -1), 0.5, GRAY_BORDER),
+            ('TOPPADDING', (0, 0), (-1, -1), 14), ('BOTTOMPADDING', (0, 0), (-1, -1), 14),
+            ('LEFTPADDING', (0, 0), (-1, -1), 14), ('RIGHTPADDING', (0, 0), (-1, -1), 14),
+        ]))
+        elements.append(one_row)
     elements.append(Spacer(1, 10))
 
-    # TOTAL SANS TVA
-    total = Table([
-        [Paragraph("MONTANT TOTAL", S('TL', fontSize=9, textColor=GRAY, fontName='Helvetica-Bold')),
-         Paragraph(f"{amount:,.2f} EUR", S('TA', fontSize=22, textColor=ORANGE, fontName='Helvetica-Bold', alignment=TA_RIGHT))],
-        [Paragraph("Micro-entreprise - TVA non applicable (art. 293B CGI)", S('TN', fontSize=8, textColor=GRAY, fontName='Helvetica')),
-         Paragraph(date_valid, S('TV', fontSize=8, textColor=GRAY, fontName='Helvetica', alignment=TA_RIGHT))],
-    ], colWidths=[W * 0.60, W * 0.40])
-    total.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), GRAY_LIGHT),
-        ('TOPPADDING', (0, 0), (-1, -1), 12), ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+    # ── RECAPITULATIF TOTAUX ──
+    # base_ht = 1 intervention. On multiplie si récurrent.
+    multiplier = interventions_count if frequency != 'unique' else 1
+    total_brut_ht = base_ht * multiplier
+    remise_amount = total_brut_ht * (discount_pct / 100)
+    net_ht = total_brut_ht - remise_amount
+    tva_amount = net_ht * (tva_rate / 100)
+    ttc = net_ht + tva_amount
+
+    tot_rows = []
+    if multiplier > 1:
+        tot_rows.append([
+            Paragraph(f"HT par intervention", S('T1', fontSize=9, textColor=GRAY, fontName='Helvetica')),
+            Paragraph(f"{base_ht:,.2f} €", S('T1V', fontSize=9, textColor=DARK, fontName='Helvetica', alignment=TA_RIGHT)),
+        ])
+        tot_rows.append([
+            Paragraph(f"x {multiplier} interventions ({freq_labels.get(frequency, '').lower()})", S('T2', fontSize=9, textColor=GRAY, fontName='Helvetica')),
+            Paragraph(f"{total_brut_ht:,.2f} €", S('T2V', fontSize=9, textColor=DARK, fontName='Helvetica-Bold', alignment=TA_RIGHT)),
+        ])
+    else:
+        tot_rows.append([
+            Paragraph("Total HT", S('T1', fontSize=9, textColor=GRAY, fontName='Helvetica')),
+            Paragraph(f"{total_brut_ht:,.2f} €", S('T1V', fontSize=9, textColor=DARK, fontName='Helvetica-Bold', alignment=TA_RIGHT)),
+        ])
+
+    if discount_pct > 0:
+        tot_rows.append([
+            Paragraph(f"Remise {discount_pct:g} %", S('T3', fontSize=9, textColor=GREEN, fontName='Helvetica')),
+            Paragraph(f"- {remise_amount:,.2f} €", S('T3V', fontSize=9, textColor=GREEN, fontName='Helvetica-Bold', alignment=TA_RIGHT)),
+        ])
+        tot_rows.append([
+            Paragraph("Net HT", S('T4', fontSize=9, textColor=DARK, fontName='Helvetica-Bold')),
+            Paragraph(f"{net_ht:,.2f} €", S('T4V', fontSize=9, textColor=DARK, fontName='Helvetica-Bold', alignment=TA_RIGHT)),
+        ])
+
+    if tva_rate > 0:
+        tot_rows.append([
+            Paragraph(f"TVA {tva_rate:g} %", S('T5', fontSize=9, textColor=GRAY, fontName='Helvetica')),
+            Paragraph(f"{tva_amount:,.2f} €", S('T5V', fontSize=9, textColor=DARK, fontName='Helvetica', alignment=TA_RIGHT)),
+        ])
+    else:
+        tot_rows.append([
+            Paragraph("Micro-entreprise — TVA non applicable (art. 293B CGI)", S('T6', fontSize=8, textColor=GRAY, fontName='Helvetica')),
+            Paragraph("", S('T6V', fontSize=9, textColor=GRAY)),
+        ])
+
+    tot_rows.append([
+        Paragraph("TOTAL TTC", S('TT', fontSize=11, textColor=WHITE, fontName='Helvetica-Bold')),
+        Paragraph(f"{ttc:,.2f} EUR", S('TTV', fontSize=18, textColor=WHITE, fontName='Helvetica-Bold', alignment=TA_RIGHT)),
+    ])
+
+    totals_t = Table(tot_rows, colWidths=[W * 0.65, W * 0.35])
+    n = len(tot_rows)
+    totals_t.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, n - 2), GRAY_LIGHT),
+        ('BACKGROUND', (0, n - 1), (-1, n - 1), DARK),
+        ('TOPPADDING', (0, 0), (-1, -1), 9), ('BOTTOMPADDING', (0, 0), (-1, -1), 9),
         ('LEFTPADDING', (0, 0), (-1, -1), 14), ('RIGHTPADDING', (0, 0), (-1, -1), 14),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('LINEABOVE', (0, 0), (-1, 0), 3, ORANGE),
+        ('LINEBELOW', (0, 0), (-1, n - 2), 0.3, GRAY_BORDER),
         ('BOX', (0, 0), (-1, -1), 0.5, GRAY_BORDER),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
     ]))
-    elements.append(total)
+    elements.append(totals_t)
+    elements.append(Spacer(1, 6))
+
+    # ── Date de validité ──
+    valid_t = Table([[
+        Paragraph(date_valid, S('VD', fontSize=9, textColor=ORANGE_DARK, fontName='Helvetica-Bold', alignment=TA_RIGHT)),
+    ]], colWidths=[W])
+    valid_t.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#fff7ed')),
+        ('BOX', (0, 0), (-1, -1), 0.5, ORANGE),
+        ('TOPPADDING', (0, 0), (-1, -1), 6), ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 12), ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+    ]))
+    elements.append(valid_t)
     elements.append(Spacer(1, 14))
 
     # GARANTIES

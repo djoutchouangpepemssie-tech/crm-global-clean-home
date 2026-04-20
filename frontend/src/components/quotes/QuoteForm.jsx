@@ -300,6 +300,185 @@ function newGroup(name = 'Nouveau groupe') {
   return { id: Date.now(), name, expanded: true, postes: [newPoste()] };
 }
 
+/* ─── Presets prestations : champs contextuels par type de service ── */
+const SERVICE_PRESETS = {
+  'Ménage': {
+    label: 'Ménage à domicile',
+    fields: [
+      { key: 'surface',    label: 'Surface (m²)',       type: 'number',  placeholder: 'Ex: 75', min: 0 },
+      { key: 'pieces',     label: 'Nombre de pièces',   type: 'number',  placeholder: 'Ex: 3', min: 0 },
+      { key: 'etat',       label: 'État du logement',   type: 'select',  options: ['Propre (entretien régulier)', 'Normal', 'Très sale (grand ménage)'] },
+      { key: 'frequence',  label: 'Fréquence',          type: 'select',  options: ['Unique', 'Hebdomadaire', 'Bimensuelle', 'Mensuelle'] },
+      { key: 'duree_h',    label: 'Durée estimée (h)',  type: 'number',  placeholder: 'Ex: 3', step: 0.5, min: 0 },
+    ],
+    // Calcule qty + price à partir des champs
+    buildPostes: (v) => {
+      const surface = Number(v.surface) || 0;
+      const pieces  = Number(v.pieces) || 0;
+      const duree   = Number(v.duree_h) || Math.max(1, Math.ceil(surface / 30));
+      const etatMul = v.etat?.startsWith('Très') ? 1.4 : v.etat?.startsWith('Propre') ? 0.9 : 1;
+      const pxH = 28 * etatMul;
+      const postes = [{
+        label: `Ménage ${pieces ? pieces + ' pièce' + (pieces > 1 ? 's' : '') : ''}${surface ? ' · ' + surface + ' m²' : ''} (${v.etat || 'Normal'})`,
+        qty: duree, unit: 'heure', price: pxH,
+      }];
+      if (v.frequence && v.frequence !== 'Unique') {
+        postes.push({ label: `Forfait déplacement · ${v.frequence.toLowerCase()}`, qty: 1, unit: 'forfait', price: 12 });
+      }
+      return postes;
+    },
+  },
+  'Nettoyage bureaux': {
+    label: 'Nettoyage de bureaux',
+    fields: [
+      { key: 'surface_bur',   label: 'Surface (m²)',          type: 'number',  placeholder: 'Ex: 200', min: 0 },
+      { key: 'postes',        label: 'Nombre de postes',      type: 'number',  placeholder: 'Ex: 15', min: 0 },
+      { key: 'frequence_bur', label: 'Fréquence',             type: 'select',  options: ['3 fois/semaine', '2 fois/semaine', '1 fois/semaine', 'Quotidien', 'Unique'] },
+      { key: 'espaces',       label: 'Espaces inclus',        type: 'multiselect', options: ['Open-space', 'Bureaux fermés', 'Salle de réunion', 'Cuisine / kitchenette', 'Sanitaires', 'Accueil / hall', 'Couloirs'] },
+      { key: 'vitres_bur',    label: 'Vitres incluses ?',     type: 'select',  options: ['Non', 'Intérieures', 'Int. + extérieures'] },
+    ],
+    buildPostes: (v) => {
+      const surface = Number(v.surface_bur) || 0;
+      const px_m2 = 0.9; // EUR/m² moyen
+      const postes = [{
+        label: `Nettoyage bureaux · ${v.frequence_bur || '1 fois/semaine'}`,
+        qty: surface, unit: 'm²', price: px_m2,
+      }];
+      if (Array.isArray(v.espaces) && v.espaces.length > 0) {
+        postes[0].label += ' (' + v.espaces.join(' · ') + ')';
+      }
+      if (v.vitres_bur && v.vitres_bur !== 'Non') {
+        postes.push({ label: `Nettoyage vitres · ${v.vitres_bur}`, qty: 1, unit: 'forfait', price: v.vitres_bur.includes('extérieur') ? 120 : 65 });
+      }
+      return postes;
+    },
+  },
+  'Canapé': {
+    label: 'Nettoyage canapé',
+    fields: [
+      { key: 'nb_canapes', label: 'Nombre de canapés', type: 'number', placeholder: 'Ex: 2', min: 1 },
+      { key: 'places',     label: 'Places au total',   type: 'number', placeholder: 'Ex: 5', min: 1 },
+      { key: 'matiere',    label: 'Matière',           type: 'select', options: ['Tissu', 'Cuir', 'Microfibre', 'Alcantara', 'Autre'] },
+      { key: 'etat_cana',  label: 'État',              type: 'select', options: ['Léger', 'Normal', 'Très encrassé'] },
+    ],
+    buildPostes: (v) => {
+      const places = Number(v.places) || Number(v.nb_canapes) * 3;
+      const pxPlace = v.matiere === 'Cuir' ? 45 : 35;
+      const mul = v.etat_cana === 'Très encrassé' ? 1.35 : v.etat_cana === 'Léger' ? 0.85 : 1;
+      return [{
+        label: `Nettoyage canapé · ${v.matiere || 'tissu'}${v.nb_canapes ? ' · ' + v.nb_canapes + ' canapé' + (v.nb_canapes > 1 ? 's' : '') : ''}`,
+        qty: places, unit: 'visite', price: Math.round(pxPlace * mul),
+      }];
+    },
+  },
+  'Matelas': {
+    label: 'Nettoyage matelas',
+    fields: [
+      { key: 'nb_matelas', label: 'Nombre de matelas', type: 'number', placeholder: 'Ex: 2', min: 1 },
+      { key: 'taille',     label: 'Taille moyenne',    type: 'select', options: ['1 place (90cm)', '2 places (140cm)', 'Queen (160cm)', 'King (180cm)', 'Super King (200cm)'] },
+      { key: 'traitement', label: 'Traitement',        type: 'multiselect', options: ['Aspiration poussière', 'Désinfection acariens', 'Détachage', 'Désodorisation'] },
+    ],
+    buildPostes: (v) => {
+      const nb = Number(v.nb_matelas) || 1;
+      const mulTaille = v.taille?.includes('Super') ? 1.6 : v.taille?.includes('King') ? 1.4 : v.taille?.includes('Queen') ? 1.2 : v.taille?.includes('2 places') ? 1.0 : 0.8;
+      const base = 55 * mulTaille;
+      return [{
+        label: `Nettoyage matelas · ${v.taille || '2 places'}${v.traitement?.length ? ' (' + v.traitement.join(', ') + ')' : ''}`,
+        qty: nb, unit: 'unité', price: Math.round(base),
+      }];
+    },
+  },
+  'Tapis': {
+    label: 'Nettoyage tapis',
+    fields: [
+      { key: 'nb_tapis',    label: 'Nombre de tapis', type: 'number', placeholder: 'Ex: 3', min: 1 },
+      { key: 'surface_tapis', label: 'Surface totale (m²)', type: 'number', placeholder: 'Ex: 12', min: 0 },
+      { key: 'fibre',       label: 'Fibre',           type: 'select',  options: ['Synthétique', 'Laine', 'Soie', 'Mixte'] },
+    ],
+    buildPostes: (v) => {
+      const m2 = Number(v.surface_tapis) || (Number(v.nb_tapis) || 1) * 3;
+      const pxM2 = v.fibre === 'Soie' ? 35 : v.fibre === 'Laine' ? 22 : 15;
+      return [{
+        label: `Nettoyage tapis · ${v.fibre || 'synthétique'} (${v.nb_tapis || 1} unité${(v.nb_tapis || 1) > 1 ? 's' : ''})`,
+        qty: m2, unit: 'm²', price: pxM2,
+      }];
+    },
+  },
+  'Vitres': {
+    label: 'Nettoyage vitres',
+    fields: [
+      { key: 'surface_vitres', label: 'Surface (m²)',   type: 'number', placeholder: 'Ex: 30', min: 0 },
+      { key: 'face',           label: 'Face(s)',         type: 'select', options: ['Intérieures', 'Extérieures', 'Intérieur + extérieur'] },
+      { key: 'acces',          label: 'Accès',           type: 'select', options: ['Normal', 'Hauteur (nacelle)', 'Très difficile'] },
+    ],
+    buildPostes: (v) => {
+      const m2 = Number(v.surface_vitres) || 0;
+      let px = 6;
+      if (v.face?.includes('+')) px = 10;
+      if (v.acces?.includes('Hauteur')) px *= 1.5;
+      if (v.acces?.includes('difficile')) px *= 2;
+      return [{
+        label: `Nettoyage vitres · ${v.face || 'intérieures'}${v.acces && v.acces !== 'Normal' ? ' (' + v.acces.toLowerCase() + ')' : ''}`,
+        qty: m2, unit: 'm²', price: Math.round(px * 100) / 100,
+      }];
+    },
+  },
+  'Fin de chantier': {
+    label: 'Nettoyage fin de chantier',
+    fields: [
+      { key: 'surface_ch',   label: 'Surface (m²)',         type: 'number',  placeholder: 'Ex: 120', min: 0 },
+      { key: 'niveau_ch',    label: 'Niveau de salissure',  type: 'select',  options: ['Léger (poussière)', 'Normal', 'Gros œuvre (plâtre, peinture)'] },
+      { key: 'urgence',      label: 'Urgence',              type: 'select',  options: ['Planifié', 'Sous 48h', 'Le jour même (+30%)'] },
+    ],
+    buildPostes: (v) => {
+      const m2 = Number(v.surface_ch) || 0;
+      let px = 7;
+      if (v.niveau_ch?.includes('Gros œuvre')) px = 14;
+      else if (v.niveau_ch?.includes('Léger')) px = 5;
+      if (v.urgence?.includes('+30%')) px *= 1.3;
+      return [{
+        label: `Nettoyage fin de chantier · ${v.niveau_ch || 'normal'}`,
+        qty: m2, unit: 'm²', price: Math.round(px * 100) / 100,
+      }];
+    },
+  },
+  'Déménagement': {
+    label: 'Nettoyage déménagement',
+    fields: [
+      { key: 'surface_dem', label: 'Surface (m²)', type: 'number', placeholder: 'Ex: 70', min: 0 },
+      { key: 'type_dem',    label: 'Type',         type: 'select', options: ['Entrée (logement récupéré)', 'Sortie (restitution)', 'Entrée + sortie'] },
+      { key: 'meublé',      label: 'Logement',     type: 'select', options: ['Vide', 'Partiellement meublé', 'Meublé'] },
+    ],
+    buildPostes: (v) => {
+      const m2 = Number(v.surface_dem) || 0;
+      let px = 8;
+      if (v.type_dem?.includes('+')) px = 14;
+      if (v.meublé === 'Meublé') px *= 1.2;
+      return [{
+        label: `Nettoyage déménagement · ${v.type_dem || 'sortie'}`,
+        qty: m2, unit: 'm²', price: Math.round(px * 100) / 100,
+      }];
+    },
+  },
+};
+
+function matchPreset(serviceType) {
+  if (!serviceType) return null;
+  const k = serviceType.toString();
+  // Essaye match exact d'abord, puis par mot-clé
+  if (SERVICE_PRESETS[k]) return { key: k, preset: SERVICE_PRESETS[k] };
+  const lower = k.toLowerCase();
+  if (lower.includes('bureau')) return { key: 'Nettoyage bureaux', preset: SERVICE_PRESETS['Nettoyage bureaux'] };
+  if (lower.includes('canap')) return { key: 'Canapé', preset: SERVICE_PRESETS['Canapé'] };
+  if (lower.includes('matela')) return { key: 'Matelas', preset: SERVICE_PRESETS['Matelas'] };
+  if (lower.includes('tapis')) return { key: 'Tapis', preset: SERVICE_PRESETS['Tapis'] };
+  if (lower.includes('vitre')) return { key: 'Vitres', preset: SERVICE_PRESETS['Vitres'] };
+  if (lower.includes('chantier')) return { key: 'Fin de chantier', preset: SERVICE_PRESETS['Fin de chantier'] };
+  if (lower.includes('déménag') || lower.includes('demenag')) return { key: 'Déménagement', preset: SERVICE_PRESETS['Déménagement'] };
+  if (lower.includes('ménage') || lower.includes('menage')) return { key: 'Ménage', preset: SERVICE_PRESETS['Ménage'] };
+  return null;
+}
+
 /* ─── Stepper ──────────────────────────────────────────────────── */
 const STEPS = [
   { n: 1, label: 'Client',        sub: 'Sélection du prospect' },
@@ -425,23 +604,131 @@ function Step1Client({ data, setData, leads }) {
 }
 
 /* ─── Step 2 : Prestations ─────────────────────────────────────── */
-function Step2Prestations({ groups, setGroups }) {
-  const [aiPrompt, setAiPrompt] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
+/* ─── Configurateur intelligent par service ──────────────────── */
+function SmartServiceConfigurator({ serviceType, onGenerate }) {
+  const match = matchPreset(serviceType);
+  const [values, setValues] = useState({});
+  const [open, setOpen] = useState(true);
+
+  if (!match) return null;
+  const { preset, key } = match;
+
+  const setField = (k, v) => setValues(p => ({ ...p, [k]: v }));
+
+  const handleGenerate = () => {
+    const postes = preset.buildPostes(values);
+    onGenerate(postes, key);
+    setValues({});
+  };
+
+  const hasValues = Object.values(values).some(v => v !== '' && v !== undefined && !(Array.isArray(v) && v.length === 0));
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, oklch(0.93 0.05 165) 0%, oklch(0.96 0.02 85) 100%)',
+      border: '1.5px solid oklch(0.52 0.13 165)',
+      borderRadius: 14, padding: 18, marginBottom: 20,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: open ? 14 : 0, cursor: 'pointer' }}
+        onClick={() => setOpen(o => !o)}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Sparkles style={{ width: 18, height: 18, color: 'oklch(0.38 0.14 160)' }} />
+          <div>
+            <div style={{ fontFamily: 'Fraunces, serif', fontSize: 16, fontWeight: 500, color: 'oklch(0.165 0.012 60)' }}>
+              Configurateur · <em style={{ color: 'oklch(0.38 0.14 160)' }}>{preset.label}</em>
+            </div>
+            <div className="qf-mono" style={{ fontSize: 10, color: 'oklch(0.38 0.14 160)', letterSpacing: '0.08em', marginTop: 2 }}>
+              Renseigne la prestation — les lignes et le prix sont calculés automatiquement
+            </div>
+          </div>
+        </div>
+        {open ? <ChevronUp style={{ width: 16, height: 16, color: 'oklch(0.38 0.14 160)' }} /> : <ChevronDown style={{ width: 16, height: 16, color: 'oklch(0.38 0.14 160)' }} />}
+      </div>
+
+      {open && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 14 }}>
+            {preset.fields.map(f => (
+              <div key={f.key}>
+                <label className="qf-label" style={{ display: 'block', marginBottom: 5 }}>{f.label}</label>
+                {f.type === 'select' ? (
+                  <select className="qf-field" style={{ fontSize: 13 }} value={values[f.key] || ''} onChange={e => setField(f.key, e.target.value)}>
+                    <option value="">—</option>
+                    {f.options.map(o => <option key={o}>{o}</option>)}
+                  </select>
+                ) : f.type === 'multiselect' ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {f.options.map(o => {
+                      const sel = Array.isArray(values[f.key]) && values[f.key].includes(o);
+                      return (
+                        <button
+                          key={o}
+                          type="button"
+                          onClick={() => {
+                            const cur = Array.isArray(values[f.key]) ? values[f.key] : [];
+                            setField(f.key, sel ? cur.filter(x => x !== o) : [...cur, o]);
+                          }}
+                          className="qf-mono"
+                          style={{
+                            padding: '5px 10px', borderRadius: 999,
+                            border: `1px solid ${sel ? 'oklch(0.52 0.13 165)' : 'var(--line)'}`,
+                            background: sel ? 'oklch(0.52 0.13 165)' : 'var(--surface)',
+                            color: sel ? 'white' : 'var(--ink-3)',
+                            fontSize: 10, letterSpacing: '0.04em', cursor: 'pointer',
+                          }}
+                        >{o}</button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <input
+                    type={f.type}
+                    className="qf-field qf-mono"
+                    style={{ fontSize: 13 }}
+                    placeholder={f.placeholder}
+                    value={values[f.key] || ''}
+                    min={f.min}
+                    step={f.step || 1}
+                    onChange={e => setField(f.key, e.target.value)}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={handleGenerate}
+            disabled={!hasValues}
+            className="qf-btn-sm qf-btn-accent"
+            style={{
+              width: '100%', justifyContent: 'center', padding: '10px 16px',
+              opacity: hasValues ? 1 : 0.5, cursor: hasValues ? 'pointer' : 'not-allowed',
+              fontSize: 12,
+            }}
+          >
+            <Sparkles style={{ width: 13, height: 13 }} />
+            Générer les lignes de prestation
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+function Step2Prestations({ groups, setGroups, serviceType }) {
   const [showOublis, setShowOublis] = useState(true);
 
-  const totalHT = groups.reduce((s, g) => s + g.postes.reduce((ps, p) => ps + (p.qty || 0) * (p.price || 0), 0), 0);
-
-  const generateAI = () => {
-    if (!aiPrompt.trim()) return;
-    setAiLoading(true);
-    setTimeout(() => {
-      const postes = SERVICE_SUGGESTIONS.map(s => ({ ...newPoste(s.label), unit: s.unit, price: s.price }));
-      setGroups(g => g.map((gr, i) => i === 0 ? { ...gr, postes: [...gr.postes, ...postes] } : gr));
-      setAiLoading(false);
-      setAiPrompt('');
-    }, 1200);
+  const handleSmartGenerate = (postes, serviceKey) => {
+    const newPostes = postes.map(p => ({ ...newPoste(p.label), ...p }));
+    setGroups(g => {
+      // Remplace ou ajoute dans le premier groupe
+      const first = g[0] || newGroup('Prestations principales');
+      const updated = { ...first, name: first.name === 'Prestations principales' ? serviceKey : first.name, postes: [...first.postes.filter(p => p.label.trim() !== ''), ...newPostes] };
+      return [updated, ...g.slice(1)];
+    });
   };
+
+  const totalHT = groups.reduce((s, g) => s + g.postes.reduce((ps, p) => ps + (p.qty || 0) * (p.price || 0), 0), 0);
 
   const toggleGroup = id => setGroups(g => g.map(gr => gr.id === id ? { ...gr, expanded: !gr.expanded } : gr));
   const addGroup = () => setGroups(g => [...g, newGroup()]);
@@ -472,30 +759,7 @@ function Step2Prestations({ groups, setGroups }) {
         </div>
       )}
 
-      <div className="qf-ai-panel" style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <Sparkles style={{ width: 16, height: 16, color: 'var(--accent)' }} />
-          <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--accent)' }}>Générateur IA</span>
-          <span className="qf-mono" style={{ fontSize: 10, color: 'var(--accent)', opacity: 0.65 }}>BÊTA</span>
-        </div>
-        <p style={{ fontSize: 13, color: 'var(--ink-2)', marginBottom: 12 }}>
-          Décrivez la prestation — l'IA génère les postes automatiquement.
-        </p>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input
-            className="qf-field"
-            style={{ flex: 1, border: '1.5px solid var(--accent)' }}
-            placeholder="Ex: Grand ménage 4 pièces + vitres, 1 jour, Paris 7e…"
-            value={aiPrompt}
-            onChange={e => setAiPrompt(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && generateAI()}
-          />
-          <button className="qf-btn-sm qf-btn-accent" onClick={generateAI} disabled={aiLoading} style={{ flexShrink: 0, border: 'none' }}>
-            {aiLoading ? <Loader style={{ width: 13, height: 13, animation: 'spin 0.7s linear infinite' }} /> : <Sparkles style={{ width: 13, height: 13 }} />}
-            {aiLoading ? 'Génération…' : 'Générer'}
-          </button>
-        </div>
-      </div>
+      <SmartServiceConfigurator serviceType={serviceType} onGenerate={handleSmartGenerate} />
 
       {groups.map(group => {
         const groupTotal = group.postes.reduce((s, p) => s + (p.qty || 0) * (p.price || 0), 0);
@@ -566,51 +830,179 @@ function Step2Prestations({ groups, setGroups }) {
 }
 
 /* ─── Step 3 : Conditions ──────────────────────────────────────── */
-function Step3Conditions({ data, setData }) {
+function Step3Conditions({ data, setData, groups }) {
+  const frequency = data.frequency || 'unique';
+  const interventionsCount = Number(data.interventions_count) || 1;
+
+  // Calcul HT de base (1 intervention)
+  const baseHT = (groups || []).reduce((s, g) => s + g.postes.reduce((ps, p) => ps + (p.qty || 0) * (p.price || 0), 0), 0);
+  const totalRecurrent = baseHT * interventionsCount;
+
+  const FREQ_LABELS = {
+    unique:       { label: 'Intervention unique', cadence: 'une seule fois' },
+    quotidien:    { label: 'Quotidien',           cadence: 'par jour' },
+    hebdomadaire: { label: 'Hebdomadaire',        cadence: 'par semaine' },
+    bimensuelle:  { label: 'Bimensuelle',         cadence: 'toutes les 2 semaines' },
+    mensuel:      { label: 'Mensuel',             cadence: 'par mois' },
+    trimestriel:  { label: 'Trimestriel',         cadence: 'tous les 3 mois' },
+    annuel:       { label: 'Annuel',              cadence: 'par an' },
+  };
+
   return (
-    <div className="qf-section qf-fadein">
-      <h2 className="qf-display" style={{ fontSize: 22, marginBottom: 20, fontStyle: 'italic' }}>Conditions</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        {[
-          { label: 'Date de validité', type: 'date',   key: 'expiry_date', placeholder: '' },
-          { label: 'Délai d\'intervention', type: 'text', key: 'delay', placeholder: 'Ex: Dès la semaine prochaine' },
-        ].map(f => (
-          <div key={f.key}>
-            <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>{f.label}</label>
-            <input type={f.type} className="qf-field" placeholder={f.placeholder} value={data[f.key] || ''} onChange={e => setData(d => ({ ...d, [f.key]: e.target.value }))} />
+    <div className="qf-fadein">
+      {/* ─── Récurrence ─── */}
+      <div className="qf-section" style={{ marginBottom: 18, borderLeft: '4px solid var(--accent)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+          <Sparkles style={{ width: 16, height: 16, color: 'var(--accent)' }} />
+          <h2 className="qf-display" style={{ fontSize: 20, margin: 0 }}>
+            Récurrence &amp; <em style={{ color: 'var(--accent)' }}>planification</em>
+          </h2>
+        </div>
+        <p style={{ fontSize: 13, color: 'var(--ink-3)', marginBottom: 16, fontFamily: 'Fraunces, serif', fontStyle: 'italic' }}>
+          Définis la fréquence et le nombre d'interventions — le total du devis est multiplié automatiquement.
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 14 }}>
+          <div>
+            <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Fréquence</label>
+            <select className="qf-field" value={frequency} onChange={e => setData(d => ({ ...d, frequency: e.target.value }))}>
+              {Object.entries(FREQ_LABELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+            </select>
           </div>
-        ))}
-        <div>
-          <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Mode de paiement</label>
-          <select className="qf-field" value={data.payment_mode || 'virement'} onChange={e => setData(d => ({ ...d, payment_mode: e.target.value }))}>
-            {['virement', 'chèque', 'espèces', 'prélèvement', 'carte'].map(m => <option key={m}>{m}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Délai de paiement</label>
-          <select className="qf-field" value={data.payment_delay || '30 jours'} onChange={e => setData(d => ({ ...d, payment_delay: e.target.value }))}>
-            {['À réception', '15 jours', '30 jours', '45 jours', '60 jours'].map(opt => <option key={opt}>{opt}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Taux de TVA</label>
-          <select className="qf-field" value={data.tva ?? '20'} onChange={e => setData(d => ({ ...d, tva: e.target.value }))}>
-            {TVA_RATES.map(t => <option key={t.value} value={String(t.value)}>{t.label}</option>)}
-          </select>
-          {parseTva(data.tva) === 0 && (
-            <div className="qf-mono" style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 4 }}>
-              Aucune TVA ne sera calculée (auto-entrepreneur ou exonéré).
+
+          {frequency !== 'unique' && (
+            <div>
+              <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>
+                Nombre d'interventions
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="365"
+                className="qf-field qf-mono"
+                value={data.interventions_count || 1}
+                onChange={e => setData(d => ({ ...d, interventions_count: Math.max(1, parseInt(e.target.value) || 1) }))}
+              />
+              <div className="qf-mono" style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 4, letterSpacing: '0.04em' }}>
+                {interventionsCount} × {FREQ_LABELS[frequency]?.cadence}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Date de début souhaitée</label>
+            <input type="date" className="qf-field qf-mono" value={data.start_date || ''} onChange={e => setData(d => ({ ...d, start_date: e.target.value }))} />
+          </div>
+
+          {frequency !== 'unique' && (
+            <div>
+              <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Jour(s) préféré(s)</label>
+              <select className="qf-field" value={data.preferred_day || ''} onChange={e => setData(d => ({ ...d, preferred_day: e.target.value }))}>
+                <option value="">— Flexible —</option>
+                {['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'].map(d => <option key={d}>{d}</option>)}
+              </select>
             </div>
           )}
         </div>
-        <div>
-          <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Remise globale (%)</label>
-          <input type="number" min="0" max="100" className="qf-field qf-mono" value={data.discount || 0} onChange={e => setData(d => ({ ...d, discount: parseFloat(e.target.value) || 0 }))} />
-        </div>
+
+        {/* Aperçu calcul */}
+        {frequency !== 'unique' && interventionsCount > 1 && (
+          <div style={{
+            background: 'var(--accent-soft)', border: '1px solid var(--accent)',
+            borderRadius: 10, padding: '12px 14px',
+            display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'baseline',
+          }}>
+            <div>
+              <div className="qf-label" style={{ color: 'var(--accent)', marginBottom: 3 }}>Calcul récurrence</div>
+              <div className="qf-mono" style={{ fontSize: 12, color: 'var(--ink-2)' }}>
+                {fmtEur(baseHT)} par passage × {interventionsCount} intervention{interventionsCount > 1 ? 's' : ''} {FREQ_LABELS[frequency]?.cadence}
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div className="qf-label" style={{ color: 'var(--accent)', marginBottom: 3 }}>Total HT</div>
+              <div className="qf-mono" style={{ fontSize: 22, fontWeight: 700, color: 'var(--accent)' }}>
+                {fmtEur(totalRecurrent)}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Type de facturation */}
+        {frequency !== 'unique' && (
+          <div style={{ marginTop: 14 }}>
+            <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Mode de facturation</label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {[
+                { k: 'per_visit', label: 'Une facture par passage' },
+                { k: 'monthly',   label: 'Mensualisée (facture mensuelle)' },
+                { k: 'upfront',   label: 'Forfait global (à l\'avance)' },
+              ].map(opt => {
+                const sel = (data.billing_mode || 'per_visit') === opt.k;
+                return (
+                  <button
+                    key={opt.k}
+                    type="button"
+                    onClick={() => setData(d => ({ ...d, billing_mode: opt.k }))}
+                    className="qf-mono"
+                    style={{
+                      padding: '7px 12px', borderRadius: 999,
+                      border: `1px solid ${sel ? 'var(--accent)' : 'var(--line)'}`,
+                      background: sel ? 'var(--accent)' : 'var(--surface)',
+                      color: sel ? 'white' : 'var(--ink-2)',
+                      fontSize: 11, letterSpacing: '0.04em', cursor: 'pointer',
+                    }}
+                  >{opt.label}</button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
-      <div style={{ marginTop: 16 }}>
-        <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Notes / conditions particulières</label>
-        <textarea className="qf-field" rows={4} placeholder="Conditions particulières, notes au client…" value={data.notes || ''} onChange={e => setData(d => ({ ...d, notes: e.target.value }))} style={{ resize: 'vertical' }} />
+
+      {/* ─── Conditions contractuelles ─── */}
+      <div className="qf-section">
+        <h2 className="qf-display" style={{ fontSize: 20, marginBottom: 16, fontStyle: 'italic' }}>Conditions</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+          <div>
+            <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Date de validité</label>
+            <input type="date" className="qf-field" value={data.expiry_date || ''} onChange={e => setData(d => ({ ...d, expiry_date: e.target.value }))} />
+          </div>
+          <div>
+            <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Délai d'intervention</label>
+            <input type="text" className="qf-field" placeholder="Ex: Dès la semaine prochaine" value={data.delay || ''} onChange={e => setData(d => ({ ...d, delay: e.target.value }))} />
+          </div>
+          <div>
+            <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Mode de paiement</label>
+            <select className="qf-field" value={data.payment_mode || 'virement'} onChange={e => setData(d => ({ ...d, payment_mode: e.target.value }))}>
+              {['virement', 'chèque', 'espèces', 'prélèvement', 'carte'].map(m => <option key={m}>{m}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Délai de paiement</label>
+            <select className="qf-field" value={data.payment_delay || '30 jours'} onChange={e => setData(d => ({ ...d, payment_delay: e.target.value }))}>
+              {['À réception', '15 jours', '30 jours', '45 jours', '60 jours'].map(opt => <option key={opt}>{opt}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Taux de TVA</label>
+            <select className="qf-field" value={data.tva ?? '20'} onChange={e => setData(d => ({ ...d, tva: e.target.value }))}>
+              {TVA_RATES.map(t => <option key={t.value} value={String(t.value)}>{t.label}</option>)}
+            </select>
+            {parseTva(data.tva) === 0 && (
+              <div className="qf-mono" style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 4 }}>
+                Aucune TVA ne sera calculée.
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Remise globale (%)</label>
+            <input type="number" min="0" max="100" className="qf-field qf-mono" value={data.discount || 0} onChange={e => setData(d => ({ ...d, discount: parseFloat(e.target.value) || 0 }))} />
+          </div>
+        </div>
+        <div style={{ marginTop: 16 }}>
+          <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Notes / conditions particulières</label>
+          <textarea className="qf-field" rows={3} placeholder="Conditions particulières, notes au client…" value={data.notes || ''} onChange={e => setData(d => ({ ...d, notes: e.target.value }))} style={{ resize: 'vertical' }} />
+        </div>
       </div>
     </div>
   );
@@ -619,7 +1011,10 @@ function Step3Conditions({ data, setData }) {
 /* ─── Step 4 : Récapitulatif ───────────────────────────────────── */
 function Step4Recap({ formData, groups, leads }) {
   const lead = leads.find(l => l.id === formData.lead_id);
-  const totalHT = groups.reduce((s, g) => s + g.postes.reduce((ps, p) => ps + (p.qty || 0) * (p.price || 0), 0), 0);
+  const baseHT = groups.reduce((s, g) => s + g.postes.reduce((ps, p) => ps + (p.qty || 0) * (p.price || 0), 0), 0);
+  const count = (formData.frequency && formData.frequency !== 'unique')
+    ? Math.max(1, Number(formData.interventions_count) || 1) : 1;
+  const totalHT = baseHT * count;
   const discount = ((formData.discount || 0) / 100) * totalHT;
   const base = totalHT - discount;
   const tva = (parseTva(formData.tva) / 100) * base;
@@ -705,7 +1100,10 @@ function parseBrief(text) {
 /* ─── Sidebar ──────────────────────────────────────────────────── */
 function Sidebar({ groups, formData, leads }) {
   const lead = leads.find(l => l.id === formData.lead_id);
-  const totalHT = groups.reduce((s, g) => s + g.postes.reduce((ps, p) => ps + (p.qty || 0) * (p.price || 0), 0), 0);
+  const baseHT = groups.reduce((s, g) => s + g.postes.reduce((ps, p) => ps + (p.qty || 0) * (p.price || 0), 0), 0);
+  const recCount = (formData.frequency && formData.frequency !== 'unique')
+    ? Math.max(1, Number(formData.interventions_count) || 1) : 1;
+  const totalHT = baseHT * recCount;
   const discount = ((formData.discount || 0) / 100) * totalHT;
   const base = totalHT - discount;
   const tva = (parseTva(formData.tva) / 100) * base;
@@ -905,6 +1303,9 @@ export default function QuoteForm() {
     lead_id: null, service_type: '', title: '', description: '',
     expiry_date: '', delay: '', payment_mode: 'virement',
     payment_delay: '30 jours', tva: '20', discount: 0, notes: '',
+    // Récurrence
+    frequency: 'unique', interventions_count: 1, start_date: '',
+    preferred_day: '', billing_mode: 'per_visit',
   });
   const [groups, setGroups] = useState([newGroup('Prestations principales')]);
 
@@ -994,6 +1395,11 @@ export default function QuoteForm() {
         tva: String(q.tva_rate ?? 20),
         discount: q.discount || 0,
         notes: q.notes || '',
+        frequency: q.frequency || 'unique',
+        interventions_count: q.interventions_count || 1,
+        start_date: q.start_date || '',
+        preferred_day: q.preferred_day || '',
+        billing_mode: q.billing_mode || 'per_visit',
       }));
       if (q.line_items?.length) {
         const groupMap = {};
@@ -1026,7 +1432,11 @@ export default function QuoteForm() {
 
   const handleSave = async (andSend = false) => {
     setSaving(true);
-    const totalHT = groups.reduce((s, g) => s + g.postes.reduce((ps, p) => ps + (p.qty || 0) * (p.price || 0), 0), 0);
+    const baseHT = groups.reduce((s, g) => s + g.postes.reduce((ps, p) => ps + (p.qty || 0) * (p.price || 0), 0), 0);
+    const recurrenceMultiplier = (formData.frequency && formData.frequency !== 'unique')
+      ? Math.max(1, Number(formData.interventions_count) || 1)
+      : 1;
+    const totalHT = baseHT * recurrenceMultiplier;
     const tvaRate = parseTva(formData.tva);
     const base = totalHT * (1 - (formData.discount || 0) / 100);
     const amount = base * (1 + tvaRate / 100);
@@ -1047,6 +1457,12 @@ export default function QuoteForm() {
       notes: formData.notes || '',
       line_items,
       status: andSend ? 'envoyé' : 'brouillon',
+      // Récurrence
+      frequency: formData.frequency || 'unique',
+      interventions_count: recurrenceMultiplier,
+      start_date: formData.start_date || null,
+      preferred_day: formData.preferred_day || null,
+      billing_mode: formData.billing_mode || 'per_visit',
     };
     try {
       setSaveError(null);
@@ -1080,8 +1496,8 @@ export default function QuoteForm() {
       <div className="qf-layout" style={{ display: 'flex', gap: 24, padding: '24px', alignItems: 'flex-start', maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           {step === 1 && <Step1Client data={formData} setData={setFormData} leads={leads} />}
-          {step === 2 && <Step2Prestations groups={groups} setGroups={setGroups} />}
-          {step === 3 && <Step3Conditions data={formData} setData={setFormData} />}
+          {step === 2 && <Step2Prestations groups={groups} setGroups={setGroups} serviceType={formData.service_type} />}
+          {step === 3 && <Step3Conditions data={formData} setData={setFormData} groups={groups} />}
           {step === 4 && <Step4Recap formData={formData} groups={groups} leads={leads} />}
         </div>
         <Sidebar groups={groups} formData={formData} leads={leads} />

@@ -580,6 +580,13 @@ class QuoteCreate(BaseModel):
     discount: Optional[float] = 0.0
     notes: Optional[str] = None
     line_items: Optional[List[Dict[str, Any]]] = None
+    # Récurrence / planification
+    status: Optional[str] = None
+    frequency: Optional[str] = "unique"  # unique, quotidien, hebdomadaire, bimensuelle, mensuel, trimestriel, annuel
+    interventions_count: Optional[int] = 1
+    start_date: Optional[str] = None
+    preferred_day: Optional[str] = None
+    billing_mode: Optional[str] = "per_visit"  # per_visit, monthly, upfront
 
     @field_validator("surface")
     @classmethod
@@ -608,6 +615,7 @@ class QuoteCreate(BaseModel):
 
 
 class QuoteUpdate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     status: Optional[str] = None
     notes: Optional[str] = None
     amount: Optional[float] = None
@@ -619,6 +627,13 @@ class QuoteUpdate(BaseModel):
     tva_rate: Optional[float] = None
     discount: Optional[float] = None
     line_items: Optional[List[Dict[str, Any]]] = None
+    frequency: Optional[str] = None
+    interventions_count: Optional[int] = None
+    start_date: Optional[str] = None
+    preferred_day: Optional[str] = None
+    billing_mode: Optional[str] = None
+    service_type: Optional[str] = None
+    lead_id: Optional[str] = None
 
 
 class Interaction(BaseModel):

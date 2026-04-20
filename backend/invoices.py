@@ -143,6 +143,14 @@ async def create_invoice_direct(inp: InvoiceCreate, request: Request):
     await _db.invoices.insert_one(invoice)
     await _log_activity(user.user_id, "create_invoice", "invoice", invoice_id)
 
+    # Écriture comptable automatique dans l'ERP (chronique du journal des ventes)
+    try:
+        from accounting_erp import create_sale_journal_entry
+        await create_sale_journal_entry(invoice, user.user_id)
+    except Exception as e:
+        # Non bloquant : on préfère une facture sans écriture qu'une erreur
+        logger.warning(f"Écriture comptable auto échouée pour {invoice_id}: {e}")
+
     doc = await _db.invoices.find_one({"invoice_id": invoice_id}, {"_id": 0})
     return doc
 
@@ -471,6 +479,17 @@ async def mark_invoice_paid(invoice_id: str, request: Request):
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Facture introuvable")
     await _log_activity(user.user_id, "mark_paid", "invoice", invoice_id, {"paid_at": now})
+
+    # Écriture comptable automatique : paiement → journal banque / trésorerie
+    try:
+        inv = await _db.invoices.find_one({"invoice_id": invoice_id}, {"_id": 0})
+        if inv:
+            from accounting_erp import create_payment_journal_entry
+            amount = float(inv.get("amount_ttc") or inv.get("total_ttc") or 0)
+            await create_payment_journal_entry(inv, amount, now, user.user_id)
+    except Exception as e:
+        logger.warning(f"Écriture paiement auto échouée pour {invoice_id}: {e}")
+
     return {"status": "payée", "paid_at": now}
 
 

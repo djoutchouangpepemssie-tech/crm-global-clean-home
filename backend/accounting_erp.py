@@ -666,6 +666,57 @@ async def get_dashboard_charts(request: Request):
 # B. FACTURATION INTELLIGENTE
 # ═══════════════════════════════════════════════════════════════════
 
+def _normalize_invoice_for_erp(inv: dict) -> dict:
+    """Normalise les factures créées par le CRM standard pour qu'elles
+    s'affichent correctement dans l'ERP (aliases de champs)."""
+    if not inv:
+        return inv
+
+    # Montants : le CRM utilise amount_ht/amount_ttc, l'ERP utilise total_ht/total_ttc
+    if "total_ht" not in inv and "amount_ht" in inv:
+        inv["total_ht"] = float(inv.get("amount_ht") or 0)
+    if "total_ttc" not in inv and "amount_ttc" in inv:
+        inv["total_ttc"] = float(inv.get("amount_ttc") or 0)
+    if "total_tva" not in inv:
+        ht = float(inv.get("total_ht") or inv.get("amount_ht") or 0)
+        ttc = float(inv.get("total_ttc") or inv.get("amount_ttc") or 0)
+        inv["total_tva"] = round(ttc - ht, 2)
+
+    # Prestation : le CRM utilise service_type ou project
+    if not inv.get("prestation_type"):
+        inv["prestation_type"] = inv.get("service_type") or inv.get("project") or ""
+
+    # Nom client : alias pour les vues qui attendent client_name
+    if not inv.get("client_name"):
+        inv["client_name"] = inv.get("lead_name") or ""
+
+    # Items : si le CRM n'a pas créé de line_items, synthétise une ligne unique
+    if not inv.get("items") and not inv.get("line_items"):
+        inv["items"] = [{
+            "description": inv.get("details") or inv.get("project") or inv.get("service_type") or "Prestation",
+            "quantity": 1,
+            "unit_price_ht": float(inv.get("amount_ht") or inv.get("total_ht") or 0),
+            "tva_rate": float(inv.get("tva") or inv.get("tva_rate") or 0),
+            "amount_ht": float(inv.get("amount_ht") or inv.get("total_ht") or 0),
+            "amount_ttc": float(inv.get("amount_ttc") or inv.get("total_ttc") or 0),
+        }]
+    elif inv.get("line_items") and not inv.get("items"):
+        # Convertit line_items (CRM) vers items (ERP)
+        inv["items"] = [{
+            "description": li.get("description") or li.get("label") or "",
+            "quantity": li.get("quantity") or li.get("qty") or 1,
+            "unit_price_ht": float(li.get("unit_price") or li.get("price") or 0),
+            "tva_rate": float(li.get("tva_rate") or inv.get("tva") or 0),
+            "amount_ht": (li.get("quantity") or li.get("qty") or 1) * float(li.get("unit_price") or li.get("price") or 0),
+        } for li in inv["line_items"]]
+
+    # Source : marque si c'est un devis CRM converti ou une facture native ERP
+    if not inv.get("source"):
+        inv["source"] = "crm" if "amount_ht" in inv and "total_ht" not in (inv.get("_original_keys") or []) else "erp"
+
+    return inv
+
+
 @erp_router.get("/erp/invoices")
 async def list_invoices(
     request: Request,
@@ -694,14 +745,15 @@ async def list_invoices(
     total = await _db.invoices.count_documents(query)
     skip = (page - 1) * page_size
     items = await _db.invoices.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(page_size).to_list(page_size)
-    
-    # Auto-flag overdue
+
+    # Normalise + auto-flag overdue
     for inv in items:
+        _normalize_invoice_for_erp(inv)
         if inv.get("status") == "en_attente" and inv.get("created_at", "") < overdue_date:
             inv["status_display"] = "en_retard"
         else:
             inv["status_display"] = inv.get("status", "brouillon")
-    
+
     return {"items": items, "total": total, "page": page, "page_size": page_size, "total_pages": math.ceil(total / page_size)}
 
 
@@ -782,7 +834,9 @@ async def get_invoice(invoice_id: str, request: Request):
     inv = await _db.invoices.find_one({"invoice_id": invoice_id, "deleted_at": {"$exists": False}}, {"_id": 0})
     if not inv:
         raise HTTPException(404, "Facture introuvable")
-    
+
+    _normalize_invoice_for_erp(inv)
+
     # Get related journal entries
     journals = await _db.accounting_entries.find({"reference_id": invoice_id}, {"_id": 0}).to_list(20)
     inv["journal_entries"] = journals
