@@ -34,6 +34,7 @@ const NAV_GROUPS = [
     color: C.accent,
     defaultOpen: true,
     items: [
+      { to: '/search',       icon: Search,          label: 'Recherche' },
       { to: '/dashboard',    icon: LayoutDashboard, label: 'Dashboard' },
       { to: '/director',     icon: Sparkles,        label: 'Vue Directeur' },
       { to: '/leads',        icon: Users,           label: 'Leads',    badge: 'leads' },

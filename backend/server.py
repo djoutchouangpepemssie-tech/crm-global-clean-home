@@ -3872,8 +3872,10 @@ async def get_audit_log(
 async def global_search(
     request: Request,
     q: str = Query(..., min_length=1, description="Search query"),
+    limit: int = Query(20, ge=1, le=50),
 ):
-    """Search across leads, quotes, invoices, and interventions."""
+    """Recherche globale étendue : leads + tous les documents liés (devis, factures, contrats, interventions, tâches).
+    Trouve aussi les documents liés à un lead matchant même si le document lui-même ne contient pas le terme."""
     await require_auth(request)
 
     if not q or len(q.strip()) < 1:
@@ -3883,7 +3885,7 @@ async def global_search(
     pattern = re.compile(re.escape(q), re.IGNORECASE)
     results = {}
 
-    # Search leads
+    # ─── LEADS ───
     lead_query = {
         "deleted_at": {"$exists": False},
         "$or": [
@@ -3894,78 +3896,203 @@ async def global_search(
             {"message": pattern},
         ]
     }
-    leads = await db.leads.find(lead_query, {"_id": 0, "lead_id": 1, "name": 1, "email": 1, "phone": 1, "service_type": 1, "status": 1, "created_at": 1}).limit(10).to_list(10)
+    leads = await db.leads.find(
+        lead_query,
+        {"_id": 0, "lead_id": 1, "name": 1, "email": 1, "phone": 1, "address": 1,
+         "service_type": 1, "status": 1, "created_at": 1, "score": 1}
+    ).limit(limit).to_list(limit)
     results["leads"] = [
         {
             "type": "lead",
             "id": l["lead_id"],
-            "snippet": f"{l.get('name', '')} · {l.get('email', '')} · {l.get('service_type', '')} ({l.get('status', '')})",
+            "title": l.get("name", "Sans nom"),
+            "snippet": f"{l.get('email', '')} · {l.get('phone', '')} · {l.get('service_type', '')}".strip(' ·'),
+            "meta": {
+                "status": l.get("status"),
+                "score": l.get("score"),
+                "address": l.get("address"),
+                "created_at": l.get("created_at"),
+            },
             "data": l,
         }
         for l in leads
     ]
+    matched_lead_ids = [l["lead_id"] for l in leads]
 
-    # Search quotes
-    quote_query = {
-        "deleted_at": {"$exists": False},
-        "$or": [
-            {"details": pattern},
-            {"service_type": pattern},
-        ]
-    }
-    quotes = await db.quotes.find(quote_query, {"_id": 0, "quote_id": 1, "service_type": 1, "amount": 1, "status": 1, "created_at": 1}).limit(10).to_list(10)
+    # ─── DEVIS ─── (texte direct OU lead_id matchant un lead trouvé)
+    quote_or = [
+        {"details": pattern},
+        {"service_type": pattern},
+        {"title": pattern},
+        {"quote_number": pattern},
+    ]
+    if matched_lead_ids:
+        quote_or.append({"lead_id": {"$in": matched_lead_ids}})
+    quotes = await db.quotes.find(
+        {"deleted_at": {"$exists": False}, "$or": quote_or},
+        {"_id": 0, "quote_id": 1, "quote_number": 1, "lead_id": 1, "title": 1,
+         "service_type": 1, "amount": 1, "status": 1, "created_at": 1}
+    ).limit(limit).to_list(limit)
+
+    # Enrichit avec nom du lead
+    quote_lead_ids = list(set([q_doc.get("lead_id") for q_doc in quotes if q_doc.get("lead_id")]))
+    lead_names = {}
+    if quote_lead_ids:
+        leads_for_quotes = await db.leads.find(
+            {"lead_id": {"$in": quote_lead_ids}},
+            {"_id": 0, "lead_id": 1, "name": 1}
+        ).to_list(50)
+        lead_names = {l["lead_id"]: l.get("name", "") for l in leads_for_quotes}
+
     results["quotes"] = [
         {
             "type": "quote",
             "id": q_doc["quote_id"],
-            "snippet": f"Devis {q_doc.get('service_type', '')} · {q_doc.get('amount', 0)}€ ({q_doc.get('status', '')})",
+            "title": q_doc.get("title") or f"Devis {q_doc.get('service_type', '')}",
+            "snippet": f"{lead_names.get(q_doc.get('lead_id'), '')} · {q_doc.get('amount', 0)} €".strip(' ·'),
+            "meta": {
+                "status": q_doc.get("status"),
+                "amount": q_doc.get("amount"),
+                "quote_number": q_doc.get("quote_number"),
+                "lead_id": q_doc.get("lead_id"),
+                "created_at": q_doc.get("created_at"),
+            },
             "data": q_doc,
         }
         for q_doc in quotes
     ]
 
-    # Search invoices
-    invoice_query = {
-        "deleted_at": {"$exists": False},
-        "$or": [
-            {"lead_name": pattern},
-            {"lead_email": pattern},
-            {"details": pattern},
-        ]
-    }
-    invoices_found = await db.invoices.find(invoice_query, {"_id": 0, "invoice_id": 1, "lead_name": 1, "lead_email": 1, "amount_ttc": 1, "status": 1, "created_at": 1}).limit(10).to_list(10)
+    # ─── FACTURES ───
+    invoice_or = [
+        {"lead_name": pattern},
+        {"client_name": pattern},
+        {"lead_email": pattern},
+        {"client_email": pattern},
+        {"invoice_number": pattern},
+        {"details": pattern},
+    ]
+    if matched_lead_ids:
+        invoice_or.append({"lead_id": {"$in": matched_lead_ids}})
+    invoices_found = await db.invoices.find(
+        {"deleted_at": {"$exists": False}, "$or": invoice_or},
+        {"_id": 0, "invoice_id": 1, "invoice_number": 1, "lead_id": 1, "lead_name": 1,
+         "client_name": 1, "amount_ttc": 1, "total_ttc": 1, "status": 1, "created_at": 1, "due_date": 1}
+    ).limit(limit).to_list(limit)
+
     results["invoices"] = [
         {
             "type": "invoice",
             "id": inv["invoice_id"],
-            "snippet": f"Facture {inv.get('lead_name', '')} · {inv.get('amount_ttc', 0)}€ ({inv.get('status', '')})",
+            "title": inv.get("invoice_number") or f"Facture {inv.get('invoice_id', '')[-8:]}",
+            "snippet": f"{inv.get('client_name') or inv.get('lead_name') or ''} · {inv.get('amount_ttc') or inv.get('total_ttc') or 0} €".strip(' ·'),
+            "meta": {
+                "status": inv.get("status"),
+                "amount": inv.get("amount_ttc") or inv.get("total_ttc"),
+                "due_date": inv.get("due_date"),
+                "lead_id": inv.get("lead_id"),
+                "created_at": inv.get("created_at"),
+            },
             "data": inv,
         }
         for inv in invoices_found
     ]
 
-    # Search interventions
-    intervention_query = {
-        "deleted_at": {"$exists": False},
-        "$or": [
+    # ─── CONTRATS ───
+    try:
+        contract_or = [
+            {"client_name": pattern},
+            {"lead_name": pattern},
             {"title": pattern},
-            {"address": pattern},
-            {"description": pattern},
+            {"contract_number": pattern},
         ]
-    }
-    interventions_found = await db.interventions.find(intervention_query, {"_id": 0, "intervention_id": 1, "title": 1, "address": 1, "status": 1, "scheduled_date": 1}).limit(10).to_list(10)
+        if matched_lead_ids:
+            contract_or.append({"lead_id": {"$in": matched_lead_ids}})
+        contracts_found = await db.contracts.find(
+            {"deleted_at": {"$exists": False}, "$or": contract_or},
+            {"_id": 0}
+        ).limit(limit).to_list(limit)
+        results["contracts"] = [
+            {
+                "type": "contract",
+                "id": c.get("id") or c.get("contract_id") or c.get("_id"),
+                "title": c.get("title") or c.get("contract_number") or "Contrat",
+                "snippet": f"{c.get('client_name') or c.get('lead_name') or ''} · {c.get('amount') or c.get('value') or 0} €".strip(' ·'),
+                "meta": {
+                    "status": c.get("status"),
+                    "amount": c.get("amount") or c.get("value"),
+                    "lead_id": c.get("lead_id"),
+                    "created_at": c.get("signed_at") or c.get("created_at"),
+                },
+                "data": c,
+            }
+            for c in contracts_found
+        ]
+    except Exception:
+        results["contracts"] = []
+
+    # ─── INTERVENTIONS ───
+    intervention_or = [
+        {"title": pattern},
+        {"address": pattern},
+        {"description": pattern},
+        {"lead_name": pattern},
+    ]
+    if matched_lead_ids:
+        intervention_or.append({"lead_id": {"$in": matched_lead_ids}})
+    interventions_found = await db.interventions.find(
+        {"deleted_at": {"$exists": False}, "$or": intervention_or},
+        {"_id": 0, "intervention_id": 1, "lead_id": 1, "lead_name": 1, "title": 1,
+         "address": 1, "status": 1, "scheduled_date": 1, "scheduled_time": 1}
+    ).limit(limit).to_list(limit)
     results["interventions"] = [
         {
             "type": "intervention",
             "id": i["intervention_id"],
-            "snippet": f"Intervention {i.get('title', '')} · {i.get('address', '')} ({i.get('status', '')})",
+            "title": i.get("title") or "Intervention",
+            "snippet": f"{i.get('lead_name', '')} · {i.get('address', '')}".strip(' ·'),
+            "meta": {
+                "status": i.get("status"),
+                "scheduled_date": i.get("scheduled_date"),
+                "scheduled_time": i.get("scheduled_time"),
+                "lead_id": i.get("lead_id"),
+            },
             "data": i,
         }
         for i in interventions_found
     ]
 
+    # ─── TÂCHES ───
+    try:
+        task_or = [
+            {"title": pattern},
+            {"description": pattern},
+        ]
+        if matched_lead_ids:
+            task_or.append({"lead_id": {"$in": matched_lead_ids}})
+        tasks_found = await db.tasks.find(
+            {"deleted_at": {"$exists": False}, "$or": task_or},
+            {"_id": 0, "task_id": 1, "lead_id": 1, "title": 1, "type": 1, "status": 1, "due_date": 1}
+        ).limit(limit).to_list(limit)
+        results["tasks"] = [
+            {
+                "type": "task",
+                "id": t["task_id"],
+                "title": t.get("title") or "Tâche",
+                "snippet": f"{t.get('type', '')} · échéance {(t.get('due_date') or '')[:10]}".strip(' ·'),
+                "meta": {
+                    "status": t.get("status"),
+                    "due_date": t.get("due_date"),
+                    "lead_id": t.get("lead_id"),
+                },
+                "data": t,
+            }
+            for t in tasks_found
+        ]
+    except Exception:
+        results["tasks"] = []
+
     total = sum(len(v) for v in results.values())
-    return {"query": q, "total": total, "results": results}
+    return {"query": q, "total": total, "results": results, "matched_lead_ids": matched_lead_ids}
 
 # ============= TRACKING ENDPOINTS (PUBLIC) =============
 

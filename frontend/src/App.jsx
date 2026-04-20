@@ -108,6 +108,9 @@ const InvoicesList = lazy(() => import('./components/invoices/InvoicesList'));
 const PaymentSuccess = lazy(() => import('./components/invoices/PaymentSuccess'));
 const FinancialDashboard = lazy(() => import('./components/invoices/FinancialDashboard'));
 const FinanceCoffre = lazy(() => import('./components/finance/FinanceCoffre'));
+const QuoteView = lazy(() => import('./components/quotes/QuoteView'));
+const InvoiceView = lazy(() => import('./components/invoices/InvoiceView'));
+const SearchPage = lazy(() => import('./components/shared/SearchPage'));
 const ClientPortal = lazy(() => import('./components/portal/ClientPortal'));
 const IntervenantPortal = lazy(() => import('./components/portal/IntervenantPortal'));
 const IntervenantsManager = lazy(() => import('./components/planning/IntervenantsManager'));
@@ -402,6 +405,7 @@ function AppRouter() {
           <div style={{padding:'24px',minHeight:'100vh',opacity:0.5}} />
         }>
         <Routes>
+                    <Route path="/search" element={<SearchPage />} />
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/dashboard/custom" element={<DashboardCustom />} />
                     <Route path="/dashboard/legacy" element={<DashboardLegacy />} />
@@ -424,7 +428,8 @@ function AppRouter() {
                     <Route path="/quotes/premium" element={<QuoteForm />} />
                     <Route path="/quotes" element={<QuotesCahier />} />
                     <Route path="/quotes/legacy" element={<QuotesList />} />
-                    <Route path="/quotes/:id" element={<QuoteForm />} />
+                    <Route path="/quotes/:id/edit" element={<QuoteForm />} />
+                    <Route path="/quotes/:id" element={<QuoteView />} />
                     <Route path="/tasks" element={<TasksCarnet />} />
                     <Route path="/tasks/legacy" element={<TasksList />} />
                     <Route path="/activity" element={<ActivityChronique />} />
@@ -436,7 +441,8 @@ function AppRouter() {
                     <Route path="/invoices/legacy" element={<InvoicesList />} />
                     <Route path="/invoices/new" element={<InvoiceForm />} />
                     <Route path="/invoices/:invoiceId/success" element={<PaymentSuccess />} />
-                    <Route path="/invoices/:id" element={<InvoiceForm />} />
+                    <Route path="/invoices/:id/edit" element={<InvoiceForm />} />
+                    <Route path="/invoices/:id" element={<InvoiceView />} />
                     {/* Legacy : /invoices/premium redirige vers /invoices/new */}
                     <Route path="/invoices/premium" element={<InvoiceForm />} />
                     <Route path="/finance" element={<FinanceCoffre />} />
