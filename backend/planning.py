@@ -343,7 +343,26 @@ async def create_intervention(body: InterventionCreate, request: Request):
                 team_names_str = ", ".join(team_names_list) if team_names_list else "Notre équipe"
                 
                 frontend_url = str(os.environ.get("FRONTEND_URL", "https://crm.globalcleanhome.com"))
-                
+
+                # === Magic link client pour accès direct au portail ===
+                portal_magic_url = f"{frontend_url}/portal"
+                try:
+                    import secrets as _sec
+                    magic_token = _sec.token_urlsafe(36)
+                    await _db.magic_links.insert_one({
+                        "token":      magic_token,
+                        "email":      lead.get("email", ""),
+                        "lead_id":    body.lead_id,
+                        "lead_name":  lead.get("name", ""),
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+                        "used":       False,
+                        "context":    {"type": "intervention", "intervention_id": intervention["intervention_id"]},
+                    })
+                    portal_magic_url = f"{frontend_url}/portal?magic={magic_token}"
+                except Exception as _mg:
+                    logger.warning(f"Intervention magic link gen failed: {_mg}")
+
                 # === Tenter génération IA pour le client ===
                 ai_client_email = None
                 try:
@@ -392,7 +411,7 @@ async def create_intervention(body: InterventionCreate, request: Request):
       </table>
     </div>
     <div style="text-align:center;margin:24px 0;">
-      <a href="{frontend_url}/portal" style="display:inline-block;background:linear-gradient(135deg,#1d4ed8,#059669);color:white;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:700;font-size:14px;">
+      <a href="{portal_magic_url}" style="display:inline-block;background:linear-gradient(135deg,#1d4ed8,#059669);color:white;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:700;font-size:14px;">
         📱 Suivre mon intervention
       </a>
     </div>

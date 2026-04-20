@@ -515,6 +515,62 @@ async def get_agent_messages_admin(agent_id: str, request: Request):
     ).sort("created_at", 1).to_list(200)
     return {"messages": messages}
 
+@intervenant_router.get("/conversations-summary")
+async def list_intervenant_conversations(request: Request):
+    """Résumé des conversations avec les intervenants (vue admin CRM ChatCenter)."""
+    from server import require_auth
+    await require_auth(request)
+
+    # Récupère tous les intervenants actifs
+    members = await _db.team_members.find(
+        {"deleted_at": {"$exists": False}},
+        {"_id": 0, "member_id": 1, "name": 1, "email": 1, "phone": 1, "role": 1}
+    ).to_list(200)
+
+    conversations = []
+    for m in members:
+        mid = m.get("member_id")
+        if not mid:
+            continue
+        # Dernier message
+        last = await _db.intervenant_messages.find_one(
+            {"$or": [{"agent_id": mid}, {"to_agent_id": mid}]},
+            {"_id": 0}, sort=[("created_at", -1)]
+        )
+        # Messages non lus côté CRM (envoyés par l'agent, non marqués read)
+        unread = await _db.intervenant_messages.count_documents({
+            "agent_id": mid,
+            "from_agent": True,
+            "admin_read": {"$ne": True},
+        })
+        conversations.append({
+            "agent_id":     mid,
+            "agent_name":   m.get("name", "Intervenant"),
+            "agent_email":  m.get("email", ""),
+            "agent_phone":  m.get("phone", ""),
+            "agent_role":   m.get("role", "technicien"),
+            "last_message": last.get("content", "") if last else "",
+            "last_from_agent": last.get("from_agent") if last else False,
+            "last_at":      last.get("created_at") if last else None,
+            "unread":       unread,
+        })
+    # Tri : d'abord ceux avec messages non lus, puis par dernière activité
+    conversations.sort(key=lambda c: (-c["unread"], c["last_at"] or ""), reverse=False)
+    conversations.sort(key=lambda c: (0 if c["unread"] > 0 else 1, -(0 if not c["last_at"] else int(c["last_at"].replace("-","").replace(":","").replace("T","").replace(".","")[:14] or "0"))))
+    return {"conversations": conversations}
+
+
+@intervenant_router.post("/messages/{agent_id}/mark-read")
+async def mark_agent_messages_read(agent_id: str, request: Request):
+    from server import require_auth
+    await require_auth(request)
+    await _db.intervenant_messages.update_many(
+        {"agent_id": agent_id, "from_agent": True},
+        {"$set": {"admin_read": True}},
+    )
+    return {"success": True}
+
+
 @intervenant_router.post("/messages/{agent_id}")
 async def send_admin_message(agent_id: str, request: Request):
     """Envoyer un message à un agent (depuis l'admin)."""
