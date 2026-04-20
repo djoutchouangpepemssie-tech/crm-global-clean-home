@@ -156,3 +156,90 @@
     grid-template-columns: 1fr !important;
   }
 }
+
+/* ══════════════════════════════════════
+   Pages magazine (atelier) — rescue mobile
+   Règles communes à toutes les pages refondues,
+   ajoutées en complément des @media individuels.
+══════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Tous les titres magazine h1 XXL → lisibles sur mobile */
+  .pr-header-title, .qc-header-title, .gl-header-title, .dsr-header-title,
+  .tc-header-title, .lr-header-title, .cd-header-title, .pf-header-title,
+  .cof-header-title, .bou-header-title, .ech-header-title, .chr-header-title,
+  .eta-header-title, .gri-header-title, .eqp-header-title, .bib-header-title,
+  .dol-header-title, .act-header-title, .mag-header-title, .reg-header-title,
+  .atl-header-title {
+    font-size: 32px !important;
+    line-height: 1.05 !important;
+  }
+
+  /* Grilles repeat(4, 1fr) → 2 colonnes max sur tablette */
+  .cof-kpis, .gri-kpi-strip,
+  [style*="grid-template-columns: repeat(4, 1fr)"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Hero cards XXL (finance, satisfaction) → padding réduit */
+  .cof-hero, .bou-main-grid, .ech-main-grid {
+    padding: 22px !important;
+  }
+  .cof-hero-amount { font-size: 44px !important; }
+
+  /* Tables qui forcent min-width trop large */
+  .erp-table, .gl-ledger {
+    min-width: 600px !important;
+  }
+
+  /* Boutons d'actions flottants en bas */
+  .floating-bulk-bar {
+    left: 12px !important;
+    right: 12px !important;
+    transform: none !important;
+    bottom: 12px !important;
+  }
+
+  /* Cartes intervenants / bibliothèque → une colonne */
+  .eqp-grid, .bib-shelf [style*="minmax(170px"],
+  [style*="minmax(260px"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Modales atelier */
+  [style*="maxWidth: 560"] {
+    max-width: calc(100vw - 20px) !important;
+  }
+
+  /* Padding header général */
+  [class*="-header"][style*="padding: 40px 48px"] {
+    padding: 20px 18px 14px !important;
+  }
+  [class*="-body"][style*="padding: 0 48px"] {
+    padding: 0 18px 30px !important;
+  }
+  [class*="-content"][style*="padding: 28px 48px"] {
+    padding: 20px 18px 0 !important;
+  }
+}
+
+/* Petit mobile : colonnes uniques partout */
+@media (max-width: 480px) {
+  [style*="grid-template-columns: repeat(3, 1fr)"],
+  [style*="grid-template-columns: repeat(2, 1fr)"]:not(.qf-grid-keep) {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Hero encore plus compact */
+  .pr-header-title, .qc-header-title, .gl-header-title, .dsr-header-title,
+  .tc-header-title, .lr-header-title, .cd-header-title, .pf-header-title,
+  .cof-header-title, .bou-header-title, .ech-header-title, .chr-header-title,
+  .eta-header-title, .gri-header-title, .eqp-header-title, .bib-header-title,
+  .dol-header-title, .act-header-title, .mag-header-title, .reg-header-title,
+  .atl-header-title {
+    font-size: 26px !important;
+  }
+
+  /* Sidebar devis/invoice : stack en vertical */
+  .qf-layout { flex-direction: column !important; padding: 14px !important; }
+  .qf-sidebar { position: static !important; width: 100% !important; max-height: none !important; }
+}

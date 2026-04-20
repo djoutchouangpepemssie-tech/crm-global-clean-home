@@ -1446,7 +1446,7 @@ async def create_lead(input: LeadCreate, request: Request):
     else:
         await write_audit_log("lead", lead_id, "create", "public", {"name": input.name, "service_type": input.service_type})
 
-    # Notification nouveau lead
+    # Notification nouveau lead (in-app)
     try:
         score = lead_dict.get("score", 0)
         notif_type = "hot_lead" if score >= 70 else "new_lead"
@@ -1461,6 +1461,13 @@ async def create_lead(input: LeadCreate, request: Request):
         )
     except Exception as e:
         logger.warning(f"Notification error: {e}")
+
+    # Notification email aux admins
+    try:
+        from gmail_service import send_new_lead_notification_to_admins
+        await send_new_lead_notification_to_admins(lead_dict)
+    except Exception as e:
+        logger.warning(f"Admin email notification error: {e}")
 
     # Déclencher workflows automatiques
     try:

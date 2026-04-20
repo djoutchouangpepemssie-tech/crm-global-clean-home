@@ -2451,87 +2451,240 @@ const SettingsPage = () => {
 
   const activeTabData = settingsTabs.find(t => t.id === activeTab);
 
+  const activeIndex = settingsTabs.findIndex(t => t.id === activeTab);
+  const chapterNum = activeIndex >= 0 ? String(activeIndex + 1).padStart(2, '0') : '00';
+
   return (
-    <div className="flex flex-col lg:flex-row h-full min-h-0" style={{ background: 'var(--bg-app)' }}>
-      {/* ── Left sidebar nav ── */}
-      <div className="lg:w-64 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-neutral-100 bg-white/[0.01]">
-        <div className="p-4 lg:p-5">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #047857, #047857)', boxShadow: '0 0 20px rgba(4,120,87,0.3)' }}>
-              <Settings className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-black text-neutral-100" style={{ fontFamily: 'Inter, sans-serif' }}>Paramètres</h1>
-              <p className="text-[10px] text-neutral-500 font-semibold">Configuration du CRM</p>
-            </div>
-          </div>
+    <div className="settings-atelier">
+      <style>{`
+        .settings-atelier {
+          --bg: oklch(0.965 0.012 80);
+          --paper: oklch(0.975 0.014 82);
+          --surface: oklch(0.985 0.008 85);
+          --surface-2: oklch(0.945 0.014 78);
+          --ink: oklch(0.165 0.012 60);
+          --ink-2: oklch(0.32 0.012 60);
+          --ink-3: oklch(0.52 0.010 60);
+          --ink-4: oklch(0.72 0.008 70);
+          --line: oklch(0.85 0.012 75);
+          --line-2: oklch(0.92 0.010 78);
+          --emerald: oklch(0.52 0.13 165);
+          --emerald-soft: oklch(0.93 0.05 165);
+          --sepia: oklch(0.55 0.08 65);
+          --sepia-soft: oklch(0.92 0.04 65);
 
-          {/* Search */}
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
-            <input
-              type="text"
-              placeholder="Rechercher..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-2 rounded-xl text-xs text-neutral-300 placeholder-neutral-600 bg-white border border-neutral-200 focus:outline-none focus:ring-1 focus:ring-brand-500/50 transition-all"
-            />
-          </div>
+          background: var(--bg); color: var(--ink); min-height: 100%;
+          font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased;
+          display: flex; flex-direction: row; min-height: 100vh;
+        }
+        .settings-nav {
+          width: 280px; flex-shrink: 0;
+          background: var(--paper);
+          border-right: 1px solid var(--line);
+          padding: 32px 22px 28px;
+          position: sticky; top: 0; align-self: flex-start;
+          max-height: 100vh; overflow-y: auto;
+        }
+        .settings-nav-hd { margin-bottom: 22px; }
+        .settings-nav-hd .ov {
+          font-family: 'JetBrains Mono', monospace; font-size: 10px;
+          letter-spacing: 0.14em; text-transform: uppercase;
+          color: var(--ink-3); font-weight: 500; margin-bottom: 10px;
+        }
+        .settings-nav-hd h1 {
+          font-family: 'Fraunces', serif; letter-spacing: -0.02em;
+          font-size: 36px; font-weight: 300; line-height: 1;
+          margin: 0 0 6px; color: var(--ink);
+        }
+        .settings-nav-hd h1 em { font-style: italic; color: var(--sepia); font-weight: 400; }
+        .settings-nav-hd .sub {
+          font-family: 'Fraunces', serif; font-style: italic;
+          font-size: 13px; color: var(--ink-3);
+        }
+        .settings-nav-search {
+          display: flex; align-items: center; gap: 8px;
+          background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+          padding: 8px 14px; margin-bottom: 16px;
+        }
+        .settings-nav-search input {
+          flex: 1; border: 0; outline: 0; background: transparent;
+          font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink);
+        }
+        .settings-nav-list { display: flex; flex-direction: column; gap: 2px; }
+        .settings-nav-item {
+          display: flex; align-items: center; gap: 12px;
+          padding: 10px 12px; border-radius: 10px;
+          cursor: pointer; transition: all .15s;
+          border: 1px solid transparent;
+          background: transparent; width: 100%; text-align: left;
+        }
+        .settings-nav-item:hover { background: var(--surface-2); }
+        .settings-nav-item.active {
+          background: var(--ink); color: var(--bg);
+          border-color: var(--ink);
+        }
+        .settings-nav-item .num {
+          font-family: 'Fraunces', serif; font-size: 14px; font-weight: 500;
+          color: var(--ink-4); flex-shrink: 0; min-width: 22px; text-align: right;
+          letter-spacing: -0.01em;
+        }
+        .settings-nav-item.active .num { color: oklch(0.72 0.13 85); }
+        .settings-nav-item .lbl {
+          font-family: 'JetBrains Mono', monospace; font-size: 11px;
+          letter-spacing: 0.06em; text-transform: uppercase; font-weight: 500;
+          color: var(--ink-2);
+        }
+        .settings-nav-item:hover .lbl { color: var(--ink); }
+        .settings-nav-item.active .lbl { color: var(--bg); }
+        .settings-main {
+          flex: 1; min-width: 0; overflow-y: auto;
+        }
+        .settings-hero {
+          padding: 40px 48px 24px;
+          border-bottom: 1px solid var(--line-2);
+          display: flex; align-items: flex-end; justify-content: space-between;
+          gap: 20px; flex-wrap: wrap;
+        }
+        .settings-hero .lbl {
+          font-family: 'JetBrains Mono', monospace; font-size: 10px;
+          letter-spacing: 0.14em; text-transform: uppercase;
+          color: var(--ink-3); font-weight: 500; margin-bottom: 10px;
+        }
+        .settings-hero h2 {
+          font-family: 'Fraunces', serif; letter-spacing: -0.02em;
+          font-size: 48px; font-weight: 300; line-height: 0.95;
+          margin: 0; color: var(--ink);
+        }
+        .settings-hero h2 em { font-style: italic; color: var(--sepia); font-weight: 400; }
+        .settings-hero-save {
+          display: inline-flex; align-items: center; gap: 6px;
+          padding: 10px 20px; border-radius: 999px;
+          background: var(--ink); color: var(--bg);
+          border: 1px solid var(--ink);
+          font-family: 'JetBrains Mono', monospace; font-size: 11px;
+          letter-spacing: 0.06em; text-transform: uppercase; font-weight: 500;
+          cursor: pointer; transition: all .15s;
+        }
+        .settings-hero-save:hover { opacity: 0.88; }
+        .settings-hero-save:disabled { opacity: 0.5; cursor: wait; }
+        .settings-body { padding: 32px 48px 80px; max-width: 900px; }
+        /* Applique la palette aux sections internes */
+        .settings-body .bg-white { background: var(--paper) !important; }
+        .settings-body .border-neutral-200,
+        .settings-body .border-neutral-100 { border-color: var(--line) !important; }
+        .settings-body .text-neutral-100,
+        .settings-body .text-neutral-200,
+        .settings-body .text-neutral-300 { color: var(--ink) !important; }
+        .settings-body .text-neutral-400,
+        .settings-body .text-neutral-500 { color: var(--ink-3) !important; }
+        .settings-body .text-neutral-600 { color: var(--ink-3) !important; }
+        .settings-body h3 { font-family: 'Fraunces', serif; font-weight: 500; letter-spacing: -0.01em; }
+        .settings-body label { font-family: 'JetBrains Mono', monospace; font-size: 10px !important; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3) !important; font-weight: 500 !important; }
+        .settings-body input[type="text"],
+        .settings-body input[type="email"],
+        .settings-body input[type="tel"],
+        .settings-body input[type="number"],
+        .settings-body input[type="url"],
+        .settings-body input[type="password"],
+        .settings-body select,
+        .settings-body textarea {
+          background: var(--surface) !important;
+          border: 1px solid var(--line) !important;
+          border-radius: 10px !important;
+          color: var(--ink) !important;
+          font-family: 'Fraunces', serif;
+        }
+        .settings-body input:focus,
+        .settings-body select:focus,
+        .settings-body textarea:focus {
+          border-color: var(--ink-3) !important;
+          outline: none !important;
+          box-shadow: 0 0 0 3px color-mix(in oklch, var(--ink-3) 10%, transparent) !important;
+        }
+        @media (max-width: 960px) {
+          .settings-atelier { flex-direction: column; }
+          .settings-nav {
+            width: 100%; max-height: none; position: relative;
+            padding: 20px 18px 14px; border-right: 0; border-bottom: 1px solid var(--line);
+          }
+          .settings-nav-hd h1 { font-size: 28px; }
+          .settings-nav-list {
+            flex-direction: row; overflow-x: auto;
+            padding-bottom: 6px; margin: 0 -18px; padding-left: 18px; padding-right: 18px;
+          }
+          .settings-nav-item { flex-shrink: 0; }
+          .settings-hero { padding: 22px 22px 16px; }
+          .settings-hero h2 { font-size: 32px; }
+          .settings-body { padding: 20px 22px 80px; }
+        }
+      `}</style>
 
-          {/* Tab list */}
-          <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 hide-scrollbar">
-            {filteredTabs.map(tab => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  data-testid={`tab-btn-${tab.id}`}
-                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
-                    isActive
-                      ? 'text-white'
-                      : 'text-neutral-500 hover:text-neutral-300 hover:bg-white'
-                  }`}
-                  style={isActive ? {
-                    background: `linear-gradient(90deg, ${tab.color}22, ${tab.color}08)`,
-                    color: tab.color,
-                    border: `1px solid ${tab.color}25`,
-                  } : { border: '1px solid transparent' }}
-                >
-                  {tab.icon && <tab.icon className="w-4 h-4 flex-shrink-0" style={isActive ? { color: tab.color } : {}} />}
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
-          </nav>
+      {/* ── NAV ATELIER ── */}
+      <div className="settings-nav">
+        <div className="settings-nav-hd">
+          <div className="ov">Atelier · Chapitre {chapterNum}</div>
+          <h1>L'<em>établi</em></h1>
+          <div className="sub">{settingsTabs.length} chapitres pour régler l'atelier</div>
         </div>
+
+        <div className="settings-nav-search">
+          <Search style={{ width: 13, height: 13, color: 'var(--ink-3)' }} />
+          <input
+            type="text"
+            placeholder="Chercher un chapitre…"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        <nav className="settings-nav-list">
+          {filteredTabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            const idx = settingsTabs.findIndex(t => t.id === tab.id);
+            const num = String(idx + 1).padStart(2, '0');
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                data-testid={`tab-btn-${tab.id}`}
+                className={`settings-nav-item ${isActive ? 'active' : ''}`}
+              >
+                <span className="num">{num}</span>
+                <span className="lbl">{tab.label}</span>
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
-      {/* ── Main content ── */}
-      <div ref={contentRef} className="flex-1 overflow-y-auto min-w-0">
-        <div className="max-w-3xl mx-auto p-4 md:p-6 lg:p-8 pb-32">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              {activeTabData && (
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                  style={{ background: `${activeTabData.color}15` }}>
-                  {activeTabData.icon && <activeTabData.icon className="w-4 h-4" style={{ color: activeTabData.color }} />}
-                </div>
+      {/* ── CONTENU ── */}
+      <div ref={contentRef} className="settings-main">
+        <div className="settings-hero">
+          <div style={{ flex: 1, minWidth: 260 }}>
+            <div className="lbl">Chapitre {chapterNum} · Paramètres</div>
+            <h2>
+              {activeTabData?.label?.includes(' ') ? (
+                <>
+                  {activeTabData.label.split(' ')[0]}{' '}
+                  <em>{activeTabData.label.split(' ').slice(1).join(' ')}</em>
+                </>
+              ) : (
+                <em>{activeTabData?.label || ''}</em>
               )}
-              <div>
-                <h2 className="text-xl font-black text-neutral-100" style={{ fontFamily: 'Inter, sans-serif' }}>
-                  {activeTabData?.label}
-                </h2>
-              </div>
-            </div>
-            <ActionButton variant="primary" icon={Save} onClick={handleSave} loading={saving} data-testid="save-btn">
-              Enregistrer
-            </ActionButton>
+            </h2>
           </div>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="settings-hero-save"
+            data-testid="save-btn"
+          >
+            <Save style={{ width: 13, height: 13 }} />
+            {saving ? 'Enregistrement…' : 'Enregistrer'}
+          </button>
+        </div>
 
-          {/* Content */}
+        <div className="settings-body">
           {renderContent()}
         </div>
       </div>

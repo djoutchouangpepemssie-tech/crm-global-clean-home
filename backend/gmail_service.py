@@ -1476,6 +1476,136 @@ async def send_confirmation_email(to_email: str, client_name: str, service_type:
         logger.error(f"Erreur envoi email confirmation: {e}")
 
 
+async def send_new_lead_notification_to_admins(lead: dict) -> int:
+    """Envoie un email de notification aux administrateurs dès qu'un nouveau lead arrive.
+    Retourne le nombre d'admins notifiés avec succès."""
+    try:
+        # Récupère les emails de tous les utilisateurs ayant le rôle admin (ou manager)
+        admins = await _db.users.find(
+            {"role": {"$in": ["admin", "manager", "owner"]}, "deleted_at": {"$exists": False}},
+            {"_id": 0, "email": 1, "name": 1}
+        ).to_list(50)
+
+        if not admins:
+            # Fallback : premier utilisateur créé
+            first = await _db.users.find_one({"deleted_at": {"$exists": False}}, {"_id": 0, "email": 1, "name": 1})
+            if first:
+                admins = [first]
+            else:
+                logger.warning("Aucun admin trouvé - notif nouveau lead non envoyée")
+                return 0
+
+        # Récupère un token Gmail valide
+        token, _user_id = await _get_any_active_token()
+        if not token:
+            logger.warning("Gmail non connecté - notif nouveau lead non envoyée")
+            return 0
+
+        score = lead.get("score", 0)
+        is_hot = score >= 70
+        name = lead.get("name") or "Client"
+        email = lead.get("email") or "—"
+        phone = lead.get("phone") or "—"
+        address = lead.get("address") or "—"
+        service = lead.get("service_type") or "Prestation"
+        message = (lead.get("message") or "").replace("\n", "<br>")
+        source = lead.get("source") or "Direct"
+        lead_id = lead.get("lead_id") or ""
+
+        # Construction d'un lien vers le CRM (si BASE_URL défini)
+        base_url = os.getenv("BASE_URL") or os.getenv("FRONTEND_URL") or "https://www.globalcleanhome.com"
+        crm_link = f"{base_url.rstrip('/')}/leads/{lead_id}"
+
+        accent = "#c2410c" if is_hot else "#2563eb"
+        emoji = "🔥" if is_hot else "🎯"
+        label = "Lead CHAUD" if is_hot else "Nouveau lead"
+
+        subject = f"{emoji} {label} — {name} ({service})"
+
+        html_body = f"""
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body {{ font-family: 'Segoe UI', Arial, sans-serif; background: #f4f7fb; margin: 0; padding: 20px; color: #1e293b; }}
+    .box {{ max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }}
+    .hd {{ background: linear-gradient(135deg, {accent}, #7c3aed); color: #fff; padding: 28px 26px; }}
+    .hd h1 {{ margin: 0; font-size: 20px; font-weight: 700; }}
+    .hd p {{ margin: 6px 0 0; font-size: 13px; opacity: 0.9; }}
+    .score-pill {{ display: inline-block; margin-top: 10px; padding: 4px 12px; border-radius: 999px;
+                   background: rgba(255,255,255,0.22); color: #fff; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; }}
+    .bd {{ padding: 24px 26px; }}
+    .row {{ display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; }}
+    .row:last-child {{ border-bottom: 0; }}
+    .row .k {{ color: #64748b; width: 100px; flex-shrink: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }}
+    .row .v {{ color: #1e293b; font-weight: 500; flex: 1; }}
+    .msg-box {{ margin-top: 14px; padding: 14px 16px; background: #f8fafc; border-left: 3px solid {accent}; border-radius: 6px; font-size: 13px; color: #334155; line-height: 1.6; white-space: pre-wrap; }}
+    .cta {{ text-align: center; margin: 24px 0 8px; }}
+    .cta a {{ display: inline-block; padding: 12px 28px; background: {accent}; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; }}
+    .ft {{ padding: 16px 26px; background: #f8fafc; text-align: center; font-size: 11px; color: #94a3b8; }}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="hd">
+      <h1>{emoji} {label}</h1>
+      <p>Un prospect vient de déposer une demande sur votre CRM.</p>
+      <span class="score-pill">Score {score}/100</span>
+    </div>
+    <div class="bd">
+      <div class="row"><div class="k">Nom</div><div class="v">{name}</div></div>
+      <div class="row"><div class="k">Email</div><div class="v">{email}</div></div>
+      <div class="row"><div class="k">Téléphone</div><div class="v">{phone}</div></div>
+      <div class="row"><div class="k">Adresse</div><div class="v">{address}</div></div>
+      <div class="row"><div class="k">Prestation</div><div class="v">{service}</div></div>
+      <div class="row"><div class="k">Source</div><div class="v">{source}</div></div>
+      {f'<div class="msg-box"><strong>Détail de la demande :</strong><br>{message}</div>' if message else ''}
+      <div class="cta">
+        <a href="{crm_link}">Ouvrir le dossier du lead →</a>
+      </div>
+    </div>
+    <div class="ft">
+      Notification automatique · Global Clean Home CRM<br>
+      Tu reçois cet email parce que tu es administrateur du CRM.
+    </div>
+  </div>
+</body>
+</html>
+"""
+
+        sent = 0
+        async with httpx.AsyncClient() as client:
+            for admin in admins:
+                admin_email = admin.get("email")
+                if not admin_email:
+                    continue
+                try:
+                    msg = MIMEMultipart('alternative')
+                    msg['Subject'] = subject
+                    msg['From'] = f"{GMAIL_FROM_NAME} <{GMAIL_FROM_ADDRESS}>"
+                    msg['To'] = admin_email
+                    msg.attach(MIMEText(html_body, 'html', 'utf-8'))
+                    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+                    r = await client.post(
+                        "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+                        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                        json={"raw": raw},
+                        timeout=10,
+                    )
+                    if r.status_code in (200, 201):
+                        sent += 1
+                except Exception as e:
+                    logger.warning(f"Échec notif admin {admin_email}: {e}")
+
+        logger.info(f"Notification nouveau lead envoyée à {sent}/{len(admins)} admin(s)")
+        return sent
+    except Exception as e:
+        logger.error(f"send_new_lead_notification_to_admins error: {e}")
+        return 0
+
+
 async def send_invitation_email(to_email: str, member_name: str, role: str, company_name: str = "Global Clean Home", invite_link: str = None):
     """Envoie un email d'invitation à un nouveau collaborateur."""
     

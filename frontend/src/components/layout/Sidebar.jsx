@@ -433,6 +433,7 @@ export default function Sidebar() {
           background: 'rgba(255, 248, 235, 0.03)',
         }}>
           <div style={{
+            position: 'relative',
             width: '32px', height: '32px', borderRadius: '50%',
             background: `linear-gradient(135deg, ${C.brand}, ${C.accent})`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -442,6 +443,26 @@ export default function Sidebar() {
             letterSpacing: '0.02em',
           }}>
             {initials}
+            {/* Voyant "en ligne" — pastille verte avec halo pulsant */}
+            <span
+              title="En ligne"
+              style={{
+                position: 'absolute',
+                bottom: -1, right: -1,
+                width: 10, height: 10, borderRadius: '50%',
+                background: 'oklch(0.65 0.18 145)',
+                border: '2px solid oklch(0.15 0.01 60)',
+                boxShadow: '0 0 0 0 oklch(0.65 0.18 145 / 0.6)',
+                animation: 'sb-online-pulse 2s ease-out infinite',
+              }}
+            />
+            <style>{`
+              @keyframes sb-online-pulse {
+                0% { box-shadow: 0 0 0 0 oklch(0.65 0.18 145 / 0.55); }
+                70% { box-shadow: 0 0 0 6px oklch(0.65 0.18 145 / 0); }
+                100% { box-shadow: 0 0 0 0 oklch(0.65 0.18 145 / 0); }
+              }
+            `}</style>
           </div>
           {!collapsed && (
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -452,13 +473,19 @@ export default function Sidebar() {
               }}>
                 {user?.name || 'Utilisateur'}
               </p>
-              <p style={{
-                color: C.textDim, fontSize: '10px',
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                margin: '1px 0 0',
-              }}>
-                {user?.email || ''}
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 1 }}>
+                <span style={{
+                  width: 5, height: 5, borderRadius: '50%',
+                  background: 'oklch(0.65 0.18 145)', flexShrink: 0,
+                }} />
+                <span style={{
+                  color: 'oklch(0.70 0.15 145)', fontSize: '9px',
+                  fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase',
+                  fontFamily: 'JetBrains Mono, monospace',
+                }}>
+                  En ligne
+                </span>
+              </div>
             </div>
           )}
           {!collapsed && (
