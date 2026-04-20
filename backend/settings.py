@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Request, Query
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta
+import os
 import uuid
 import secrets
 import hashlib
@@ -724,6 +725,167 @@ async def export_data(request: Request, type: str = Query(default="leads")):
         "type": type,
         "message": f"Export '{type}' en cours de préparation. Vous recevrez un email quand il sera prêt.",
         "started_at": now,
+    }
+
+
+# ─── POST /api/settings/data/import ───────────────────────────────────────────
+@settings_router.post("/data/import")
+async def import_data(request: Request):
+    """Importer des leads/contacts en masse depuis un fichier CSV/XLSX/JSON."""
+    user = await _require_auth(request)
+    if _db is None:
+        raise HTTPException(status_code=500, detail="Base de données indisponible")
+
+    import csv as _csv
+    import io as _io
+    import json as _json
+
+    form = await request.form()
+    upload = form.get("file")
+    if upload is None or not hasattr(upload, "filename"):
+        raise HTTPException(status_code=400, detail="Aucun fichier fourni")
+
+    filename = (upload.filename or "").lower()
+    content = await upload.read()
+    if len(content) > 50 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Fichier trop volumineux (max 50 Mo)")
+
+    rows: list = []
+    try:
+        if filename.endswith(".json"):
+            parsed = _json.loads(content.decode("utf-8"))
+            rows = parsed if isinstance(parsed, list) else parsed.get("items") or parsed.get("leads") or []
+        elif filename.endswith(".csv"):
+            text = content.decode("utf-8-sig", errors="replace")
+            reader = _csv.DictReader(_io.StringIO(text))
+            rows = [dict(r) for r in reader]
+        elif filename.endswith(".xlsx") or filename.endswith(".xls"):
+            try:
+                from openpyxl import load_workbook
+                wb = load_workbook(filename=_io.BytesIO(content), read_only=True, data_only=True)
+                ws = wb.active
+                header = None
+                for r_idx, row in enumerate(ws.iter_rows(values_only=True)):
+                    if header is None:
+                        header = [str(c or "").strip().lower() for c in row]
+                        continue
+                    item = {header[i]: (row[i] if i < len(row) else None) for i in range(len(header))}
+                    rows.append(item)
+            except ImportError:
+                raise HTTPException(status_code=400, detail="Lecture XLSX indisponible sur le serveur. Utilise CSV ou JSON.")
+        else:
+            raise HTTPException(status_code=400, detail="Format non supporté. Utilise CSV, XLSX ou JSON.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Lecture du fichier impossible : {e}")
+
+    # Mapping souple : accepte name/nom/full_name, email/mail, phone/tel/telephone...
+    def pick(row: dict, *keys):
+        for k in keys:
+            for rk in row.keys():
+                if str(rk).strip().lower() == k:
+                    v = row[rk]
+                    if v is not None and str(v).strip():
+                        return str(v).strip()
+        return None
+
+    imported = 0
+    skipped = 0
+    now = datetime.now(timezone.utc).isoformat()
+    for row in rows:
+        if not isinstance(row, dict):
+            skipped += 1
+            continue
+        name = pick(row, "name", "nom", "full_name", "fullname", "nom_complet")
+        email = pick(row, "email", "mail", "e-mail", "courriel")
+        phone = pick(row, "phone", "tel", "telephone", "téléphone", "mobile")
+        if not (name or email or phone):
+            skipped += 1
+            continue
+        lead = {
+            "lead_id": f"lead_{uuid.uuid4().hex[:12]}",
+            "name": name or (email or phone or "Inconnu"),
+            "email": email,
+            "phone": phone,
+            "address": pick(row, "address", "adresse"),
+            "service_type": pick(row, "service", "service_type", "prestation") or "Ménage",
+            "message": pick(row, "message", "note", "notes", "commentaire"),
+            "status": "nouveau",
+            "probability": 50,
+            "source": pick(row, "source") or "Import",
+            "tags": ["import"],
+            "created_at": now,
+            "updated_at": now,
+        }
+        await _db.leads.insert_one(lead)
+        imported += 1
+
+    await _log(user.user_id, "import_data", "data", f"{imported} leads")
+    return {
+        "success": True,
+        "imported": imported,
+        "skipped": skipped,
+        "total_rows": len(rows),
+        "message": f"{imported} enregistrement(s) importé(s), {skipped} ignoré(s).",
+    }
+
+
+# ─── GET /api/settings/system-info ────────────────────────────────────────────
+@settings_router.get("/system-info")
+async def get_system_info(request: Request):
+    """Infos système réelles : version CRM, état services, dernières sauvegardes."""
+    await _require_auth(request)
+
+    version = os.getenv("CRM_VERSION", "2.4.1")
+    env = os.getenv("ENV", "production")
+    started_at = os.getenv("SERVER_STARTED_AT")
+
+    # État DB réel
+    db_ok = False
+    db_collections = 0
+    try:
+        if _db is not None:
+            await _db.command("ping")
+            db_ok = True
+            cols = await _db.list_collection_names()
+            db_collections = len(cols)
+    except Exception:
+        db_ok = False
+
+    # Dernière sauvegarde
+    last_backup = None
+    try:
+        if _db is not None:
+            doc = await _db.backups_log.find_one(sort=[("started_at", -1)])
+            if doc:
+                last_backup = {
+                    "backup_id": doc.get("backup_id"),
+                    "started_at": doc.get("started_at"),
+                    "status": doc.get("status"),
+                }
+    except Exception:
+        pass
+
+    # Compte d'entités
+    counts = {}
+    try:
+        if _db is not None:
+            counts["leads"] = await _db.leads.count_documents({"deleted_at": {"$exists": False}})
+            counts["quotes"] = await _db.quotes.count_documents({"deleted_at": {"$exists": False}})
+            counts["invoices"] = await _db.invoices.count_documents({"deleted_at": {"$exists": False}})
+            counts["users"] = await _db.users.count_documents({"deleted_at": {"$exists": False}})
+    except Exception:
+        pass
+
+    return {
+        "version": version,
+        "env": env,
+        "db": {"ok": db_ok, "collections": db_collections},
+        "server_started_at": started_at,
+        "last_backup": last_backup,
+        "counts": counts,
+        "now": datetime.now(timezone.utc).isoformat(),
     }
 
 

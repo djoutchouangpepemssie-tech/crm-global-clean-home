@@ -197,8 +197,6 @@ const SettingsPage = () => {
     billingCycle: 'monthly',
     nextBillingDate: '2026-05-01',
     paymentMethod: 'card',
-    cardLast4: '4242',
-    cardBrand: 'Visa',
     invoiceEmail: '',
     taxId: '',
     billingAddress: '',
@@ -617,6 +615,35 @@ const SettingsPage = () => {
       toast.error(err.response?.data?.detail || 'Erreur lors de l\'export');
     } finally {
       setExporting(null);
+    }
+  };
+
+  // Import de données
+  const [importing, setImporting] = useState(false);
+  const handleImport = async (file) => {
+    if (!file) return;
+    const name = (file.name || '').toLowerCase();
+    if (!/\.(csv|xlsx?|json)$/.test(name)) {
+      toast.error('Format non supporté. Utilise CSV, XLSX ou JSON.');
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('Fichier trop volumineux (max 50 Mo)');
+      return;
+    }
+    setImporting(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await axios.post(`${API_URL}/settings/data/import`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const n = res.data?.imported || res.data?.count || 0;
+      toast.success(`Import terminé : ${n} enregistrement${n > 1 ? 's' : ''} intégré${n > 1 ? 's' : ''}.`);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Import impossible. Vérifie le format du fichier.');
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -1110,58 +1137,33 @@ const SettingsPage = () => {
       </SectionCard>
 
       <SectionCard title="Régionalisation" description="Langue, format de date et devise" icon={Globe} color="#c2410c">
-        <FieldRow label="Langue" horizontal={false}>
-          <SelectInput value={appearance.language} onChange={v => setAppearance(p => ({ ...p, language: v }))} icon={Globe}
+        <FieldRow label="Page d'accueil" description="Page affichée après chaque connexion" horizontal={false}>
+          <SelectInput
+            value={appearance.startPage}
+            onChange={v => {
+              setAppearance(p => ({ ...p, startPage: v }));
+              try { localStorage.setItem('crm_start_page', v); } catch {}
+            }}
             options={[
-              { value: 'fr', label: '🇫🇷 Français' },
-              { value: 'en', label: '🇬🇧 English' },
-              { value: 'es', label: '🇪🇸 Español' },
-              { value: 'de', label: '🇩🇪 Deutsch' },
-              { value: 'pt', label: '🇵🇹 Português' },
-              { value: 'it', label: '🇮🇹 Italiano' },
-              { value: 'ar', label: '🇸🇦 العربية' },
-            ]} />
+              { value: '/dashboard', label: 'Dashboard' },
+              { value: '/director', label: 'Vue Directeur' },
+              { value: '/leads', label: 'Leads' },
+              { value: '/pipeline', label: 'Pipeline' },
+              { value: '/planning', label: 'Planning' },
+              { value: '/quotes', label: 'Devis' },
+              { value: '/invoices', label: 'Factures' },
+              { value: '/search', label: 'Recherche' },
+            ]}
+          />
         </FieldRow>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-neutral-400">Format de date</label>
-            <SelectInput value={appearance.dateFormat} onChange={v => setAppearance(p => ({ ...p, dateFormat: v }))}
-              options={[
-                { value: 'DD/MM/YYYY', label: 'DD/MM/YYYY (31/12/2026)' },
-                { value: 'MM/DD/YYYY', label: 'MM/DD/YYYY (12/31/2026)' },
-                { value: 'YYYY-MM-DD', label: 'YYYY-MM-DD (2026-12-31)' },
-              ]} />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-neutral-400">Format d'heure</label>
-            <SelectInput value={appearance.timeFormat} onChange={v => setAppearance(p => ({ ...p, timeFormat: v }))}
-              options={[
-                { value: '24h', label: '24h (14:30)' },
-                { value: '12h', label: '12h (2:30 PM)' },
-              ]} />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-neutral-400">Devise</label>
-            <SelectInput value={appearance.currency} onChange={v => setAppearance(p => ({ ...p, currency: v }))}
-              options={[
-                { value: 'EUR', label: '€ Euro (EUR)' },
-                { value: 'USD', label: '$ Dollar US (USD)' },
-                { value: 'GBP', label: '£ Livre sterling (GBP)' },
-                { value: 'CHF', label: 'CHF Franc suisse (CHF)' },
-                { value: 'CAD', label: '$ Dollar canadien (CAD)' },
-              ]} />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-neutral-400">Page d'accueil</label>
-            <SelectInput value={appearance.startPage} onChange={v => setAppearance(p => ({ ...p, startPage: v }))}
-              options={[
-                { value: '/dashboard', label: 'Dashboard' },
-                { value: '/director', label: 'Vue Directeur' },
-                { value: '/leads', label: 'Leads' },
-                { value: '/planning', label: 'Planning' },
-                { value: '/kanban', label: 'Kanban' },
-              ]} />
-          </div>
+        <div style={{
+          marginTop: 14, padding: '12px 16px',
+          background: 'oklch(0.945 0.014 78)', border: '1px solid oklch(0.85 0.012 75)',
+          borderRadius: 10, fontFamily: 'Fraunces, serif', fontStyle: 'italic',
+          fontSize: 12, color: 'oklch(0.32 0.012 60)', lineHeight: 1.5,
+        }}>
+          Le CRM est actuellement paramétré en français avec la devise euro (€) et les formats de date français (DD/MM/YYYY, 24h).
+          Ces réglages s'appliquent automatiquement dans toute l'application — pas de sélecteur multilingue pour l'instant.
         </div>
       </SectionCard>
     </div>
@@ -1612,19 +1614,7 @@ const SettingsPage = () => {
           })}
         </SectionCard>
 
-        <SectionCard title="Moyen de paiement" description="Carte bancaire enregistrée" icon={CreditCard} color="#6366f1">
-          <div className="flex items-center justify-between p-4 rounded-xl border border-neutral-200 bg-neutral-50">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-7 rounded-lg bg-gradient-to-r from-neutral-700 to-neutral-600 flex items-center justify-center">
-                <span className="text-white text-[8px] font-bold">{billing.cardBrand || 'CARD'}</span>
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-neutral-200">•••• •••• •••• {billing.cardLast4 || '????'}</p>
-                <p className="text-[10px] text-neutral-500">Expire 12/2028</p>
-              </div>
-            </div>
-            <ActionButton variant="secondary" size="sm" icon={Edit3} onClick={() => toast.info('Redirection vers le portail de paiement Stripe...')}>Modifier</ActionButton>
-          </div>
+        <SectionCard title="Cycle &amp; facturation" description="Préférences de facturation du CRM" icon={CreditCard} color="#6366f1">
           <FieldRow label="Cycle de facturation">
             <SelectInput value={billing.billingCycle} onChange={v => setBilling(p => ({ ...p, billingCycle: v }))}
               options={[
@@ -1638,6 +1628,16 @@ const SettingsPage = () => {
           <FieldRow label="Email de facturation" horizontal={false}>
             <TextInput value={billing.invoiceEmail || ''} onChange={v => setBilling(p => ({ ...p, invoiceEmail: v }))} icon={Mail} placeholder="facturation@entreprise.fr" />
           </FieldRow>
+          <div style={{
+            marginTop: 14, padding: '14px 16px',
+            background: 'oklch(0.945 0.014 78)', border: '1px solid oklch(0.85 0.012 75)',
+            borderRadius: 10, fontSize: 12, color: 'oklch(0.32 0.012 60)',
+            fontFamily: 'Fraunces, serif', fontStyle: 'italic', lineHeight: 1.5,
+          }}>
+            Ta carte bancaire est gérée par notre prestataire de paiement.
+            Pour la modifier, utilise le lien présent sur ta dernière facture d'abonnement ou contacte le support
+            (<a href="mailto:support@globalcleanhome.com" style={{ color: 'oklch(0.52 0.13 165)', textDecoration: 'none' }}>support@globalcleanhome.com</a>).
+          </div>
         </SectionCard>
       </div>
     );
@@ -2288,11 +2288,49 @@ const SettingsPage = () => {
         </div>
       </SectionCard>
 
-      <SectionCard title="Import de données" description="Importez des données en masse" icon={Upload} color="#0ea5e9">
-        <div className="p-6 rounded-xl border-2 border-dashed border-neutral-200 text-center hover:border-brand-500/30 transition-all cursor-pointer">
-          <Upload className="w-8 h-8 text-neutral-500 mx-auto mb-2" />
-          <p className="text-sm font-semibold text-neutral-300">Glissez un fichier ici ou cliquez</p>
-          <p className="text-xs text-neutral-500 mt-1">CSV, XLSX ou JSON — Max 50 Mo</p>
+      <SectionCard title="Import de données" description="Importez des leads ou contacts en masse" icon={Upload} color="#0ea5e9">
+        <label
+          htmlFor="settings-data-import-input"
+          onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = 'oklch(0.52 0.13 165)'; e.currentTarget.style.background = 'oklch(0.93 0.05 165)'; }}
+          onDragLeave={(e) => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.background = ''; }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.currentTarget.style.borderColor = ''; e.currentTarget.style.background = '';
+            const f = e.dataTransfer.files?.[0];
+            if (f) handleImport(f);
+          }}
+          style={{
+            display: 'block', padding: 24, borderRadius: 14,
+            border: '2px dashed oklch(0.85 0.012 75)',
+            textAlign: 'center', cursor: importing ? 'wait' : 'pointer',
+            transition: 'all .15s', opacity: importing ? 0.6 : 1,
+          }}
+        >
+          <Upload style={{ width: 32, height: 32, color: 'oklch(0.52 0.010 60)', margin: '0 auto 8px', display: 'block' }} />
+          <div style={{ fontFamily: 'Fraunces, serif', fontSize: 15, fontWeight: 500, color: 'oklch(0.165 0.012 60)' }}>
+            {importing ? 'Import en cours…' : 'Glisse un fichier ici ou clique pour parcourir'}
+          </div>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: 'oklch(0.52 0.010 60)', letterSpacing: '0.06em', marginTop: 4 }}>
+            CSV · XLSX · JSON — max 50 Mo
+          </div>
+          <input
+            id="settings-data-import-input"
+            type="file"
+            accept=".csv,.xlsx,.xls,.json"
+            disabled={importing}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleImport(f);
+              e.target.value = '';
+            }}
+            style={{ display: 'none' }}
+          />
+        </label>
+        <div style={{
+          marginTop: 10, fontSize: 11, color: 'oklch(0.52 0.010 60)',
+          fontFamily: 'Fraunces, serif', fontStyle: 'italic', lineHeight: 1.5,
+        }}>
+          Les entrées importées seront ajoutées comme nouveaux leads. Vérifie que ton fichier contient au minimum les colonnes <strong>nom</strong>, <strong>email</strong> ou <strong>téléphone</strong>.
         </div>
       </SectionCard>
 
@@ -2392,23 +2430,11 @@ const SettingsPage = () => {
         </FieldRow>
       </SectionCard>
 
-      <SectionCard title="Informations système" description="Version et état du CRM" icon={Info} color="#78716c">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: 'Version', value: 'v2.4.1' },
-            { label: 'Build', value: '#1847' },
-            { label: 'Environnement', value: 'Production' },
-            { label: 'Uptime', value: '99.97%' },
-            { label: 'Backend', value: 'Railway' },
-            { label: 'Frontend', value: 'Vercel' },
-            { label: 'Base de données', value: 'MongoDB' },
-            { label: 'CDN', value: 'Cloudflare' },
-          ].map(info => (
-            <div key={info.label} className="p-3 rounded-xl bg-neutral-50 border border-neutral-100">
-              <p className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">{info.label}</p>
-              <p className="text-sm font-bold text-neutral-200 mt-1">{info.value}</p>
-            </div>
-          ))}
+      <SystemInfoCard />
+      <SectionCard title="Mentions légales" description="Crédits &amp; licences" icon={Info} color="#78716c">
+        <div style={{ fontFamily: 'Fraunces, serif', fontSize: 13, color: 'var(--ink-2, #44403c)', lineHeight: 1.6 }}>
+          CRM Global Clean Home — Édition interne.<br />
+          Frontend React + Tailwind · Backend FastAPI + MongoDB · Tokens OKLCH &amp; typographies Fraunces / JetBrains Mono.
         </div>
       </SectionCard>
     </div>
@@ -2691,5 +2717,82 @@ const SettingsPage = () => {
     </div>
   );
 };
+
+/* ────────────────────────────────────────────────
+   SystemInfoCard — charge /api/settings/system-info
+──────────────────────────────────────────────── */
+function SystemInfoCard() {
+  const [info, setInfo] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    axios.get(`${API_URL}/settings/system-info`)
+      .then(r => { if (alive) setInfo(r.data); })
+      .catch(() => { if (alive) setInfo(null); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, []);
+
+  const fmtDate = (iso) => {
+    if (!iso) return '—';
+    try { return new Date(iso).toLocaleString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+    catch { return '—'; }
+  };
+
+  return (
+    <SectionCard title="Informations système" description="Version et état réel du CRM" icon={Info} color="#78716c">
+      {loading ? (
+        <div style={{ padding: 22, textAlign: 'center', color: 'var(--ink-3, #78716c)', fontStyle: 'italic', fontFamily: 'Fraunces, serif' }}>
+          Interrogation du serveur…
+        </div>
+      ) : !info ? (
+        <div style={{ padding: 22, textAlign: 'center', color: 'oklch(0.55 0.18 25)', fontStyle: 'italic', fontFamily: 'Fraunces, serif' }}>
+          Impossible de joindre le serveur.
+        </div>
+      ) : (
+        <>
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10,
+          }}>
+            {[
+              { label: 'Version', value: `v${info.version}` },
+              { label: 'Environnement', value: (info.env || '—').toUpperCase() },
+              { label: 'Base de données', value: info.db?.ok ? `OK · ${info.db.collections} collections` : 'Indisponible', alert: !info.db?.ok },
+              { label: 'Leads', value: info.counts?.leads ?? '—' },
+              { label: 'Devis', value: info.counts?.quotes ?? '—' },
+              { label: 'Factures', value: info.counts?.invoices ?? '—' },
+              { label: 'Utilisateurs', value: info.counts?.users ?? '—' },
+              { label: 'Dernière sauvegarde', value: info.last_backup ? fmtDate(info.last_backup.started_at) : 'Jamais' },
+            ].map(item => (
+              <div key={item.label} style={{
+                padding: '12px 14px', borderRadius: 10,
+                background: item.alert ? 'oklch(0.94 0.07 25)' : 'oklch(0.985 0.008 85)',
+                border: `1px solid ${item.alert ? 'oklch(0.48 0.15 25)' : 'oklch(0.85 0.012 75)'}`,
+              }}>
+                <div style={{
+                  fontFamily: 'JetBrains Mono, monospace', fontSize: 9,
+                  letterSpacing: '0.12em', textTransform: 'uppercase',
+                  color: 'oklch(0.52 0.010 60)', fontWeight: 500,
+                }}>{item.label}</div>
+                <div style={{
+                  fontFamily: 'Fraunces, serif', fontSize: 16, fontWeight: 500,
+                  color: item.alert ? 'oklch(0.48 0.15 25)' : 'oklch(0.165 0.012 60)',
+                  marginTop: 4,
+                }}>{item.value}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{
+            marginTop: 12, fontFamily: 'JetBrains Mono, monospace', fontSize: 10,
+            color: 'oklch(0.52 0.010 60)', letterSpacing: '0.06em', textAlign: 'right',
+          }}>
+            Synchronisé le {fmtDate(info.now)}
+          </div>
+        </>
+      )}
+    </SectionCard>
+  );
+}
 
 export default SettingsPage;

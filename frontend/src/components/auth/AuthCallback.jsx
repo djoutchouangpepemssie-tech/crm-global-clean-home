@@ -83,7 +83,13 @@ const AuthCallback = () => {
         }
 
         login(response.data);
-        navigate('/dashboard', { replace: true });
+        // Respecte la page d'accueil choisie dans Paramètres · Apparence
+        let startPage = '/dashboard';
+        try {
+          const saved = localStorage.getItem('crm_start_page');
+          if (saved && saved.startsWith('/')) startPage = saved;
+        } catch {}
+        navigate(startPage, { replace: true });
       } catch (error) {
         console.error('Auth callback error:', error);
         if (error?.response?.status === 403) {
