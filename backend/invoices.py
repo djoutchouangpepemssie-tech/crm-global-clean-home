@@ -611,6 +611,33 @@ async def send_invoice_to_portal(invoice_id: str, request: Request):
         except Exception as pdf_err:
             logger.warning(f"Invoice PDF generation failed: {pdf_err}")
 
+        # Générer un magic link vers le portail client pour que la facture
+        # apparaisse automatiquement dans son espace (valable 30 jours)
+        try:
+            import secrets as _sec
+            from server import db as _server_db
+            magic_token = _sec.token_urlsafe(36)
+            await _server_db.magic_links.insert_one({
+                "token":      magic_token,
+                "email":      lead.get("email", ""),
+                "lead_id":    inv["lead_id"],
+                "lead_name":  lead.get("name", ""),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+                "used":       False,
+                "context":    {"type": "invoice", "invoice_id": invoice_id},
+            })
+            import os
+            frontend_url = (os.environ.get("FRONTEND_URL") or "https://crm.globalcleanhome.com").rstrip("/")
+            portal_url = f"{frontend_url}/portal?magic={magic_token}"
+            inv["_portal_url"] = portal_url
+            await _db.invoices.update_one(
+                {"invoice_id": invoice_id},
+                {"$set": {"portal_magic_token": magic_token, "portal_url": portal_url}},
+            )
+        except Exception as mg_err:
+            logger.warning(f"Magic link generation failed for invoice {invoice_id}: {mg_err}")
+
         from gmail_service import send_invoice_email
         sent = await send_invoice_email(user.user_id, lead, inv, pdf_data=pdf_data)
 

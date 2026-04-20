@@ -113,6 +113,8 @@ const InvoiceView = lazy(() => import('./components/invoices/InvoiceView'));
 const SearchPage = lazy(() => import('./components/shared/SearchPage'));
 const ClientPortal = lazy(() => import('./components/portal/ClientPortal'));
 const IntervenantPortal = lazy(() => import('./components/portal/IntervenantPortal'));
+const ClientPortalAtelier = lazy(() => import('./components/portal/ClientPortalAtelier'));
+const IntervenantPortalAtelier = lazy(() => import('./components/portal/IntervenantPortalAtelier'));
 const IntervenantsManager = lazy(() => import('./components/planning/IntervenantsManager'));
 const PlanningCalendar = lazy(() => import('./components/planning/PlanningCalendar'));
 const PlanningFil = lazy(() => import('./components/planning/PlanningFil'));
@@ -384,8 +386,10 @@ function AppRouter() {
       <Route path="/" element={<Suspense fallback={<div className="min-h-screen" style={{background:"var(--bg-app)"}} />}><LandingPage /></Suspense>} />
       <Route path="/login" element={<Login />} />
       <Route path="/auth/join" element={<InvitationJoin />} />
-      <Route path="/portal" element={<ClientPortal />} />
-      <Route path="/intervenant" element={<IntervenantPortal />} />
+      <Route path="/portal" element={<ClientPortalAtelier />} />
+      <Route path="/portal/legacy" element={<ClientPortal />} />
+      <Route path="/intervenant" element={<IntervenantPortalAtelier />} />
+      <Route path="/intervenant/legacy" element={<IntervenantPortal />} />
 
       <Route
         path="/*"

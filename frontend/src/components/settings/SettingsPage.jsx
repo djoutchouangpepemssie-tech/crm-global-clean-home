@@ -446,7 +446,9 @@ const SettingsPage = () => {
         }
       }
     } catch (err) {
-      if (err.response?.status !== 404) {
+      if (err.response?.status === 403) {
+        toast.error(`Tu n'as pas les droits d'accès à « ${section} ». Contacte un administrateur.`);
+      } else if (err.response?.status !== 404) {
         console.warn(`Erreur chargement section ${section}:`, err.message);
       }
     } finally {

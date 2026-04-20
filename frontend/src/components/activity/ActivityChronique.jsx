@@ -334,7 +334,13 @@ export default function ActivityChronique() {
                               fontFamily: 'Fraunces, serif', fontStyle: 'italic',
                               fontSize: 13, color: 'var(--ink-2)', marginTop: 3, lineHeight: 1.5,
                             }}>
-                              {(log.description || log.details || '').slice(0, 220)}
+                              {(() => {
+                                const raw = log.description || log.details;
+                                const txt = typeof raw === 'string' ? raw :
+                                  raw == null ? '' :
+                                  (() => { try { return JSON.stringify(raw); } catch { return String(raw); } })();
+                                return txt.slice(0, 220);
+                              })()}
                             </div>
                           )}
                           {log.user_email && (
