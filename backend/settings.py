@@ -831,6 +831,90 @@ async def import_data(request: Request):
     }
 
 
+# ─── GET /api/settings/api/postman-collection ────────────────────────────────
+@settings_router.get("/api/postman-collection")
+async def download_postman_collection(request: Request):
+    """Génère une collection Postman de l'API CRM pour faciliter l'intégration."""
+    await _require_auth(request)
+    import json as _json
+    from fastapi.responses import Response
+
+    collection = {
+        "info": {
+            "name": "Global Clean Home — CRM API",
+            "description": "Collection Postman pour l'API du CRM Global Clean Home. Utilise la variable {{base_url}} + une clé API dans l'en-tête X-API-Key.",
+            "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+            "version": os.getenv("CRM_VERSION", "1.0.0"),
+        },
+        "variable": [
+            {"key": "base_url", "value": os.getenv("BASE_URL", "https://api.globalcleanhome.com"), "type": "string"},
+            {"key": "api_key", "value": "COLLE_TA_CLÉ_API_ICI", "type": "string"},
+        ],
+        "auth": {
+            "type": "apikey",
+            "apikey": [
+                {"key": "key", "value": "X-API-Key", "type": "string"},
+                {"key": "value", "value": "{{api_key}}", "type": "string"},
+                {"key": "in", "value": "header", "type": "string"},
+            ],
+        },
+        "item": [
+            {
+                "name": "Leads",
+                "item": [
+                    {"name": "Lister", "request": {"method": "GET", "url": "{{base_url}}/api/leads"}},
+                    {"name": "Créer", "request": {"method": "POST", "url": "{{base_url}}/api/leads",
+                        "body": {"mode": "raw", "raw": "{\n  \"name\": \"Jean Dupont\",\n  \"email\": \"jean@example.com\",\n  \"phone\": \"0612345678\",\n  \"service_type\": \"Ménage\"\n}"}}},
+                    {"name": "Détail", "request": {"method": "GET", "url": "{{base_url}}/api/leads/:lead_id"}},
+                    {"name": "Modifier statut", "request": {"method": "PATCH", "url": "{{base_url}}/api/leads/:lead_id",
+                        "body": {"mode": "raw", "raw": "{\n  \"status\": \"contacté\"\n}"}}},
+                ],
+            },
+            {
+                "name": "Devis",
+                "item": [
+                    {"name": "Lister", "request": {"method": "GET", "url": "{{base_url}}/api/quotes"}},
+                    {"name": "Créer", "request": {"method": "POST", "url": "{{base_url}}/api/quotes",
+                        "body": {"mode": "raw", "raw": "{\n  \"lead_id\": \"lead_xxx\",\n  \"title\": \"Devis ménage\",\n  \"amount\": 150.0,\n  \"tva_rate\": 20\n}"}}},
+                    {"name": "Détail", "request": {"method": "GET", "url": "{{base_url}}/api/quotes/:quote_id"}},
+                    {"name": "PDF", "request": {"method": "GET", "url": "{{base_url}}/api/quotes/:quote_id/pdf"}},
+                    {"name": "Envoyer", "request": {"method": "POST", "url": "{{base_url}}/api/quotes/:quote_id/send"}},
+                ],
+            },
+            {
+                "name": "Factures",
+                "item": [
+                    {"name": "Lister", "request": {"method": "GET", "url": "{{base_url}}/api/invoices"}},
+                    {"name": "Créer", "request": {"method": "POST", "url": "{{base_url}}/api/invoices"}},
+                    {"name": "Détail", "request": {"method": "GET", "url": "{{base_url}}/api/invoices/:invoice_id"}},
+                    {"name": "Marquer payée", "request": {"method": "POST", "url": "{{base_url}}/api/invoices/:invoice_id/mark-paid"}},
+                    {"name": "PDF", "request": {"method": "GET", "url": "{{base_url}}/api/invoices/:invoice_id/pdf"}},
+                ],
+            },
+            {
+                "name": "Recherche globale",
+                "item": [
+                    {"name": "Rechercher", "request": {"method": "GET", "url": "{{base_url}}/api/search?q=dupont"}},
+                ],
+            },
+            {
+                "name": "Webhooks",
+                "description": "Évènements disponibles : lead.created, quote.sent, invoice.paid, etc.",
+                "item": [
+                    {"name": "Tester webhook", "request": {"method": "POST", "url": "{{base_url}}/api/webhooks/test"}},
+                ],
+            },
+        ],
+    }
+
+    content = _json.dumps(collection, indent=2, ensure_ascii=False).encode("utf-8")
+    return Response(
+        content=content,
+        media_type="application/json",
+        headers={"Content-Disposition": 'attachment; filename="global-clean-home-api.postman_collection.json"'},
+    )
+
+
 # ─── GET /api/settings/system-info ────────────────────────────────────────────
 @settings_router.get("/system-info")
 async def get_system_info(request: Request):
@@ -1211,8 +1295,35 @@ async def verify_2fa(request: Request):
         if not user_doc or not user_doc.get("totp_secret"):
             raise HTTPException(status_code=400, detail="Configurez d'abord la 2FA")
 
-        # Vérification simplifiée (en prod, utiliser pyotp)
-        # Pour l'instant, on accepte le code et on active la 2FA
+        # Vérification TOTP réelle (RFC 6238) — tolérance ±1 step
+        totp_secret = user_doc["totp_secret"]
+        valid = False
+        try:
+            import pyotp
+            totp = pyotp.TOTP(totp_secret)
+            valid = totp.verify(code, valid_window=1)
+        except ImportError:
+            # Fallback manuel si pyotp indisponible (calcul HOTP RFC 4226)
+            import hmac as _hmac, hashlib as _hashlib, struct as _struct, base64 as _base64, time as _time
+            try:
+                padded = totp_secret + "=" * ((8 - len(totp_secret) % 8) % 8)
+                key = _base64.b32decode(padded)
+                now = int(_time.time())
+                for offset in (-1, 0, 1):
+                    counter = (now // 30) + offset
+                    msg = _struct.pack(">Q", counter)
+                    h = _hmac.new(key, msg, _hashlib.sha1).digest()
+                    o = h[-1] & 0x0F
+                    token = (_struct.unpack(">I", h[o:o + 4])[0] & 0x7FFFFFFF) % 1_000_000
+                    if f"{token:06d}" == code:
+                        valid = True
+                        break
+            except Exception:
+                valid = False
+
+        if not valid:
+            raise HTTPException(status_code=400, detail="Code invalide. Vérifie ton application d'authentification et que l'heure de ton téléphone est synchronisée.")
+
         await _db.users.update_one(
             {"user_id": user.user_id},
             {"$set": {"totp_verified": True, "two_factor_enabled": True}}

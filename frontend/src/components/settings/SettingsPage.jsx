@@ -2214,7 +2214,20 @@ const SettingsPage = () => {
         <div className="flex gap-3 flex-wrap">
           <ActionButton variant="secondary" size="sm" icon={ExternalLink} onClick={() => window.open(`${BACKEND_URL}/docs`, '_blank')}>Documentation</ActionButton>
           <ActionButton variant="secondary" size="sm" icon={ExternalLink} onClick={() => window.open(`${BACKEND_URL}/redoc`, '_blank')}>Swagger UI</ActionButton>
-          <ActionButton variant="secondary" size="sm" icon={Download}>Postman Collection</ActionButton>
+          <ActionButton variant="secondary" size="sm" icon={Download} onClick={async () => {
+            try {
+              const res = await axios.get(`${API_URL}/settings/api/postman-collection`, { responseType: 'blob' });
+              const url = URL.createObjectURL(new Blob([res.data], { type: 'application/json' }));
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `global-clean-home-api.postman_collection.json`;
+              document.body.appendChild(a); a.click(); a.remove();
+              setTimeout(() => URL.revokeObjectURL(url), 1000);
+              toast.success('Collection Postman téléchargée');
+            } catch {
+              toast.error('Collection indisponible pour le moment');
+            }
+          }}>Postman Collection</ActionButton>
         </div>
       </SectionCard>
     </div>
