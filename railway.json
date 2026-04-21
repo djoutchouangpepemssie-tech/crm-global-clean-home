@@ -4,7 +4,6 @@
     "builder": "dockerfile"
   },
   "deploy": {
-    "numReplicas": 1,
-    "startCommand": "npm run build --prefix frontend && npm start --prefix frontend"
+    "numReplicas": 1
   }
 }
