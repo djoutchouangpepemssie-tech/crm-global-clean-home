@@ -3,12 +3,16 @@
 // disposition en grille avec skills en badges. Palette chaude (émeraude + terre)
 // pour évoquer l'équipe terrain d'une entreprise de ménage.
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAllTeamMembers } from '../../hooks/api';
+import {
+  useAllTeamMembers, useAllMembers, useTeams, useAddTeamMember,
+  useUpdateMember, useUploadMemberAvatar, useRemoveMemberAvatar, useDeleteMember,
+} from '../../hooks/api';
 import {
   Search, Plus, Phone, Mail, MapPin, Star, Award, Users, Filter,
   Briefcase, TrendingUp, Clock, Navigation, X, Calendar, CheckCircle,
+  Camera, Trash2, Edit3, Upload, User, Loader2, ImageIcon,
 } from 'lucide-react';
 import api from '../../lib/api';
 
@@ -62,7 +66,21 @@ const tokenStyle = `
     font-family: 'Fraunces', serif; font-size: 36px; font-weight: 500;
     color: var(--terra); letter-spacing: -0.02em;
     margin-bottom: 16px;
+    overflow: hidden; position: relative;
   }
+  .eqp-medal img {
+    width: 100%; height: 100%; object-fit: cover; object-position: center;
+    display: block;
+  }
+  .eqp-edit-btn {
+    position: absolute; top: 10px; right: 10px; z-index: 2;
+    width: 28px; height: 28px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--line); color: var(--ink-3);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; opacity: 0; transition: opacity .15s, color .15s;
+  }
+  .eqp-card:hover .eqp-edit-btn { opacity: 1; }
+  .eqp-edit-btn:hover { color: var(--ink); border-color: var(--ink); }
 
   .eqp-badge {
     display: inline-flex; align-items: center; gap: 4px;
@@ -105,10 +123,21 @@ function initials(name) {
 
 export default function IntervenantsEquipage() {
   const navigate = useNavigate();
-  const { data: members = [], isLoading } = useAllTeamMembers();
+  // Nouvelle source : /planning/members (enrichi avec stats + photo)
+  const { data: membersData, isLoading: loadingNew } = useAllMembers();
+  // Fallback : /team-members classique si la nouvelle route n'a rien
+  const { data: legacyMembers = [], isLoading: loadingLegacy } = useAllTeamMembers();
+  const members = useMemo(() => {
+    if (membersData?.members?.length) return membersData.members;
+    return legacyMembers || [];
+  }, [membersData, legacyMembers]);
+  const isLoading = loadingNew && loadingLegacy;
+
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
-  const [assignOpen, setAssignOpen] = useState(null); // intervenant en cours d'assignation
+  const [assignOpen, setAssignOpen] = useState(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editMember, setEditMember] = useState(null);
   const [toast, setToast] = useState(null);
   const showToast = (m, t = 'ok') => { setToast({ m, t }); setTimeout(() => setToast(null), 2800); };
 
@@ -169,7 +198,7 @@ export default function IntervenantsEquipage() {
             />
           </div>
           <button
-            onClick={() => navigate('/planning/calendar')}
+            onClick={() => setCreateOpen(true)}
             style={{
               display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px',
               background: 'var(--ink)', color: 'var(--bg)', borderRadius: 999, border: 'none',
@@ -177,7 +206,7 @@ export default function IntervenantsEquipage() {
               letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer',
             }}
           >
-            <Plus style={{ width: 12, height: 12 }} /> Ajouter
+            <Plus style={{ width: 12, height: 12 }} /> Nouvel intervenant
           </button>
         </div>
       </div>
@@ -263,13 +292,26 @@ export default function IntervenantsEquipage() {
               const rating = m.rating || m.avg_rating;
               return (
                 <div
-                  key={m.id || m._id || m.email || i}
+                  key={m.member_id || m.id || m._id || m.email || i}
                   className="eqp-card"
                   style={{ cursor: 'pointer' }}
                   onClick={() => setAssignOpen({ ...m, _name: name })}
                   title="Cliquer pour assigner une mission"
                 >
-                  <div className="eqp-medal">{initials(name)}</div>
+                  <button
+                    className="eqp-edit-btn"
+                    onClick={(e) => { e.stopPropagation(); setEditMember({ ...m, _name: name }); }}
+                    title="Modifier"
+                  >
+                    <Edit3 style={{ width: 13, height: 13 }} />
+                  </button>
+                  <div className="eqp-medal">
+                    {m.photo_b64 ? (
+                      <img src={m.photo_b64} alt={name} />
+                    ) : (
+                      initials(name)
+                    )}
+                  </div>
                   <div className="eqp-display" style={{ fontSize: 20, fontWeight: 500, color: 'var(--ink)', marginBottom: 3 }}>
                     {name}
                   </div>
@@ -332,6 +374,27 @@ export default function IntervenantsEquipage() {
           intervenant={assignOpen}
           onClose={() => setAssignOpen(null)}
           onDone={(msg) => { setAssignOpen(null); showToast(msg, 'ok'); }}
+          onError={(msg) => showToast(msg, 'err')}
+        />
+      )}
+
+      {/* ═══════════ MODALE CRÉATION INTERVENANT ═══════════ */}
+      {createOpen && (
+        <MemberFormModal
+          mode="create"
+          onClose={() => setCreateOpen(false)}
+          onDone={(msg) => { setCreateOpen(false); showToast(msg, 'ok'); }}
+          onError={(msg) => showToast(msg, 'err')}
+        />
+      )}
+
+      {/* ═══════════ MODALE ÉDITION INTERVENANT ═══════════ */}
+      {editMember && (
+        <MemberFormModal
+          mode="edit"
+          member={editMember}
+          onClose={() => setEditMember(null)}
+          onDone={(msg) => { setEditMember(null); showToast(msg, 'ok'); }}
           onError={(msg) => showToast(msg, 'err')}
         />
       )}
@@ -635,3 +698,447 @@ function AssignMissionModal({ intervenant, onClose, onDone, onError }) {
     </div>
   );
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   MODALE CRÉATION / ÉDITION INTERVENANT — avec uploader photo + crop
+   rond + compression auto canvas API (max 600x600, JPEG 85%).
+══════════════════════════════════════════════════════════════════════ */
+const ROLES = [
+  'Technicien', 'Agent polyvalent', 'Chef d\'équipe', 'Superviseur',
+  'Vitrier', 'Jardinier', 'Auto-entrepreneur', 'Stagiaire',
+];
+const SKILLS_SUGGESTIONS = [
+  'Ménage', 'Vitrerie', 'Remise en état', 'Fin de chantier',
+  'Nettoyage pro', 'Sortie poubelle', 'Repassage', 'Jardinage',
+  'Copropriété', 'Airbnb', 'Bureaux', 'Syndic',
+];
+const ZONES_SUGGESTIONS = [
+  'Paris 1-4', 'Paris 5-8', 'Paris 9-12', 'Paris 13-16', 'Paris 17-20',
+  '92 Nord', '92 Sud', '93', '94', '95', '77', '78', '91',
+];
+
+/** Compresse une image File en data URL JPEG (max 600x600, qualité 0.85). */
+function compressImage(file, maxSize = 600, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        let { width, height } = img;
+        // Crop carré centré (pour photo de profil ronde)
+        const size = Math.min(width, height);
+        const sx = (width - size) / 2;
+        const sy = (height - size) / 2;
+        const targetSize = Math.min(size, maxSize);
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = targetSize;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, sx, sy, size, size, 0, 0, targetSize, targetSize);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function TagInput({ label, value = [], onChange, suggestions = [], placeholder }) {
+  const [input, setInput] = useState('');
+  const add = (v) => {
+    const t = (v || '').trim();
+    if (!t || value.includes(t)) return;
+    onChange([...value, t]);
+    setInput('');
+  };
+  const remove = (t) => onChange(value.filter((x) => x !== t));
+  const filteredSug = suggestions.filter((s) => !value.includes(s));
+  return (
+    <div>
+      <label className="eqp-label" style={{ display: 'block', marginBottom: 6 }}>{label}</label>
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', gap: 6, padding: '8px 10px',
+        border: '1px solid var(--line)', borderRadius: 10, background: 'var(--surface)',
+        minHeight: 40, alignItems: 'center',
+      }}>
+        {value.map((t) => (
+          <span key={t} className="eqp-badge" style={{
+            background: 'var(--terra-soft)', color: 'var(--terra)', borderColor: 'var(--terra)',
+            cursor: 'pointer',
+          }} onClick={() => remove(t)}>
+            {t} <X style={{ width: 9, height: 9 }} />
+          </span>
+        ))}
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') { e.preventDefault(); add(input); }
+            if (e.key === 'Backspace' && !input && value.length) remove(value[value.length - 1]);
+          }}
+          placeholder={value.length ? '' : (placeholder || 'Entrée pour valider')}
+          style={{
+            flex: 1, minWidth: 120, border: 0, outline: 0, background: 'transparent',
+            fontSize: 13, fontFamily: 'Inter, sans-serif', color: 'var(--ink)',
+          }}
+        />
+      </div>
+      {filteredSug.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+          {filteredSug.slice(0, 8).map((s) => (
+            <button key={s} type="button" onClick={() => add(s)}
+              className="eqp-badge" style={{ border: '1px dashed var(--line)', cursor: 'pointer' }}>
+              + {s}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AvatarUploader({ photoB64, onChange, name }) {
+  const fileRef = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const onFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setErr('Veuillez sélectionner une image');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setErr('Image trop lourde (max 10MB)');
+      return;
+    }
+    setErr(null);
+    setBusy(true);
+    try {
+      const compressed = await compressImage(file, 600, 0.85);
+      onChange(compressed);
+    } catch {
+      setErr('Erreur de compression de l\'image');
+    }
+    setBusy(false);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+      <div style={{
+        width: 120, height: 120, borderRadius: 999, position: 'relative',
+        background: photoB64 ? 'transparent' : 'linear-gradient(135deg, var(--terra-soft), var(--warm-soft))',
+        border: '3px solid var(--surface)',
+        boxShadow: '0 0 0 2px var(--terra), 0 4px 12px rgba(0,0,0,0.08)',
+        overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {photoB64 ? (
+          <img src={photoB64} alt="Photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          <span style={{
+            fontFamily: 'Fraunces, serif', fontSize: 48, fontWeight: 500, color: 'var(--terra)',
+          }}>
+            {initials(name) || <User style={{ width: 36, height: 36 }} />}
+          </span>
+        )}
+        {busy && (
+          <div style={{
+            position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Loader2 style={{ width: 24, height: 24, color: 'white', animation: 'spin 1s linear infinite' }} />
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', gap: 6 }}>
+        <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{ display: 'none' }} />
+        <button type="button" onClick={() => fileRef.current?.click()} disabled={busy}
+          style={{
+            padding: '8px 14px', borderRadius: 999, border: '1px solid var(--line)',
+            background: 'var(--surface)', cursor: 'pointer',
+            fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.08em',
+            textTransform: 'uppercase', fontWeight: 500, color: 'var(--ink-2)',
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+          }}>
+          {photoB64 ? <Camera style={{ width: 11, height: 11 }} /> : <Upload style={{ width: 11, height: 11 }} />}
+          {photoB64 ? 'Changer' : 'Ajouter photo'}
+        </button>
+        {photoB64 && (
+          <button type="button" onClick={() => onChange('')}
+            style={{
+              padding: '8px 12px', borderRadius: 999, border: '1px solid var(--line)',
+              background: 'var(--surface)', cursor: 'pointer', color: 'var(--ink-3)',
+            }}>
+            <Trash2 style={{ width: 11, height: 11 }} />
+          </button>
+        )}
+      </div>
+      {err && <div style={{ color: 'oklch(0.55 0.18 25)', fontSize: 11 }}>{err}</div>}
+      <div style={{ fontSize: 10, color: 'var(--ink-4)', textAlign: 'center', maxWidth: 240 }}>
+        Format carré recommandé. Compression automatique (max 600×600).
+      </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
+function MemberFormModal({ mode, member, onClose, onDone, onError }) {
+  const isEdit = mode === 'edit';
+  const { data: teams = [] } = useTeams();
+  const addMutation = useAddTeamMember();
+  const updateMutation = useUpdateMember();
+  const uploadAvatar = useUploadMemberAvatar();
+  const deleteMember = useDeleteMember();
+
+  const [form, setForm] = useState({
+    name: member?.name || '',
+    email: member?.email || '',
+    phone: member?.phone || '',
+    role: member?.role || 'Technicien',
+    skills: member?.skills || [],
+    zones: member?.zones || [],
+    notes: member?.notes || '',
+    photo_b64: member?.photo_b64 || '',
+    team_id: member?.team_id || (teams?.[0]?.team_id || ''),
+    hire_date: member?.hire_date || new Date().toISOString().slice(0, 10),
+    active: member?.active !== false,
+  });
+
+  useEffect(() => {
+    if (!isEdit && !form.team_id && teams.length > 0) {
+      setForm((p) => ({ ...p, team_id: teams[0].team_id }));
+    }
+  }, [teams, isEdit, form.team_id]);
+
+  const submit = async () => {
+    if (!form.name.trim()) return onError('Nom obligatoire');
+    if (!isEdit && !form.team_id) return onError('Sélectionnez une équipe');
+
+    try {
+      if (isEdit) {
+        await updateMutation.mutateAsync({
+          memberId: member.member_id,
+          patch: {
+            name: form.name, email: form.email, phone: form.phone,
+            role: form.role, skills: form.skills, zones: form.zones,
+            notes: form.notes, photo_b64: form.photo_b64 || null,
+            hire_date: form.hire_date, active: form.active,
+          },
+        });
+        onDone(`Intervenant ${form.name} mis à jour`);
+      } else {
+        const newMember = await addMutation.mutateAsync({
+          teamId: form.team_id,
+          member: {
+            name: form.name, email: form.email, phone: form.phone,
+            role: form.role, skills: form.skills, zones: form.zones,
+            notes: form.notes, hire_date: form.hire_date, active: form.active,
+          },
+        });
+        // Si photo fournie, uploader après création
+        if (form.photo_b64 && newMember?.member_id) {
+          try {
+            await uploadAvatar.mutateAsync({ memberId: newMember.member_id, photoB64: form.photo_b64 });
+          } catch (e) { /* non-bloquant */ }
+        }
+        onDone(`Intervenant ${form.name} créé`);
+      }
+    } catch (e) {
+      onError(e?.response?.data?.detail || e.message || 'Erreur');
+    }
+  };
+
+  const onDelete = async () => {
+    if (!window.confirm(`Supprimer ${member.name} définitivement ?`)) return;
+    try {
+      await deleteMember.mutateAsync(member.member_id);
+      onDone(`${member.name} supprimé`);
+    } catch (e) {
+      onError(e?.response?.data?.detail || 'Suppression impossible');
+    }
+  };
+
+  const saving = addMutation.isPending || updateMutation.isPending;
+
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 95, padding: 20, backdropFilter: 'blur(2px)',
+    }}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        background: 'var(--paper)', borderRadius: 18,
+        width: '100%', maxWidth: 640, maxHeight: '92vh', overflowY: 'auto',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: '22px 28px', borderBottom: '1px solid var(--line)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <div>
+            <div className="eqp-label" style={{ marginBottom: 4 }}>
+              {isEdit ? 'Édition · Membre' : 'Ajout · Nouveau membre'}
+            </div>
+            <div className="eqp-display" style={{ fontSize: 24, fontWeight: 500, color: 'var(--ink)' }}>
+              {isEdit ? <>Modifier <em className="eqp-italic">{member?._name || member?.name}</em></> : <>Nouvel <em className="eqp-italic">intervenant</em></>}
+            </div>
+          </div>
+          <button onClick={onClose} style={{
+            width: 34, height: 34, borderRadius: 999, border: '1px solid var(--line)',
+            background: 'var(--surface)', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <X style={{ width: 14, height: 14, color: 'var(--ink-3)' }} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: 28, display: 'grid', gridTemplateColumns: '180px 1fr', gap: 28 }}>
+          <AvatarUploader
+            photoB64={form.photo_b64}
+            onChange={(b64) => setForm({ ...form, photo_b64: b64 })}
+            name={form.name}
+          />
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div>
+              <label className="eqp-label" style={{ display: 'block', marginBottom: 6 }}>Nom complet *</label>
+              <input
+                value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="Jean Dupont"
+                style={inputStyle}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label className="eqp-label" style={{ display: 'block', marginBottom: 6 }}>Email</label>
+                <input type="email" value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  placeholder="jean@exemple.com" style={inputStyle} />
+              </div>
+              <div>
+                <label className="eqp-label" style={{ display: 'block', marginBottom: 6 }}>Téléphone</label>
+                <input value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="06 12 34 56 78" style={inputStyle} />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label className="eqp-label" style={{ display: 'block', marginBottom: 6 }}>Rôle</label>
+                <select value={form.role}
+                  onChange={(e) => setForm({ ...form, role: e.target.value })}
+                  style={inputStyle}>
+                  {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="eqp-label" style={{ display: 'block', marginBottom: 6 }}>Équipe</label>
+                <select value={form.team_id}
+                  onChange={(e) => setForm({ ...form, team_id: e.target.value })}
+                  style={inputStyle} disabled={isEdit}>
+                  <option value="">—</option>
+                  {teams.map((t) => (
+                    <option key={t.team_id} value={t.team_id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <TagInput label="Compétences" value={form.skills}
+              onChange={(s) => setForm({ ...form, skills: s })}
+              suggestions={SKILLS_SUGGESTIONS} placeholder="Ménage, vitrerie…" />
+
+            <TagInput label="Zones d'intervention" value={form.zones}
+              onChange={(z) => setForm({ ...form, zones: z })}
+              suggestions={ZONES_SUGGESTIONS} placeholder="Paris 15, 92 Nord…" />
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 12 }}>
+              <div>
+                <label className="eqp-label" style={{ display: 'block', marginBottom: 6 }}>Date d'embauche</label>
+                <input type="date" value={form.hire_date}
+                  onChange={(e) => setForm({ ...form, hire_date: e.target.value })}
+                  style={inputStyle} />
+              </div>
+              <div>
+                <label className="eqp-label" style={{ display: 'block', marginBottom: 6 }}>Statut</label>
+                <select value={form.active ? '1' : '0'}
+                  onChange={(e) => setForm({ ...form, active: e.target.value === '1' })}
+                  style={inputStyle}>
+                  <option value="1">Actif</option>
+                  <option value="0">Inactif</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="eqp-label" style={{ display: 'block', marginBottom: 6 }}>Notes internes</label>
+              <textarea value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                placeholder="Disponibilités particulières, véhicule, remarques…"
+                style={{ ...inputStyle, minHeight: 70, resize: 'vertical', fontFamily: 'inherit' }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: '18px 28px', borderTop: '1px solid var(--line)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
+        }}>
+          <div>
+            {isEdit && (
+              <button onClick={onDelete} type="button"
+                style={{
+                  padding: '10px 16px', borderRadius: 999, border: '1px solid oklch(0.55 0.18 25)',
+                  background: 'var(--surface)', color: 'oklch(0.55 0.18 25)', cursor: 'pointer',
+                  fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.08em',
+                  textTransform: 'uppercase', fontWeight: 500,
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                }}>
+                <Trash2 style={{ width: 12, height: 12 }} /> Supprimer
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={onClose} type="button"
+              style={{
+                padding: '10px 18px', borderRadius: 999, border: '1px solid var(--line)',
+                background: 'var(--surface)', cursor: 'pointer', color: 'var(--ink-2)',
+                fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.08em',
+                textTransform: 'uppercase', fontWeight: 500,
+              }}>
+              Annuler
+            </button>
+            <button onClick={submit} disabled={saving}
+              style={{
+                padding: '10px 22px', borderRadius: 999, border: 'none',
+                background: 'var(--ink)', color: 'var(--bg)', cursor: 'pointer',
+                fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.08em',
+                textTransform: 'uppercase', fontWeight: 500,
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                opacity: saving ? 0.6 : 1,
+              }}>
+              <CheckCircle style={{ width: 12, height: 12 }} />
+              {saving ? 'Enregistrement…' : (isEdit ? 'Enregistrer' : 'Créer l\'intervenant')}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const inputStyle = {
+  width: '100%', padding: '10px 12px', borderRadius: 10,
+  border: '1px solid var(--line)', background: 'var(--surface)',
+  fontSize: 13, fontFamily: 'Inter, sans-serif', color: 'var(--ink)',
+  outline: 'none',
+};

@@ -210,3 +210,77 @@ export function useRemoveTeamMember() {
     },
   });
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// CRUD enrichi pour les intervenants (avec photo + filtres + stats)
+// ═══════════════════════════════════════════════════════════════════
+
+export function useAllMembers(filters = {}) {
+  const qs = new URLSearchParams(
+    Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== undefined && v !== '' && v !== null))
+  ).toString();
+  return useQuery({
+    queryKey: ['planning', 'members', 'enriched', filters],
+    queryFn: async () => {
+      const { data } = await api.get(`/planning/members${qs ? `?${qs}` : ''}`);
+      return data;
+    },
+    staleTime: 30_000,
+  });
+}
+
+export function useMember(memberId) {
+  return useQuery({
+    queryKey: ['planning', 'member', memberId],
+    queryFn: async () => (await api.get(`/planning/members/${memberId}`)).data,
+    enabled: !!memberId,
+  });
+}
+
+export function useUpdateMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ memberId, patch }) => (await api.put(`/planning/members/${memberId}`, patch)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['planning'] });
+      toast.success('Intervenant mis à jour');
+    },
+    onError: (e) => toast.error(e?.response?.data?.detail || e.message || 'Erreur mise à jour'),
+  });
+}
+
+export function useUploadMemberAvatar() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ memberId, photoB64 }) =>
+      (await api.post(`/planning/members/${memberId}/avatar`, { photo_b64: photoB64 })).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['planning'] });
+      toast.success('Photo mise à jour');
+    },
+    onError: (e) => toast.error(e?.response?.data?.detail || e.message || 'Erreur upload photo'),
+  });
+}
+
+export function useRemoveMemberAvatar() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (memberId) => (await api.delete(`/planning/members/${memberId}/avatar`)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['planning'] });
+      toast.success('Photo retirée');
+    },
+  });
+}
+
+export function useDeleteMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (memberId) => (await api.delete(`/planning/members/${memberId}`)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['planning'] });
+      toast.success('Intervenant supprimé');
+    },
+    onError: (e) => toast.error(e?.response?.data?.detail || e.message || 'Erreur suppression'),
+  });
+}

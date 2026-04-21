@@ -38,6 +38,25 @@ class TeamMemberCreate(BaseModel):
     skills: Optional[List[str]] = []
     zones: Optional[List[str]] = []
     notes: Optional[str] = ""
+    photo_b64: Optional[str] = None  # data URL : "data:image/jpeg;base64,..."
+    hire_date: Optional[str] = None
+    active: Optional[bool] = True
+
+class TeamMemberUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    role: Optional[str] = None
+    skills: Optional[List[str]] = None
+    zones: Optional[List[str]] = None
+    notes: Optional[str] = None
+    photo_b64: Optional[str] = None
+    hire_date: Optional[str] = None
+    active: Optional[bool] = None
+    team_id: Optional[str] = None
+
+class AvatarPayload(BaseModel):
+    photo_b64: str  # data URL complet
 
 class InterventionCreate(BaseModel):
     lead_id: str
@@ -116,6 +135,9 @@ async def add_team_member(team_id: str, body: TeamMemberCreate, request: Request
         "skills": getattr(body, 'skills', []) or [],
         "zones": getattr(body, 'zones', []) or [],
         "notes": getattr(body, 'notes', '') or "",
+        "photo_b64": getattr(body, 'photo_b64', None) or "",
+        "hire_date": getattr(body, 'hire_date', None) or datetime.now(timezone.utc).date().isoformat(),
+        "active": True if getattr(body, 'active', True) is None else getattr(body, 'active', True),
         "added_at": datetime.now(timezone.utc).isoformat(),
         "team_id": team_id,
         "team_name": team.get("name",""),
@@ -186,7 +208,134 @@ async def remove_team_member(team_id: str, member_id: str, request: Request):
         {"team_id": team_id},
         {"$pull": {"members": {"member_id": member_id}}}
     )
+    await _db.team_members.delete_one({"member_id": member_id})
     return {"message": "Membre retiré"}
+
+
+# ============= MEMBER CRUD ENRICHI =============
+
+@planning_router.get("/planning/members")
+async def list_all_members(request: Request, active: Optional[bool] = None, role: Optional[str] = None, team_id: Optional[str] = None):
+    """Liste TOUS les intervenants (pas seulement d'une équipe) avec filtres."""
+    await _require_auth(request)
+    q = {}
+    if active is not None: q["active"] = active
+    if role: q["role"] = role
+    if team_id: q["team_id"] = team_id
+    members = await _db.team_members.find(q, {"_id": 0}).sort("name", 1).to_list(500)
+    # Compter stats par membre (missions ce mois)
+    from datetime import datetime as _dt
+    start_month = _dt.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+    for m in members:
+        mid = m.get("member_id")
+        if mid:
+            m["missions_this_month"] = await _db.interventions.count_documents({
+                "assigned_members": mid,
+                "scheduled_date": {"$gte": start_month[:10]},
+            })
+            m["missions_total"] = await _db.interventions.count_documents({"assigned_members": mid})
+    return {"count": len(members), "members": members}
+
+
+@planning_router.get("/planning/members/{member_id}")
+async def get_member(member_id: str, request: Request):
+    await _require_auth(request)
+    m = await _db.team_members.find_one({"member_id": member_id}, {"_id": 0})
+    if not m:
+        raise HTTPException(status_code=404, detail="Intervenant introuvable")
+    return m
+
+
+@planning_router.put("/planning/members/{member_id}")
+async def update_member(member_id: str, body: TeamMemberUpdate, request: Request):
+    """Met à jour les champs d'un intervenant (photo, skills, zones, role, etc.)."""
+    await _require_auth(request)
+    existing = await _db.team_members.find_one({"member_id": member_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Intervenant introuvable")
+
+    patch = {k: v for k, v in body.model_dump().items() if v is not None}
+    if not patch:
+        return existing
+    # Validation photo base64 (limite taille ~1.5MB)
+    if "photo_b64" in patch and patch["photo_b64"]:
+        if len(patch["photo_b64"]) > 2_000_000:
+            raise HTTPException(status_code=413, detail="Photo trop lourde (max ~1.5MB après encodage base64). Compressez avant upload.")
+
+    patch["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    # Update dans team_members
+    await _db.team_members.update_one({"member_id": member_id}, {"$set": patch})
+
+    # Sync dans l'équipe parente (teams.members[])
+    team_id = existing.get("team_id") or patch.get("team_id")
+    if team_id:
+        set_ops = {f"members.$.{k}": v for k, v in patch.items()}
+        await _db.teams.update_one(
+            {"team_id": team_id, "members.member_id": member_id},
+            {"$set": set_ops}
+        )
+
+    updated = await _db.team_members.find_one({"member_id": member_id}, {"_id": 0})
+    return updated
+
+
+@planning_router.post("/planning/members/{member_id}/avatar")
+async def set_member_avatar(member_id: str, body: AvatarPayload, request: Request):
+    """Uploader une photo de profil (base64 data URL). Le frontend doit
+    compresser/redimensionner avant pour rester sous 1.5MB.
+    """
+    await _require_auth(request)
+    if not body.photo_b64 or not body.photo_b64.startswith("data:image/"):
+        raise HTTPException(status_code=400, detail="Photo invalide : format attendu 'data:image/...;base64,...'")
+    if len(body.photo_b64) > 2_000_000:
+        raise HTTPException(status_code=413, detail="Photo trop lourde (>1.5MB). Compressez avant upload.")
+
+    existing = await _db.team_members.find_one({"member_id": member_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Intervenant introuvable")
+
+    await _db.team_members.update_one(
+        {"member_id": member_id},
+        {"$set": {"photo_b64": body.photo_b64, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    team_id = existing.get("team_id")
+    if team_id:
+        await _db.teams.update_one(
+            {"team_id": team_id, "members.member_id": member_id},
+            {"$set": {"members.$.photo_b64": body.photo_b64}}
+        )
+    return {"success": True, "member_id": member_id, "size_kb": len(body.photo_b64) // 1024}
+
+
+@planning_router.delete("/planning/members/{member_id}/avatar")
+async def remove_member_avatar(member_id: str, request: Request):
+    await _require_auth(request)
+    await _db.team_members.update_one(
+        {"member_id": member_id},
+        {"$set": {"photo_b64": "", "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    existing = await _db.team_members.find_one({"member_id": member_id}, {"_id": 0})
+    if existing and existing.get("team_id"):
+        await _db.teams.update_one(
+            {"team_id": existing["team_id"], "members.member_id": member_id},
+            {"$set": {"members.$.photo_b64": ""}}
+        )
+    return {"success": True}
+
+
+@planning_router.delete("/planning/members/{member_id}")
+async def delete_member_global(member_id: str, request: Request):
+    """Supprime un intervenant (team_members + tous les teams qui le contenaient)."""
+    await _require_auth(request)
+    m = await _db.team_members.find_one({"member_id": member_id}, {"_id": 0})
+    if not m:
+        raise HTTPException(status_code=404, detail="Intervenant introuvable")
+    # Retirer de toutes les equipes
+    await _db.teams.update_many({}, {"$pull": {"members": {"member_id": member_id}}})
+    # Supprimer doc principal
+    await _db.team_members.delete_one({"member_id": member_id})
+    return {"success": True, "message": f"Intervenant {m.get('name')} supprimé"}
 
 # ============= INTERVENTIONS =============
 

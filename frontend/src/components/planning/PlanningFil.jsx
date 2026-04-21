@@ -5,8 +5,9 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Plus, ChevronLeft, ChevronRight, Map, Calendar } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Map, Calendar, MapPin, Clock, Users as UsersIcon } from 'lucide-react';
 import api from '../../lib/api';
+import { useAllMembers } from '../../hooks/api';
 
 /* ─────────────────── TOKENS + STYLES ─────────────────── */
 const tokenStyle = `
@@ -138,8 +139,37 @@ function fmtDateFr(d) {
 }
 
 /* ─────────────── Mission bar ─────────────── */
-function MissionBar({ mission, onClick }) {
+function initialsOf(name) {
+  if (!name) return '?';
+  return name.split(/\s+/).slice(0, 2).map(s => s[0]?.toUpperCase()).join('');
+}
+
+function MemberAvatar({ member, size = 22, title }) {
+  const name = member?.name || '?';
+  return (
+    <div
+      title={title || name}
+      style={{
+        width: size, height: size, borderRadius: 999,
+        background: member?.photo_b64 ? 'transparent' : 'rgba(255,255,255,0.9)',
+        color: 'oklch(0.32 0.012 60)',
+        border: '2px solid white',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontFamily: 'Fraunces, serif', fontSize: size * 0.4, fontWeight: 600,
+        overflow: 'hidden', flexShrink: 0,
+      }}
+    >
+      {member?.photo_b64
+        ? <img src={member.photo_b64} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        : initialsOf(name)}
+    </div>
+  );
+}
+
+function MissionBar({ mission, onClick, membersMap = {} }) {
   const { left, width } = rangeToPercent(mission.start, mission.end);
+  const [hover, setHover] = useState(false);
   const cls =
     mission.status === 'current' ? 'pf-bar-current' :
     `pf-bar-${mission.type}` + (mission.status === 'done' ? ' pf-bar-done' : '');
@@ -149,22 +179,120 @@ function MissionBar({ mission, onClick }) {
     recurrent: 'RÉCURRENT', visite: 'VISITE', pause: 'PAUSE',
   })[mission.type] || mission.type?.toUpperCase();
 
+  const assignedIds = mission.assigned_members || [];
+  const assignedMembers = assignedIds.map((id) => membersMap[id]).filter(Boolean);
+  // Calcul de la largeur en pixels (approximation) pour décider si on affiche les avatars
+  const widthNum = parseFloat(width);
+  const showAvatars = widthNum > 6 && assignedMembers.length > 0;
+
+  const statusDot = mission.status === 'current' ? 'white'
+                  : mission.status === 'done'    ? 'oklch(0.52 0.13 165)'
+                  : mission.status === 'late'    ? 'oklch(0.55 0.18 25)'
+                  : 'oklch(0.62 0.14 45)';
+
   return (
-    <div className={`pf-bar ${cls}`} style={{ left, width }} onClick={onClick}
-         title={`${mission.client} · ${mission.start} → ${mission.end}`}>
-      <div className="pf-bar-title">
-        {mission.client}{mission.location ? ` · ${mission.location}` : ''}
+    <div
+      className={`pf-bar ${cls}`}
+      style={{ left, width, zIndex: hover ? 8 : 1 }}
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+        <span style={{ width: 7, height: 7, borderRadius: 999, background: statusDot, flexShrink: 0 }} />
+        <div className="pf-bar-title" style={{ flex: 1 }}>
+          {mission.client}{mission.location ? ` · ${mission.location}` : ''}
+        </div>
       </div>
-      <div className="pf-bar-sub">
-        {mission.start} → {mission.end} · {typeLabel}
+      <div className="pf-bar-sub" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+        <span>{mission.start} → {mission.end} · {typeLabel}</span>
+        {showAvatars && (
+          <div style={{ display: 'flex', marginLeft: 'auto' }}>
+            {assignedMembers.slice(0, 3).map((m, i) => (
+              <div key={m.member_id} style={{ marginLeft: i > 0 ? -8 : 0 }}>
+                <MemberAvatar member={m} size={18} />
+              </div>
+            ))}
+            {assignedMembers.length > 3 && (
+              <div style={{
+                width: 18, height: 18, borderRadius: 999, marginLeft: -8,
+                background: 'rgba(0,0,0,0.12)', color: 'oklch(0.32 0.012 60)',
+                border: '2px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 8, fontWeight: 700, fontFamily: 'JetBrains Mono, monospace',
+              }}>+{assignedMembers.length - 3}</div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Popup hover : affiché seulement quand on survole */}
+      {hover && (
+        <div style={{
+          position: 'absolute', left: '50%', bottom: 'calc(100% + 8px)',
+          transform: 'translateX(-50%)',
+          width: 280, background: 'white', borderRadius: 12, padding: 14,
+          boxShadow: '0 10px 30px rgba(0,0,0,0.15), 0 2px 6px rgba(0,0,0,0.08)',
+          border: '1px solid oklch(0.85 0.012 75)',
+          zIndex: 20, pointerEvents: 'none',
+          fontFamily: 'Inter, sans-serif', color: 'oklch(0.165 0.012 60)',
+        }}>
+          <div style={{
+            fontSize: 10, fontFamily: 'JetBrains Mono, monospace',
+            letterSpacing: '0.08em', textTransform: 'uppercase', color: 'oklch(0.52 0.010 60)',
+            marginBottom: 4,
+          }}>
+            {typeLabel} · {mission.status === 'current' ? 'EN COURS' :
+                         mission.status === 'done' ? 'TERMINÉE' :
+                         mission.status === 'late' ? 'EN RETARD' : 'PROGRAMMÉE'}
+          </div>
+          <div style={{ fontFamily: 'Fraunces, serif', fontSize: 15, fontWeight: 500, marginBottom: 8, lineHeight: 1.3 }}>
+            {mission.client}
+          </div>
+          <div style={{ fontSize: 12, color: 'oklch(0.32 0.012 60)', display: 'grid', gap: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Clock style={{ width: 11, height: 11, color: 'oklch(0.52 0.010 60)' }} />
+              {mission.start} → {mission.end}
+            </div>
+            {mission.location && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <MapPin style={{ width: 11, height: 11, color: 'oklch(0.52 0.010 60)' }} />
+                {mission.location}
+              </div>
+            )}
+          </div>
+          {assignedMembers.length > 0 && (
+            <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid oklch(0.92 0.010 78)' }}>
+              <div style={{
+                fontSize: 9, fontFamily: 'JetBrains Mono, monospace',
+                letterSpacing: '0.08em', textTransform: 'uppercase', color: 'oklch(0.52 0.010 60)',
+                marginBottom: 6,
+              }}>
+                Équipe ({assignedMembers.length})
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {assignedMembers.map((m) => (
+                  <div key={m.member_id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <MemberAvatar member={m} size={22} />
+                    <span style={{ fontSize: 12, fontWeight: 500 }}>{m.name}</span>
+                    <span style={{ fontSize: 10, color: 'oklch(0.52 0.010 60)', marginLeft: 'auto' }}>
+                      {m.role || '—'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 /* ─────────────── Ligne équipe ─────────────── */
-function TeamRow({ team, now, onMissionClick, onTeamClick, onTimelineClick }) {
+function TeamRow({ team, now, onMissionClick, onTeamClick, onTimelineClick, membersMap = {} }) {
   const initials = team.initials || team.name?.slice(0, 2).toUpperCase() || '?';
+  // Intervenants de l'équipe (tous ceux ayant team_id = team.id)
+  const teamMembers = Object.values(membersMap).filter((m) => m.team_id === team.id || m.team_id === team.team_id);
   return (
     <div style={{
       display: 'grid', gridTemplateColumns: '200px 1fr', borderBottom: '1px solid var(--line-2)',
@@ -195,6 +323,23 @@ function TeamRow({ team, now, onMissionClick, onTeamClick, onTimelineClick }) {
           <div className="pf-mono" style={{ fontSize: 9, color: 'var(--ink-3)', letterSpacing: '0.08em', marginTop: 4 }}>
             {team.km ? `${team.km} KM · ` : ''}{team.count} MISS.
           </div>
+          {teamMembers.length > 0 && (
+            <div style={{ display: 'flex', marginTop: 6 }}>
+              {teamMembers.slice(0, 5).map((m, i) => (
+                <div key={m.member_id} style={{ marginLeft: i > 0 ? -6 : 0 }}>
+                  <MemberAvatar member={m} size={18} title={m.name} />
+                </div>
+              ))}
+              {teamMembers.length > 5 && (
+                <div style={{
+                  width: 18, height: 18, borderRadius: 999, marginLeft: -6,
+                  background: 'var(--surface-2)', color: 'var(--ink-3)',
+                  border: '2px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 8, fontWeight: 700, fontFamily: 'JetBrains Mono, monospace',
+                }}>+{teamMembers.length - 5}</div>
+              )}
+            </div>
+          )}
         </div>
         <div style={{
           width: 22, height: 22, borderRadius: 999,
@@ -222,7 +367,7 @@ function TeamRow({ team, now, onMissionClick, onTeamClick, onTimelineClick }) {
         }}
       >
         {team.missions.map(m => (
-          <MissionBar key={m.id} mission={m} onClick={() => onMissionClick?.(m)} />
+          <MissionBar key={m.id} mission={m} onClick={() => onMissionClick?.(m)} membersMap={membersMap} />
         ))}
       </div>
     </div>
@@ -242,6 +387,16 @@ export default function PlanningFil() {
   const [assignOpen, setAssignOpen] = useState(null); // { team, time }
   const [toast, setToast] = useState(null);
   const showToast = (m, t = 'ok') => { setToast({ m, t }); setTimeout(() => setToast(null), 2800); };
+
+  // Map member_id -> {name, photo_b64, role, team_id} pour afficher les avatars
+  const { data: membersData } = useAllMembers();
+  const membersMap = useMemo(() => {
+    const map = {};
+    (membersData?.members || []).forEach((m) => {
+      if (m.member_id) map[m.member_id] = m;
+    });
+    return map;
+  }, [membersData]);
 
   const reload = () => {
     setLoading(true);
@@ -427,6 +582,7 @@ export default function PlanningFil() {
                     <TeamRow
                       key={team.id}
                       team={team}
+                      membersMap={membersMap}
                       onMissionClick={m => m.lead_id && navigate(`/leads/${m.lead_id}`)}
                       onTeamClick={(t) => setAssignOpen({ team: t, time: '09:00' })}
                       onTimelineClick={(t, time) => setAssignOpen({ team: t, time })}
