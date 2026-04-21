@@ -27,5 +27,6 @@ COPY . .
 ENV PORT=8000
 EXPOSE 8000
 
-# Start command (override-able par Railway via startCommand si besoin)
-CMD uvicorn server:app --host 0.0.0.0 --port ${PORT}
+# Start command — forme shell (JSON array + sh -c) pour garantir
+# l'expansion de $PORT quelque soit l'executeur (Railway, docker run, k8s).
+CMD ["sh", "-c", "uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000}"]
