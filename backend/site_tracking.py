@@ -512,6 +512,155 @@ async def tracker_funnel(request: Request, period: str = "30d"):
 
 
 # ───────────────────────── KEYWORD RANK TRACKER ─────────────────────────
+@tracker_router.get("/visitors")
+async def list_visitors(request: Request, hours: int = 24, limit: int = 100, include_identified: bool = True):
+    """Liste les visiteurs recents avec leur geoloc approximative et, si ils
+    sont matches avec un lead CRM via visitor_id/session_id, leurs coordonnees.
+
+    IMPORTANT (RGPD) : les coordonnees (nom/email/tel) ne sont retournees QUE
+    pour les visiteurs qui ont REMPLI un formulaire sur le site. Les visiteurs
+    anonymes ne peuvent pas etre identifies legalement.
+    """
+    try:
+        from server import require_auth
+        await require_auth(request)
+    except Exception:
+        pass
+    if _db is None:
+        raise HTTPException(status_code=500, detail="DB non initialisee")
+
+    since = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+
+    # Pipeline aggregation : grouper par visitor_id, derniere activite
+    pipeline = [
+        {"$match": {"timestamp": {"$gte": since}, "visitor_id": {"$ne": None}}},
+        {"$sort": {"timestamp": -1}},
+        {"$group": {
+            "_id": "$visitor_id",
+            "visitor_id": {"$first": "$visitor_id"},
+            "session_id": {"$first": "$session_id"},
+            "last_seen": {"$first": "$timestamp"},
+            "first_seen": {"$last": "$timestamp"},
+            "last_page": {"$first": "$page_url"},
+            "last_title": {"$first": "$page_title"},
+            "last_referrer": {"$first": "$referrer"},
+            "utm_source": {"$first": "$utm_source"},
+            "utm_medium": {"$first": "$utm_medium"},
+            "utm_campaign": {"$first": "$utm_campaign"},
+            "device_info": {"$first": "$device_info"},
+            "ip": {"$first": "$ip"},
+            "event_count": {"$sum": 1},
+        }},
+        {"$sort": {"last_seen": -1}},
+        {"$limit": limit},
+    ]
+    visitors = await _db.tracking_events.aggregate(pipeline).to_list(limit)
+
+    # Collecter les visitor_id/session_id pour joindre les leads
+    visitor_ids = [v["visitor_id"] for v in visitors if v.get("visitor_id")]
+    session_ids = [v["session_id"] for v in visitors if v.get("session_id")]
+
+    leads_index = {}
+    if include_identified and (visitor_ids or session_ids):
+        leads_cursor = _db.leads.find({
+            "$or": [
+                {"visitor_id": {"$in": visitor_ids}},
+                {"session_id": {"$in": session_ids}},
+            ]
+        }, {
+            "_id": 0, "lead_id": 1, "name": 1, "email": 1, "phone": 1,
+            "address": 1, "city": 1, "visitor_id": 1, "session_id": 1,
+            "service_type": 1, "status": 1, "score": 1, "created_at": 1,
+        })
+        async for lead in leads_cursor:
+            if lead.get("visitor_id"):
+                leads_index[lead["visitor_id"]] = lead
+            if lead.get("session_id"):
+                leads_index.setdefault(lead["session_id"], lead)
+
+    # Cache geoloc IP (pour ne pas hammer l'API)
+    ip_cache = {}
+
+    async def geoip(ip: str):
+        if not ip or ip in ("unknown", "127.0.0.1", "localhost"):
+            return None
+        if ip in ip_cache:
+            return ip_cache[ip]
+        try:
+            import httpx
+            async with httpx.AsyncClient() as c:
+                # ipapi.co : 1000 req/day gratuit, pas de cle requise
+                r = await c.get(f"https://ipapi.co/{ip}/json/", timeout=4)
+                if r.status_code == 200:
+                    d = r.json()
+                    if d.get("error"):
+                        ip_cache[ip] = None
+                        return None
+                    loc = {
+                        "city": d.get("city"),
+                        "region": d.get("region"),
+                        "country": d.get("country_name"),
+                        "country_code": d.get("country_code"),
+                        "lat": d.get("latitude"),
+                        "lon": d.get("longitude"),
+                        "timezone": d.get("timezone"),
+                        "isp": d.get("org"),
+                    }
+                    ip_cache[ip] = loc
+                    return loc
+        except Exception as e:
+            logger.debug(f"geoip error: {e}")
+        ip_cache[ip] = None
+        return None
+
+    # Enrichir les visiteurs
+    out = []
+    identified_count = 0
+    for v in visitors:
+        lead = leads_index.get(v.get("visitor_id")) or leads_index.get(v.get("session_id"))
+        loc = await geoip(v.get("ip", ""))
+        is_identified = bool(lead)
+        if is_identified:
+            identified_count += 1
+        out.append({
+            "visitor_id": v.get("visitor_id"),
+            "session_id": v.get("session_id"),
+            "last_seen": v.get("last_seen"),
+            "first_seen": v.get("first_seen"),
+            "last_page": v.get("last_page"),
+            "last_title": v.get("last_title"),
+            "referrer": v.get("last_referrer"),
+            "utm_source": v.get("utm_source"),
+            "utm_campaign": v.get("utm_campaign"),
+            "device": (v.get("device_info") or {}).get("device_type"),
+            "user_agent": (v.get("device_info") or {}).get("user_agent", "")[:80],
+            "event_count": v.get("event_count", 0),
+            "identified": is_identified,
+            "location": loc,  # Ville/pays approximatif via IP
+            "lead": {
+                "lead_id": lead.get("lead_id"),
+                "name": lead.get("name"),
+                "email": lead.get("email"),
+                "phone": lead.get("phone"),
+                "address": lead.get("address"),
+                "city": lead.get("city"),
+                "service_type": lead.get("service_type"),
+                "status": lead.get("status"),
+                "score": lead.get("score"),
+                "created_at": lead.get("created_at"),
+            } if lead else None,
+        })
+
+    return {
+        "period_hours": hours,
+        "total_visitors": len(out),
+        "identified": identified_count,
+        "anonymous": len(out) - identified_count,
+        "identified_pct": round(identified_count / max(len(out), 1) * 100, 1),
+        "visitors": out,
+    }
+
+
 @tracker_router.get("/keywords")
 async def tracker_keywords(request: Request, days: int = 28, limit: int = 50):
     """Positions GSC par mot-cle, triees par impressions, avec delta."""

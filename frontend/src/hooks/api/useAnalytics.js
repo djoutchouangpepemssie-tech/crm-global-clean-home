@@ -228,6 +228,15 @@ export function useSeedActionsFromOpportunities() {
 // ═══════════════════════════════════════════════════════════════════
 // Phase 4 — PageSpeed / Core Web Vitals
 // ═══════════════════════════════════════════════════════════════════
+export function useVisitors(hours = 24, limit = 100) {
+  return useQuery({
+    queryKey: ['tracker', 'visitors', hours, limit],
+    queryFn: async () => (await api.get(`/tracker/visitors?hours=${hours}&limit=${limit}`)).data,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+}
+
 export function usePageSpeed(url, strategy = 'mobile') {
   return useQuery({
     queryKey: ['seo', 'pagespeed', url, strategy],

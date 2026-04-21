@@ -4121,6 +4121,13 @@ async def track_event(request: Request):
         # Add server timestamp
         data["server_timestamp"] = datetime.now(timezone.utc).isoformat()
 
+        # Capture IP publique (utile pour geoloc + fraud detection)
+        ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+        if not ip:
+            ip = request.client.host if request.client else ""
+        if ip:
+            data["ip"] = ip
+
         # Store in tracking_events collection
         await db.tracking_events.insert_one(data)
 
