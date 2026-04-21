@@ -145,6 +145,9 @@ const StockMagasin = lazy(() => import('./components/stock/StockMagasin'));
 const BookingRegistre = lazy(() => import('./components/booking/BookingRegistre'));
 const SEOAtlas = lazy(() => import('./components/seo/SEOAtlas'));
 const SeoCockpit = lazy(() => import('./components/seo/SeoCockpit'));
+const SeoLayout = lazy(() => import('./components/seo/SeoLayout'));
+const SeoHome = lazy(() => import('./components/seo/SeoHome'));
+const SeoConnect = lazy(() => import('./components/seo/SeoConnect'));
 const MapTerritoire = lazy(() => import('./components/map/MapTerritoire'));
 const AdsAffichage = lazy(() => import('./components/ads/AdsAffichage'));
 const RentabiliteBalance = lazy(() => import('./components/rentabilite/RentabiliteBalance'));
@@ -417,8 +420,21 @@ function AppRouter() {
                     <Route path="/pipeline" element={<PipelineRiver />} />
                     <Route path="/director" element={<DirectorPasserelle />} />
                     <Route path="/director/legacy" element={<DirectorDashboard />} />
-                    <Route path="/seo" element={<SeoCockpit />} />
+                    <Route path="/seo" element={<SeoLayout />}>
+                      <Route index element={<SeoHome />} />
+                      <Route path="connect" element={<SeoConnect />} />
+                      <Route path="performance" element={<SeoCockpit />} />
+                      <Route path="content" element={<SeoCockpit />} />
+                      <Route path="technical" element={<SeoCockpit />} />
+                      <Route path="conversion" element={<SeoCockpit />} />
+                      <Route path="exploration" element={<SeoCockpit />} />
+                      <Route path="sources" element={<SeoCockpit />} />
+                      <Route path="globe" element={<SeoCockpit />} />
+                      <Route path="ai" element={<SeoCockpit />} />
+                      <Route path="alerts" element={<SeoCockpit />} />
+                    </Route>
                     <Route path="/seo/atlas" element={<SEOAtlas />} />
+                    <Route path="/seo/cockpit" element={<SeoCockpit />} />
                     <Route path="/seo/legacy" element={<SEODashboard />} />
                     <Route path="/rentabilite" element={<RentabiliteBalance />} />
                     <Route path="/rentabilite/legacy" element={<RentabiliteModule />} />

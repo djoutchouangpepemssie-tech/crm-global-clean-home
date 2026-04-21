@@ -67,3 +67,6 @@ coverage/
 *.pack
 *.deb
 *.dylib
+
+# Claude Code session metadata
+.claude/

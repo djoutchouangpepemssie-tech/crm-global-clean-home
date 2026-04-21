@@ -5108,6 +5108,9 @@ app.include_router(intervenant_router)
 from analytics_ga4 import analytics_router as ga4_router, init_analytics_db
 app.include_router(ga4_router)
 
+from site_tracking import tracker_router, init_site_tracking_db
+app.include_router(tracker_router)
+
 from ads_connect import ads_connect_router, init_ads_connect_db
 app.include_router(ads_connect_router)
 
@@ -5277,6 +5280,7 @@ async def startup_db_indexes():
     except Exception as e:
         logger.warning(f"Portal init: {e}")
     init_analytics_db(db)
+    init_site_tracking_db(db)
     init_ads_connect_db(db)
     try:
         init_erp_db(db)
