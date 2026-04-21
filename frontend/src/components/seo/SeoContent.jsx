@@ -3,8 +3,9 @@
 // mix GSC (impressions/clicks/position) + GA4 (views/duration/bounce).
 
 import React, { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
-  Clock, Eye, FileText, MousePointerClick, Search, Target, TrendingUp,
+  ChevronRight, Clock, Eye, FileText, FileX, GitBranch, MousePointerClick, Search, Target, TrendingUp,
 } from 'lucide-react';
 import {
   PageHeader, SectionHeader, KpiTile, LoadingState, ErrorState, EmptyState,
@@ -60,6 +61,37 @@ export default function SeoContent() {
         title={<>Pages <em>qui performent</em></>}
         subtitle={`Analyse croisée Search Console + GA4 sur ${days} jours.`}
       />
+
+      {/* Sous-sections contenu */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 24 }}>
+        <Link to="/seo/content/cannibalization" className="seo-card seo-card-hover"
+              style={{ padding: 18, textDecoration: 'none', color: 'var(--ink)', display: 'flex', gap: 14, alignItems: 'center' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 10, background: 'var(--rouge-soft)',
+                        color: 'var(--rouge)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <GitBranch style={{ width: 20, height: 20 }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div className="seo-label" style={{ fontSize: 9, color: 'var(--rouge)' }}>Diagnostic</div>
+            <div className="seo-display" style={{ fontSize: 16, fontWeight: 500, marginTop: 2 }}>Cannibalisation SEO</div>
+            <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>Détecter les requêtes où plusieurs pages se battent</div>
+          </div>
+          <ChevronRight style={{ width: 16, height: 16, color: 'var(--ink-3)' }} />
+        </Link>
+
+        <Link to="/seo/content/orphans" className="seo-card seo-card-hover"
+              style={{ padding: 18, textDecoration: 'none', color: 'var(--ink)', display: 'flex', gap: 14, alignItems: 'center' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 10, background: 'var(--gold-soft)',
+                        color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <FileX style={{ width: 20, height: 20 }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div className="seo-label" style={{ fontSize: 9, color: 'var(--gold)' }}>Diagnostic</div>
+            <div className="seo-display" style={{ fontSize: 16, fontWeight: 500, marginTop: 2 }}>Pages orphelines</div>
+            <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>Pages vues mais invisibles dans Google</div>
+          </div>
+          <ChevronRight style={{ width: 16, height: 16, color: 'var(--ink-3)' }} />
+        </Link>
+      </div>
 
       {/* KPIs globaux */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>

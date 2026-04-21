@@ -5111,6 +5111,9 @@ app.include_router(ga4_router)
 from site_tracking import tracker_router, init_site_tracking_db
 app.include_router(tracker_router)
 
+from seo_advanced import seo_advanced_router, init_seo_advanced_db, _ensure_indexes as _seo_ensure_indexes
+app.include_router(seo_advanced_router)
+
 from ads_connect import ads_connect_router, init_ads_connect_db
 app.include_router(ads_connect_router)
 
@@ -5281,6 +5284,11 @@ async def startup_db_indexes():
         logger.warning(f"Portal init: {e}")
     init_analytics_db(db)
     init_site_tracking_db(db)
+    init_seo_advanced_db(db)
+    try:
+        await _seo_ensure_indexes()
+    except Exception as e:
+        logger.warning(f"seo_advanced indexes: {e}")
     init_ads_connect_db(db)
     try:
         init_erp_db(db)

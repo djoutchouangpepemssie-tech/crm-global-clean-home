@@ -3,8 +3,9 @@
 // Monitoring temps réel + historique (la base, enrichie en Phase 2 avec le changelog).
 
 import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
-  AlertCircle, AlertTriangle, Bell, CheckCircle, Filter, Info, Shield,
+  AlertCircle, AlertTriangle, Bell, Camera, CheckCircle, Filter, Info, Shield,
 } from 'lucide-react';
 import {
   PageHeader, SectionHeader, KpiTile, LoadingState, ErrorState, EmptyState,
@@ -72,6 +73,12 @@ export default function SeoAlerts() {
         eyebrow="Monitoring"
         title={<>Alertes & <em>anomalies</em></>}
         subtitle="Détection automatique basée sur les seuils, les comparaisons de période et la santé d'infrastructure."
+        actions={
+          <Link to="/seo/alerts/changelog" className="seo-cta">
+            <Camera style={{ width: 14, height: 14 }} />
+            Changelog SEO
+          </Link>
+        }
       />
 
       {/* KPIs */}

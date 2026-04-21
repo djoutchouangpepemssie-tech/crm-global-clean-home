@@ -6,7 +6,7 @@
  * les données sont indépendantes et leurs taux de rafraîchissement
  * diffèrent (CRM : 60s, SEO/GA4 : 5min).
  */
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
 
 export function useCrmAnalytics() {
@@ -90,5 +90,68 @@ export function useTrackerKeywords(days = 28, limit = 50) {
     queryKey: ['tracker', 'keywords', days, limit],
     queryFn: async () => (await api.get(`/tracker/keywords?days=${days}&limit=${limit}`)).data,
     staleTime: 5 * 60_000,
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Phase 2 — SEO Advanced (scoring par URL, cannibalisation, orphelines,
+// indexation, changelog, opportunities)
+// ═══════════════════════════════════════════════════════════════════
+
+export function useSeoScore(url, days = 28) {
+  return useQuery({
+    queryKey: ['seo', 'score', url, days],
+    queryFn: async () => (await api.get(`/seo/score?url=${encodeURIComponent(url)}&days=${days}`)).data,
+    enabled: !!url,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useCannibalization(days = 28, minImpressions = 50) {
+  return useQuery({
+    queryKey: ['seo', 'cannibalization', days, minImpressions],
+    queryFn: async () => (await api.get(`/seo/cannibalization?days=${days}&min_impressions=${minImpressions}`)).data,
+    staleTime: 10 * 60_000,
+  });
+}
+
+export function useOrphans(days = 28, minViews = 20) {
+  return useQuery({
+    queryKey: ['seo', 'orphans', days, minViews],
+    queryFn: async () => (await api.get(`/seo/orphans?days=${days}&min_views=${minViews}`)).data,
+    staleTime: 10 * 60_000,
+  });
+}
+
+export function useIndexation(url) {
+  return useQuery({
+    queryKey: ['seo', 'indexation', url],
+    queryFn: async () => (await api.get(`/seo/indexation?url=${encodeURIComponent(url)}`)).data,
+    enabled: !!url,
+    staleTime: 10 * 60_000,
+  });
+}
+
+export function useChangelog(days = 7, top = 30) {
+  return useQuery({
+    queryKey: ['seo', 'changelog', days, top],
+    queryFn: async () => (await api.get(`/seo/changelog?days=${days}&top=${top}`)).data,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useSeoOpportunities(days = 28) {
+  return useQuery({
+    queryKey: ['seo', 'opportunities', days],
+    queryFn: async () => (await api.get(`/seo/opportunities?days=${days}`)).data,
+    staleTime: 10 * 60_000,
+  });
+}
+
+export function useTakeSnapshot() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (days = 1) => (await api.post(`/seo/snapshot?days=${days}`)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['seo', 'changelog'] }),
   });
 }

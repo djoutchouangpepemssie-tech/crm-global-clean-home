@@ -5,7 +5,7 @@
 
 import React, { useMemo, useState } from 'react';
 import {
-  Brain, ChevronRight, ExternalLink, Lightbulb, MessageSquare, Send,
+  Brain, ChevronRight, ExternalLink, Flag, Lightbulb, MessageSquare, Send,
   Sparkles, Target, TrendingUp, Zap,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -139,6 +139,12 @@ export default function SeoAI() {
         eyebrow="Intelligence"
         title={<>Recos <em>IA</em> priorisées</>}
         subtitle="Analyse automatique de tes données SEO, GA4 et CRM pour identifier les actions à impact."
+        actions={
+          <Link to="/seo/ai/opportunities" className="seo-cta">
+            <Flag style={{ width: 14, height: 14 }} />
+            Opportunités chiffrées
+          </Link>
+        }
       />
 
       {/* KPIs recos */}

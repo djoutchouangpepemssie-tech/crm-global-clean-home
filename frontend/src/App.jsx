@@ -157,6 +157,10 @@ const SeoGlobe = lazy(() => import('./components/seo/SeoGlobe'));
 const SeoAI = lazy(() => import('./components/seo/SeoAI'));
 const SeoAlerts = lazy(() => import('./components/seo/SeoAlerts'));
 const SeoSettings = lazy(() => import('./components/seo/SeoSettings'));
+const SeoCannibalization = lazy(() => import('./components/seo/SeoCannibalization'));
+const SeoOrphans = lazy(() => import('./components/seo/SeoOrphans'));
+const SeoChangelog = lazy(() => import('./components/seo/SeoChangelog'));
+const SeoOpportunities = lazy(() => import('./components/seo/SeoOpportunities'));
 const MapTerritoire = lazy(() => import('./components/map/MapTerritoire'));
 const AdsAffichage = lazy(() => import('./components/ads/AdsAffichage'));
 const RentabiliteBalance = lazy(() => import('./components/rentabilite/RentabiliteBalance'));
@@ -440,6 +444,10 @@ function AppRouter() {
                       <Route path="globe" element={<SeoGlobe />} />
                       <Route path="ai" element={<SeoAI />} />
                       <Route path="alerts" element={<SeoAlerts />} />
+                      <Route path="alerts/changelog" element={<SeoChangelog />} />
+                      <Route path="content/cannibalization" element={<SeoCannibalization />} />
+                      <Route path="content/orphans" element={<SeoOrphans />} />
+                      <Route path="ai/opportunities" element={<SeoOpportunities />} />
                       <Route path="settings" element={<SeoSettings />} />
                       <Route path="exploration" element={<SeoCockpit />} />
                     </Route>
