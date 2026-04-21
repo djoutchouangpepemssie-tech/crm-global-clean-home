@@ -5114,6 +5114,9 @@ app.include_router(tracker_router)
 from seo_advanced import seo_advanced_router, init_seo_advanced_db, _ensure_indexes as _seo_ensure_indexes
 app.include_router(seo_advanced_router)
 
+from seo_intelligence import seo_intel_router, init_seo_intel_db, _ensure_intel_indexes
+app.include_router(seo_intel_router)
+
 from ads_connect import ads_connect_router, init_ads_connect_db
 app.include_router(ads_connect_router)
 
@@ -5285,10 +5288,12 @@ async def startup_db_indexes():
     init_analytics_db(db)
     init_site_tracking_db(db)
     init_seo_advanced_db(db)
+    init_seo_intel_db(db)
     try:
         await _seo_ensure_indexes()
+        await _ensure_intel_indexes()
     except Exception as e:
-        logger.warning(f"seo_advanced indexes: {e}")
+        logger.warning(f"seo indexes: {e}")
     init_ads_connect_db(db)
     try:
         init_erp_db(db)

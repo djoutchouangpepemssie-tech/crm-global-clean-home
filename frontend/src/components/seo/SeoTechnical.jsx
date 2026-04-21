@@ -3,9 +3,10 @@
 // erreurs de tracking, qualité du rendu.
 
 import React, { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
-  Activity, AlertCircle, CheckCircle, Gauge, Info, Monitor, Server, Smartphone,
-  Wifi, Wrench, Zap,
+  Activity, AlertCircle, CheckCircle, ChevronRight, Gauge, Info, Link2, Monitor,
+  Network, Server, Smartphone, Wifi, Wrench, Zap,
 } from 'lucide-react';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -76,6 +77,12 @@ export default function SeoTechnical() {
         eyebrow="Technique"
         title={<>Santé <em>technique</em> du site</>}
         subtitle="Indexation, devices, erreurs tracking, qualité du rendu côté utilisateur."
+        actions={
+          <Link to="/seo/technical/internal-links" className="seo-cta">
+            <Network style={{ width: 14, height: 14 }} />
+            Maillage interne
+          </Link>
+        }
       />
 
       {/* KPIs */}

@@ -5,7 +5,8 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ChevronRight, Clock, Eye, FileText, FileX, GitBranch, MousePointerClick, Search, Target, TrendingUp,
+  ChevronRight, Clock, Eye, FileText, FileX, GitBranch, Lightbulb,
+  MousePointerClick, Search, Target, TrendingUp,
 } from 'lucide-react';
 import {
   PageHeader, SectionHeader, KpiTile, LoadingState, ErrorState, EmptyState,
@@ -63,7 +64,7 @@ export default function SeoContent() {
       />
 
       {/* Sous-sections contenu */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
         <Link to="/seo/content/cannibalization" className="seo-card seo-card-hover"
               style={{ padding: 18, textDecoration: 'none', color: 'var(--ink)', display: 'flex', gap: 14, alignItems: 'center' }}>
           <div style={{ width: 44, height: 44, borderRadius: 10, background: 'var(--rouge-soft)',
@@ -88,6 +89,34 @@ export default function SeoContent() {
             <div className="seo-label" style={{ fontSize: 9, color: 'var(--gold)' }}>Diagnostic</div>
             <div className="seo-display" style={{ fontSize: 16, fontWeight: 500, marginTop: 2 }}>Pages orphelines</div>
             <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>Pages vues mais invisibles dans Google</div>
+          </div>
+          <ChevronRight style={{ width: 16, height: 16, color: 'var(--ink-3)' }} />
+        </Link>
+
+        <Link to="/seo/content/intent" className="seo-card seo-card-hover"
+              style={{ padding: 18, textDecoration: 'none', color: 'var(--ink)', display: 'flex', gap: 14, alignItems: 'center' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 10, background: 'var(--navy-soft)',
+                        color: 'var(--navy)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Target style={{ width: 20, height: 20 }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div className="seo-label" style={{ fontSize: 9, color: 'var(--navy)' }}>Intelligence</div>
+            <div className="seo-display" style={{ fontSize: 16, fontWeight: 500, marginTop: 2 }}>Intent Matcher</div>
+            <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>Requêtes ↔ pages, détecter les gaps</div>
+          </div>
+          <ChevronRight style={{ width: 16, height: 16, color: 'var(--ink-3)' }} />
+        </Link>
+
+        <Link to="/seo/content/gaps" className="seo-card seo-card-hover"
+              style={{ padding: 18, textDecoration: 'none', color: 'var(--ink)', display: 'flex', gap: 14, alignItems: 'center' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 10, background: 'var(--emerald-soft)',
+                        color: 'var(--emerald)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Lightbulb style={{ width: 20, height: 20 }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div className="seo-label" style={{ fontSize: 9, color: 'var(--emerald)' }}>Stratégie</div>
+            <div className="seo-display" style={{ fontSize: 16, fontWeight: 500, marginTop: 2 }}>Content Gap</div>
+            <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>Pages à créer, suggestions d'URL</div>
           </div>
           <ChevronRight style={{ width: 16, height: 16, color: 'var(--ink-3)' }} />
         </Link>

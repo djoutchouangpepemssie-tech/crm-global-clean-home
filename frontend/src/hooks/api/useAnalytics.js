@@ -155,3 +155,72 @@ export function useTakeSnapshot() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['seo', 'changelog'] }),
   });
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// Phase 3 — Intelligence (intent, gap, internal links, action library)
+// ═══════════════════════════════════════════════════════════════════
+
+export function useIntentMatch(days = 28, minImpressions = 50) {
+  return useQuery({
+    queryKey: ['seo', 'intent', days, minImpressions],
+    queryFn: async () => (await api.get(`/seo/intent-match?days=${days}&min_impressions=${minImpressions}`)).data,
+    staleTime: 10 * 60_000,
+  });
+}
+
+export function useContentGap(days = 28, minImpressions = 100) {
+  return useQuery({
+    queryKey: ['seo', 'content-gap', days, minImpressions],
+    queryFn: async () => (await api.get(`/seo/content-gap?days=${days}&min_impressions=${minImpressions}`)).data,
+    staleTime: 10 * 60_000,
+  });
+}
+
+export function useInternalLinks(days = 7) {
+  return useQuery({
+    queryKey: ['seo', 'internal-links', days],
+    queryFn: async () => (await api.get(`/seo/internal-links?days=${days}`)).data,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useSeoActions(filters = {}) {
+  const qs = new URLSearchParams(filters).toString();
+  return useQuery({
+    queryKey: ['seo', 'actions', filters],
+    queryFn: async () => (await api.get(`/seo/actions${qs ? `?${qs}` : ''}`)).data,
+    staleTime: 30_000,
+  });
+}
+
+export function useCreateSeoAction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body) => (await api.post('/seo/actions', body)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['seo', 'actions'] }),
+  });
+}
+
+export function useUpdateSeoAction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, patch }) => (await api.put(`/seo/actions/${id}`, patch)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['seo', 'actions'] }),
+  });
+}
+
+export function useDeleteSeoAction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => (await api.delete(`/seo/actions/${id}`)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['seo', 'actions'] }),
+  });
+}
+
+export function useSeedActionsFromOpportunities() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (days = 28) => (await api.post(`/seo/actions/seed-from-opportunities?days=${days}`)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['seo', 'actions'] }),
+  });
+}

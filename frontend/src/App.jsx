@@ -161,6 +161,10 @@ const SeoCannibalization = lazy(() => import('./components/seo/SeoCannibalizatio
 const SeoOrphans = lazy(() => import('./components/seo/SeoOrphans'));
 const SeoChangelog = lazy(() => import('./components/seo/SeoChangelog'));
 const SeoOpportunities = lazy(() => import('./components/seo/SeoOpportunities'));
+const SeoIntent = lazy(() => import('./components/seo/SeoIntent'));
+const SeoGaps = lazy(() => import('./components/seo/SeoGaps'));
+const SeoInternalLinks = lazy(() => import('./components/seo/SeoInternalLinks'));
+const SeoActions = lazy(() => import('./components/seo/SeoActions'));
 const MapTerritoire = lazy(() => import('./components/map/MapTerritoire'));
 const AdsAffichage = lazy(() => import('./components/ads/AdsAffichage'));
 const RentabiliteBalance = lazy(() => import('./components/rentabilite/RentabiliteBalance'));
@@ -447,7 +451,11 @@ function AppRouter() {
                       <Route path="alerts/changelog" element={<SeoChangelog />} />
                       <Route path="content/cannibalization" element={<SeoCannibalization />} />
                       <Route path="content/orphans" element={<SeoOrphans />} />
+                      <Route path="content/intent" element={<SeoIntent />} />
+                      <Route path="content/gaps" element={<SeoGaps />} />
+                      <Route path="technical/internal-links" element={<SeoInternalLinks />} />
                       <Route path="ai/opportunities" element={<SeoOpportunities />} />
+                      <Route path="ai/actions" element={<SeoActions />} />
                       <Route path="settings" element={<SeoSettings />} />
                       <Route path="exploration" element={<SeoCockpit />} />
                     </Route>

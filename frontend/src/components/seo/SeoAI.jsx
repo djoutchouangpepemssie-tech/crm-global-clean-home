@@ -140,10 +140,16 @@ export default function SeoAI() {
         title={<>Recos <em>IA</em> priorisées</>}
         subtitle="Analyse automatique de tes données SEO, GA4 et CRM pour identifier les actions à impact."
         actions={
-          <Link to="/seo/ai/opportunities" className="seo-cta">
-            <Flag style={{ width: 14, height: 14 }} />
-            Opportunités chiffrées
-          </Link>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Link to="/seo/ai/opportunities" className="seo-chip">
+              <Flag style={{ width: 13, height: 13 }} />
+              Opportunités
+            </Link>
+            <Link to="/seo/ai/actions" className="seo-cta">
+              <ChevronRight style={{ width: 14, height: 14 }} />
+              Bibliothèque d'actions
+            </Link>
+          </div>
         }
       />
 
