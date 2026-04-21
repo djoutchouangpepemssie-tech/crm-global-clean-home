@@ -148,6 +148,15 @@ const SeoCockpit = lazy(() => import('./components/seo/SeoCockpit'));
 const SeoLayout = lazy(() => import('./components/seo/SeoLayout'));
 const SeoHome = lazy(() => import('./components/seo/SeoHome'));
 const SeoConnect = lazy(() => import('./components/seo/SeoConnect'));
+const SeoPerformance = lazy(() => import('./components/seo/SeoPerformance'));
+const SeoContent = lazy(() => import('./components/seo/SeoContent'));
+const SeoTechnical = lazy(() => import('./components/seo/SeoTechnical'));
+const SeoConversion = lazy(() => import('./components/seo/SeoConversion'));
+const SeoSources = lazy(() => import('./components/seo/SeoSources'));
+const SeoGlobe = lazy(() => import('./components/seo/SeoGlobe'));
+const SeoAI = lazy(() => import('./components/seo/SeoAI'));
+const SeoAlerts = lazy(() => import('./components/seo/SeoAlerts'));
+const SeoSettings = lazy(() => import('./components/seo/SeoSettings'));
 const MapTerritoire = lazy(() => import('./components/map/MapTerritoire'));
 const AdsAffichage = lazy(() => import('./components/ads/AdsAffichage'));
 const RentabiliteBalance = lazy(() => import('./components/rentabilite/RentabiliteBalance'));
@@ -423,15 +432,16 @@ function AppRouter() {
                     <Route path="/seo" element={<SeoLayout />}>
                       <Route index element={<SeoHome />} />
                       <Route path="connect" element={<SeoConnect />} />
-                      <Route path="performance" element={<SeoCockpit />} />
-                      <Route path="content" element={<SeoCockpit />} />
-                      <Route path="technical" element={<SeoCockpit />} />
-                      <Route path="conversion" element={<SeoCockpit />} />
+                      <Route path="performance" element={<SeoPerformance />} />
+                      <Route path="content" element={<SeoContent />} />
+                      <Route path="technical" element={<SeoTechnical />} />
+                      <Route path="conversion" element={<SeoConversion />} />
+                      <Route path="sources" element={<SeoSources />} />
+                      <Route path="globe" element={<SeoGlobe />} />
+                      <Route path="ai" element={<SeoAI />} />
+                      <Route path="alerts" element={<SeoAlerts />} />
+                      <Route path="settings" element={<SeoSettings />} />
                       <Route path="exploration" element={<SeoCockpit />} />
-                      <Route path="sources" element={<SeoCockpit />} />
-                      <Route path="globe" element={<SeoCockpit />} />
-                      <Route path="ai" element={<SeoCockpit />} />
-                      <Route path="alerts" element={<SeoCockpit />} />
                     </Route>
                     <Route path="/seo/atlas" element={<SEOAtlas />} />
                     <Route path="/seo/cockpit" element={<SeoCockpit />} />

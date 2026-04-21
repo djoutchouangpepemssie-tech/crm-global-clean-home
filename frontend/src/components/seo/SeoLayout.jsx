@@ -19,8 +19,8 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   Activity, AlertTriangle, BarChart3, Cable, ChevronsLeft, ChevronsRight,
-  FileText, Filter, Gauge, Globe2, LineChart, RefreshCw, Search, Sparkles,
-  Target, Wrench, Zap,
+  FileText, Filter, Gauge, Globe2, LineChart, RefreshCw, Search, Settings,
+  Sparkles, Target, Wrench, Zap,
 } from 'lucide-react';
 import {
   seoTokenStyle, SeoFilterContext,
@@ -38,6 +38,7 @@ const NAV = [
   { to: '/seo/ai',           label: 'IA & Recos',    icon: Sparkles },
   { to: '/seo/alerts',       label: 'Alertes',       icon: AlertTriangle },
   { to: '/seo/connect',      label: 'Connexion',     icon: Cable, highlight: true },
+  { to: '/seo/settings',     label: 'Paramètres',    icon: Settings },
 ];
 
 const DAYS_CHOICES = [7, 28, 90];
