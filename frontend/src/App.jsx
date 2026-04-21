@@ -23,18 +23,59 @@ import InvitationJoin from './pages/InvitationJoin';
 import Sidebar from './components/layout/Sidebar';
 import { lazy, Suspense, Component, memo } from 'react';
 
+const isChunkLoadError = (error) => {
+  const msg = (error?.message || error?.toString?.() || '').toLowerCase();
+  const name = (error?.name || '').toLowerCase();
+  return name === 'chunkloaderror' || msg.includes('chunkloaderror') ||
+         msg.includes('loading chunk') || msg.includes('failed to fetch dynamically imported module') ||
+         msg.includes("failed to load resource") && msg.includes("chunk");
+};
+
 class ErrorBoundary extends Component {
-  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
-  static getDerivedStateFromError(error) { return { hasError: true, error }; }
-  componentDidCatch(error, info) { console.error('CRM Error:', error, info); }
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, isChunkError: false };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error, isChunkError: isChunkLoadError(error) };
+  }
+  componentDidCatch(error, info) {
+    console.error('CRM Error:', error, info);
+    // Si c'est un ChunkLoadError (nouveau déploiement, cache stale), reload auto
+    if (isChunkLoadError(error)) {
+      const KEY = 'chunk_reload_at';
+      const now = Date.now();
+      const last = parseInt(sessionStorage.getItem(KEY) || '0', 10);
+      if (now - last > 10000) {  // anti-boucle 10s
+        sessionStorage.setItem(KEY, String(now));
+        // Petit délai pour que le message s'affiche
+        setTimeout(() => window.location.reload(), 800);
+      }
+    }
+  }
   render() {
     if (this.state.hasError) {
+      if (this.state.isChunkError) {
+        return (
+          <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'#EAEEF0',flexDirection:'column',gap:'14px',padding:'24px'}}>
+            <div style={{fontSize:'42px'}}>🔄</div>
+            <h2 style={{fontSize:'18px',fontWeight:600,margin:0,color:'#1e293b'}}>Mise à jour détectée</h2>
+            <p style={{color:'#64748b',fontSize:'13px',margin:0,textAlign:'center',maxWidth:'320px'}}>
+              Une nouvelle version du CRM a été déployée. Rechargement automatique…
+            </p>
+            <div style={{width:'120px',height:'3px',background:'#e2e8f0',borderRadius:'3px',overflow:'hidden',marginTop:'6px'}}>
+              <div style={{width:'100%',height:'100%',background:'#7c3aed',animation:'loadbar 0.8s linear'}} />
+            </div>
+            <style>{`@keyframes loadbar { from { transform: translateX(-100%); } to { transform: translateX(0); } }`}</style>
+          </div>
+        );
+      }
       return (
         <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'var(--bg-app, #EAEEF0)',flexDirection:'column',gap:'16px',padding:'24px'}}>
           <div style={{fontSize:'48px'}}>⚠️</div>
-          <h2 style={{color:'#e2e8f0',fontSize:'20px',fontWeight:'bold',margin:0}}>Erreur de chargement</h2>
+          <h2 style={{color:'#1e293b',fontSize:'20px',fontWeight:'bold',margin:0}}>Erreur de chargement</h2>
           <p style={{color:'#64748b',fontSize:'14px',margin:0,textAlign:'center'}}>{this.state.error?.message || 'Une erreur est survenue'}</p>
-          <button onClick={() => { this.setState({hasError:false,error:null}); window.location.href='/dashboard'; }}
+          <button onClick={() => { this.setState({hasError:false,error:null,isChunkError:false}); window.location.href='/dashboard'; }}
             style={{background:'#7c3aed',color:'white',border:'none',padding:'10px 20px',borderRadius:'8px',cursor:'pointer',fontWeight:'600'}}>
             Retour au dashboard
           </button>
