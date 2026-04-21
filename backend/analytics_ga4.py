@@ -10,9 +10,9 @@ logger = logging.getLogger(__name__)
 analytics_router = APIRouter(prefix="/api/analytics-data", tags=["analytics"])
 _db = None
 
-GA4_PROPERTY_ID = "521330220"
-GA4_MEASUREMENT_ID = "G-E68TG6NK0S"
-GSC_SITE_URL = "https://www.globalcleanhome.com/"
+GA4_PROPERTY_ID = os.environ.get("GA4_PROPERTY_ID", "521330220")
+GA4_MEASUREMENT_ID = os.environ.get("GA4_MEASUREMENT_ID", "G-E68TG6NK0S")
+GSC_SITE_URL = os.environ.get("GSC_SITE_URL", "https://www.globalcleanhome.com/")
 
 def init_analytics_db(database):
     global _db
