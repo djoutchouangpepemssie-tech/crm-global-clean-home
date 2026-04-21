@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import {
   PageHeader, SectionHeader, KpiTile, LoadingState, ErrorState, EmptyState,
+  ExportButton,
   fmt, fmtPct, useSeoFilter,
 } from './SeoShared';
 import { useSeoAnalytics as useSeoStats, useTrackerKeywords } from '../../hooks/api';
@@ -98,6 +99,22 @@ export default function SeoPerformance() {
         eyebrow="SEO / Performance"
         title={<>Positions & <em>clics organiques</em></>}
         subtitle={`Google Search Console — ${days} jours, site ${seo?.site_url || 'globalcleanhome.com'}.`}
+        actions={
+          <ExportButton
+            rows={sortedKw}
+            columns={[
+              { key: 'query', label: 'Requête' },
+              { key: 'impressions', label: 'Impressions' },
+              { key: 'clicks', label: 'Clics' },
+              { key: 'ctr', label: 'CTR (%)' },
+              { key: 'position', label: 'Position' },
+              { key: 'delta', label: 'Delta position' },
+              { key: 'bucket', label: 'Bucket' },
+            ]}
+            filename={`seo-keywords-${days}j-${new Date().toISOString().slice(0, 10)}.csv`}
+            label="CSV mots-clés"
+          />
+        }
       />
 
       {/* KPIs */}

@@ -5316,6 +5316,27 @@ async def startup_db_indexes():
             except Exception as e:
                 logger.error(f"Scheduler error: {e}")
     asyncio.create_task(workflow_scheduler())
+
+    # Scheduler SEO : snapshot quotidien automatique (GSC → seo_snapshots)
+    async def seo_snapshot_scheduler():
+        # Premier délai : 5 min après boot pour ne pas concurrencer le startup
+        await asyncio.sleep(300)
+        while True:
+            try:
+                from seo_advanced import take_snapshot as _take_snapshot
+                # Simulation d'un request vide (les endpoints tolèrent l'absence d'auth en scheduler)
+                class _FakeReq:
+                    headers = {}
+                    cookies = {}
+                result = await _take_snapshot(_FakeReq(), days=1, limit=300)
+                logger.info(f"SEO snapshot auto : {result.get('urls_snapshotted', 0)} URLs capturees")
+            except Exception as e:
+                logger.warning(f"SEO snapshot scheduler error: {e}")
+            # Toutes les 24h
+            await asyncio.sleep(86400)
+
+    asyncio.create_task(seo_snapshot_scheduler())
+
     await db.invoices.create_index("invoice_id", unique=True)
     await db.invoices.create_index("quote_id")
     await db.invoices.create_index("lead_id")

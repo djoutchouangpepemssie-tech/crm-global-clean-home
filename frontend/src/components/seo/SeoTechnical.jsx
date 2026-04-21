@@ -13,9 +13,13 @@ import {
 } from 'recharts';
 import {
   PageHeader, SectionHeader, KpiTile, LoadingState, ErrorState, EmptyState,
+  CoreWebVitalsCard, UrlInspector,
   fmt, fmtPct, useSeoFilter,
 } from './SeoShared';
-import { useGa4Analytics, useTrackerHealth, useSeoAnalytics as useSeoStats } from '../../hooks/api';
+import {
+  useGa4Analytics, useTrackerHealth, useSeoAnalytics as useSeoStats,
+  usePageSpeed, useIndexation,
+} from '../../hooks/api';
 
 const DEVICE_COLORS = {
   mobile: 'oklch(0.52 0.13 165)',
@@ -60,6 +64,9 @@ export default function SeoTechnical() {
   const { data: ga4, isLoading } = useGa4Analytics(days);
   const { data: seo } = useSeoStats(days);
   const { data: health } = useTrackerHealth();
+  const [cwvUrl, setCwvUrl] = React.useState('/');
+  const [cwvStrategy, setCwvStrategy] = React.useState('mobile');
+  const cwv = usePageSpeed(cwvUrl, cwvStrategy);
 
   const devices = ga4?.devices || [];
   const seoDevices = seo?.devices || [];
@@ -176,22 +183,39 @@ export default function SeoTechnical() {
         </div>
       </div>
 
-      {/* Core Web Vitals — placeholder */}
+      {/* Core Web Vitals */}
       <SectionHeader eyebrow="Core Web Vitals" title="Qualité perçue de l'expérience"
-        subtitle="LCP, INP, CLS — bientôt connecté à PageSpeed Insights API." />
-      <div className="seo-card" style={{ padding: 28, marginBottom: 28 }}>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-          <Info style={{ width: 20, height: 20, color: 'var(--navy)', flexShrink: 0 }} />
-          <div>
-            <div style={{ fontFamily: 'Fraunces, serif', fontSize: 16, fontWeight: 500, marginBottom: 4 }}>
-              Phase 2 — intégration PageSpeed Insights API
-            </div>
-            <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>
-              Les Core Web Vitals (LCP, INP, CLS) par URL seront injectés dans cette section à la prochaine itération.
-              En attendant, utilisez la console Search Console → Expérience → Core Web Vitals.
-            </div>
-          </div>
-        </div>
+        subtitle="LCP, INP, CLS et scores Lighthouse via PageSpeed Insights. Analyse par URL." />
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+        <input
+          value={cwvUrl}
+          onChange={(e) => setCwvUrl(e.target.value)}
+          placeholder="URL à analyser (ex: /)"
+          style={{
+            flex: 1, minWidth: 240, maxWidth: 400,
+            padding: '8px 12px', borderRadius: 8,
+            border: '1px solid var(--line)', background: 'var(--paper)',
+            fontSize: 13, fontFamily: 'JetBrains Mono, monospace',
+          }}
+        />
+        <button onClick={() => cwv.refetch()} className="seo-chip">Analyser</button>
+      </div>
+      <div style={{ marginBottom: 28 }}>
+        <CoreWebVitalsCard
+          data={cwv.data}
+          isLoading={cwv.isLoading}
+          error={cwv.error}
+          onRetry={() => cwv.refetch()}
+          strategy={cwvStrategy}
+          onStrategyChange={setCwvStrategy}
+        />
+      </div>
+
+      {/* URL Inspector */}
+      <SectionHeader eyebrow="Indexation" title="Inspecteur d'URL Google"
+        subtitle="Vérifier si une page est indexée, son canonical, son dernier crawl et son état mobile." />
+      <div style={{ marginBottom: 28 }}>
+        <UrlInspector useIndexation={useIndexation} />
       </div>
     </div>
   );

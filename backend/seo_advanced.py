@@ -544,6 +544,78 @@ async def get_changelog(request: Request, days: int = 7, top: int = 30):
 
 
 # ───────────────────────── OPPORTUNITIES ─────────────────────────
+@seo_advanced_router.get("/pagespeed")
+async def pagespeed_insights(request: Request, url: str = Query(...), strategy: str = "mobile"):
+    """Core Web Vitals via Google PageSpeed Insights API (publique, sans token requis
+    mais avec quota plus genereux si GOOGLE_PAGESPEED_API_KEY est defini).
+    Retourne LCP, INP, CLS, FCP, TTFB + scores Lighthouse 4 axes.
+    """
+    try:
+        from server import require_auth
+        await require_auth(request)
+    except Exception:
+        pass
+
+    import httpx
+    from analytics_ga4 import GSC_SITE_URL
+    full_url = url if url.startswith("http") else (GSC_SITE_URL.rstrip("/") + (url if url.startswith("/") else "/" + url))
+    api = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
+    api_key = os.environ.get("GOOGLE_PAGESPEED_API_KEY", "")
+
+    params = [("url", full_url), ("strategy", strategy)]
+    for cat in ["PERFORMANCE", "SEO", "ACCESSIBILITY", "BEST_PRACTICES"]:
+        params.append(("category", cat))
+    if api_key:
+        params.append(("key", api_key))
+
+    async with httpx.AsyncClient() as c:
+        r = await c.get(api, params=params, timeout=60)
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail=f"PageSpeed: {r.text[:200]}")
+        data = r.json()
+
+    lr = data.get("lighthouseResult", {})
+    audits = lr.get("audits", {})
+    categories = lr.get("categories", {})
+
+    def metric(key):
+        a = audits.get(key, {})
+        return {
+            "value": a.get("numericValue", 0),
+            "display": a.get("displayValue", "—"),
+            "score": a.get("score", 0),
+        }
+
+    return {
+        "url": full_url,
+        "strategy": strategy,
+        "scores": {
+            "performance":    int((categories.get("performance", {}).get("score") or 0) * 100),
+            "seo":            int((categories.get("seo", {}).get("score") or 0) * 100),
+            "accessibility":  int((categories.get("accessibility", {}).get("score") or 0) * 100),
+            "best_practices": int((categories.get("best-practices", {}).get("score") or 0) * 100),
+        },
+        "core_web_vitals": {
+            "lcp":  metric("largest-contentful-paint"),
+            "cls":  metric("cumulative-layout-shift"),
+            "inp":  metric("interaction-to-next-paint"),
+            "fcp":  metric("first-contentful-paint"),
+            "ttfb": metric("server-response-time"),
+        },
+        "opportunities": [
+            {
+                "id": k,
+                "title": v.get("title", ""),
+                "description": (v.get("description", "") or "")[:200],
+                "saving_ms": v.get("details", {}).get("overallSavingsMs", 0),
+            }
+            for k, v in audits.items()
+            if v.get("details", {}).get("type") == "opportunity"
+               and v.get("details", {}).get("overallSavingsMs", 0) > 100
+        ][:10],
+    }
+
+
 @seo_advanced_router.get("/opportunities")
 async def find_opportunities(request: Request, days: int = 28):
     """Moteur d'opportunites priorisees : queries en page 2 pres du top10,

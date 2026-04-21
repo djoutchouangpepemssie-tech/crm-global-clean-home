@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import {
   PageHeader, SectionHeader, KpiTile, LoadingState, ErrorState, EmptyState,
+  ExportButton,
   fmt, fmtPct, pathOf, useSeoFilter,
 } from './SeoShared';
 import { useSeoAnalytics as useSeoStats, useGa4Analytics } from '../../hooks/api';
@@ -61,6 +62,23 @@ export default function SeoContent() {
         eyebrow="Contenu"
         title={<>Pages <em>qui performent</em></>}
         subtitle={`Analyse croisée Search Console + GA4 sur ${days} jours.`}
+        actions={
+          <ExportButton
+            rows={merged}
+            columns={[
+              { key: 'path', label: 'Page' },
+              { key: 'impressions', label: 'Impressions' },
+              { key: 'clicks', label: 'Clics' },
+              { key: 'ctr', label: 'CTR (%)' },
+              { key: 'position', label: 'Position' },
+              { key: 'views', label: 'Vues GA4' },
+              { key: 'avg_duration', label: 'Durée (s)' },
+              { key: 'bounce_rate', label: 'Rebond (%)' },
+            ]}
+            filename={`seo-pages-${days}j-${new Date().toISOString().slice(0, 10)}.csv`}
+            label="CSV pages"
+          />
+        }
       />
 
       {/* Sous-sections contenu */}

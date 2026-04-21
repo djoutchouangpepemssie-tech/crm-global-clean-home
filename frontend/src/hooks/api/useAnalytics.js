@@ -224,3 +224,16 @@ export function useSeedActionsFromOpportunities() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['seo', 'actions'] }),
   });
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// Phase 4 — PageSpeed / Core Web Vitals
+// ═══════════════════════════════════════════════════════════════════
+export function usePageSpeed(url, strategy = 'mobile') {
+  return useQuery({
+    queryKey: ['seo', 'pagespeed', url, strategy],
+    queryFn: async () => (await api.get(`/seo/pagespeed?url=${encodeURIComponent(url)}&strategy=${strategy}`)).data,
+    enabled: !!url,
+    staleTime: 30 * 60_000,
+    retry: 1,
+  });
+}

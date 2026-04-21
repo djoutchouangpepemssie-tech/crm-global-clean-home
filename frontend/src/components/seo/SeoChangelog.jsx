@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import {
   PageHeader, SectionHeader, KpiTile, LoadingState, ErrorState, EmptyState,
+  ExportButton,
   fmt, useSeoFilter,
 } from './SeoShared';
 import { useChangelog, useTakeSnapshot } from '../../hooks/api';
@@ -84,10 +85,39 @@ export default function SeoChangelog() {
         title={<>Changelog <em>SEO</em></>}
         subtitle={`Évolutions par URL sur les ${changelogDays} derniers jours. Basé sur des snapshots quotidiens Search Console.`}
         actions={
-          <button onClick={onSnapshot} className="seo-cta" disabled={snapshot.isPending}>
-            <Camera style={{ width: 14, height: 14 }} />
-            {snapshot.isPending ? 'Capture…' : 'Prendre un snapshot'}
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <ExportButton
+              rows={changes.map((c) => ({
+                path: c.path,
+                direction: c.direction,
+                impact: c.impact,
+                first_date: c.first_date,
+                last_date: c.last_date,
+                current_clicks: c.current.clicks,
+                current_impressions: c.current.impressions,
+                current_position: c.current.position,
+                current_ctr: c.current.ctr,
+                delta_clicks: c.delta.clicks,
+                delta_impressions: c.delta.impressions,
+                delta_position: c.delta.position,
+                delta_ctr: c.delta.ctr,
+              }))}
+              columns={[
+                { key: 'path', label: 'Page' }, { key: 'direction', label: 'Direction' }, { key: 'impact', label: 'Impact' },
+                { key: 'current_position', label: 'Pos' }, { key: 'delta_position', label: 'Δ Pos' },
+                { key: 'current_clicks', label: 'Clics' }, { key: 'delta_clicks', label: 'Δ Clics' },
+                { key: 'current_impressions', label: 'Imp.' }, { key: 'delta_impressions', label: 'Δ Imp.' },
+                { key: 'current_ctr', label: 'CTR' }, { key: 'delta_ctr', label: 'Δ CTR' },
+                { key: 'first_date', label: 'Du' }, { key: 'last_date', label: 'Au' },
+              ]}
+              filename={`seo-changelog-${changelogDays}j-${new Date().toISOString().slice(0, 10)}.csv`}
+              label="CSV changelog"
+            />
+            <button onClick={onSnapshot} className="seo-cta" disabled={snapshot.isPending}>
+              <Camera style={{ width: 14, height: 14 }} />
+              {snapshot.isPending ? 'Capture…' : 'Prendre un snapshot'}
+            </button>
+          </div>
         }
       />
 

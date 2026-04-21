@@ -9,11 +9,12 @@
 //   Molecules:  PageHeader, EmptyState, LoadingState, ErrorState
 //   Context:    SeoFilterContext (days, setDays)
 
-import React, { useContext, createContext, useMemo } from 'react';
+import React, { useContext, createContext, useMemo, useState } from 'react';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
 import {
-  AlertTriangle, ArrowDown, ArrowUp, Bell, Check, CheckCircle, Flag,
-  Gauge, TrendingUp,
+  AlertCircle, AlertTriangle, ArrowDown, ArrowUp, Bell, Check, CheckCircle,
+  Download, ExternalLink, Flag, Gauge, Globe, Info, Loader2, Search,
+  TrendingUp,
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -657,6 +658,282 @@ export function OkCheck({ size = 14 }) {
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     }}>
       <Check style={{ width: size - 2, height: size - 2 }} />
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   EXPORT CSV — composant universel (Phase 4)
+═══════════════════════════════════════════════════════════════════ */
+function escapeCsv(value) {
+  if (value === null || value === undefined) return '';
+  const s = typeof value === 'object' ? JSON.stringify(value) : String(value);
+  if (/[",\n;]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+export function toCsv(rows, columns) {
+  if (!rows?.length) return '';
+  const cols = columns || Object.keys(rows[0]);
+  const header = cols.map((c) => escapeCsv(c.label || c.key || c)).join(';');
+  const body = rows.map((r) => cols.map((c) => {
+    const key = typeof c === 'string' ? c : c.key;
+    const getter = typeof c === 'object' && typeof c.get === 'function' ? c.get : null;
+    return escapeCsv(getter ? getter(r) : r[key]);
+  }).join(';')).join('\n');
+  return header + '\n' + body;
+}
+
+export function ExportButton({ rows, columns, filename = 'export.csv', label = 'Exporter CSV', className = 'seo-chip' }) {
+  const onExport = () => {
+    try {
+      const csv = toCsv(rows || [], columns);
+      if (!csv) return;
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 800);
+    } catch (e) {
+      console.error('Export CSV error:', e);
+    }
+  };
+  return (
+    <button onClick={onExport} disabled={!rows?.length} className={className}
+      title={rows?.length ? `Exporter ${rows.length} lignes` : 'Aucune donnée à exporter'}>
+      <Download style={{ width: 13, height: 13 }} />
+      {label}{rows?.length ? ` · ${rows.length}` : ''}
+    </button>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   URL INSPECTOR — widget indexation Google (Phase 4)
+═══════════════════════════════════════════════════════════════════ */
+export function UrlInspector({ url, useIndexation }) {
+  const [open, setOpen] = useState(!!url);
+  const [probe, setProbe] = useState(url || '');
+  const query = useIndexation?.(open && probe ? probe : '');
+
+  const data = query?.data;
+  const loading = query?.isLoading;
+  const error = query?.error;
+
+  if (!useIndexation) {
+    return <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>Hook useIndexation manquant.</div>;
+  }
+
+  const verdictMap = {
+    PASS:    { tone: 'var(--emerald)', bg: 'var(--emerald-soft)', label: 'Indexée', Icon: CheckCircle },
+    PARTIAL: { tone: 'var(--gold)',    bg: 'var(--gold-soft)',    label: 'Partiel', Icon: AlertCircle },
+    FAIL:    { tone: 'var(--rouge)',   bg: 'var(--rouge-soft)',   label: 'Non indexée', Icon: AlertCircle },
+    NEUTRAL: { tone: 'var(--ink-3)',   bg: 'var(--surface-2)',    label: 'Inconnu', Icon: Info },
+  };
+  const v = verdictMap[data?.verdict] || verdictMap.NEUTRAL;
+
+  return (
+    <div className="seo-card" style={{ padding: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <Search style={{ width: 16, height: 16, color: 'var(--navy)' }} />
+        <div className="seo-display" style={{ fontSize: 16, fontWeight: 500 }}>Inspecteur d'URL</div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <input
+          value={probe}
+          onChange={(e) => setProbe(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') setOpen(true); }}
+          placeholder="/page-à-inspecter/"
+          style={{
+            flex: 1, padding: '8px 12px', borderRadius: 8,
+            border: '1px solid var(--line)', background: 'var(--surface)',
+            fontSize: 13, fontFamily: 'JetBrains Mono, monospace',
+          }}
+        />
+        <button onClick={() => { setOpen(true); }} className="seo-cta" style={{ padding: '8px 14px' }}>
+          Inspecter
+        </button>
+      </div>
+
+      {loading && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ink-3)', fontSize: 12 }}>
+          <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} />
+          Appel à Google Search Console…
+        </div>
+      )}
+      {error && <div style={{ color: 'var(--rouge)', fontSize: 12 }}>Erreur : {error.message}</div>}
+
+      {data && !loading && (
+        <div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+            <span className="seo-pill" style={{ color: v.tone, background: v.bg, borderColor: v.tone }}>
+              <v.Icon style={{ width: 11, height: 11 }} /> {v.label}
+            </span>
+            <span className="seo-mono" style={{ fontSize: 11, color: 'var(--ink-3)' }}>{data.verdict}</span>
+          </div>
+          <div style={{ display: 'grid', gap: 6, fontSize: 12 }}>
+            <InspectorRow label="Couverture" value={data.coverage || '—'} />
+            <InspectorRow label="Canonical Google" value={data.canonical_google || '—'} mono />
+            <InspectorRow label="Canonical déclaré" value={data.canonical_user || '—'} mono />
+            <InspectorRow label="Crawlé le" value={data.last_crawl ? new Date(data.last_crawl).toLocaleString('fr-FR') : '—'} />
+            <InspectorRow label="Crawler" value={data.crawl_as || '—'} />
+            <InspectorRow label="État robots.txt" value={data.robots_state || '—'} />
+            <InspectorRow label="Mobile" value={data.mobile_verdict || '—'} />
+          </div>
+          {data.url && (
+            <a href={data.url} target="_blank" rel="noreferrer" className="seo-chip" style={{ marginTop: 12 }}>
+              Voir page <ExternalLink style={{ width: 11, height: 11 }} />
+            </a>
+          )}
+        </div>
+      )}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
+function InspectorRow({ label, value, mono }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, padding: '6px 0', borderBottom: '1px solid var(--line-2)' }}>
+      <span style={{ color: 'var(--ink-3)' }}>{label}</span>
+      <span style={{
+        color: 'var(--ink)', fontWeight: 500,
+        fontFamily: mono ? 'JetBrains Mono, monospace' : 'inherit',
+        maxWidth: '60%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>{value}</span>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CORE WEB VITALS — widget PageSpeed (Phase 4)
+═══════════════════════════════════════════════════════════════════ */
+function cwvTone(score) {
+  if (score >= 0.9) return 'var(--emerald)';
+  if (score >= 0.5) return 'var(--gold)';
+  return 'var(--rouge)';
+}
+
+function CwvMetric({ label, metric }) {
+  const tone = cwvTone(metric?.score || 0);
+  return (
+    <div style={{
+      padding: 14, borderRadius: 12,
+      background: `color-mix(in oklch, ${tone} 8%, var(--paper))`,
+      border: `1px solid color-mix(in oklch, ${tone} 35%, var(--line))`,
+      flex: 1, minWidth: 0,
+    }}>
+      <div className="seo-label" style={{ color: tone, fontSize: 9 }}>{label}</div>
+      <div className="seo-mono" style={{ fontSize: 18, fontWeight: 700, color: tone, marginTop: 3 }}>
+        {metric?.display || '—'}
+      </div>
+    </div>
+  );
+}
+
+export function CoreWebVitalsCard({ data, isLoading, error, onRetry, strategy = 'mobile', onStrategyChange }) {
+  if (isLoading) {
+    return (
+      <div className="seo-card" style={{ padding: 40, textAlign: 'center' }}>
+        <Loader2 style={{ width: 22, height: 22, color: 'var(--navy)', animation: 'spin 1s linear infinite' }} />
+        <div style={{ marginTop: 10, fontSize: 13, color: 'var(--ink-3)' }}>Analyse PageSpeed en cours (30-60s)…</div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="seo-card" style={{ padding: 20 }}>
+        <div style={{ color: 'var(--rouge)', fontSize: 13 }}>
+          Erreur PageSpeed : {error.message}
+          {onRetry && <button onClick={onRetry} className="seo-chip" style={{ marginLeft: 10 }}>Réessayer</button>}
+        </div>
+      </div>
+    );
+  }
+  if (!data) return null;
+
+  const cwv = data.core_web_vitals || {};
+  const scores = data.scores || {};
+
+  return (
+    <div className="seo-card" style={{ padding: 22 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div>
+          <div className="seo-label">PageSpeed Insights</div>
+          <div className="seo-display" style={{ fontSize: 18, marginTop: 4 }}>
+            Core Web Vitals · <span style={{ color: 'var(--navy)', fontStyle: 'italic' }}>{strategy}</span>
+          </div>
+        </div>
+        {onStrategyChange && (
+          <div style={{ display: 'flex', gap: 4, padding: 3, borderRadius: 999, border: '1px solid var(--line)' }}>
+            {['mobile', 'desktop'].map((s) => (
+              <button key={s} onClick={() => onStrategyChange(s)}
+                style={{
+                  padding: '5px 10px', borderRadius: 999, border: 'none', cursor: 'pointer',
+                  background: strategy === s ? 'var(--ink)' : 'transparent',
+                  color: strategy === s ? 'var(--bg)' : 'var(--ink-3)',
+                  fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.06em',
+                }}>
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Scores Lighthouse */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 14 }}>
+        {[
+          ['Performance', scores.performance],
+          ['SEO', scores.seo],
+          ['Accessibilité', scores.accessibility],
+          ['Best practices', scores.best_practices],
+        ].map(([name, score]) => {
+          const tone = score >= 90 ? 'var(--emerald)' : score >= 50 ? 'var(--gold)' : 'var(--rouge)';
+          return (
+            <div key={name} style={{ padding: 12, borderRadius: 10, background: 'var(--surface-2)', textAlign: 'center' }}>
+              <div className="seo-label" style={{ fontSize: 9 }}>{name}</div>
+              <div className="seo-mono" style={{ fontSize: 22, fontWeight: 700, color: tone, marginTop: 4 }}>
+                {score ?? '—'}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* CWV metrics */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
+        <CwvMetric label="LCP" metric={cwv.lcp} />
+        <CwvMetric label="INP" metric={cwv.inp} />
+        <CwvMetric label="CLS" metric={cwv.cls} />
+        <CwvMetric label="FCP" metric={cwv.fcp} />
+        <CwvMetric label="TTFB" metric={cwv.ttfb} />
+      </div>
+
+      {/* Opportunities */}
+      {data.opportunities?.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <div className="seo-label" style={{ marginBottom: 8 }}>Pistes d'optimisation prioritaires</div>
+          <div style={{ display: 'grid', gap: 6 }}>
+            {data.opportunities.slice(0, 5).map((o, i) => (
+              <div key={i} style={{
+                padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 8,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
+              }}>
+                <span style={{ fontSize: 12, fontFamily: 'Fraunces, serif' }}>{o.title}</span>
+                <span className="seo-mono" style={{ fontSize: 11, color: 'var(--emerald)', fontWeight: 700 }}>
+                  −{(o.saving_ms / 1000).toFixed(1)}s possibles
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
