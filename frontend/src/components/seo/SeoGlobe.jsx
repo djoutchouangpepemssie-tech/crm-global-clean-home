@@ -49,12 +49,12 @@ const CITY_COORDS = {
   'Rome': [12.49, 41.90], 'Berlin': [13.40, 52.52],
 };
 
-const DEVICE_COLORS = {
-  mobile: '#10b981',    // emerald
-  desktop: '#3b82f6',   // blue
-  tablet: '#f59e0b',    // amber
-  unknown: '#94a3b8',
-};
+// Tous les visiteurs = point vert. Les identifiés sont un peu plus grands
+// et ont un anneau blanc pour les distinguer. La zone d'incertitude de la
+// géoloc IP (~30-70km typiquement en ville) est représentée par un cercle
+// translucide autour du point.
+const VISITOR_COLOR = '#10b981';   // emerald-500
+const VISITOR_COLOR_DEEP = '#047857'; // emerald-700
 
 const COUNTRY_FLAGS = {
   'FR': '🇫🇷', 'US': '🇺🇸', 'GB': '🇬🇧', 'DE': '🇩🇪', 'ES': '🇪🇸',
@@ -74,24 +74,80 @@ function coordsFor(visitor) {
   return null;
 }
 
-function VisitorDot({ visitor }) {
+function VisitorDot({ visitor, onHover, onLeave }) {
   const coords = coordsFor(visitor);
   if (!coords) return null;
-  const color = DEVICE_COLORS[visitor.device] || DEVICE_COLORS.unknown;
   const identified = visitor.identified;
   const r = identified ? 6 : 5;
+  const city = visitor.location?.city || visitor.lead?.city || '—';
+
   return (
-    <Marker coordinates={coords}>
-      {/* Halo */}
-      <circle r={r * 2.5} fill={color} opacity="0.22">
+    <Marker coordinates={coords}
+            onMouseEnter={() => onHover?.(visitor, coords)}
+            onMouseLeave={() => onLeave?.()}>
+      {/* Zone d'incertitude géoloc IP (approximation de la ville) */}
+      <circle r={r * 4} fill={VISITOR_COLOR} opacity="0.08" />
+      <circle r={r * 4} fill="none" stroke={VISITOR_COLOR} strokeWidth="0.4" strokeDasharray="2 2" opacity="0.5" />
+      {/* Halo pulsant */}
+      <circle r={r * 2.5} fill={VISITOR_COLOR} opacity="0.25">
         <animate attributeName="r" from={r * 1.5} to={r * 3.5} dur="2s" repeatCount="indefinite" />
-        <animate attributeName="opacity" from="0.4" to="0" dur="2s" repeatCount="indefinite" />
+        <animate attributeName="opacity" from="0.5" to="0" dur="2s" repeatCount="indefinite" />
       </circle>
-      <circle r={r} fill={color} stroke="white" strokeWidth="1.5" />
+      {/* Point central vert */}
+      <circle r={r} fill={VISITOR_COLOR} stroke="white" strokeWidth="1.5"
+              style={{ cursor: 'pointer', filter: 'drop-shadow(0 1px 3px rgba(16,185,129,0.5))' }} />
       {identified && (
-        <circle r={r - 2} fill="white" opacity="0.9" />
+        <circle r={r - 2.5} fill="white" opacity="0.95" />
       )}
     </Marker>
+  );
+}
+
+function VisitorTooltip({ visitor, x, y }) {
+  if (!visitor) return null;
+  const city = visitor.location?.city || visitor.lead?.city || '—';
+  const country = visitor.location?.country || '—';
+  const region = visitor.location?.region;
+  const name = visitor.lead?.name;
+  const when = visitor.last_seen ? new Date(visitor.last_seen).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '—';
+
+  return (
+    <div style={{
+      position: 'absolute', left: x, top: y, transform: 'translate(-50%, calc(-100% - 16px))',
+      background: 'white', borderRadius: 10, padding: '10px 14px',
+      boxShadow: '0 8px 24px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.08)',
+      minWidth: 200, maxWidth: 300, pointerEvents: 'none', zIndex: 20,
+      fontFamily: 'Inter, sans-serif',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+        <span style={{ width: 8, height: 8, borderRadius: 999, background: VISITOR_COLOR, display: 'inline-block' }} />
+        <span style={{ fontSize: 11, fontWeight: 700, color: VISITOR_COLOR_DEEP, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+          {visitor.identified ? 'Identifié' : 'Anonyme'}
+        </span>
+      </div>
+      {name && (
+        <div style={{ fontFamily: 'Fraunces, serif', fontSize: 14, fontWeight: 600, color: '#1e293b', marginBottom: 2 }}>
+          {name}
+        </div>
+      )}
+      <div style={{ fontSize: 13, fontWeight: 500, color: '#334155' }}>
+        📍 {city}{region && region !== city ? `, ${region}` : ''}
+      </div>
+      <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+        {country} · {visitor.device || '—'} · {when}
+      </div>
+      {visitor.last_page && (
+        <div style={{ fontSize: 11, color: '#64748b', marginTop: 4, fontFamily: 'JetBrains Mono, monospace' }}>
+          {visitor.last_page}
+        </div>
+      )}
+      {/* Petite flèche sous le tooltip */}
+      <div style={{
+        position: 'absolute', bottom: -6, left: '50%', transform: 'translateX(-50%)',
+        width: 12, height: 12, background: 'white', transform: 'translateX(-50%) rotate(45deg)',
+        boxShadow: '2px 2px 4px rgba(0,0,0,0.04)',
+      }} />
+    </div>
   );
 }
 
@@ -221,6 +277,20 @@ export default function SeoGlobe() {
   const { data: seo } = useSeoStats(days);
   const { data: realtime } = useRealtime();
   const { data: visitors, isLoading } = useVisitors(24, 80);
+  const [tooltip, setTooltip] = useState(null);
+  const mapRef = React.useRef(null);
+
+  const onDotHover = (visitor, coords) => {
+    // On laisse le tooltip se positionner via la souris globale
+    setTooltip(visitor);
+  };
+  const onDotLeave = () => setTooltip(null);
+  const [mouse, setMouse] = useState({ x: 0, y: 0 });
+  const onMapMouseMove = (e) => {
+    if (!mapRef.current) return;
+    const rect = mapRef.current.getBoundingClientRect();
+    setMouse({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
 
   const v = visitors?.visitors || [];
   const identified = v.filter((x) => x.identified);
@@ -272,7 +342,7 @@ export default function SeoGlobe() {
       </div>
 
       {/* Carte du monde */}
-      <div style={{
+      <div ref={mapRef} onMouseMove={onMapMouseMove} style={{
         position: 'relative', background: '#fafbfc',
         border: '1px solid var(--line)', borderRadius: 20, overflow: 'hidden',
         marginBottom: 24, height: 560,
@@ -302,10 +372,37 @@ export default function SeoGlobe() {
               }
             </Geographies>
             {v.map((visitor) => (
-              <VisitorDot key={visitor.visitor_id} visitor={visitor} />
+              <VisitorDot key={visitor.visitor_id} visitor={visitor}
+                          onHover={onDotHover} onLeave={onDotLeave} />
             ))}
           </ZoomableGroup>
         </ComposableMap>
+
+        {/* Légende */}
+        <div style={{
+          position: 'absolute', top: 16, left: 16,
+          background: 'white', padding: '10px 14px', borderRadius: 10,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06)', fontSize: 11,
+          display: 'flex', flexDirection: 'column', gap: 6,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 999, background: VISITOR_COLOR,
+                           boxShadow: `0 0 0 3px ${VISITOR_COLOR}33`, display: 'inline-block' }} />
+            <span style={{ color: '#334155', fontWeight: 500 }}>Visiteur anonyme</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 999, background: VISITOR_COLOR,
+                           border: '2px solid white', boxShadow: `0 0 0 2px ${VISITOR_COLOR}`, display: 'inline-block' }} />
+            <span style={{ color: '#334155', fontWeight: 500 }}>Visiteur identifié</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2, paddingTop: 6, borderTop: '1px solid #f1f5f9' }}>
+            <span style={{ width: 14, height: 14, borderRadius: 999,
+                           background: `${VISITOR_COLOR}14`, border: `1px dashed ${VISITOR_COLOR}88`, display: 'inline-block' }} />
+            <span style={{ color: '#64748b', fontSize: 10 }}>Zone approximative (géoloc IP)</span>
+          </div>
+        </div>
+
+        {tooltip && <VisitorTooltip visitor={tooltip} x={mouse.x} y={mouse.y} />}
 
         <LivePopup
           pages={pages}
