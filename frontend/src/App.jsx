@@ -144,6 +144,7 @@ const ContractsActes = lazy(() => import('./components/contracts/ContractsActes'
 const StockMagasin = lazy(() => import('./components/stock/StockMagasin'));
 const BookingRegistre = lazy(() => import('./components/booking/BookingRegistre'));
 const SEOAtlas = lazy(() => import('./components/seo/SEOAtlas'));
+const SeoCockpit = lazy(() => import('./components/seo/SeoCockpit'));
 const MapTerritoire = lazy(() => import('./components/map/MapTerritoire'));
 const AdsAffichage = lazy(() => import('./components/ads/AdsAffichage'));
 const RentabiliteBalance = lazy(() => import('./components/rentabilite/RentabiliteBalance'));
@@ -416,7 +417,8 @@ function AppRouter() {
                     <Route path="/pipeline" element={<PipelineRiver />} />
                     <Route path="/director" element={<DirectorPasserelle />} />
                     <Route path="/director/legacy" element={<DirectorDashboard />} />
-                    <Route path="/seo" element={<SEOAtlas />} />
+                    <Route path="/seo" element={<SeoCockpit />} />
+                    <Route path="/seo/atlas" element={<SEOAtlas />} />
                     <Route path="/seo/legacy" element={<SEODashboard />} />
                     <Route path="/rentabilite" element={<RentabiliteBalance />} />
                     <Route path="/rentabilite/legacy" element={<RentabiliteModule />} />
