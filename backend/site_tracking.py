@@ -9,6 +9,7 @@ Couche de tracking avancee au dessus de /api/tracking/event :
 """
 import os
 import logging
+from typing import Optional
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Request, Response, HTTPException
 from fastapi.responses import PlainTextResponse
@@ -990,10 +991,6 @@ def _count_visits_before_conversion(sessions, profile):
         if s["start"] and s["start"] < conv:
             count += 1
     return count
-
-
-# import Optional en haut du fichier si besoin
-from typing import Optional
 
 
 @tracker_router.get("/keywords")
