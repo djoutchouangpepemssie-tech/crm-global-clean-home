@@ -484,6 +484,20 @@ async def get_changelog(request: Request, days: int = 7, top: int = 30):
     pipeline = [
         {"$match": {"date": {"$gte": start_date, "$lte": end_date}}},
         {"$sort": {"url": 1, "date": 1}},
+        # Étape 1 : dédupliquer par url+date (garder le dernier snapshot du jour)
+        # Cela évite que les snapshots multiples du même jour gonflent les résultats
+        {"$group": {
+            "_id": {"url": "$url", "date": "$date"},
+            "path": {"$last": "$path"},
+            "url": {"$last": "$url"},
+            "date": {"$last": "$date"},
+            "clicks": {"$last": "$clicks"},
+            "impressions": {"$last": "$impressions"},
+            "position": {"$last": "$position"},
+            "ctr": {"$last": "$ctr"},
+        }},
+        {"$sort": {"url": 1, "date": 1}},
+        # Étape 2 : grouper par url pour obtenir premier/dernier jour
         {"$group": {
             "_id": "$url",
             "path": {"$last": "$path"},
@@ -497,23 +511,35 @@ async def get_changelog(request: Request, days: int = 7, top: int = 30):
             "last_position": {"$last": "$position"},
             "first_ctr": {"$first": "$ctr"},
             "last_ctr": {"$last": "$ctr"},
-            "snapshots": {"$sum": 1},
+            "distinct_days": {"$sum": 1},
         }},
-        {"$match": {"snapshots": {"$gte": 2}}},
+        # Au moins 2 jours distincts pour calculer un delta significatif
+        {"$match": {"distinct_days": {"$gte": 2}}},
     ]
 
     rows = await _db.seo_snapshots.aggregate(pipeline).to_list(500)
 
     changes = []
+    seen_paths = set()  # Dédupliquer les paths (www vs non-www, trailing slash)
     for r in rows:
-        d_clicks = r["last_clicks"] - r["first_clicks"]
-        d_imp = r["last_impressions"] - r["first_impressions"]
-        d_pos = r["first_position"] - r["last_position"]  # gain = position baisse
-        d_ctr = r["last_ctr"] - r["first_ctr"]
+        path = (r.get("path") or r["_id"] or "").rstrip("/").replace("https://www.", "https://")
+        if path in seen_paths:
+            continue
+        seen_paths.add(path)
+
+        d_clicks = (r["last_clicks"] or 0) - (r["first_clicks"] or 0)
+        d_imp = (r["last_impressions"] or 0) - (r["first_impressions"] or 0)
+        d_pos = (r["first_position"] or 0) - (r["last_position"] or 0)  # gain = position baisse
+        d_ctr = (r["last_ctr"] or 0) - (r["first_ctr"] or 0)
+
+        # Ignorer les changements insignifiants (bruit)
+        if abs(d_clicks) < 1 and abs(d_imp) < 5 and abs(d_pos) < 0.5:
+            continue
+
         impact = abs(d_clicks) + abs(d_imp) / 10 + abs(d_pos) * 5
         changes.append({
             "url": r["_id"],
-            "path": r.get("path", ""),
+            "path": path,
             "first_date": r["first_date"],
             "last_date": r["last_date"],
             "delta": {
@@ -523,10 +549,10 @@ async def get_changelog(request: Request, days: int = 7, top: int = 30):
                 "ctr": round(d_ctr, 2),
             },
             "current": {
-                "clicks": r["last_clicks"],
-                "impressions": r["last_impressions"],
-                "position": r["last_position"],
-                "ctr": r["last_ctr"],
+                "clicks": r["last_clicks"] or 0,
+                "impressions": r["last_impressions"] or 0,
+                "position": r["last_position"] or 0,
+                "ctr": r["last_ctr"] or 0,
             },
             "impact": round(impact, 1),
             "direction": "up" if (d_clicks > 0 or d_pos > 0.3) else "down" if (d_clicks < 0 or d_pos < -0.3) else "flat",
