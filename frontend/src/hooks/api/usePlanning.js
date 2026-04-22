@@ -237,6 +237,15 @@ export function useMember(memberId) {
   });
 }
 
+export function useMemberProfile(memberId) {
+  return useQuery({
+    queryKey: ['planning', 'member', memberId, 'profile'],
+    queryFn: async () => (await api.get(`/planning/members/${memberId}/profile`)).data,
+    enabled: !!memberId,
+    staleTime: 30_000,
+  });
+}
+
 export function useUpdateMember() {
   const qc = useQueryClient();
   return useMutation({

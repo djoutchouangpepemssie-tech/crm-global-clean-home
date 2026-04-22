@@ -179,6 +179,7 @@ const AccountingEnterprise = lazy(() => import('./components/accounting/Accounti
 const AccountingERP = lazy(() => import('./components/accounting/AccountingERP'));
 const AccountingGrimoire = lazy(() => import('./components/accounting/AccountingGrimoire'));
 const IntervenantsEquipage = lazy(() => import('./components/planning/IntervenantsEquipage'));
+const IntervenantProfile = lazy(() => import('./components/planning/IntervenantProfile'));
 const DocumentsBibliotheque = lazy(() => import('./components/documents/DocumentsBibliotheque'));
 const TicketsDoleances = lazy(() => import('./components/tickets/TicketsDoleances'));
 const ContractsActes = lazy(() => import('./components/contracts/ContractsActes'));
@@ -546,6 +547,7 @@ function AppRouter() {
                     <Route path="/planning" element={<PlanningFil />} />
                     <Route path="/planning/calendar" element={<PlanningCalendar />} />
                     <Route path="/intervenants" element={<IntervenantsEquipage />} />
+                    <Route path="/intervenants/:id" element={<IntervenantProfile />} />
                     <Route path="/intervenants/legacy" element={<IntervenantsManager />} />
                     <Route path="/integrations" element={<IntegrationsConnexions />} />
                     <Route path="/integrations/legacy" element={<Integrations />} />

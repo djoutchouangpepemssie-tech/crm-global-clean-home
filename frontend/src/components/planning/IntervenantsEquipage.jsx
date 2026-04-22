@@ -295,8 +295,8 @@ export default function IntervenantsEquipage() {
                   key={m.member_id || m.id || m._id || m.email || i}
                   className="eqp-card"
                   style={{ cursor: 'pointer' }}
-                  onClick={() => setAssignOpen({ ...m, _name: name })}
-                  title="Cliquer pour assigner une mission"
+                  onClick={() => m.member_id ? navigate(`/intervenants/${m.member_id}`) : setAssignOpen({ ...m, _name: name })}
+                  title="Voir la fiche intervenant"
                 >
                   <button
                     className="eqp-edit-btn"

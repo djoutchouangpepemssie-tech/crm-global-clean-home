@@ -246,6 +246,111 @@ async def get_member(member_id: str, request: Request):
     return m
 
 
+@planning_router.get("/planning/members/{member_id}/profile")
+async def get_member_profile(member_id: str, request: Request):
+    """Profil complet d'un intervenant : infos + missions à venir + récentes
+    + stats (missions ce mois/total, heures travaillées, taux completion)
+    + historique d'activité (check-in/out).
+    """
+    await _require_auth(request)
+    member = await _db.team_members.find_one({"member_id": member_id}, {"_id": 0})
+    if not member:
+        raise HTTPException(status_code=404, detail="Intervenant introuvable")
+
+    now = datetime.now(timezone.utc)
+    today = now.date().isoformat()
+    start_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).date().isoformat()
+    start_year = now.replace(month=1, day=1).date().isoformat()
+    next_90d = (now + timedelta(days=90)).date().isoformat()
+
+    # Missions à venir (aujourd'hui inclus)
+    upcoming_cursor = _db.interventions.find(
+        {"assigned_members": member_id, "scheduled_date": {"$gte": today, "$lte": next_90d}},
+        {"_id": 0}
+    ).sort([("scheduled_date", 1), ("scheduled_time", 1)]).limit(30)
+    upcoming = await upcoming_cursor.to_list(30)
+
+    # Missions récentes terminées
+    recent_cursor = _db.interventions.find(
+        {"assigned_members": member_id, "scheduled_date": {"$lt": today}},
+        {"_id": 0}
+    ).sort([("scheduled_date", -1), ("scheduled_time", -1)]).limit(20)
+    recent = await recent_cursor.to_list(20)
+
+    # Stats
+    missions_today = await _db.interventions.count_documents({
+        "assigned_members": member_id, "scheduled_date": today,
+    })
+    missions_this_month = await _db.interventions.count_documents({
+        "assigned_members": member_id, "scheduled_date": {"$gte": start_month},
+    })
+    missions_this_year = await _db.interventions.count_documents({
+        "assigned_members": member_id, "scheduled_date": {"$gte": start_year},
+    })
+    missions_total = await _db.interventions.count_documents({
+        "assigned_members": member_id,
+    })
+    missions_done = await _db.interventions.count_documents({
+        "assigned_members": member_id, "status": {"$in": ["done", "completed", "terminee", "termine"]},
+    })
+    missions_cancelled = await _db.interventions.count_documents({
+        "assigned_members": member_id, "status": {"$in": ["cancelled", "annulee", "annule"]},
+    })
+    # Heures cumulées (mois en cours)
+    month_missions = await _db.interventions.find(
+        {"assigned_members": member_id, "scheduled_date": {"$gte": start_month}},
+        {"_id": 0, "duration_hours": 1}
+    ).to_list(1000)
+    hours_this_month = sum((m.get("duration_hours") or 2.0) for m in month_missions)
+    year_missions = await _db.interventions.find(
+        {"assigned_members": member_id, "scheduled_date": {"$gte": start_year}},
+        {"_id": 0, "duration_hours": 1}
+    ).to_list(10000)
+    hours_this_year = sum((m.get("duration_hours") or 2.0) for m in year_missions)
+
+    completion_rate = round((missions_done / max(missions_total, 1)) * 100, 1) if missions_total else 0
+
+    # Équipes affiliées (si l'intervenant a bougé)
+    teams_affiliated = await _db.teams.find(
+        {"members.member_id": member_id},
+        {"_id": 0, "team_id": 1, "name": 1, "color": 1}
+    ).to_list(20)
+
+    # Activité récente (check-in/out si collection existe)
+    recent_activity = []
+    try:
+        activity_cursor = _db.intervention_events.find(
+            {"member_id": member_id},
+            {"_id": 0}
+        ).sort("timestamp", -1).limit(15)
+        recent_activity = await activity_cursor.to_list(15)
+    except Exception:
+        pass
+
+    return {
+        "member": member,
+        "teams": teams_affiliated,
+        "stats": {
+            "missions_today": missions_today,
+            "missions_this_month": missions_this_month,
+            "missions_this_year": missions_this_year,
+            "missions_total": missions_total,
+            "missions_done": missions_done,
+            "missions_cancelled": missions_cancelled,
+            "completion_rate": completion_rate,
+            "hours_this_month": round(hours_this_month, 1),
+            "hours_this_year": round(hours_this_year, 1),
+            "member_since_days": (
+                (now.date() - datetime.fromisoformat(member["hire_date"]).date()).days
+                if member.get("hire_date") else None
+            ),
+        },
+        "upcoming": upcoming,
+        "recent": recent,
+        "activity": recent_activity,
+    }
+
+
 @planning_router.put("/planning/members/{member_id}")
 async def update_member(member_id: str, body: TeamMemberUpdate, request: Request):
     """Met à jour les champs d'un intervenant (photo, skills, zones, role, etc.)."""
