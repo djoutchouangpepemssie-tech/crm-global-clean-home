@@ -4,15 +4,16 @@
 // - Dots colorés selon device/source
 // - Popup flottant "Pages / Referrers / Countries" avec live users
 // - Liste des visiteurs identifiés (matchés avec un lead CRM)
+// - FILTRES : période, pays, page, device
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback, memo } from 'react';
 import {
   ComposableMap, Geographies, Geography, Marker, ZoomableGroup,
 } from 'react-simple-maps';
 import {
   ArrowRight, Circle, Clock, ExternalLink, Eye, Globe as GlobeIcon, Link2,
   Mail, MapPin, Monitor, Phone, Settings, Share2, Smartphone, User,
-  Users, Zap,
+  Users, Zap, Filter, ChevronDown, X,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
@@ -23,277 +24,311 @@ import {
   useGa4Analytics, useSeoAnalytics as useSeoStats, useRealtime, useVisitors,
 } from '../../hooks/api';
 
-// Topojson du monde hébergé par la team react-simple-maps (CC0 Natural Earth)
 const WORLD_TOPO = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
 
-// Coordonnées approximatives des principales villes françaises + quelques internationales
+// Coordonnées approximatives des principales villes
 const CITY_COORDS = {
   'Paris': [2.35, 48.85], 'Marseille': [5.37, 43.30], 'Lyon': [4.83, 45.76],
   'Toulouse': [1.44, 43.60], 'Nice': [7.27, 43.70], 'Nantes': [-1.55, 47.22],
   'Strasbourg': [7.75, 48.58], 'Montpellier': [3.88, 43.61],
   'Bordeaux': [-0.58, 44.84], 'Lille': [3.06, 50.63],
   'Rennes': [-1.68, 48.11], 'Reims': [4.03, 49.26],
-  'Le Havre': [0.11, 49.49], 'Saint-Étienne': [4.39, 45.44],
-  'Toulon': [5.93, 43.12], 'Grenoble': [5.72, 45.17],
-  'Angers': [-0.55, 47.47], 'Dijon': [5.04, 47.32],
+  'Le Havre': [0.11, 49.49], 'Grenoble': [5.72, 45.17],
+  'Toulon': [5.93, 43.12], 'Dijon': [5.04, 47.32],
   'Clermont-Ferrand': [3.08, 45.78], 'Orléans': [1.91, 47.90],
-  'Versailles': [2.12, 48.80], 'Cannes': [7.02, 43.55],
-  'Aix-en-Provence': [5.45, 43.53], 'Nancy': [6.18, 48.69],
-  'Tours': [0.69, 47.39], 'Metz': [6.18, 49.12],
-  'Londres': [-0.13, 51.51], 'London': [-0.13, 51.51],
-  'New York': [-74.01, 40.71], 'Montreal': [-73.57, 45.50],
-  'Dakar': [-17.48, 14.72], 'Abidjan': [-4.03, 5.35],
-  'Casablanca': [-7.59, 33.57], 'Bruxelles': [4.35, 50.85],
-  'Brussels': [4.35, 50.85], 'Genève': [6.14, 46.20],
-  'Geneva': [6.14, 46.20], 'Madrid': [-3.70, 40.42],
-  'Rome': [12.49, 41.90], 'Berlin': [13.40, 52.52],
+  'Cannes': [7.02, 43.55], 'Versailles': [2.12, 48.80],
+  'London': [-0.12, 51.51], 'Brussels': [4.35, 50.85],
+  'Berlin': [13.41, 52.52], 'Madrid': [-3.70, 40.42],
+  'Rome': [12.50, 41.90], 'Geneva': [6.14, 46.20],
+  'Zurich': [8.54, 47.38], 'Amsterdam': [4.90, 52.37],
+  'New York': [-74.0, 40.71], 'Los Angeles': [-118.24, 34.05],
+  'Montreal': [-73.57, 45.50], 'Dubai': [55.27, 25.20],
+  'Tokyo': [139.69, 35.69], 'Sydney': [151.21, -33.87],
+  'São Paulo': [-46.63, -23.55], 'Lagos': [3.39, 6.45],
+  'Casablanca': [-7.59, 33.59], 'Dakar': [-17.47, 14.69],
+  'Abidjan': [-4.03, 5.36], 'Tunis': [10.17, 36.80],
+  'Alger': [3.04, 36.77], 'Douala': [9.77, 4.06],
 };
 
-// Tous les visiteurs = point vert. Les identifiés sont un peu plus grands
-// et ont un anneau blanc pour les distinguer. La zone d'incertitude de la
-// géoloc IP (~30-70km typiquement en ville) est représentée par un cercle
-// translucide autour du point.
-const VISITOR_COLOR = '#10b981';   // emerald-500
-const VISITOR_COLOR_DEEP = '#047857'; // emerald-700
-
-const COUNTRY_FLAGS = {
-  'FR': '🇫🇷', 'US': '🇺🇸', 'GB': '🇬🇧', 'DE': '🇩🇪', 'ES': '🇪🇸',
-  'IT': '🇮🇹', 'BE': '🇧🇪', 'CH': '🇨🇭', 'CA': '🇨🇦', 'PT': '🇵🇹',
-  'NL': '🇳🇱', 'MA': '🇲🇦', 'SN': '🇸🇳', 'CI': '🇨🇮', 'TN': '🇹🇳',
-  'DZ': '🇩🇿', 'LU': '🇱🇺', 'MC': '🇲🇨',
-};
+const VISITOR_COLOR = '#10b981';
 
 function coordsFor(visitor) {
-  // Priorite 1 : lat/lon de la geoloc IP
-  if (visitor.location?.lat && visitor.location?.lon) {
+  if (visitor.location?.lat && visitor.location?.lon)
     return [Number(visitor.location.lon), Number(visitor.location.lat)];
-  }
-  // Priorite 2 : ville connue
   const city = visitor.location?.city || visitor.lead?.city;
   if (city && CITY_COORDS[city]) return CITY_COORDS[city];
   return null;
 }
 
-function VisitorDot({ visitor, onHover, onLeave }) {
+// ── VisitorDot — memoized pour éviter 80+ re-renders ────────────
+const VisitorDot = memo(function VisitorDot({ visitor, onHover, onLeave }) {
   const coords = coordsFor(visitor);
   if (!coords) return null;
+  const r = 6;
   const identified = visitor.identified;
-  const r = identified ? 6 : 5;
-  const city = visitor.location?.city || visitor.lead?.city || '—';
-
   return (
-    <Marker coordinates={coords}
-            onMouseEnter={() => onHover?.(visitor, coords)}
-            onMouseLeave={() => onLeave?.()}>
-      {/* Zone d'incertitude géoloc IP (approximation de la ville) */}
-      <circle r={r * 4} fill={VISITOR_COLOR} opacity="0.08" />
-      <circle r={r * 4} fill="none" stroke={VISITOR_COLOR} strokeWidth="0.4" strokeDasharray="2 2" opacity="0.5" />
-      {/* Halo pulsant */}
-      <circle r={r * 2.5} fill={VISITOR_COLOR} opacity="0.25">
-        <animate attributeName="r" from={r * 1.5} to={r * 3.5} dur="2s" repeatCount="indefinite" />
-        <animate attributeName="opacity" from="0.5" to="0" dur="2s" repeatCount="indefinite" />
-      </circle>
-      {/* Point central vert */}
-      <circle r={r} fill={VISITOR_COLOR} stroke="white" strokeWidth="1.5"
-              style={{ cursor: 'pointer', filter: 'drop-shadow(0 1px 3px rgba(16,185,129,0.5))' }} />
-      {identified && (
-        <circle r={r - 2.5} fill="white" opacity="0.95" />
-      )}
+    <Marker coordinates={coords}>
+      <g style={{ cursor: 'pointer' }}
+        onMouseEnter={() => onHover(visitor, coords)}
+        onMouseLeave={onLeave}>
+        <circle r={r * 4} fill={VISITOR_COLOR} opacity="0.08" />
+        <circle r={r * 2.5} fill={VISITOR_COLOR} opacity="0.25">
+          <animate attributeName="r" from={r * 1.5} to={r * 3.5}
+            dur="2s" repeatCount="indefinite" />
+          <animate attributeName="opacity" from="0.35" to="0.05"
+            dur="2s" repeatCount="indefinite" />
+        </circle>
+        <circle r={r} fill={VISITOR_COLOR} stroke="white" strokeWidth="1.5" />
+        {identified && <circle r={r - 2.5} fill="white" opacity="0.95" />}
+      </g>
     </Marker>
   );
-}
+}, (prev, next) => prev.visitor.visitor_id === next.visitor.visitor_id);
 
-function VisitorTooltip({ visitor, x, y }) {
-  if (!visitor) return null;
-  const city = visitor.location?.city || visitor.lead?.city || '—';
-  const country = visitor.location?.country || '—';
-  const region = visitor.location?.region;
-  const name = visitor.lead?.name;
-  const when = visitor.last_seen ? new Date(visitor.last_seen).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '—';
-
+// ── Tooltip ─────────────────────────────────────────────────────
+function VisitorTooltip({ visitor: vis, x, y }) {
+  if (!vis) return null;
+  const city = vis.location?.city || '—';
+  const country = vis.location?.country || '—';
+  const name = vis.lead?.name;
   return (
     <div style={{
-      position: 'absolute', left: x, top: y, transform: 'translate(-50%, calc(-100% - 16px))',
-      background: 'white', borderRadius: 10, padding: '10px 14px',
-      boxShadow: '0 8px 24px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.08)',
-      minWidth: 200, maxWidth: 300, pointerEvents: 'none', zIndex: 20,
-      fontFamily: 'Inter, sans-serif',
+      position: 'absolute', left: x + 16, top: y - 40,
+      background: 'white', borderRadius: 12, padding: '12px 16px',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: 12, minWidth: 200,
+      pointerEvents: 'none', zIndex: 50, border: '1px solid #e2e8f0',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-        <span style={{ width: 8, height: 8, borderRadius: 999, background: VISITOR_COLOR, display: 'inline-block' }} />
-        <span style={{ fontSize: 11, fontWeight: 700, color: VISITOR_COLOR_DEEP, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-          {visitor.identified ? 'Identifié' : 'Anonyme'}
-        </span>
+      <div style={{ fontFamily: 'Fraunces, serif', fontWeight: 600, marginBottom: 6, color: 'var(--ink)' }}>
+        {name || `Visiteur ${(vis.visitor_id || '').slice(0, 8)}`}
       </div>
-      {name && (
-        <div style={{ fontFamily: 'Fraunces, serif', fontSize: 14, fontWeight: 600, color: '#1e293b', marginBottom: 2 }}>
-          {name}
-        </div>
-      )}
-      <div style={{ fontSize: 13, fontWeight: 500, color: '#334155' }}>
-        📍 {city}{region && region !== city ? `, ${region}` : ''}
+      <div style={{ display: 'flex', gap: 10, color: 'var(--ink-3)' }}>
+        <span><MapPin style={{ width: 11, height: 11, verticalAlign: 'middle' }} /> {city}, {country}</span>
+        <span>{vis.device === 'mobile' ? '📱' : '💻'} {vis.device || '—'}</span>
       </div>
-      <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
-        {country} · {visitor.device || '—'} · {when}
+      <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid #f1f5f9', fontSize: 11, color: 'var(--ink-3)' }}>
+        Page : <code style={{ fontFamily: 'JetBrains Mono, monospace' }}>{vis.last_page || '/'}</code>
       </div>
-      {visitor.last_page && (
-        <div style={{ fontSize: 11, color: '#64748b', marginTop: 4, fontFamily: 'JetBrains Mono, monospace' }}>
-          {visitor.last_page}
-        </div>
-      )}
-      {/* Petite flèche sous le tooltip */}
-      <div style={{
-        position: 'absolute', bottom: -6, left: '50%', transform: 'translateX(-50%)',
-        width: 12, height: 12, background: 'white', transform: 'translateX(-50%) rotate(45deg)',
-        boxShadow: '2px 2px 4px rgba(0,0,0,0.04)',
-      }} />
     </div>
   );
 }
 
-function Card({ icon: Icon, label, value, right }) {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 10, padding: '8px 4px',
-      borderBottom: '1px solid rgba(0,0,0,0.06)',
-    }}>
-      <Icon style={{ width: 14, height: 14, color: '#64748b' }} />
-      <span style={{ fontSize: 13, color: '#334155', fontWeight: 500, flex: 1 }}>{label}</span>
-      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: '#1e293b', fontWeight: 600 }}>
-        {value}
-      </span>
-      {right}
-    </div>
-  );
-}
-
+// ── LivePopup ───────────────────────────────────────────────────
 function LivePopup({ pages, referrers, countries, liveCount }) {
+  if (!pages.length && !referrers.length && !countries.length) return null;
   return (
     <div style={{
-      position: 'absolute', left: '50%', bottom: 28, transform: 'translateX(-50%)',
-      width: 420, background: 'white', borderRadius: 16,
-      boxShadow: '0 10px 40px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.06)',
-      padding: 16,
-      fontFamily: 'Inter, sans-serif', zIndex: 10,
+      position: 'absolute', top: 16, right: 16, width: 260,
+      background: 'white', borderRadius: 14,
+      boxShadow: '0 4px 20px rgba(0,0,0,0.08)', overflow: 'hidden',
+      border: '1px solid #e2e8f0', fontSize: 12,
     }}>
-      {/* Pages */}
-      <div style={{ marginBottom: 4 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Eye style={{ width: 14, height: 14, color: '#64748b' }} />
-          <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Pages</span>
+      {[
+        { title: 'Pages les plus vues', items: pages.slice(0, 5).map(p => ({ label: p.path, value: fmt(p.views) })) },
+        { title: 'Sources de trafic', items: referrers.slice(0, 4).map(r => ({ label: r.name, value: fmt(r.value) })) },
+        { title: 'Pays', items: countries.slice(0, 5).map(c => ({ label: c.name, value: fmt(c.value) })) },
+      ].map((section, si) => (
+        <div key={si} style={{ padding: '10px 14px', borderTop: si ? '1px solid #f1f5f9' : 'none' }}>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, letterSpacing: '0.08em',
+            textTransform: 'uppercase', color: 'var(--ink-4)', marginBottom: 6 }}>{section.title}</div>
+          {section.items.map((item, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: 'var(--ink-2)' }}>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 170 }}>{item.label}</span>
+              <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>{item.value}</span>
+            </div>
+          ))}
         </div>
-        {pages.slice(0, 2).map((p, i) => (
-          <div key={i} style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '6px 4px', borderBottom: '1px solid rgba(0,0,0,0.06)',
-          }}>
-            <span style={{
-              fontFamily: 'JetBrains Mono, monospace', fontSize: 12,
-              color: '#334155', padding: '2px 8px', borderRadius: 6,
-              background: '#f1f5f9', minWidth: 60, textAlign: 'center',
-            }}>{p.path || '/'}</span>
-            <span style={{ flex: 1 }} />
-            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: '#1e293b', fontWeight: 600 }}>
-              {fmt(p.views)}
-            </span>
-            <ArrowRight style={{ width: 12, height: 12, color: '#94a3b8' }} />
-          </div>
-        ))}
-      </div>
-
-      {/* Referrers */}
-      <div style={{ marginTop: 6 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-          <Share2 style={{ width: 14, height: 14, color: '#64748b' }} />
-          <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Referrers</span>
-        </div>
-        {referrers.slice(0, 2).map((r, i) => (
-          <div key={i} style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '6px 4px', borderBottom: '1px solid rgba(0,0,0,0.06)',
-          }}>
-            <ArrowRight style={{ width: 12, height: 12, color: '#94a3b8' }} />
-            <span style={{ fontSize: 13, color: '#334155', flex: 1 }}>{r.name}</span>
-            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: '#1e293b', fontWeight: 600 }}>
-              {fmt(r.value)}
-            </span>
-            <ArrowRight style={{ width: 12, height: 12, color: '#94a3b8' }} />
-          </div>
-        ))}
-      </div>
-
-      {/* Countries */}
-      <div style={{ marginTop: 6 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-          <GlobeIcon style={{ width: 14, height: 14, color: '#64748b' }} />
-          <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Countries</span>
-        </div>
-        {countries.slice(0, 2).map((c, i) => (
-          <div key={i} style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '6px 4px', borderBottom: i === countries.length - 1 ? 'none' : '1px solid rgba(0,0,0,0.06)',
-          }}>
-            <span style={{ fontSize: 14 }}>{COUNTRY_FLAGS[c.code] || '🌍'}</span>
-            <span style={{ fontSize: 13, color: '#334155', flex: 1 }}>{c.name}</span>
-            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: '#1e293b', fontWeight: 600 }}>
-              {fmt(c.value)}
-            </span>
-            <ArrowRight style={{ width: 12, height: 12, color: '#94a3b8' }} />
-          </div>
-        ))}
-      </div>
-
-      {/* Footer icons + live count */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-        <Link2 style={{ width: 14, height: 14, color: '#94a3b8' }} />
-        <User style={{ width: 14, height: 14, color: '#94a3b8' }} />
-        <Share2 style={{ width: 14, height: 14, color: '#94a3b8' }} />
-        <Settings style={{ width: 14, height: 14, color: '#94a3b8' }} />
-        <Circle style={{ width: 14, height: 14, color: '#94a3b8' }} />
-        <span style={{ flex: 1 }} />
+      ))}
+      <div style={{
+        padding: '8px 14px', background: 'var(--emerald-soft, #ecfdf5)',
+        display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 600, color: 'var(--emerald)',
+      }}>
         <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: 4,
-          padding: '3px 10px', borderRadius: 999,
-          background: '#10b981', color: 'white',
-          fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 700,
-        }}>
-          <span style={{
-            width: 6, height: 6, borderRadius: 999, background: 'white',
-            animation: 'pulse 1.6s ease-in-out infinite',
-          }} />
-          {liveCount}
-        </span>
+          width: 6, height: 6, borderRadius: 999, background: 'white',
+          animation: 'pulse 1.6s ease-in-out infinite',
+        }} />
+        {liveCount} en direct
       </div>
-      <style>{`
-        @keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
-      `}</style>
+      <style>{`@keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }`}</style>
     </div>
   );
 }
 
+// ── Barre de filtres ────────────────────────────────────────────
+const PERIOD_OPTIONS = [
+  { value: 1, label: '1 heure' },
+  { value: 6, label: '6 heures' },
+  { value: 24, label: '24 heures' },
+  { value: 48, label: '48 heures' },
+  { value: 168, label: '7 jours' },
+];
+
+function FilterBar({ visitors, filters, setFilters, visitorHours, setVisitorHours }) {
+  // Extraire les options disponibles depuis les données
+  const countryOptions = useMemo(() => {
+    const map = {};
+    visitors.forEach(v => {
+      const cc = v.location?.country_code;
+      const cn = v.location?.country;
+      if (cc && cn) map[cc] = cn;
+    });
+    return Object.entries(map).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [visitors]);
+
+  const pageOptions = useMemo(() => {
+    const set = new Set();
+    visitors.forEach(v => { if (v.last_page) set.add(v.last_page); });
+    return Array.from(set).sort();
+  }, [visitors]);
+
+  const hasFilters = filters.country || filters.page || filters.device;
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16,
+      flexWrap: 'wrap',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--ink-3)', fontWeight: 500 }}>
+        <Filter style={{ width: 14, height: 14 }} /> Filtrer :
+      </div>
+
+      {/* Période */}
+      <select
+        value={visitorHours}
+        onChange={e => setVisitorHours(Number(e.target.value))}
+        style={{
+          padding: '5px 10px', borderRadius: 8, border: '1px solid var(--line)',
+          fontSize: 12, background: 'white', color: 'var(--ink)',
+          cursor: 'pointer', fontWeight: 600,
+        }}
+      >
+        {PERIOD_OPTIONS.map(p => (
+          <option key={p.value} value={p.value}>{p.label}</option>
+        ))}
+      </select>
+
+      {/* Pays */}
+      <select
+        value={filters.country}
+        onChange={e => setFilters(f => ({ ...f, country: e.target.value }))}
+        style={{
+          padding: '5px 10px', borderRadius: 8, border: '1px solid var(--line)',
+          fontSize: 12, background: 'white', color: 'var(--ink)',
+          cursor: 'pointer', minWidth: 120,
+        }}
+      >
+        <option value="">Tous les pays</option>
+        {countryOptions.map(([cc, cn]) => (
+          <option key={cc} value={cc}>{cn}</option>
+        ))}
+      </select>
+
+      {/* Page */}
+      <select
+        value={filters.page}
+        onChange={e => setFilters(f => ({ ...f, page: e.target.value }))}
+        style={{
+          padding: '5px 10px', borderRadius: 8, border: '1px solid var(--line)',
+          fontSize: 12, background: 'white', color: 'var(--ink)',
+          cursor: 'pointer', minWidth: 120,
+        }}
+      >
+        <option value="">Toutes les pages</option>
+        {pageOptions.map(p => (
+          <option key={p} value={p}>{p}</option>
+        ))}
+      </select>
+
+      {/* Device */}
+      <select
+        value={filters.device}
+        onChange={e => setFilters(f => ({ ...f, device: e.target.value }))}
+        style={{
+          padding: '5px 10px', borderRadius: 8, border: '1px solid var(--line)',
+          fontSize: 12, background: 'white', color: 'var(--ink)',
+          cursor: 'pointer',
+        }}
+      >
+        <option value="">Tous les devices</option>
+        <option value="mobile">📱 Mobile</option>
+        <option value="desktop">💻 Desktop</option>
+      </select>
+
+      {/* Identifié/anonyme */}
+      <select
+        value={filters.identified}
+        onChange={e => setFilters(f => ({ ...f, identified: e.target.value }))}
+        style={{
+          padding: '5px 10px', borderRadius: 8, border: '1px solid var(--line)',
+          fontSize: 12, background: 'white', color: 'var(--ink)',
+          cursor: 'pointer',
+        }}
+      >
+        <option value="">Tous</option>
+        <option value="true">✅ Identifiés</option>
+        <option value="false">👤 Anonymes</option>
+      </select>
+
+      {hasFilters && (
+        <button
+          onClick={() => setFilters({ country: '', page: '', device: '', identified: '' })}
+          style={{
+            padding: '5px 10px', borderRadius: 8, border: '1px solid var(--line)',
+            fontSize: 11, background: 'white', color: 'var(--ink-3)',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+          }}
+        >
+          <X style={{ width: 12, height: 12 }} /> Réinitialiser
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Composant principal ─────────────────────────────────────────
 export default function SeoGlobe() {
   const { days } = useSeoFilter();
   const { data: ga4 } = useGa4Analytics(days);
   const { data: seo } = useSeoStats(days);
   const { data: realtime } = useRealtime();
-  const { data: visitors, isLoading } = useVisitors(24, 80);
-  const [tooltip, setTooltip] = useState(null);
-  const mapRef = React.useRef(null);
 
-  const onDotHover = (visitor, coords) => {
-    // On laisse le tooltip se positionner via la souris globale
-    setTooltip(visitor);
-  };
-  const onDotLeave = () => setTooltip(null);
+  // Visiteurs : toujours les dernières 24h par défaut pour le globe.
+  // L'utilisateur peut changer via le sélecteur de période du contexte SEO.
+  const [visitorHours, setVisitorHours] = useState(24);
+  const { data: visitors, isLoading } = useVisitors(visitorHours, 200);
+
+  const [tooltip, setTooltip] = useState(null);
+  const [filters, setFilters] = useState({ country: '', page: '', device: '', identified: '' });
+  const mapRef = React.useRef(null);
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
-  const onMapMouseMove = (e) => {
+
+  const onDotHover = useCallback((visitor) => setTooltip(visitor), []);
+  const onDotLeave = useCallback(() => setTooltip(null), []);
+
+  // Throttled mouse move (max 20fps au lieu de 60)
+  const lastMoveRef = React.useRef(0);
+  const onMapMouseMove = useCallback((e) => {
+    const now = Date.now();
+    if (now - lastMoveRef.current < 50) return;
+    lastMoveRef.current = now;
     if (!mapRef.current) return;
     const rect = mapRef.current.getBoundingClientRect();
     setMouse({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-  };
+  }, []);
 
-  const v = visitors?.visitors || [];
-  const identified = v.filter((x) => x.identified);
+  const allVisitors = visitors?.visitors || [];
+
+  // Appliquer les filtres
+  const v = useMemo(() => {
+    let list = allVisitors;
+    if (filters.country) list = list.filter(x => x.location?.country_code === filters.country);
+    if (filters.page) list = list.filter(x => x.last_page === filters.page);
+    if (filters.device) list = list.filter(x => x.device === filters.device);
+    if (filters.identified === 'true') list = list.filter(x => x.identified);
+    if (filters.identified === 'false') list = list.filter(x => !x.identified);
+    return list;
+  }, [allVisitors, filters]);
+
+  const identified = useMemo(() => v.filter((x) => x.identified), [v]);
 
   // Build pages / referrers / countries pour le popup
   const pages = useMemo(() => {
@@ -327,19 +362,23 @@ export default function SeoGlobe() {
       <PageHeader
         eyebrow="Globe · Audience"
         title={<>Carte <em>mondiale des visiteurs</em></>}
-        subtitle={`${fmt(visitors?.total_visitors || 0)} visiteurs sur 24h, ${fmt(visitors?.identified || 0)} identifiés (${visitors?.identified_pct || 0}%).`}
+        subtitle={`${fmt(v.length)} visiteurs sur ${visitorHours <= 24 ? `${visitorHours}h` : `${Math.round(visitorHours / 24)}j`}, ${fmt(visitors?.identified || 0)} identifiés (${visitors?.identified_pct || 0}%).`}
       />
 
       {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 16 }}>
         <KpiTile label="En direct" value={fmt(realtime?.active_users || 0)}
           tone={(realtime?.active_users || 0) > 0 ? 'var(--emerald)' : 'var(--ink-4)'}
           icon={Zap} sub="GA4 realtime" />
-        <KpiTile label="Total 24h" value={fmt(visitors?.total_visitors || 0)} tone="var(--navy)" icon={Users} />
+        <KpiTile label={`Total ${days <= 1 ? '24h' : `${days}j`}`} value={fmt(allVisitors.length)} tone="var(--navy)" icon={Users} />
         <KpiTile label="Identifiés" value={fmt(visitors?.identified || 0)} tone="var(--emerald)" icon={User}
           sub={`${visitors?.identified_pct || 0}% du total`} />
         <KpiTile label="Pays touchés" value={fmt(countries.length)} tone="var(--gold)" icon={GlobeIcon} />
       </div>
+
+      {/* Filtres */}
+      <FilterBar visitors={allVisitors} filters={filters} setFilters={setFilters}
+        visitorHours={visitorHours} setVisitorHours={setVisitorHours} />
 
       {/* Carte du monde */}
       <div ref={mapRef} onMouseMove={onMapMouseMove} style={{
@@ -420,7 +459,6 @@ export default function SeoGlobe() {
             <b>Respect du RGPD</b> — Les coordonnées (nom, email, téléphone, adresse) ne s'affichent
             que pour les visiteurs qui ont rempli un formulaire sur ton site. Les visiteurs anonymes
             sont géolocalisés à la ville via leur IP (approximation), sans identification personnelle.
-            C'est la seule approche légale en Europe.
           </div>
         </div>
       </div>
@@ -452,21 +490,9 @@ export default function SeoGlobe() {
                       {vis.lead.name || 'Sans nom'}
                     </div>
                     <div style={{ display: 'flex', gap: 14, marginTop: 4, fontSize: 11, color: 'var(--ink-3)' }}>
-                      {vis.lead.email && (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <Mail style={{ width: 11, height: 11 }} /> {vis.lead.email}
-                        </span>
-                      )}
-                      {vis.lead.phone && (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <Phone style={{ width: 11, height: 11 }} /> {vis.lead.phone}
-                        </span>
-                      )}
-                      {vis.lead.address && (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <MapPin style={{ width: 11, height: 11 }} /> {vis.lead.address}
-                        </span>
-                      )}
+                      {vis.lead.email && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Mail style={{ width: 11, height: 11 }} /> {vis.lead.email}</span>}
+                      {vis.lead.phone && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Phone style={{ width: 11, height: 11 }} /> {vis.lead.phone}</span>}
+                      {vis.lead.address && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><MapPin style={{ width: 11, height: 11 }} /> {vis.lead.address}</span>}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
@@ -475,9 +501,7 @@ export default function SeoGlobe() {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div className="seo-label" style={{ fontSize: 9 }}>Status</div>
-                    <div style={{ fontSize: 12, color: 'var(--ink-2)', textTransform: 'capitalize' }}>
-                      {vis.lead.status || '—'}
-                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--ink-2)', textTransform: 'capitalize' }}>{vis.lead.status || '—'}</div>
                   </div>
                 </div>
                 <Link to={`/leads/${vis.lead.lead_id}`} className="seo-chip">
@@ -518,7 +542,7 @@ export default function SeoGlobe() {
               </tr>
             </thead>
             <tbody>
-              {v.filter((x) => !x.identified).slice(0, 50).map((vis, i) => (
+              {v.filter((x) => !x.identified).slice(0, 100).map((vis, i) => (
                 <tr key={i} style={{ borderTop: '1px solid var(--line-2)' }}>
                   <td style={td}>
                     <span className="seo-mono" style={{ fontSize: 11, color: 'var(--ink-3)' }}>
@@ -529,9 +553,9 @@ export default function SeoGlobe() {
                     {vis.location?.city ? `${vis.location.city}, ${vis.location.country || '—'}` :
                      vis.location?.country || '—'}
                   </td>
-                  <td style={td}>{vis.device || '—'}</td>
+                  <td style={td}>{vis.device === 'mobile' ? '📱' : '💻'} {vis.device || '—'}</td>
                   <td style={td}><code style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>{vis.last_page || '—'}</code></td>
-                  <td style={td}>{vis.utm_source || vis.referrer ? new URL(vis.referrer).hostname : 'Direct'}</td>
+                  <td style={td}>{vis.utm_source || (vis.referrer ? (() => { try { return new URL(vis.referrer).hostname; } catch { return 'Direct'; } })() : 'Direct')}</td>
                   <td style={tdRight}>{fmt(vis.event_count)}</td>
                   <td style={{ ...tdRight, fontSize: 11 }}>
                     {new Date(vis.last_seen).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}

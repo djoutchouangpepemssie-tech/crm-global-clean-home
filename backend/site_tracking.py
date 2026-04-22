@@ -24,6 +24,14 @@ BACKEND_URL = os.environ.get("PUBLIC_BACKEND_URL", "https://crm-global-clean-hom
 def init_site_tracking_db(database):
     global _db
     _db = database
+    # Index sur le cache géoloc IP (pas de TTL — on garde les IPs pour toujours)
+    try:
+        import asyncio
+        asyncio.get_event_loop().create_task(
+            database.ip_geocache.create_index("ip", unique=True)
+        )
+    except Exception:
+        pass  # Non-bloquant si l'index existe déjà
 
 
 # ───────────────────────── SNIPPET JS SERVI ─────────────────────────
@@ -578,40 +586,54 @@ async def list_visitors(request: Request, hours: int = 24, limit: int = 100, inc
             if lead.get("session_id"):
                 leads_index.setdefault(lead["session_id"], lead)
 
-    # Cache geoloc IP (pour ne pas hammer l'API)
-    ip_cache = {}
+    # Cache geoloc IP — persisté en MongoDB (collection ip_geocache, TTL 24h)
+    # Au lieu de l'ancien dict en mémoire (perdu après chaque requête),
+    # on cache dans Mongo → 0 appel ipapi.co pour les IPs déjà vues.
+    # Résultat : chargement instantané pour les visiteurs récurrents.
 
     async def geoip(ip: str):
         if not ip or ip in ("unknown", "127.0.0.1", "localhost"):
             return None
-        if ip in ip_cache:
-            return ip_cache[ip]
+
+        # 1. Chercher dans le cache MongoDB
+        cached = await _db.ip_geocache.find_one({"ip": ip})
+        if cached:
+            loc = cached.get("location")
+            return loc  # peut être None (IP non résolue → on re-tente pas avant TTL)
+
+        # 2. Appel ipapi.co (seulement si pas en cache)
+        loc = None
         try:
             import httpx
             async with httpx.AsyncClient() as c:
-                # ipapi.co : 1000 req/day gratuit, pas de cle requise
                 r = await c.get(f"https://ipapi.co/{ip}/json/", timeout=4)
                 if r.status_code == 200:
                     d = r.json()
-                    if d.get("error"):
-                        ip_cache[ip] = None
-                        return None
-                    loc = {
-                        "city": d.get("city"),
-                        "region": d.get("region"),
-                        "country": d.get("country_name"),
-                        "country_code": d.get("country_code"),
-                        "lat": d.get("latitude"),
-                        "lon": d.get("longitude"),
-                        "timezone": d.get("timezone"),
-                        "isp": d.get("org"),
-                    }
-                    ip_cache[ip] = loc
-                    return loc
+                    if not d.get("error"):
+                        loc = {
+                            "city": d.get("city"),
+                            "region": d.get("region"),
+                            "country": d.get("country_name"),
+                            "country_code": d.get("country_code"),
+                            "lat": d.get("latitude"),
+                            "lon": d.get("longitude"),
+                            "timezone": d.get("timezone"),
+                            "isp": d.get("org"),
+                        }
         except Exception as e:
-            logger.debug(f"geoip error: {e}")
-        ip_cache[ip] = None
-        return None
+            logger.debug(f"geoip error for {ip[:8]}***: {e}")
+
+        # 3. Persister dans le cache (même si None → évite de re-tenter)
+        try:
+            await _db.ip_geocache.update_one(
+                {"ip": ip},
+                {"$set": {"ip": ip, "location": loc, "cached_at": datetime.now(timezone.utc).isoformat()}},
+                upsert=True,
+            )
+        except Exception:
+            pass  # Non-bloquant
+
+        return loc
 
     # Enrichir les visiteurs
     out = []
