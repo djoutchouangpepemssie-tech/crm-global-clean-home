@@ -246,6 +246,15 @@ export function useMemberProfile(memberId) {
   });
 }
 
+export function useScheduleConflicts(days = 14) {
+  return useQuery({
+    queryKey: ['planning', 'conflicts', days],
+    queryFn: async () => (await api.get(`/planning/conflicts?days=${days}`)).data,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+  });
+}
+
 export function useUpdateMember() {
   const qc = useQueryClient();
   return useMutation({

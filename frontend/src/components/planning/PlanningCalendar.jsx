@@ -2,6 +2,7 @@
 import {
   useCalendar,
   useAllTeamMembers,
+  useAllMembers,
   useCreateIntervention,
   useUpdateIntervention,
 } from '../../hooks/api';
@@ -192,8 +193,30 @@ const PremiumSkeleton = () => (
 );
 
 // ── INTERVENTION CARD (premium) ──
+// Mini avatar (photo si dispo, sinon initiales colorées par l'agentColor)
+const MiniAvatar = ({ member, color, size = 16 }) => {
+  const photo = member?.photo_b64;
+  const name = member?.name || '';
+  const initials = name.split(/\s+/).slice(0, 2).map(s => s[0]?.toUpperCase()).join('') || '?';
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: 999, overflow: 'hidden',
+      background: photo ? 'transparent' : color || '#334155',
+      border: '1.5px solid rgba(255,255,255,0.25)',
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      flexShrink: 0, color: 'white',
+      fontSize: Math.max(7, size * 0.45), fontFamily: 'Fraunces, serif', fontWeight: 600,
+    }}>
+      {photo
+        ? <img src={photo} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        : initials}
+    </div>
+  );
+};
+
 const InterventionCard = ({ intv, sc, hasConflict, agentColor, members, onClick, onDragStart, compact = false }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const assignedMember = (members || []).find(m => m.member_id === intv.assigned_agent_id);
 
   if (compact) {
     return (
@@ -224,7 +247,7 @@ const InterventionCard = ({ intv, sc, hasConflict, agentColor, members, onClick,
         <p className="text-[11px] font-semibold text-neutral-200 truncate ml-1 mt-0.5">{intv.title || intv.service_type}</p>
         {intv.assigned_agent_name && (
           <div className="flex items-center gap-1.5 mt-1 ml-1">
-            <div className="w-2 h-2 rounded-full flex-shrink-0 ring-1 ring-black/20" style={{ background: agentColor }} />
+            <MiniAvatar member={assignedMember} color={agentColor} size={14} />
             <p className="text-[10px] text-neutral-500 truncate">{intv.assigned_agent_name.split(' ')[0]}</p>
           </div>
         )}
@@ -297,7 +320,7 @@ const InterventionCard = ({ intv, sc, hasConflict, agentColor, members, onClick,
         {intv.assigned_agent_name && (
           <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg transition-all duration-200"
             style={{ background: isHovered ? agentColor + '15' : 'transparent' }}>
-            <div className="w-2.5 h-2.5 rounded-full ring-2 ring-black/20" style={{ background: agentColor }} />
+            <MiniAvatar member={assignedMember} color={agentColor} size={18} />
             <span className="text-[11px] font-medium" style={{ color: agentColor }}>{intv.assigned_agent_name.split(' ')[0]}</span>
           </div>
         )}
@@ -392,16 +415,20 @@ const PlanningCalendar = () => {
   // cache, refetch et invalidation croisée avec le Dashboard + autres pages.
   const { data: calendarData, isLoading: calendarLoading, refetch: refetchCalendar } = useCalendar(currentMonth);
   const { data: fetchedMembers, isLoading: membersLoading, refetch: refetchMembers } = useAllTeamMembers();
+  // Source enrichie avec photos
+  const { data: enrichedMembersData } = useAllMembers();
   const createIntervention = useCreateIntervention();
   const updateIntervention = useUpdateIntervention();
 
   const interventions = useMemo(() => calendarData?.interventions || [], [calendarData]);
   const teams = useMemo(() => calendarData?.teams || [], [calendarData]);
   const members = useMemo(() => {
+    // Priorité : source enrichie avec photos (/planning/members)
+    if (enrichedMembersData?.members?.length) return enrichedMembersData.members;
     if (Array.isArray(fetchedMembers) && fetchedMembers.length > 0) return fetchedMembers;
     // Fallback : dériver depuis les teams embarquées dans le calendrier
     return (calendarData?.teams || []).flatMap(t => (t.members || []).map(mb => ({ ...mb, team_name: t.name })));
-  }, [fetchedMembers, calendarData]);
+  }, [enrichedMembersData, fetchedMembers, calendarData]);
 
   const loading = calendarLoading || membersLoading;
   const [showForm, setShowForm] = useState(false);

@@ -385,6 +385,117 @@ async def update_member(member_id: str, body: TeamMemberUpdate, request: Request
     return updated
 
 
+@planning_router.get("/planning/conflicts")
+async def detect_schedule_conflicts(request: Request, days: int = 14):
+    """Détecte les chevauchements d'horaires par intervenant sur les N
+    prochains jours. Un intervenant assigné à 2 missions qui se chevauchent
+    est un conflit → risque de no-show ou d'erreur de planification.
+    """
+    await _require_auth(request)
+
+    today = datetime.now(timezone.utc).date().isoformat()
+    end_date = (datetime.now(timezone.utc) + timedelta(days=days)).date().isoformat()
+
+    # Récupère toutes les interventions non annulées sur la période
+    interventions = await _db.interventions.find(
+        {
+            "scheduled_date": {"$gte": today, "$lte": end_date},
+            "status": {"$nin": ["annulée", "annulee", "cancelled"]},
+        },
+        {"_id": 0}
+    ).to_list(5000)
+
+    def to_minutes(t):
+        """HH:MM -> minutes depuis minuit"""
+        if not t:
+            return 9 * 60
+        try:
+            h, m = t.split(":")
+            return int(h) * 60 + int(m)
+        except Exception:
+            return 9 * 60
+
+    # Grouper par (member_id, date)
+    by_member_day = {}
+    for intv in interventions:
+        members = intv.get("assigned_members") or []
+        date = intv.get("scheduled_date")
+        if not members or not date:
+            continue
+        start = to_minutes(intv.get("scheduled_time"))
+        dur = intv.get("duration_hours") or 2
+        end = start + int(dur * 60)
+        slot = {
+            "intervention_id": intv.get("intervention_id"),
+            "title": intv.get("title") or intv.get("lead_name") or "Mission",
+            "lead_id": intv.get("lead_id"),
+            "lead_name": intv.get("lead_name"),
+            "address": intv.get("address"),
+            "team_id": intv.get("team_id"),
+            "team_name": intv.get("team_name"),
+            "date": date,
+            "start_time": intv.get("scheduled_time"),
+            "start_min": start,
+            "end_min": end,
+            "duration_hours": dur,
+            "status": intv.get("status"),
+        }
+        for mid in members:
+            key = f"{mid}|{date}"
+            by_member_day.setdefault(key, []).append(slot)
+
+    # Détecter les overlaps
+    conflicts = []
+    # Charger noms des membres impliqués
+    member_ids = set(k.split("|")[0] for k in by_member_day.keys())
+    members_map = {}
+    if member_ids:
+        async for m in _db.team_members.find(
+            {"member_id": {"$in": list(member_ids)}},
+            {"_id": 0, "member_id": 1, "name": 1, "photo_b64": 1, "role": 1}
+        ):
+            members_map[m["member_id"]] = m
+
+    for key, slots in by_member_day.items():
+        if len(slots) < 2:
+            continue
+        mid, date = key.split("|", 1)
+        # Trier par start_min puis chercher overlaps consécutifs
+        slots_sorted = sorted(slots, key=lambda s: s["start_min"])
+        for i in range(len(slots_sorted) - 1):
+            a = slots_sorted[i]
+            b = slots_sorted[i + 1]
+            if b["start_min"] < a["end_min"]:
+                overlap_min = min(a["end_min"], b["end_min"]) - b["start_min"]
+                severity = (
+                    "high" if overlap_min >= 60
+                    else "medium" if overlap_min >= 30
+                    else "low"
+                )
+                conflicts.append({
+                    "member_id": mid,
+                    "member_name": members_map.get(mid, {}).get("name", "—"),
+                    "member_photo": members_map.get(mid, {}).get("photo_b64", ""),
+                    "date": date,
+                    "overlap_minutes": overlap_min,
+                    "severity": severity,
+                    "missions": [a, b],
+                })
+
+    # Tri par date + severité desc
+    severity_order = {"high": 0, "medium": 1, "low": 2}
+    conflicts.sort(key=lambda c: (c["date"], severity_order.get(c["severity"], 9)))
+
+    return {
+        "period_days": days,
+        "total_conflicts": len(conflicts),
+        "high_severity": len([c for c in conflicts if c["severity"] == "high"]),
+        "medium_severity": len([c for c in conflicts if c["severity"] == "medium"]),
+        "low_severity": len([c for c in conflicts if c["severity"] == "low"]),
+        "conflicts": conflicts,
+    }
+
+
 @planning_router.post("/planning/members/{member_id}/avatar")
 async def set_member_avatar(member_id: str, body: AvatarPayload, request: Request):
     """Uploader une photo de profil (base64 data URL). Le frontend doit

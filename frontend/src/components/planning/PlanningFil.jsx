@@ -7,7 +7,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Plus, ChevronLeft, ChevronRight, Map, Calendar, MapPin, Clock, Users as UsersIcon } from 'lucide-react';
 import api from '../../lib/api';
-import { useAllMembers } from '../../hooks/api';
+import { useAllMembers, useScheduleConflicts } from '../../hooks/api';
+import { AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 
 /* ─────────────────── TOKENS + STYLES ─────────────────── */
 const tokenStyle = `
@@ -374,6 +375,126 @@ function TeamRow({ team, now, onMissionClick, onTeamClick, onTimelineClick, memb
   );
 }
 
+/* ─────────────── Bandeau conflits horaires ─────────────── */
+function ConflictsBanner({ data, expanded, onToggle }) {
+  if (!data || data.total_conflicts === 0) return null;
+
+  const total = data.total_conflicts;
+  const high = data.high_severity || 0;
+  const tone = high > 0 ? 'oklch(0.55 0.18 25)' : 'var(--warm)';
+  const bg = high > 0 ? 'oklch(0.98 0.03 25)' : 'oklch(0.98 0.03 45)';
+
+  return (
+    <div style={{
+      border: `1px solid ${tone}`, background: bg,
+      borderRadius: 14, marginBottom: 20, overflow: 'hidden',
+    }}>
+      <button onClick={onToggle} style={{
+        display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+        padding: '14px 20px', border: 'none', background: 'transparent',
+        cursor: 'pointer', textAlign: 'left',
+      }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: 10, background: tone, color: 'white',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          <AlertTriangle style={{ width: 18, height: 18 }} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div className="pf-display" style={{ fontSize: 16, fontWeight: 500, color: tone }}>
+            {total} conflit{total > 1 ? 's' : ''} d'horaires détecté{total > 1 ? 's' : ''}
+          </div>
+          <div className="pf-mono" style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 3, letterSpacing: '0.06em' }}>
+            SUR {data.period_days}J · {high} CRITIQUE{high > 1 ? 'S' : ''} · {data.medium_severity || 0} MOYEN{data.medium_severity > 1 ? 'S' : ''} · {data.low_severity || 0} LÉGER{data.low_severity > 1 ? 'S' : ''}
+          </div>
+        </div>
+        {expanded ? <ChevronUp style={{ width: 18, height: 18, color: 'var(--ink-3)' }} /> :
+                    <ChevronDown style={{ width: 18, height: 18, color: 'var(--ink-3)' }} />}
+      </button>
+
+      {expanded && (
+        <div style={{ borderTop: `1px solid ${tone}33`, padding: '4px 20px 16px' }}>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {data.conflicts.slice(0, 20).map((c, i) => (
+              <ConflictRow key={i} conflict={c} />
+            ))}
+          </div>
+          {data.conflicts.length > 20 && (
+            <div style={{ marginTop: 10, fontSize: 11, color: 'var(--ink-3)', fontStyle: 'italic', textAlign: 'center' }}>
+              + {data.conflicts.length - 20} autres conflits
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ConflictRow({ conflict }) {
+  const sev = conflict.severity;
+  const sevMap = {
+    high:   { tone: 'oklch(0.55 0.18 25)', label: 'CRITIQUE' },
+    medium: { tone: 'var(--warm)',          label: 'MOYEN' },
+    low:    { tone: 'var(--ink-3)',         label: 'LÉGER' },
+  };
+  const s = sevMap[sev] || sevMap.low;
+  const date = new Date(conflict.date + 'T00:00:00');
+  const dateLabel = date.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' });
+
+  return (
+    <div style={{
+      display: 'grid', gridTemplateColumns: '28px auto 1fr auto', gap: 12, alignItems: 'center',
+      padding: '10px 14px', background: 'var(--paper)', borderRadius: 10,
+      border: '1px solid var(--line-2)',
+    }}>
+      {/* Avatar intervenant */}
+      <div style={{
+        width: 28, height: 28, borderRadius: 999, overflow: 'hidden',
+        background: conflict.member_photo ? 'transparent' : 'var(--accent-soft)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontFamily: 'Fraunces, serif', fontSize: 11, fontWeight: 600, color: 'var(--accent)',
+        border: '1px solid var(--line)',
+      }}>
+        {conflict.member_photo
+          ? <img src={conflict.member_photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : (conflict.member_name || '?').split(/\s+/).slice(0, 2).map(s => s[0]?.toUpperCase()).join('')}
+      </div>
+
+      <div>
+        <div className="pf-display" style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>
+          {conflict.member_name}
+        </div>
+        <div className="pf-mono" style={{ fontSize: 9, color: 'var(--ink-3)', letterSpacing: '0.06em', marginTop: 2 }}>
+          {dateLabel.toUpperCase()}
+        </div>
+      </div>
+
+      {/* Les 2 missions qui se chevauchent */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, color: 'var(--ink-2)', flexWrap: 'wrap' }}>
+        <span style={{ padding: '3px 8px', borderRadius: 6, background: 'var(--surface-2)', fontFamily: 'JetBrains Mono, monospace' }}>
+          {conflict.missions[0].start_time} · {conflict.missions[0].title.slice(0, 22)}{conflict.missions[0].title.length > 22 ? '…' : ''}
+        </span>
+        <span style={{ color: s.tone }}>⇄</span>
+        <span style={{ padding: '3px 8px', borderRadius: 6, background: 'var(--surface-2)', fontFamily: 'JetBrains Mono, monospace' }}>
+          {conflict.missions[1].start_time} · {conflict.missions[1].title.slice(0, 22)}{conflict.missions[1].title.length > 22 ? '…' : ''}
+        </span>
+        <span style={{ color: s.tone, fontSize: 10 }}>
+          {conflict.overlap_minutes} min de chevauchement
+        </span>
+      </div>
+
+      <span style={{
+        padding: '3px 10px', borderRadius: 999,
+        background: `color-mix(in oklch, ${s.tone} 14%, transparent)`,
+        color: s.tone, fontFamily: 'JetBrains Mono, monospace',
+        fontSize: 9, fontWeight: 700, letterSpacing: '0.08em',
+      }}>
+        {s.label}
+      </span>
+    </div>
+  );
+}
+
 /* ─────────────── COMPOSANT PRINCIPAL ─────────────── */
 export default function PlanningFil() {
   const navigate = useNavigate();
@@ -397,6 +518,10 @@ export default function PlanningFil() {
     });
     return map;
   }, [membersData]);
+
+  // Détection conflits d'horaires sur 14 jours
+  const { data: conflictsData } = useScheduleConflicts(14);
+  const [conflictsExpanded, setConflictsExpanded] = useState(false);
 
   const reload = () => {
     setLoading(true);
@@ -493,6 +618,13 @@ export default function PlanningFil() {
 
       {/* ═══════════════════════ BODY ═══════════════════════ */}
       <div className="pf-body pf-fade" style={{ padding: '0 48px 40px' }}>
+
+        {/* ━━━ Bandeau conflits ━━━ */}
+        <ConflictsBanner
+          data={conflictsData}
+          expanded={conflictsExpanded}
+          onToggle={() => setConflictsExpanded((v) => !v)}
+        />
 
         {/* ━━━ Strip KPI ━━━ */}
         <div className="pf-kpis-grid" style={{
