@@ -255,6 +255,77 @@ export function useScheduleConflicts(days = 14) {
   });
 }
 
+export function useHoursWorked({ memberId, period = 'month' } = {}) {
+  const qs = new URLSearchParams({ period, ...(memberId ? { member_id: memberId } : {}) }).toString();
+  return useQuery({
+    queryKey: ['planning', 'hours', memberId || 'all', period],
+    queryFn: async () => (await api.get(`/planning/hours?${qs}`)).data,
+    staleTime: 60_000,
+  });
+}
+
+export function useAvailabilities({ memberId, fromDate, toDate } = {}) {
+  const params = new URLSearchParams();
+  if (memberId) params.set('member_id', memberId);
+  if (fromDate) params.set('from_date', fromDate);
+  if (toDate) params.set('to_date', toDate);
+  const qs = params.toString();
+  return useQuery({
+    queryKey: ['planning', 'availabilities', memberId || 'all', fromDate, toDate],
+    queryFn: async () => (await api.get(`/planning/availabilities${qs ? `?${qs}` : ''}`)).data,
+    staleTime: 60_000,
+  });
+}
+
+export function useCreateAvailability() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body) => (await api.post('/planning/availabilities', body)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['planning', 'availabilities'] });
+      toast.success('Indisponibilité ajoutée');
+    },
+    onError: (e) => toast.error(e?.response?.data?.detail || 'Erreur'),
+  });
+}
+
+export function useDeleteAvailability() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (availabilityId) =>
+      (await api.delete(`/planning/availabilities/${availabilityId}`)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['planning', 'availabilities'] });
+      toast.success('Indisponibilité retirée');
+    },
+  });
+}
+
+export function useNotifyIntervention() {
+  return useMutation({
+    mutationFn: async ({ interventionId, message }) =>
+      (await api.post(`/interventions/${interventionId}/notify`, { channel: 'email', message })).data,
+    onSuccess: (data) => {
+      const sent = data?.sent || 0;
+      toast.success(sent > 0 ? `Email envoyé à ${sent} intervenant${sent > 1 ? 's' : ''}` : 'Aucun envoi');
+    },
+    onError: (e) => toast.error(e?.response?.data?.detail || 'Échec notification'),
+  });
+}
+
+export function useReassignIntervention() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ interventionId, patch }) =>
+      (await api.put(`/interventions/${interventionId}`, patch)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['planning'] });
+      toast.success('Mission mise à jour');
+    },
+    onError: (e) => toast.error(e?.response?.data?.detail || 'Erreur'),
+  });
+}
+
 export function useUpdateMember() {
   const qc = useQueryClient();
   return useMutation({

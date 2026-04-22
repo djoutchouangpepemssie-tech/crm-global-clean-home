@@ -8,7 +8,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Plus, ChevronLeft, ChevronRight, Map, Calendar, MapPin, Clock, Users as UsersIcon } from 'lucide-react';
 import api from '../../lib/api';
 import { useAllMembers, useScheduleConflicts } from '../../hooks/api';
-import { AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronUp, Printer, User as UserIcon, Users as UsersIcon2 } from 'lucide-react';
 
 /* ─────────────────── TOKENS + STYLES ─────────────────── */
 const tokenStyle = `
@@ -102,6 +102,16 @@ const tokenStyle = `
 
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
   .pf-fade { animation: fadeIn .3s ease; }
+
+  /* Export PDF — masquage des éléments non essentiels et mise en page propre */
+  @media print {
+    .pf-hide-print { display: none !important; }
+    .pf-root { background: white !important; padding: 0 !important; }
+    .pf-header { padding: 12mm 12mm 6mm !important; }
+    .pf-body { padding: 0 12mm 12mm !important; }
+    .pf-header-title { font-size: 28pt !important; }
+    .pf-bar { box-shadow: none !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  }
 
   @media (max-width: 1100px) {
     .pf-kpis-grid { grid-template-columns: repeat(2, 1fr) !important; }
@@ -523,6 +533,12 @@ export default function PlanningFil() {
   const { data: conflictsData } = useScheduleConflicts(14);
   const [conflictsExpanded, setConflictsExpanded] = useState(false);
 
+  // Filtre par intervenant (affiche uniquement les missions d'un intervenant)
+  const [memberFilter, setMemberFilter] = useState('');
+
+  // Export PDF : lance l'impression du navigateur (CSS @media print ci-dessous)
+  const onPrint = () => window.print();
+
   const reload = () => {
     setLoading(true);
     api.get('/planning/day', { params: { date } })
@@ -604,7 +620,42 @@ export default function PlanningFil() {
             }}><ChevronRight style={{ width: 14, height: 14 }} /></button>
           </div>
 
-          <Link to="/leads/new" style={{
+          {/* Filtre par intervenant */}
+          <div className="pf-hide-print" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 999,
+            padding: '5px 10px',
+          }}>
+            <UserIcon style={{ width: 12, height: 12, color: 'var(--ink-3)' }} />
+            <select value={memberFilter} onChange={(e) => setMemberFilter(e.target.value)}
+              style={{
+                border: 'none', background: 'transparent', outline: 'none',
+                fontFamily: 'JetBrains Mono, monospace', fontSize: 11,
+                color: 'var(--ink-2)', cursor: 'pointer', minWidth: 140,
+              }}>
+              <option value="">Tous les intervenants</option>
+              {Object.values(membersMap)
+                .filter((m) => m.active !== false)
+                .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+                .map((m) => (
+                  <option key={m.member_id} value={m.member_id}>{m.name}</option>
+                ))}
+            </select>
+          </div>
+
+          {/* Export PDF */}
+          <button onClick={onPrint} className="pf-hide-print" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 14px',
+            background: 'var(--surface)', color: 'var(--ink-2)', borderRadius: 999,
+            border: '1px solid var(--line)', cursor: 'pointer',
+            fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 500,
+            letterSpacing: '0.06em', textTransform: 'uppercase',
+          }} title="Exporter le planning en PDF (via l'imprimante)">
+            <Printer style={{ width: 12, height: 12 }} />
+            PDF
+          </button>
+
+          <Link to="/leads/new" className="pf-hide-print" style={{
             display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px',
             background: 'var(--ink)', color: 'var(--bg)', borderRadius: 999,
             fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 500,
@@ -710,7 +761,15 @@ export default function PlanningFil() {
                 </div>
               ) : (
                 <div style={{ position: 'relative' }}>
-                  {teams.map(team => (
+                  {(memberFilter
+                    ? teams.map((t) => ({
+                        ...t,
+                        missions: (t.missions || []).filter((m) =>
+                          (m.assigned_members || []).includes(memberFilter)
+                        ),
+                      })).filter((t) => (t.missions || []).length > 0)
+                    : teams
+                  ).map(team => (
                     <TeamRow
                       key={team.id}
                       team={team}

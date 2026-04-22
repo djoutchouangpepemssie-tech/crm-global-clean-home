@@ -58,6 +58,18 @@ class TeamMemberUpdate(BaseModel):
 class AvatarPayload(BaseModel):
     photo_b64: str  # data URL complet
 
+class AvailabilityCreate(BaseModel):
+    member_id: str
+    start_date: str  # YYYY-MM-DD
+    end_date: str    # YYYY-MM-DD
+    type: str = "off"  # off | leave | sick | training | other
+    reason: Optional[str] = ""
+    notes: Optional[str] = ""
+
+class NotifyPayload(BaseModel):
+    channel: str = "email"  # email (autres à venir)
+    message: Optional[str] = ""
+
 class InterventionCreate(BaseModel):
     lead_id: str
     title: str
@@ -383,6 +395,221 @@ async def update_member(member_id: str, body: TeamMemberUpdate, request: Request
 
     updated = await _db.team_members.find_one({"member_id": member_id}, {"_id": 0})
     return updated
+
+
+@planning_router.get("/planning/hours")
+async def get_hours_worked(request: Request, member_id: Optional[str] = None,
+                           period: str = "month", days: Optional[int] = None):
+    """Heures travaillées sur une période. Si member_id fourni, retourne
+    juste cet intervenant. Sinon retourne tous les intervenants.
+    period : day | week | month | year | custom (nécessite days)
+    """
+    await _require_auth(request)
+
+    now = datetime.now(timezone.utc)
+    if period == "day":
+        start = now.date()
+    elif period == "week":
+        start = (now - timedelta(days=7)).date()
+    elif period == "month":
+        start = now.replace(day=1).date()
+    elif period == "year":
+        start = now.replace(month=1, day=1).date()
+    elif period == "custom" and days:
+        start = (now - timedelta(days=days)).date()
+    else:
+        start = now.replace(day=1).date()
+
+    start_iso = start.isoformat()
+
+    q = {"scheduled_date": {"$gte": start_iso}}
+    if member_id:
+        q["assigned_members"] = member_id
+
+    interventions = await _db.interventions.find(q, {
+        "_id": 0, "assigned_members": 1, "duration_hours": 1,
+        "scheduled_date": 1, "scheduled_time": 1, "status": 1,
+    }).to_list(10000)
+
+    # Agréger par member_id
+    by_member = {}
+    for intv in interventions:
+        hours = float(intv.get("duration_hours") or 2.0)
+        for mid in (intv.get("assigned_members") or []):
+            if member_id and mid != member_id:
+                continue
+            e = by_member.setdefault(mid, {
+                "member_id": mid, "total_hours": 0.0, "missions_count": 0,
+                "done_hours": 0.0, "done_count": 0,
+                "by_date": {},
+            })
+            e["total_hours"] += hours
+            e["missions_count"] += 1
+            st = (intv.get("status") or "").lower()
+            if st in ("done", "completed", "terminee", "termine"):
+                e["done_hours"] += hours
+                e["done_count"] += 1
+            # Ventilation par jour (utile pour graphique)
+            d = intv.get("scheduled_date")
+            if d:
+                e["by_date"][d] = e["by_date"].get(d, 0) + hours
+
+    # Enrichir avec noms + photos
+    mids = list(by_member.keys())
+    if mids:
+        members_info = await _db.team_members.find(
+            {"member_id": {"$in": mids}},
+            {"_id": 0, "member_id": 1, "name": 1, "photo_b64": 1, "role": 1},
+        ).to_list(500)
+        name_map = {m["member_id"]: m for m in members_info}
+        for mid, e in by_member.items():
+            info = name_map.get(mid, {})
+            e["name"] = info.get("name", "—")
+            e["photo_b64"] = info.get("photo_b64", "")
+            e["role"] = info.get("role", "")
+            # Transformer by_date en array trié
+            e["daily"] = [{"date": d, "hours": round(h, 2)}
+                           for d, h in sorted(e["by_date"].items())]
+            del e["by_date"]
+            e["total_hours"] = round(e["total_hours"], 1)
+            e["done_hours"] = round(e["done_hours"], 1)
+
+    rows = sorted(by_member.values(), key=lambda x: x["total_hours"], reverse=True)
+    return {
+        "period": period,
+        "period_start": start_iso,
+        "member_id": member_id,
+        "total_members": len(rows),
+        "grand_total_hours": round(sum(r["total_hours"] for r in rows), 1),
+        "grand_total_missions": sum(r["missions_count"] for r in rows),
+        "rows": rows,
+    }
+
+
+@planning_router.post("/planning/availabilities")
+async def create_availability(body: AvailabilityCreate, request: Request):
+    """Créer une période d'indisponibilité (congé, arrêt maladie, formation)."""
+    user = await _require_auth(request)
+    member = await _db.team_members.find_one({"member_id": body.member_id}, {"_id": 0, "name": 1})
+    if not member:
+        raise HTTPException(status_code=404, detail="Intervenant introuvable")
+
+    doc = {
+        "availability_id": f"ava_{uuid.uuid4().hex[:12]}",
+        "member_id": body.member_id,
+        "member_name": member.get("name"),
+        "start_date": body.start_date,
+        "end_date": body.end_date,
+        "type": body.type,
+        "reason": body.reason or "",
+        "notes": body.notes or "",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": user.user_id,
+    }
+    await _db.member_availabilities.insert_one(doc)
+    doc.pop("_id", None)
+    return {"success": True, "availability": doc}
+
+
+@planning_router.get("/planning/availabilities")
+async def list_availabilities(request: Request, member_id: Optional[str] = None,
+                              from_date: Optional[str] = None, to_date: Optional[str] = None):
+    """Liste les indisponibilités (filtres optionnels)."""
+    await _require_auth(request)
+    q = {}
+    if member_id: q["member_id"] = member_id
+    if from_date or to_date:
+        date_q = {}
+        if to_date: date_q["$lte"] = to_date
+        if from_date:
+            # Overlap : end_date >= from_date
+            q["end_date"] = {"$gte": from_date}
+        if date_q:
+            q.setdefault("start_date", {}).update(date_q)
+    items = await _db.member_availabilities.find(q, {"_id": 0}).sort("start_date", 1).to_list(500)
+    return {"count": len(items), "availabilities": items}
+
+
+@planning_router.delete("/planning/availabilities/{availability_id}")
+async def delete_availability(availability_id: str, request: Request):
+    await _require_auth(request)
+    r = await _db.member_availabilities.delete_one({"availability_id": availability_id})
+    if r.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Indisponibilité introuvable")
+    return {"success": True}
+
+
+@planning_router.post("/interventions/{intervention_id}/notify")
+async def notify_intervention_assigned(intervention_id: str, body: NotifyPayload, request: Request):
+    """Envoie une notification email à tous les intervenants assignés à
+    la mission, avec les détails (date, heure, client, adresse).
+    """
+    await _require_auth(request)
+    intv = await _db.interventions.find_one({"intervention_id": intervention_id}, {"_id": 0})
+    if not intv:
+        raise HTTPException(status_code=404, detail="Intervention introuvable")
+
+    member_ids = intv.get("assigned_members") or []
+    if not member_ids:
+        raise HTTPException(status_code=400, detail="Aucun intervenant assigné à cette mission")
+
+    members = await _db.team_members.find(
+        {"member_id": {"$in": member_ids}},
+        {"_id": 0, "member_id": 1, "name": 1, "email": 1}
+    ).to_list(100)
+
+    sent = 0
+    failed = []
+    try:
+        from gmail_service import _get_any_active_token, _send_gmail_message
+        token, _ = await _get_any_active_token()
+        if not token:
+            raise HTTPException(status_code=503, detail="Aucun compte Google connecté pour l'envoi d'email")
+
+        for m in members:
+            if not m.get("email"):
+                failed.append({"member_id": m["member_id"], "reason": "Pas d'email"})
+                continue
+            html = f"""<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,sans-serif;">
+<div style="max-width:560px;margin:40px auto;background:white;border-radius:20px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.1);">
+  <div style="background:linear-gradient(135deg,#10b981,#059669);padding:32px;text-align:center;">
+    <div style="font-size:42px;margin-bottom:8px;">📅</div>
+    <h1 style="color:white;margin:0;font-size:22px;font-weight:900;">Nouvelle mission assignée</h1>
+  </div>
+  <div style="padding:28px;">
+    <p style="color:#1e293b;font-size:16px;font-weight:700;margin:0 0 8px;">Bonjour {m['name']} 👋</p>
+    <p style="color:#64748b;font-size:14px;line-height:1.6;margin:0 0 18px;">
+      Une mission vient de t'être assignée. Voici les détails :
+    </p>
+    <div style="background:#f8fafc;border-radius:14px;padding:18px;margin-bottom:18px;border:1px solid #e2e8f0;">
+      <p style="margin:0 0 6px;color:#1e293b;font-weight:700;font-size:15px;">{intv.get('title') or 'Mission'}</p>
+      <p style="margin:0 0 4px;color:#475569;font-size:13px;">📅 {intv.get('scheduled_date')} à {intv.get('scheduled_time', '—')}</p>
+      {f'<p style="margin:0 0 4px;color:#475569;font-size:13px;">⏱️ Durée : {intv.get("duration_hours", 2)}h</p>' if intv.get('duration_hours') else ''}
+      {f'<p style="margin:0 0 4px;color:#475569;font-size:13px;">👤 Client : {intv.get("lead_name")}</p>' if intv.get('lead_name') else ''}
+      {f'<p style="margin:0;color:#475569;font-size:13px;">📍 {intv.get("address")}</p>' if intv.get('address') else ''}
+    </div>
+    {f'<p style="color:#64748b;font-size:13px;font-style:italic;margin:0 0 18px;">{body.message}</p>' if body.message else ''}
+    <a href="https://crm.globalcleanhome.com/intervenant" style="display:inline-block;background:linear-gradient(135deg,#10b981,#059669);color:white;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px;">
+      🚀 Voir dans mon portail
+    </a>
+  </div>
+</div></body></html>"""
+            try:
+                await _send_gmail_message(
+                    token, m["email"],
+                    f"📅 Nouvelle mission — {intv.get('title') or 'Intervention'} le {intv.get('scheduled_date')}",
+                    html
+                )
+                sent += 1
+            except Exception as e:
+                failed.append({"member_id": m["member_id"], "reason": str(e)[:100]})
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"notify error: {e}")
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+    return {"success": True, "sent": sent, "failed": failed, "total_members": len(members)}
 
 
 @planning_router.get("/planning/conflicts")

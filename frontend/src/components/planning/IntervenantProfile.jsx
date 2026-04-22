@@ -7,10 +7,13 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, Award, BadgeCheck, BarChart3, Briefcase, Calendar, Check,
   CheckCircle, ChevronRight, Clock, Edit3, ExternalLink, MapPin, Mail,
-  Phone, Shield, ShieldOff, Star, TrendingUp, Trash2, Users, XCircle, Zap,
+  Phone, Plane, Plus, Send, Shield, ShieldOff, Star, TrendingUp,
+  Trash2, Users, X, XCircle, Zap,
 } from 'lucide-react';
 import {
   useMemberProfile, useUpdateMember, useDeleteMember,
+  useHoursWorked, useAvailabilities, useCreateAvailability,
+  useDeleteAvailability, useNotifyIntervention,
 } from '../../hooks/api';
 
 const tokenStyle = `
@@ -186,7 +189,13 @@ export default function IntervenantProfile() {
   const { data, isLoading, error } = useMemberProfile(id);
   const updateMember = useUpdateMember();
   const deleteMember = useDeleteMember();
+  const { data: hoursData } = useHoursWorked({ memberId: id, period: 'month' });
+  const { data: availData } = useAvailabilities({ memberId: id });
+  const createAvail = useCreateAvailability();
+  const deleteAvail = useDeleteAvailability();
+  const notify = useNotifyIntervention();
   const [toast, setToast] = useState(null);
+  const [availOpen, setAvailOpen] = useState(false);
   const showToast = (m, t = 'ok') => { setToast({ m, t }); setTimeout(() => setToast(null), 2800); };
 
   if (isLoading && !data) {
@@ -260,6 +269,16 @@ export default function IntervenantProfile() {
             <a href={`mailto:${member.email}`} className="ip-action-btn">
               <Mail style={{ width: 11, height: 11 }} /> Email
             </a>
+          )}
+          {upcoming.length > 0 && upcoming[0]?.intervention_id && (
+            <button onClick={async () => {
+              try {
+                await notify.mutateAsync({ interventionId: upcoming[0].intervention_id });
+              } catch (e) { showToast(e?.response?.data?.detail || 'Erreur', 'err'); }
+            }} disabled={notify.isPending} className="ip-action-btn">
+              <Send style={{ width: 11, height: 11 }} />
+              {notify.isPending ? 'Envoi…' : 'Notifier prochaine mission'}
+            </button>
           )}
           <button onClick={() => navigate(`/intervenants?edit=${id}`)} className="ip-action-btn">
             <Edit3 style={{ width: 11, height: 11 }} /> Modifier
@@ -372,6 +391,17 @@ export default function IntervenantProfile() {
         </div>
       </div>
 
+      {/* ═══════════ HEURES TRAVAILLÉES + DISPONIBILITÉS ═══════════ */}
+      <div className="ip-fade" style={{ padding: '0 48px 28px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+        <HoursSection data={hoursData} />
+        <AvailabilitiesSection
+          data={availData}
+          memberId={id}
+          onAdd={() => setAvailOpen(true)}
+          onDelete={async (avaId) => { await deleteAvail.mutateAsync(avaId); }}
+        />
+      </div>
+
       {/* ═══════════ MISSIONS ═══════════ */}
       <div className="ip-fade" style={{ padding: '0 48px 28px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
         {/* À venir */}
@@ -420,6 +450,21 @@ export default function IntervenantProfile() {
         </div>
       )}
 
+      {/* Modal ajouter indisponibilité */}
+      {availOpen && (
+        <AvailabilityModal
+          memberId={id}
+          onClose={() => setAvailOpen(false)}
+          onSubmit={async (body) => {
+            try {
+              await createAvail.mutateAsync(body);
+              setAvailOpen(false);
+            } catch (e) { showToast(e?.response?.data?.detail || 'Erreur', 'err'); }
+          }}
+          saving={createAvail.isPending}
+        />
+      )}
+
       {/* Toast */}
       {toast && (
         <div style={{
@@ -435,3 +480,204 @@ export default function IntervenantProfile() {
     </div>
   );
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   SOUS-COMPOSANTS : Heures travaillées · Disponibilités · Modal
+════════════════════════════════════════════════════════════════════ */
+function HoursSection({ data }) {
+  const row = data?.rows?.[0];
+  return (
+    <div>
+      <div className="ip-label" style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Clock style={{ width: 12, height: 12 }} /> Heures travaillées — mois en cours
+      </div>
+      <div className="ip-card" style={{ padding: 22 }}>
+        {!row ? (
+          <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontFamily: 'Fraunces, serif', fontSize: 13 }}>
+            Aucune mission ce mois.
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
+              <div className="ip-display" style={{ fontSize: 36, fontWeight: 500, color: 'var(--ink)', lineHeight: 1 }}>
+                {row.total_hours}<span style={{ fontSize: 18, color: 'var(--ink-3)', fontWeight: 400 }}>h</span>
+              </div>
+              <div className="ip-mono" style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+                / {row.missions_count} missions
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 14, fontSize: 12, color: 'var(--ink-3)' }}>
+              <span><b style={{ color: 'var(--emerald)' }}>{row.done_hours}h</b> terminées</span>
+              <span><b style={{ color: 'var(--ink-2)' }}>{row.done_count}</b> missions faites</span>
+            </div>
+            {row.daily?.length > 0 && (
+              <div style={{ marginTop: 16 }}>
+                <div className="ip-label" style={{ fontSize: 9, marginBottom: 6 }}>RÉPARTITION DAILY</div>
+                <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 44 }}>
+                  {row.daily.slice(-14).map((d) => {
+                    const max = Math.max(...row.daily.map((x) => x.hours), 1);
+                    const pct = (d.hours / max) * 100;
+                    return (
+                      <div key={d.date} title={`${d.date} · ${d.hours}h`} style={{
+                        flex: 1, height: `${pct}%`, minHeight: 4,
+                        background: 'var(--emerald)', borderRadius: '2px 2px 0 0', opacity: 0.8,
+                      }} />
+                    );
+                  })}
+                </div>
+                <div className="ip-mono" style={{ fontSize: 9, color: 'var(--ink-4)', marginTop: 4, letterSpacing: '0.06em' }}>
+                  {row.daily.length <= 14 ? 'DEBUT DU MOIS' : '14 DERNIERS JOURS'} → AUJOURD'HUI
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const AVAIL_TYPES = {
+  off:      { label: 'Repos', tone: 'var(--ink-3)' },
+  leave:    { label: 'Congé', tone: 'var(--gold)' },
+  sick:     { label: 'Arrêt maladie', tone: 'var(--rouge)' },
+  training: { label: 'Formation', tone: 'var(--emerald)' },
+  other:    { label: 'Autre', tone: 'var(--ink-4)' },
+};
+
+function AvailabilitiesSection({ data, memberId, onAdd, onDelete }) {
+  const items = data?.availabilities || [];
+  const today = new Date().toISOString().slice(0, 10);
+  const upcoming = items.filter((a) => a.end_date >= today);
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div className="ip-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Plane style={{ width: 12, height: 12 }} /> Absences / Indisponibilités
+        </div>
+        <button onClick={onAdd} className="ip-action-btn">
+          <Plus style={{ width: 11, height: 11 }} /> Ajouter
+        </button>
+      </div>
+      <div className="ip-card" style={{ padding: 0, overflow: 'hidden' }}>
+        {upcoming.length === 0 ? (
+          <div style={{ padding: 22, textAlign: 'center', fontStyle: 'italic', fontFamily: 'Fraunces, serif', color: 'var(--ink-3)', fontSize: 13 }}>
+            Aucune absence planifiée.
+          </div>
+        ) : (
+          <div>
+            {upcoming.map((a) => {
+              const t = AVAIL_TYPES[a.type] || AVAIL_TYPES.other;
+              return (
+                <div key={a.availability_id} style={{
+                  display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 12, alignItems: 'center',
+                  padding: '12px 16px', borderBottom: '1px solid var(--line-2)',
+                }}>
+                  <div>
+                    <div style={{ fontFamily: 'Fraunces, serif', fontSize: 14, fontWeight: 500 }}>
+                      {new Date(a.start_date + 'T00:00:00').toLocaleDateString('fr-FR')}
+                      {a.end_date !== a.start_date && <> → {new Date(a.end_date + 'T00:00:00').toLocaleDateString('fr-FR')}</>}
+                    </div>
+                    {a.reason && (
+                      <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>{a.reason}</div>
+                    )}
+                  </div>
+                  <span style={{
+                    padding: '3px 10px', borderRadius: 999, fontFamily: 'JetBrains Mono, monospace',
+                    fontSize: 9, fontWeight: 700, letterSpacing: '0.08em',
+                    color: t.tone, background: `color-mix(in oklch, ${t.tone} 14%, transparent)`,
+                  }}>
+                    {t.label}
+                  </span>
+                  <button onClick={() => onDelete(a.availability_id)} title="Supprimer"
+                    style={{
+                      width: 28, height: 28, borderRadius: 999, border: '1px solid var(--line)',
+                      background: 'var(--surface)', cursor: 'pointer', color: 'var(--ink-3)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                    <X style={{ width: 12, height: 12 }} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AvailabilityModal({ memberId, onClose, onSubmit, saving }) {
+  const [form, setForm] = useState({
+    member_id: memberId,
+    start_date: new Date().toISOString().slice(0, 10),
+    end_date: new Date().toISOString().slice(0, 10),
+    type: 'leave',
+    reason: '',
+    notes: '',
+  });
+
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 95, padding: 20, backdropFilter: 'blur(2px)',
+    }}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        background: 'var(--paper)', borderRadius: 16, width: '100%', maxWidth: 440,
+        boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+      }}>
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div className="ip-label">Indisponibilité</div>
+            <div className="ip-display" style={{ fontSize: 20, marginTop: 4 }}>Ajouter une absence</div>
+          </div>
+          <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: 999, border: '1px solid var(--line)', background: 'var(--surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X style={{ width: 14, height: 14, color: 'var(--ink-3)' }} />
+          </button>
+        </div>
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <label className="ip-label" style={{ display: 'block', marginBottom: 5 }}>Du</label>
+              <input type="date" value={form.start_date}
+                onChange={(e) => setForm({ ...form, start_date: e.target.value })} style={modalInputStyle} />
+            </div>
+            <div>
+              <label className="ip-label" style={{ display: 'block', marginBottom: 5 }}>Au</label>
+              <input type="date" value={form.end_date}
+                onChange={(e) => setForm({ ...form, end_date: e.target.value })} style={modalInputStyle} />
+            </div>
+          </div>
+          <div>
+            <label className="ip-label" style={{ display: 'block', marginBottom: 5 }}>Type</label>
+            <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} style={modalInputStyle}>
+              {Object.entries(AVAIL_TYPES).map(([k, v]) => (
+                <option key={k} value={k}>{v.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="ip-label" style={{ display: 'block', marginBottom: 5 }}>Motif (optionnel)</label>
+            <input value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })}
+              placeholder="Vacances d'été, rdv médical…" style={modalInputStyle} />
+          </div>
+        </div>
+        <div style={{ padding: '16px 24px', borderTop: '1px solid var(--line)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button onClick={onClose} className="ip-action-btn">Annuler</button>
+          <button onClick={() => onSubmit(form)} disabled={saving} className="ip-action-btn primary">
+            <Check style={{ width: 12, height: 12 }} />
+            {saving ? 'Enregistrement…' : 'Ajouter'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const modalInputStyle = {
+  width: '100%', padding: '9px 12px', borderRadius: 8,
+  border: '1px solid var(--line)', background: 'var(--surface)',
+  fontSize: 13, fontFamily: 'Inter, sans-serif', color: 'var(--ink)',
+  outline: 'none',
+};
