@@ -1481,6 +1481,22 @@ const PlanningCalendar = () => {
                   <Edit3 className="w-4 h-4 group-hover/action:rotate-12 transition-transform duration-200" /> Modifier
                 </button>
 
+                <button onClick={async () => {
+                  try {
+                    const res = await api.post(`/interventions/${selected.intervention_id || selected.id}/send-planning`);
+                    toast.success(`📧 ${res.data.message || 'Planning envoyé !'}`);
+                  } catch (err) {
+                    toast.error(err.response?.data?.detail || err.message || 'Erreur envoi planning');
+                  }
+                }}
+                  className="group/action flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-bold transition-all duration-300 hover:scale-[1.03]"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.05))',
+                    border: '1px solid rgba(16,185,129,0.25)', color: '#10b981'
+                  }}>
+                  <Mail className="w-4 h-4 group-hover/action:translate-y-[-1px] transition-transform" /> Envoyer le planning
+                </button>
+
                 {selected.status === 'planifiée' && (
                   <button onClick={() => handleCheckInOut(selected.intervention_id || selected.id, 'check_in')}
                     className="group/action flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-bold transition-all duration-300 hover:scale-[1.03]"

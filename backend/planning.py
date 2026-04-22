@@ -751,6 +751,115 @@ async def check_in_out(intervention_id: str, body: CheckInOut, request: Request)
     await _log_activity(user.user_id, f"intervention_{body.type}", "intervention", intervention_id)
     return {"message": f"{body.type} enregistré", "time": now}
 
+# ============= ENVOYER LE PLANNING À L'INTERVENANT =============
+
+@planning_router.post("/interventions/{intervention_id}/send-planning")
+async def send_planning_to_intervenant(intervention_id: str, request: Request):
+    """Envoie (ou renvoie) l'email de planning à l'intervenant assigné.
+    Utile quand l'email initial n'a pas été reçu ou pour rappeler."""
+    user = await _require_auth(request)
+
+    intervention = await _db.interventions.find_one(
+        {"intervention_id": intervention_id, "deleted_at": {"$exists": False}}, {"_id": 0}
+    )
+    if not intervention:
+        raise HTTPException(status_code=404, detail="Intervention introuvable")
+
+    # Récupérer les intervenants assignés
+    assigned = intervention.get("assigned_members") or []
+    agent_id = intervention.get("assigned_agent_id")
+    agent_name = intervention.get("assigned_agent_name")
+    if agent_id and agent_id not in assigned:
+        assigned.append(agent_id)
+
+    if not assigned and not agent_name:
+        raise HTTPException(status_code=400, detail="Aucun intervenant assigné à cette intervention")
+
+    # Récupérer les infos du lead
+    lead = {}
+    if intervention.get("lead_id"):
+        lead = await _db.leads.find_one({"lead_id": intervention["lead_id"]}, {"_id": 0}) or {}
+
+    sent_to = []
+    try:
+        from gmail_service import _get_any_active_token, _send_gmail_message
+        token_gmail, _ = await _get_any_active_token()
+        if not token_gmail:
+            raise HTTPException(status_code=503, detail="Gmail non connecté — impossible d'envoyer l'email")
+
+        portal_url = "https://crm.globalcleanhome.com/intervenant"
+        service_label = intervention.get("service_type") or intervention.get("title") or "Intervention"
+
+        # Chercher les membres par ID ou par nom
+        members = []
+        for mid in assigned:
+            m = await _db.team_members.find_one({"member_id": mid}, {"_id": 0})
+            if m and m.get("email"):
+                members.append(m)
+
+        # Fallback : chercher par nom si pas trouvé par ID
+        if not members and agent_name:
+            m = await _db.team_members.find_one({"name": agent_name}, {"_id": 0})
+            if m and m.get("email"):
+                members.append(m)
+
+        if not members:
+            raise HTTPException(status_code=400, detail="Aucun email trouvé pour l'intervenant assigné")
+
+        for member in members:
+            prenom = member.get("name", "").split()[0] or "Bonjour"
+            html = f"""<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,sans-serif;">
+<div style="max-width:540px;margin:32px auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.1);">
+  <div style="background:linear-gradient(135deg,#10b981,#059669);padding:32px;text-align:center;">
+    <div style="font-size:44px;margin-bottom:10px;">📋</div>
+    <h1 style="color:white;margin:0;font-size:20px;font-weight:800;">Planning mis à jour</h1>
+    <p style="color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:13px;">{intervention.get("scheduled_date", "—")}</p>
+  </div>
+  <div style="padding:28px 32px;">
+    <p style="color:#1e293b;font-size:16px;font-weight:700;margin:0 0 12px;">Bonjour {prenom} 👋</p>
+    <p style="color:#64748b;font-size:14px;line-height:1.8;margin:0 0 20px;">
+      Voici votre planning mis à jour. Consultez les détails ci-dessous :
+    </p>
+    <div style="background:#f0fdf4;border-radius:14px;padding:20px;margin:0 0 20px;border:1px solid #bbf7d0;">
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><td style="padding:8px 0;color:#64748b;font-size:13px;">🧹 Service</td><td style="padding:8px 0;color:#166534;font-weight:700;font-size:13px;text-align:right;">{service_label}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;font-size:13px;">👤 Client</td><td style="padding:8px 0;color:#166534;font-weight:700;font-size:13px;text-align:right;">{lead.get("name", intervention.get("lead_name", "—"))}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;font-size:13px;">📞 Téléphone</td><td style="padding:8px 0;color:#166534;font-weight:700;font-size:13px;text-align:right;">{lead.get("phone", intervention.get("client_phone", "—"))}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;font-size:13px;">📍 Adresse</td><td style="padding:8px 0;color:#166534;font-weight:700;font-size:13px;text-align:right;">{intervention.get("address", "—")}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;font-size:13px;">📅 Date</td><td style="padding:8px 0;color:#166534;font-weight:700;font-size:13px;text-align:right;">{intervention.get("scheduled_date", "—")} à {intervention.get("scheduled_time", "—")}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;font-size:13px;">⏱️ Durée</td><td style="padding:8px 0;color:#166534;font-weight:700;font-size:13px;text-align:right;">{intervention.get("duration_hours", 2)}h</td></tr>
+      </table>
+    </div>
+    <div style="text-align:center;margin:24px 0;">
+      <a href="{portal_url}" style="display:inline-block;background:linear-gradient(135deg,#10b981,#059669);color:white;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:700;font-size:14px;">
+        📱 Voir sur mon portail
+      </a>
+    </div>
+    <p style="color:#94a3b8;font-size:12px;text-align:center;margin:0;">En cas de question, répondez directement à cet email.</p>
+  </div>
+  <div style="background:#0f172a;padding:16px;text-align:center;">
+    <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0;">Global Clean Home · 06 22 66 53 08</p>
+  </div>
+</div></body></html>"""
+            await _send_gmail_message(token_gmail, member["email"],
+                f"📋 Planning — {intervention.get('scheduled_date', '')} à {intervention.get('scheduled_time', '')}", html)
+            sent_to.append(member["email"])
+            logger.info(f"Planning email sent to {member['email']} for intervention {intervention_id}")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to send planning email: {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur envoi email: {str(e)}")
+
+    # Marquer l'intervention comme "email envoyé"
+    await _db.interventions.update_one(
+        {"intervention_id": intervention_id},
+        {"$set": {"planning_email_sent": True, "planning_email_sent_at": datetime.now(timezone.utc).isoformat()}}
+    )
+
+    return {"message": f"Planning envoyé à {', '.join(sent_to)}", "sent_to": sent_to}
+
 # ============= CALENDAR VIEW =============
 
 @planning_router.get("/calendar")
