@@ -24,6 +24,17 @@ BACKEND_URL = os.environ.get("PUBLIC_BACKEND_URL", "https://crm-global-clean-hom
 def init_site_tracking_db(database):
     global _db
     _db = database
+    # Indexes visitor_profiles pour queries rapides
+    try:
+        import asyncio
+        loop = asyncio.get_event_loop()
+        loop.create_task(database.visitor_profiles.create_index("visitor_id", unique=True))
+        loop.create_task(database.visitor_profiles.create_index([("last_seen", -1)]))
+        loop.create_task(database.visitor_profiles.create_index([("identified", 1), ("last_seen", -1)]))
+        loop.create_task(database.visitor_profiles.create_index("lead_id"))
+        loop.create_task(database.ip_geocache.create_index("ip", unique=True))
+    except Exception:
+        pass
     # Index sur le cache géoloc IP (pas de TTL — on garde les IPs pour toujours)
     try:
         import asyncio
@@ -681,6 +692,308 @@ async def list_visitors(request: Request, hours: int = 24, limit: int = 100, inc
         "identified_pct": round(identified_count / max(len(out), 1) * 100, 1),
         "visitors": out,
     }
+
+
+@tracker_router.get("/journeys")
+async def list_journeys(
+    request: Request,
+    identified: Optional[bool] = None,
+    converted: Optional[bool] = None,
+    country: Optional[str] = None,
+    min_pages: int = 0,
+    min_sessions: int = 0,
+    source: Optional[str] = None,
+    days: int = 30,
+    sort: str = "last_seen",  # last_seen | pageviews | sessions | events
+    limit: int = 100,
+    skip: int = 0,
+):
+    """Liste des parcours visiteurs (visitor_profiles agrégés) avec filtres.
+    Source de verité pour la page /seo/journeys.
+    """
+    try:
+        from server import require_auth
+        await require_auth(request)
+    except Exception:
+        pass
+    if _db is None:
+        raise HTTPException(status_code=500, detail="DB non initialisee")
+
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    query: dict = {"last_seen": {"$gte": since}}
+
+    if identified is True:
+        query["identified"] = True
+    elif identified is False:
+        query["identified"] = {"$ne": True}
+    if converted is True:
+        query["lead_id"] = {"$exists": True, "$ne": None}
+    elif converted is False:
+        query["lead_id"] = {"$in": [None]}
+    if source:
+        query["first_utm_source"] = source
+    if min_pages > 0:
+        query["pageviews"] = {"$gte": min_pages}
+
+    sort_map = {
+        "last_seen": [("last_seen", -1)],
+        "pageviews": [("pageviews", -1), ("last_seen", -1)],
+        "sessions": [("sessions", -1), ("last_seen", -1)],
+        "events": [("events_total", -1), ("last_seen", -1)],
+    }
+    sort_field = sort_map.get(sort, sort_map["last_seen"])
+
+    total = await _db.visitor_profiles.count_documents(query)
+    profiles = await _db.visitor_profiles.find(query, {"_id": 0}).sort(sort_field).skip(skip).limit(limit).to_list(limit)
+
+    # Post-filter par country + min_sessions (ils nécessitent un enrichissement)
+    out = []
+    for p in profiles:
+        sessions_count = len(p.get("sessions") or [])
+        if min_sessions and sessions_count < min_sessions:
+            continue
+        # Géoloc via cache IP (sans fetch externe ici — trop lourd pour la liste)
+        geo = None
+        ip = p.get("ip")
+        if ip and _db:
+            try:
+                geo = await _db.ip_geocache.find_one({"ip": ip}, {"_id": 0})
+            except Exception:
+                pass
+        if country and (not geo or (geo.get("country_code") or "").upper() != country.upper()):
+            continue
+        out.append({
+            "visitor_id": p.get("visitor_id"),
+            "identified": bool(p.get("identified")),
+            "lead_id": p.get("lead_id"),
+            "lead_name": p.get("lead_name"),
+            "lead_email": p.get("lead_email"),
+            "lead_phone": p.get("lead_phone"),
+            "lead_service_type": p.get("lead_service_type"),
+            "converted_at": p.get("converted_at"),
+            "conversion_event": p.get("conversion_event"),
+            "first_seen": p.get("first_seen"),
+            "last_seen": p.get("last_seen"),
+            "first_page": p.get("first_page"),
+            "last_page": p.get("last_page"),
+            "first_referrer": p.get("first_referrer"),
+            "first_utm_source": p.get("first_utm_source"),
+            "first_utm_campaign": p.get("first_utm_campaign"),
+            "pageviews": p.get("pageviews", 0),
+            "events_total": p.get("events_total", 0),
+            "cta_clicks": p.get("cta_clicks", 0),
+            "phone_clicks": p.get("phone_clicks", 0),
+            "email_clicks": p.get("email_clicks", 0),
+            "whatsapp_clicks": p.get("whatsapp_clicks", 0),
+            "form_submits": p.get("form_submits", 0),
+            "time_on_site_sec": p.get("time_on_site_sec", 0),
+            "sessions_count": sessions_count,
+            "unique_pages": len(p.get("pages_visited") or []),
+            "device_type": p.get("device_type"),
+            "ip": ip,
+            "location": geo,
+        })
+
+    # Stats globales (sur query sans country/min_sessions — léger)
+    stats_identified = await _db.visitor_profiles.count_documents({**query, "identified": True})
+    stats_converted = await _db.visitor_profiles.count_documents({**query, "lead_id": {"$exists": True, "$ne": None}})
+
+    return {
+        "total": total,
+        "returned": len(out),
+        "stats": {
+            "identified": stats_identified,
+            "converted": stats_converted,
+            "anonymous": total - stats_identified,
+        },
+        "period_days": days,
+        "visitors": out,
+    }
+
+
+@tracker_router.get("/journey/{visitor_id}")
+async def get_journey(visitor_id: str, request: Request):
+    """Parcours complet d'UN visiteur : profil agrégé + timeline complète
+    de tous ses events + sessions (groupées) + géoloc précise.
+    """
+    try:
+        from server import require_auth
+        await require_auth(request)
+    except Exception:
+        pass
+    if _db is None:
+        raise HTTPException(status_code=500, detail="DB non initialisee")
+
+    profile = await _db.visitor_profiles.find_one({"visitor_id": visitor_id}, {"_id": 0})
+
+    # Tous les events du visiteur, chronologiques
+    events = await _db.tracking_events.find(
+        {"visitor_id": visitor_id},
+        {"_id": 0}
+    ).sort("timestamp", 1).to_list(2000)
+
+    if not profile and not events:
+        raise HTTPException(status_code=404, detail="Visiteur introuvable")
+
+    # Dériver profile basique si n'existe pas (fallback avant agrégation)
+    if not profile and events:
+        profile = {
+            "visitor_id": visitor_id,
+            "first_seen": events[0].get("timestamp"),
+            "last_seen": events[-1].get("timestamp"),
+            "events_total": len(events),
+            "pageviews": sum(1 for e in events if e.get("event_type") == "page_view"),
+            "identified": False,
+        }
+
+    # Grouper par session
+    sessions_map = {}
+    for e in events:
+        sid = e.get("session_id") or "unknown"
+        if sid not in sessions_map:
+            sessions_map[sid] = {
+                "session_id": sid,
+                "start": e.get("timestamp"),
+                "end": e.get("timestamp"),
+                "events": [],
+                "pages": set(),
+                "utm_source": e.get("utm_source"),
+                "utm_campaign": e.get("utm_campaign"),
+                "referrer": e.get("referrer"),
+            }
+        s = sessions_map[sid]
+        s["end"] = e.get("timestamp")
+        s["events"].append(e)
+        if e.get("page_url"):
+            try:
+                s["pages"].add(urlparse_path(e.get("page_url")))
+            except Exception:
+                pass
+
+    sessions = []
+    for sid, s in sessions_map.items():
+        sessions.append({
+            "session_id": sid,
+            "start": s["start"],
+            "end": s["end"],
+            "duration_sec": _compute_duration_sec(s["start"], s["end"]),
+            "events_count": len(s["events"]),
+            "pageviews": sum(1 for e in s["events"] if e.get("event_type") == "page_view"),
+            "unique_pages": len(s["pages"]),
+            "pages": sorted(s["pages"]),
+            "utm_source": s["utm_source"],
+            "utm_campaign": s["utm_campaign"],
+            "referrer": s["referrer"],
+        })
+    sessions.sort(key=lambda x: x["start"] or "")
+
+    # Timeline normalisée (pour rendu frontend)
+    timeline = []
+    for e in events:
+        timeline.append({
+            "timestamp": e.get("timestamp") or e.get("server_timestamp"),
+            "type": e.get("event_type"),
+            "page_url": e.get("page_url"),
+            "page_title": e.get("page_title"),
+            "path": urlparse_path(e.get("page_url")) if e.get("page_url") else None,
+            "referrer": e.get("referrer"),
+            "session_id": e.get("session_id"),
+            "cta_label": e.get("cta_label"),
+            "cta_href": e.get("cta_href"),
+            "depth": e.get("depth"),
+            "seconds": e.get("seconds"),
+            "form_name": e.get("form_name"),
+            "lead_data": e.get("lead_data"),
+        })
+
+    # Géoloc via cache
+    geo = None
+    if profile and profile.get("ip"):
+        try:
+            geo = await _db.ip_geocache.find_one({"ip": profile["ip"]}, {"_id": 0})
+        except Exception:
+            pass
+
+    # Lead associé si disponible
+    lead = None
+    if profile and profile.get("lead_id"):
+        lead = await _db.leads.find_one(
+            {"lead_id": profile["lead_id"]},
+            {"_id": 0, "lead_id": 1, "name": 1, "email": 1, "phone": 1, "address": 1,
+             "service_type": 1, "status": 1, "score": 1, "created_at": 1, "message": 1}
+        )
+
+    # Agrégation pages : top des pages vues avec compteur
+    page_counts = {}
+    for e in events:
+        if e.get("event_type") == "page_view":
+            p = urlparse_path(e.get("page_url"))
+            if p:
+                page_counts[p] = page_counts.get(p, 0) + 1
+    top_pages = sorted(page_counts.items(), key=lambda x: -x[1])
+
+    return {
+        "profile": profile,
+        "lead": lead,
+        "location": geo,
+        "stats": {
+            "sessions_count": len(sessions),
+            "events_count": len(events),
+            "pageviews": sum(1 for e in events if e.get("event_type") == "page_view"),
+            "unique_pages": len(page_counts),
+            "cta_clicks": sum(1 for e in events if e.get("event_type") in ("cta_click", "phone_click", "email_click", "whatsapp_click")),
+            "form_submits": sum(1 for e in events if e.get("event_type") == "form_submit"),
+            "total_duration_sec": _compute_duration_sec(
+                (events[0].get("timestamp") if events else None),
+                (events[-1].get("timestamp") if events else None),
+            ),
+            "first_seen": events[0].get("timestamp") if events else None,
+            "last_seen": events[-1].get("timestamp") if events else None,
+            "is_returning": len(sessions) > 1,
+            "visits_before_conversion": _count_visits_before_conversion(sessions, profile),
+        },
+        "sessions": sessions,
+        "top_pages": [{"path": p, "count": c} for p, c in top_pages[:20]],
+        "timeline": timeline,
+    }
+
+
+# ── Helpers journey ────────────────────────────────────
+def urlparse_path(url):
+    if not url:
+        return ""
+    try:
+        from urllib.parse import urlparse
+        return urlparse(url).path or "/"
+    except Exception:
+        return url
+
+
+def _compute_duration_sec(start, end):
+    if not start or not end:
+        return 0
+    try:
+        s = datetime.fromisoformat(start.replace("Z", "+00:00"))
+        e = datetime.fromisoformat(end.replace("Z", "+00:00"))
+        return max(0, int((e - s).total_seconds()))
+    except Exception:
+        return 0
+
+
+def _count_visits_before_conversion(sessions, profile):
+    """Combien de sessions avant la première conversion (form_submit)."""
+    if not profile or not profile.get("converted_at"):
+        return None
+    conv = profile["converted_at"]
+    count = 0
+    for s in sessions:
+        if s["start"] and s["start"] < conv:
+            count += 1
+    return count
+
+
+# import Optional en haut du fichier si besoin
+from typing import Optional
 
 
 @tracker_router.get("/keywords")

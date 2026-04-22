@@ -237,6 +237,28 @@ export function useVisitors(hours = 24, limit = 100) {
   });
 }
 
+export function useJourneys(filters = {}) {
+  const qs = new URLSearchParams(
+    Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== undefined && v !== '' && v !== null))
+  ).toString();
+  return useQuery({
+    queryKey: ['tracker', 'journeys', filters],
+    queryFn: async () => (await api.get(`/tracker/journeys${qs ? `?${qs}` : ''}`)).data,
+    refetchInterval: 20_000,  // mise à jour quasi temps réel
+    staleTime: 10_000,
+  });
+}
+
+export function useVisitorJourney(visitorId) {
+  return useQuery({
+    queryKey: ['tracker', 'journey', visitorId],
+    queryFn: async () => (await api.get(`/tracker/journey/${visitorId}`)).data,
+    enabled: !!visitorId,
+    refetchInterval: 20_000,  // temps réel
+    staleTime: 10_000,
+  });
+}
+
 export function usePageSpeed(url, strategy = 'mobile') {
   return useQuery({
     queryKey: ['seo', 'pagespeed', url, strategy],

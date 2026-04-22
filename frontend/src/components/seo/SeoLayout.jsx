@@ -19,8 +19,8 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   Activity, AlertTriangle, BarChart3, Cable, ChevronsLeft, ChevronsRight,
-  FileText, Filter, Gauge, Globe2, LineChart, RefreshCw, Search, Settings,
-  Sparkles, Target, Wrench, Zap,
+  FileText, Filter, Footprints, Gauge, Globe2, LineChart, RefreshCw, Search,
+  Settings, Sparkles, Target, Wrench, Zap,
 } from 'lucide-react';
 import {
   seoTokenStyle, SeoFilterContext,
@@ -35,6 +35,7 @@ const NAV = [
   { to: '/seo/conversion',   label: 'Conversion',    icon: Target },
   { to: '/seo/sources',      label: 'Sources',       icon: BarChart3 },
   { to: '/seo/globe',        label: 'Globe 3D',      icon: Globe2 },
+  { to: '/seo/journeys',     label: 'Parcours',      icon: Footprints, highlight: true },
   { to: '/seo/ai',           label: 'IA & Recos',    icon: Sparkles },
   { to: '/seo/alerts',       label: 'Alertes',       icon: AlertTriangle },
   { to: '/seo/connect',      label: 'Connexion',     icon: Cable, highlight: true },

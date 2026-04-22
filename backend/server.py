@@ -4131,6 +4131,78 @@ async def track_event(request: Request):
         # Store in tracking_events collection
         await db.tracking_events.insert_one(data)
 
+        # ───── AGRÉGATION TEMPS RÉEL : visitor_profiles ─────
+        # Profil vivant du visiteur mis à jour à chaque event.
+        # Permet un GET rapide sans recalculer à chaque fois.
+        vid = data.get("visitor_id")
+        if vid:
+            sid = data.get("session_id")
+            etype = data.get("event_type")
+            page_url = data.get("page_url")
+            path = ""
+            try:
+                from urllib.parse import urlparse
+                path = urlparse(page_url).path or "/"
+            except Exception:
+                pass
+            now_iso = data.get("server_timestamp")
+
+            inc = {"events_total": 1}
+            if etype == "page_view":
+                inc["pageviews"] = 1
+            elif etype == "cta_click":
+                inc["cta_clicks"] = 1
+            elif etype == "phone_click":
+                inc["phone_clicks"] = 1
+            elif etype == "email_click":
+                inc["email_clicks"] = 1
+            elif etype == "whatsapp_click":
+                inc["whatsapp_clicks"] = 1
+            elif etype == "form_submit":
+                inc["form_submits"] = 1
+            elif etype == "time_on_page":
+                try:
+                    inc["time_on_site_sec"] = int(data.get("seconds") or 0)
+                except Exception:
+                    pass
+
+            set_on_insert = {
+                "visitor_id": vid,
+                "first_seen": now_iso,
+                "first_page": path,
+                "first_referrer": data.get("referrer", ""),
+                "first_utm_source": data.get("utm_source"),
+                "first_utm_campaign": data.get("utm_campaign"),
+                "first_utm_medium": data.get("utm_medium"),
+                "first_gclid": data.get("gclid"),
+                "first_fbclid": data.get("fbclid"),
+                "created_at": now_iso,
+            }
+            set_update = {
+                "last_seen": now_iso,
+                "last_page": path,
+                "last_event_type": etype,
+                "last_session_id": sid,
+                "ip": data.get("ip"),
+                "device_type": (data.get("device_info") or {}).get("device_type"),
+                "user_agent": (data.get("device_info") or {}).get("user_agent", "")[:200],
+                "lang": (data.get("device_info") or {}).get("lang"),
+                "tz": (data.get("device_info") or {}).get("tz"),
+                "updated_at": now_iso,
+            }
+            add_to_set = {}
+            if sid:
+                add_to_set["sessions"] = sid
+            if path:
+                add_to_set["pages_visited"] = path
+            update_ops = {"$set": set_update, "$setOnInsert": set_on_insert, "$inc": inc}
+            if add_to_set:
+                update_ops["$addToSet"] = add_to_set
+            try:
+                await db.visitor_profiles.update_one({"visitor_id": vid}, update_ops, upsert=True)
+            except Exception as e:
+                logger.debug(f"visitor_profiles update: {e}")
+
         # If it's a form submit with lead data, create lead automatically
         if data.get("event_type") == "form_submit" and data.get("lead_data"):
             lead_data = data["lead_data"]
@@ -4163,6 +4235,29 @@ async def track_event(request: Request):
             lead_dict["score"] = calculate_lead_score(lead_dict)
 
             await db.leads.insert_one(lead_dict)
+
+            # ───── ENRICHISSEMENT TEMPS RÉEL DU PROFIL VISITEUR ─────
+            # Le visiteur devient identifié : on inscrit nom/email/phone dans
+            # visitor_profiles → la page /seo/journeys affichera l'identité
+            # instantanément sans attendre une agrégation.
+            if lead_dict.get("visitor_id"):
+                try:
+                    await db.visitor_profiles.update_one(
+                        {"visitor_id": lead_dict["visitor_id"]},
+                        {"$set": {
+                            "identified": True,
+                            "lead_id": lead_id,
+                            "lead_name": lead_dict.get("name"),
+                            "lead_email": lead_dict.get("email"),
+                            "lead_phone": lead_dict.get("phone"),
+                            "lead_service_type": lead_dict.get("service_type"),
+                            "lead_address": lead_dict.get("address"),
+                            "converted_at": lead_dict["created_at"],
+                            "conversion_event": "form_submit",
+                        }}
+                    )
+                except Exception as e:
+                    logger.debug(f"visitor_profiles conversion enrich: {e}")
 
             # Create follow-up task
             task = {
