@@ -716,7 +716,8 @@ function LiveFeed({ visitors, liveCount }) {
 function CountriesLivePanel({ allVisitors, onSelectCountry, selectedCountry, onZoomToCity }) {
   var [expanded, setExpanded] = useState(new Set());
 
-  // Agrégation par pays + villes (mondial : fonctionne pour Paris, Tokyo, Dakar...)
+  // Agrégation par pays + villes avec métriques enrichies
+  // (mondial : fonctionne pour Paris, Tokyo, Dakar, Lima...)
   var byCountry = useMemo(function () {
     var map = {};
     (allVisitors || []).forEach(function (v) {
@@ -724,42 +725,79 @@ function CountriesLivePanel({ allVisitors, onSelectCountry, selectedCountry, onZ
       var countryName = v.location?.country || cc;
       if (!cc) return;
       if (!map[cc]) map[cc] = {
-        code: cc, name: countryName, total: 0, live: 0, identified: 0, hot: 0,
-        cities: {}
+        code: cc, name: countryName,
+        total: 0, live: 0, recent: 0, identified: 0, hot: 0, converted: 0,
+        devices: { mobile: 0, desktop: 0, tablet: 0 },
+        last_seen: null,
+        total_events: 0,
+        cities: {},
       };
-      map[cc].total += 1;
-      if (isLive(v)) map[cc].live += 1;
-      if (v.identified) map[cc].identified += 1;
-      if ((v.cta_clicks || 0) + (v.phone_clicks || 0) > 0) map[cc].hot += 1;
+      var entry = map[cc];
+      entry.total += 1;
+      entry.total_events += (v.event_count || 0);
+      if (isLive(v)) entry.live += 1;
+      else if (isRecent(v)) entry.recent += 1;
+      if (v.identified) entry.identified += 1;
+      if (v.lead_id) entry.converted += 1;
+      if ((v.cta_clicks || 0) + (v.phone_clicks || 0) + (v.email_clicks || 0) + (v.whatsapp_clicks || 0) > 0) entry.hot += 1;
 
-      // Regroupement par ville (utilise coords originales si jittered, pour
-      // éviter que 2 visiteurs "Paris" aient des coords décalées dans la map)
+      // Device dominant
+      var dev = v.device || v.device_type || 'desktop';
+      if (entry.devices[dev] !== undefined) entry.devices[dev] += 1;
+
+      // Dernière activité (max des last_seen)
+      if (v.last_seen && (!entry.last_seen || v.last_seen > entry.last_seen)) {
+        entry.last_seen = v.last_seen;
+      }
+
+      // Regroupement par ville (utilise coords originales si jittered)
       var city = v.location?.city || '—';
       var lat = v.location?.lat_original ?? v.location?.lat;
       var lon = v.location?.lon_original ?? v.location?.lon;
-      if (!map[cc].cities[city]) {
-        map[cc].cities[city] = {
+      if (!entry.cities[city]) {
+        entry.cities[city] = {
           name: city, total: 0, live: 0, identified: 0,
           postal: v.location?.postal,
           region: v.location?.region,
+          last_seen: null,
           coords: (lat != null && lon != null) ? [Number(lon), Number(lat)] : null,
         };
       }
-      map[cc].cities[city].total += 1;
-      if (isLive(v)) map[cc].cities[city].live += 1;
-      if (v.identified) map[cc].cities[city].identified += 1;
+      entry.cities[city].total += 1;
+      if (isLive(v)) entry.cities[city].live += 1;
+      if (v.identified) entry.cities[city].identified += 1;
+      if (v.last_seen && (!entry.cities[city].last_seen || v.last_seen > entry.cities[city].last_seen)) {
+        entry.cities[city].last_seen = v.last_seen;
+      }
     });
     return Object.values(map).map(function (c) {
       c.citiesList = Object.values(c.cities).sort(function (a, b) {
         if (b.live !== a.live) return b.live - a.live;
         return b.total - a.total;
       });
+      // Device dominant
+      c.top_device = Object.keys(c.devices).reduce(function (a, b) {
+        return c.devices[a] >= c.devices[b] ? a : b;
+      }, 'desktop');
+      c.live_pct = c.total > 0 ? Math.round((c.live / c.total) * 100) : 0;
       return c;
     }).sort(function (a, b) {
       if (b.live !== a.live) return b.live - a.live;
       return b.total - a.total;
     });
   }, [allVisitors]);
+
+  // Auto-ouvrir les pays qui ont des visiteurs LIVE (sans forcer ceux
+  // fermés manuellement — on ne touche que ceux pas encore décidés)
+  React.useEffect(function () {
+    var shouldExpand = byCountry.filter(function (c) { return c.live > 0 && c.citiesList.length > 1; }).map(function (c) { return c.code; });
+    if (shouldExpand.length === 0) return;
+    setExpanded(function (prev) {
+      var next = new Set(prev);
+      shouldExpand.forEach(function (code) { next.add(code); });
+      return next;
+    });
+  }, [byCountry.map(function (c) { return c.code + ':' + c.live; }).join(',')]);  // eslint-disable-line
 
   function toggleExpand(code) {
     setExpanded(function (prev) {
@@ -849,15 +887,42 @@ function CountriesLivePanel({ allVisitors, onSelectCountry, selectedCountry, onZ
                   }}>
                     {c.name}
                   </div>
-                  <div style={{ fontSize: 10, color: '#64748b', marginTop: 1 }}>
-                    {c.citiesList.length} ville{c.citiesList.length > 1 ? 's' : ''}
-                    {c.identified ? ' · ' + c.identified + ' identifiés' : ''}
+                  <div style={{ fontSize: 10, color: '#64748b', marginTop: 1, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span>{c.citiesList.length} ville{c.citiesList.length > 1 ? 's' : ''}</span>
+                    <span>·</span>
+                    <span title="Device dominant">
+                      {c.top_device === 'mobile' ? '📱' : c.top_device === 'tablet' ? '📲' : '💻'} {c.top_device}
+                    </span>
+                    {c.identified > 0 && (<>
+                      <span>·</span>
+                      <span style={{ color: '#1e40af', fontWeight: 700 }}>{c.identified} ident.</span>
+                    </>)}
+                    {c.converted > 0 && (<>
+                      <span>·</span>
+                      <span style={{ color: '#15803d', fontWeight: 700 }}>✓ {c.converted}</span>
+                    </>)}
                   </div>
+                  {c.last_seen && (
+                    <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 2, fontStyle: 'italic' }}>
+                      Dernière activité : {(function () {
+                        var mAgo = Math.round((Date.now() - new Date(c.last_seen).getTime()) / 60000);
+                        if (mAgo < 1) return 'à l\'instant';
+                        if (mAgo < 60) return 'il y a ' + mAgo + ' min';
+                        if (mAgo < 1440) return 'il y a ' + Math.round(mAgo / 60) + 'h';
+                        return 'il y a ' + Math.round(mAgo / 1440) + 'j';
+                      })()}
+                    </div>
+                  )}
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0, marginRight: 4 }}>
                   {c.live > 0 && (
                     <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'JetBrains Mono, monospace', color: '#15803d' }}>
                       {c.live} live
+                    </div>
+                  )}
+                  {c.recent > 0 && c.live === 0 && (
+                    <div style={{ fontSize: 10, fontWeight: 600, fontFamily: 'JetBrains Mono, monospace', color: '#0891b2' }}>
+                      {c.recent} récent
                     </div>
                   )}
                   <div style={{
@@ -911,9 +976,20 @@ function CountriesLivePanel({ allVisitors, onSelectCountry, selectedCountry, onZ
                       }}>
                         {city.name}{city.postal ? ' · ' + city.postal : ''}
                       </div>
-                      {city.region && city.region !== city.name && (
-                        <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 1 }}>{city.region}</div>
-                      )}
+                      <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 1, display: 'flex', gap: 4 }}>
+                        {city.region && city.region !== city.name && (<span>{city.region}</span>)}
+                        {city.last_seen && (
+                          <span style={{ fontStyle: 'italic' }}>
+                            · {(function () {
+                              var mAgo = Math.round((Date.now() - new Date(city.last_seen).getTime()) / 60000);
+                              if (mAgo < 1) return 'maintenant';
+                              if (mAgo < 60) return 'il y a ' + mAgo + ' min';
+                              if (mAgo < 1440) return 'il y a ' + Math.round(mAgo / 60) + 'h';
+                              return 'il y a ' + Math.round(mAgo / 1440) + 'j';
+                            })()}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
                       {city.live > 0 && (
