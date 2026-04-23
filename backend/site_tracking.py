@@ -15,7 +15,7 @@ from fastapi import APIRouter, Request, Response, HTTPException
 from fastapi.responses import PlainTextResponse
 
 logger = logging.getLogger(__name__)
-tracker_router = APIRouter(prefix="/api/tracker", tags=["tracker"])
+tracker_router = APIRouter(prefix="/api/tracking", tags=["tracking"])
 _db = None
 
 SITE_URL = os.environ.get("SITE_URL", "https://www.globalcleanhome.com")
@@ -826,7 +826,7 @@ async def list_journeys(
     }
 
 
-@tracker_router.get("/journey/{visitor_id}")
+@tracker_router.get("/journeys/{visitor_id}")
 async def get_journey(visitor_id: str, request: Request):
     """Parcours complet d'UN visiteur : profil agrégé + timeline complète
     de tous ses events + sessions (groupées) + géoloc précise.
@@ -1213,7 +1213,7 @@ async def tracker_stats_realtime(request: Request):
 
 # ============= DROIT À L'OUBLI RGPD =============
 
-@tracker_router.delete("/visitor/{visitor_id}")
+@tracker_router.delete("/visitors/{visitor_id}")
 async def delete_visitor_data(visitor_id: str, request: Request):
     """Supprime toutes les données d'un visiteur (RGPD droit à l'oubli).
     Supprime le profil, tous les événements et les sessions."""

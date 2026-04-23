@@ -4300,102 +4300,13 @@ async def _process_single_tracking_event(data: dict, request):
         return {"status": "error", "message": "Tracking failed"}
 
 
-@api_router.get("/tracking/visitor/{visitor_id}")
-async def get_visitor_journey(visitor_id: str, request: Request):
-    """Get complete journey of a visitor."""
-    await require_auth(request)
-
-    events = await db.tracking_events.find(
-        {"visitor_id": visitor_id},
-        {"_id": 0}
-    ).sort("timestamp", 1).to_list(500)
-
-    return {
-        "visitor_id": visitor_id,
-        "total_events": len(events),
-        "events": events
-    }
-
-
-@api_router.get("/tracking/stats")
-async def get_tracking_stats(request: Request, period: str = "7d"):
-    """Get tracking analytics."""
-    await require_auth(request)
-
-    now = datetime.now(timezone.utc)
-    if period == "1d":
-        start_date = now - timedelta(days=1)
-    elif period == "7d":
-        start_date = now - timedelta(days=7)
-    elif period == "30d":
-        start_date = now - timedelta(days=30)
-    else:
-        start_date = now - timedelta(days=7)
-
-    # Get all tracking events
-    events = await db.tracking_events.find(
-        {"timestamp": {"$gte": start_date.isoformat()}},
-        {"_id": 0}
-    ).to_list(10000)
-
-    # Calculate stats
-    total_visitors = len(set([e.get("visitor_id") for e in events if e.get("visitor_id")]))
-    total_sessions = len(set([e.get("session_id") for e in events if e.get("session_id")]))
-    total_page_views = len([e for e in events if e.get("event_type") == "page_view"])
-    total_cta_clicks = len([e for e in events if e.get("event_type") == "cta_click"])
-    total_form_submits = len([e for e in events if e.get("event_type") == "form_submit"])
-
-    # Top pages
-    page_views = [e for e in events if e.get("event_type") == "page_view"]
-    page_counts = {}
-    for pv in page_views:
-        url = pv.get("page_url", "")
-        page_counts[url] = page_counts.get(url, 0) + 1
-
-    top_pages = sorted(page_counts.items(), key=lambda x: x[1], reverse=True)[:10]
-
-    # Device breakdown
-    devices = {}
-    for e in events:
-        device = e.get("device_info", {}).get("device_type", "unknown")
-        devices[device] = devices.get(device, 0) + 1
-
-    # Traffic sources
-    sources = {}
-    for e in page_views:
-        source = e.get("utm_source") or e.get("referrer", "direct")
-        if "google" in source.lower():
-            source = "Google"
-        elif "facebook" in source.lower() or "fb" in source.lower():
-            source = "Facebook"
-        elif source == "direct":
-            source = "Direct"
-        sources[source] = sources.get(source, 0) + 1
-
-    # Conversion funnel
-    visitors_with_page_views = set([e.get("visitor_id") for e in page_views])
-    visitors_with_cta_clicks = set([e.get("visitor_id") for e in events if e.get("event_type") == "cta_click"])
-    visitors_with_form_submits = set([e.get("visitor_id") for e in events if e.get("event_type") == "form_submit"])
-
-    conversion_rate = (len(visitors_with_form_submits) / len(visitors_with_page_views) * 100) if visitors_with_page_views else 0
-
-    return {
-        "period": period,
-        "total_visitors": total_visitors,
-        "total_sessions": total_sessions,
-        "total_page_views": total_page_views,
-        "total_cta_clicks": total_cta_clicks,
-        "total_form_submits": total_form_submits,
-        "conversion_rate": round(conversion_rate, 2),
-        "top_pages": [{"url": url, "views": count} for url, count in top_pages],
-        "devices": devices,
-        "sources": sources,
-        "funnel": {
-            "visitors": len(visitors_with_page_views),
-            "cta_clicks": len(visitors_with_cta_clicks),
-            "form_submits": len(visitors_with_form_submits)
-        }
-    }
+# ── Anciennes routes /tracking/visitor et /tracking/stats supprimées ──
+# Remplacées par le module site_tracking.py qui expose :
+#   GET  /api/tracking/journeys
+#   GET  /api/tracking/journeys/{visitor_id}
+#   GET  /api/tracking/stats/overview
+#   GET  /api/tracking/stats/realtime
+#   DELETE /api/tracking/visitors/{visitor_id}
 
 # ============= DASHBOARD STATS ENDPOINTS =============
 

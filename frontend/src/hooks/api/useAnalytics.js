@@ -55,7 +55,7 @@ export function useRealtime() {
 export function useTrackerHealth() {
   return useQuery({
     queryKey: ['tracker', 'health'],
-    queryFn: async () => (await api.get('/tracker/health')).data,
+    queryFn: async () => (await api.get('/tracking/health')).data,
     refetchInterval: 60_000,
     staleTime: 30_000,
   });
@@ -64,7 +64,7 @@ export function useTrackerHealth() {
 export function useTrackerSnippet() {
   return useQuery({
     queryKey: ['tracker', 'snippet'],
-    queryFn: async () => (await api.get('/tracker/snippet')).data,
+    queryFn: async () => (await api.get('/tracking/snippet')).data,
     staleTime: 10 * 60_000,
   });
 }
@@ -72,7 +72,7 @@ export function useTrackerSnippet() {
 export function useTrackerRecent(limit = 50) {
   return useQuery({
     queryKey: ['tracker', 'recent', limit],
-    queryFn: async () => (await api.get(`/tracker/recent?limit=${limit}`)).data,
+    queryFn: async () => (await api.get(`/tracking/recent?limit=${limit}`)).data,
     refetchInterval: 20_000,
     staleTime: 10_000,
   });
@@ -81,7 +81,7 @@ export function useTrackerRecent(limit = 50) {
 export function useTrackerFunnel(period = '30d') {
   return useQuery({
     queryKey: ['tracker', 'funnel', period],
-    queryFn: async () => (await api.get(`/tracker/funnel?period=${period}`)).data,
+    queryFn: async () => (await api.get(`/tracking/funnel?period=${period}`)).data,
     staleTime: 60_000,
   });
 }
@@ -89,7 +89,7 @@ export function useTrackerFunnel(period = '30d') {
 export function useTrackerKeywords(days = 28, limit = 50) {
   return useQuery({
     queryKey: ['tracker', 'keywords', days, limit],
-    queryFn: async () => (await api.get(`/tracker/keywords?days=${days}&limit=${limit}`)).data,
+    queryFn: async () => (await api.get(`/tracking/keywords?days=${days}&limit=${limit}`)).data,
     staleTime: 5 * 60_000,
   });
 }
@@ -232,7 +232,7 @@ export function useSeedActionsFromOpportunities() {
 export function useVisitors(hours = 24, limit = 100) {
   return useQuery({
     queryKey: ['tracker', 'visitors', hours, limit],
-    queryFn: async () => (await api.get(`/tracker/visitors?hours=${hours}&limit=${limit}`)).data,
+    queryFn: async () => (await api.get(`/tracking/visitors?hours=${hours}&limit=${limit}`)).data,
     refetchInterval: 60_000,
     staleTime: 30_000,
   });
@@ -244,7 +244,7 @@ export function useJourneys(filters = {}) {
   ).toString();
   return useQuery({
     queryKey: ['tracker', 'journeys', filters],
-    queryFn: async () => (await api.get(`/tracker/journeys${qs ? `?${qs}` : ''}`)).data,
+    queryFn: async () => (await api.get(`/tracking/journeys${qs ? `?${qs}` : ''}`)).data,
     refetchInterval: 20_000,  // mise à jour quasi temps réel
     staleTime: 10_000,
   });
@@ -253,7 +253,7 @@ export function useJourneys(filters = {}) {
 export function useVisitorJourney(visitorId) {
   return useQuery({
     queryKey: ['tracker', 'journey', visitorId],
-    queryFn: async () => (await api.get(`/tracker/journey/${visitorId}`)).data,
+    queryFn: async () => (await api.get(`/tracking/journeys/${visitorId}`)).data,
     enabled: !!visitorId,
     refetchInterval: 20_000,  // temps réel
     staleTime: 10_000,
@@ -263,7 +263,7 @@ export function useVisitorJourney(visitorId) {
 export function useJourneyOverview(days = 7) {
   return useQuery({
     queryKey: ['tracker', 'stats', 'overview', days],
-    queryFn: async () => (await api.get(`/tracker/stats/overview?days=${days}`)).data,
+    queryFn: async () => (await api.get(`/tracking/stats/overview?days=${days}`)).data,
     staleTime: 30_000,
     refetchInterval: 60_000,
   });
@@ -272,7 +272,7 @@ export function useJourneyOverview(days = 7) {
 export function useJourneyRealtime() {
   return useQuery({
     queryKey: ['tracker', 'stats', 'realtime'],
-    queryFn: async () => (await api.get('/tracker/stats/realtime')).data,
+    queryFn: async () => (await api.get('/tracking/stats/realtime')).data,
     refetchInterval: 10_000,
     staleTime: 5_000,
   });
@@ -281,7 +281,7 @@ export function useJourneyRealtime() {
 export function useDeleteVisitor() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (visitorId) => (await api.delete(`/tracker/visitor/${visitorId}`)).data,
+    mutationFn: async (visitorId) => (await api.delete(`/tracking/visitors/${visitorId}`)).data,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tracker'] });
       toast.success('Données visiteur supprimées (RGPD)');
