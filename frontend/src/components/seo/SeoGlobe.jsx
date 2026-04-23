@@ -44,13 +44,54 @@ const CITY_COORDS = {
   'Antananarivo': [47.52, -18.87], 'Tunis': [10.17, 36.80],
 };
 
-// ISO3 → ISO2 mapping pour les pays du topojson
-const ISO3_TO_2 = {
-  FRA:'FR', USA:'US', GBR:'GB', DEU:'DE', ESP:'ES', ITA:'IT', BEL:'BE', CHE:'CH',
-  NLD:'NL', PRT:'PT', MAR:'MA', SEN:'SN', CIV:'CI', CMR:'CM', TUN:'TN', DZA:'DZ',
-  MDG:'MG', CAN:'CA', BRA:'BR', JPN:'JP', CHN:'CN', IND:'IN', AUS:'AU', RUS:'RU',
-  NGA:'NGA', COD:'CD', GAB:'GA', MLI:'ML', BFA:'BF', GIN:'GN', TGO:'TG', BEN:'BJ',
+// ─────────────────────────────────────────────────────────────────
+// NUMERIC ISO-3166-1 → ISO-A2 (alpha-2)
+// Le topojson world-atlas utilise des IDs numériques (ex: "250" pour France).
+// On doit les convertir vers les codes ISO-A2 retournés par ipapi.co.
+// ─────────────────────────────────────────────────────────────────
+const NUMERIC_TO_ISO2 = {
+  '004':'AF','008':'AL','010':'AQ','012':'DZ','016':'AS','020':'AD','024':'AO','028':'AG',
+  '031':'AZ','032':'AR','036':'AU','040':'AT','044':'BS','048':'BH','050':'BD','051':'AM',
+  '052':'BB','056':'BE','060':'BM','064':'BT','068':'BO','070':'BA','072':'BW','076':'BR',
+  '084':'BZ','090':'SB','092':'VG','096':'BN','100':'BG','104':'MM','108':'BI','112':'BY',
+  '116':'KH','120':'CM','124':'CA','132':'CV','136':'KY','140':'CF','144':'LK','148':'TD',
+  '152':'CL','156':'CN','158':'TW','162':'CX','166':'CC','170':'CO','174':'KM','175':'YT',
+  '178':'CG','180':'CD','184':'CK','188':'CR','191':'HR','192':'CU','196':'CY','203':'CZ',
+  '204':'BJ','208':'DK','212':'DM','214':'DO','218':'EC','222':'SV','226':'GQ','231':'ET',
+  '232':'ER','233':'EE','234':'FO','238':'FK','239':'GS','242':'FJ','246':'FI','248':'AX',
+  '250':'FR','254':'GF','258':'PF','260':'TF','262':'DJ','266':'GA','268':'GE','270':'GM',
+  '275':'PS','276':'DE','288':'GH','292':'GI','296':'KI','300':'GR','304':'GL','308':'GD',
+  '312':'GP','316':'GU','320':'GT','324':'GN','328':'GY','332':'HT','334':'HM','336':'VA',
+  '340':'HN','344':'HK','348':'HU','352':'IS','356':'IN','360':'ID','364':'IR','368':'IQ',
+  '372':'IE','376':'IL','380':'IT','384':'CI','388':'JM','392':'JP','398':'KZ','400':'JO',
+  '404':'KE','408':'KP','410':'KR','414':'KW','417':'KG','418':'LA','422':'LB','426':'LS',
+  '428':'LV','430':'LR','434':'LY','438':'LI','440':'LT','442':'LU','446':'MO','450':'MG',
+  '454':'MW','458':'MY','462':'MV','466':'ML','470':'MT','474':'MQ','478':'MR','480':'MU',
+  '484':'MX','492':'MC','496':'MN','498':'MD','499':'ME','500':'MS','504':'MA','508':'MZ',
+  '512':'OM','516':'NA','520':'NR','524':'NP','528':'NL','531':'CW','533':'AW','534':'SX',
+  '535':'BQ','540':'NC','548':'VU','554':'NZ','558':'NI','562':'NE','566':'NG','570':'NU',
+  '574':'NF','578':'NO','580':'MP','581':'UM','583':'FM','584':'MH','585':'PW','586':'PK',
+  '591':'PA','598':'PG','600':'PY','604':'PE','608':'PH','612':'PN','616':'PL','620':'PT',
+  '624':'GW','626':'TL','630':'PR','634':'QA','638':'RE','642':'RO','643':'RU','646':'RW',
+  '652':'BL','654':'SH','659':'KN','660':'AI','662':'LC','663':'MF','666':'PM','670':'VC',
+  '674':'SM','678':'ST','682':'SA','686':'SN','688':'RS','690':'SC','694':'SL','702':'SG',
+  '703':'SK','704':'VN','705':'SI','706':'SO','710':'ZA','716':'ZW','724':'ES','728':'SS',
+  '729':'SD','732':'EH','740':'SR','744':'SJ','748':'SZ','752':'SE','756':'CH','760':'SY',
+  '762':'TJ','764':'TH','768':'TG','772':'TK','776':'TO','780':'TT','784':'AE','788':'TN',
+  '792':'TR','795':'TM','796':'TC','798':'TV','800':'UG','804':'UA','807':'MK','818':'EG',
+  '826':'GB','831':'GG','832':'JE','833':'IM','834':'TZ','840':'US','850':'VI','854':'BF',
+  '858':'UY','860':'UZ','862':'VE','876':'WF','882':'WS','887':'YE','894':'ZM',
 };
+
+// Extrait l'ISO2 d'une geography (topojson world-atlas = ID numérique)
+function geoIso2(geo) {
+  var id = String(geo.id || geo.properties?.id || '');
+  if (NUMERIC_TO_ISO2[id]) return NUMERIC_TO_ISO2[id];
+  // Fallback : si le topojson change, essaye ISO_A2 / ISO_A3 natifs
+  var a2 = geo.properties?.ISO_A2 || geo.properties?.iso_a2;
+  if (a2 && a2 !== '-99') return a2.toUpperCase();
+  return null;
+}
 
 // Dispersion : décale les points qui ont des coordonnées trop proches
 // pour éviter qu'ils se chevauchent sur la carte
@@ -368,6 +409,17 @@ export default function SeoGlobe() {
     return list;
   }, [allVisitors, filters]);
 
+  // Connexions vers Paris — memoizées pour éviter la recréation à chaque render
+  var connectionLines = useMemo(function () {
+    return v
+      .map(function (vis) { return { id: vis.visitor_id, coords: coordsFor(vis) }; })
+      .filter(function (x) {
+        return x.coords
+          && !(Math.abs(x.coords[0] - PARIS[0]) < 0.5 && Math.abs(x.coords[1] - PARIS[1]) < 0.5);
+      })
+      .slice(0, 30);
+  }, [v]);
+
   // Compteurs par pays (pour heatmap)
   var countryVisitorCounts = useMemo(function () {
     var map = {};
@@ -434,6 +486,34 @@ export default function SeoGlobe() {
       <FilterBar visitors={allVisitors} filters={filters} setFilters={setFilters}
         visitorHours={visitorHours} setVisitorHours={setVisitorHours} />
 
+      {/* Bannière état vide : aucun event reçu (tracker mal installé) */}
+      {!isLoading && allVisitors.length === 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '12px 16px', marginBottom: 16,
+          background: 'linear-gradient(90deg, #fff7ed 0%, #fffbeb 100%)',
+          border: '1px solid #fcd34d', borderRadius: 12,
+          color: '#78350f', fontSize: 13,
+        }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 999, background: '#fef3c7',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>
+            <Activity style={{ width: 16, height: 16, color: '#d97706' }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, marginBottom: 2 }}>Aucun visiteur détecté sur les {visitorHours <= 24 ? visitorHours + 'h' : Math.round(visitorHours / 24) + ' jours'} dernières</div>
+            <div style={{ color: '#92400e' }}>
+              Si le tracker est installé mais aucun event n'arrive, vérifiez que la balise{' '}
+              <code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 4, fontSize: 11 }}>
+                &lt;script data-cfasync="false"...&gt;
+              </code>{' '}
+              contient bien <strong>data-cfasync="false"</strong> (sinon Cloudflare Rocket Loader bloque le tracker).
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Carte du monde */}
       <div ref={mapRef} onMouseMove={onMapMouseMove} style={{
         position: 'relative', background: '#f8fafb',
@@ -452,13 +532,12 @@ export default function SeoGlobe() {
             minZoom={0.8}
             maxZoom={8}
           >
-            {/* Pays avec heatmap */}
+            {/* Pays avec heatmap — ISO2 extrait depuis ID numérique du topojson */}
             <Geographies geography={WORLD_TOPO}>
               {function ({ geographies }) {
                 return geographies.map(function (geo) {
-                  var iso3 = geo.properties?.ISO_A3 || geo.id;
-                  var iso2 = ISO3_TO_2[iso3] || iso3?.slice(0, 2);
-                  var count = countryVisitorCounts[iso2] || 0;
+                  var iso2 = geoIso2(geo);
+                  var count = iso2 ? (countryVisitorCounts[iso2] || 0) : 0;
                   var intensity = count > 0 ? 0.15 + 0.65 * (count / maxCountryCount) : 0;
                   var fill = count > 0
                     ? 'rgba(16, 185, 129, ' + intensity + ')'
@@ -468,10 +547,10 @@ export default function SeoGlobe() {
                     <Geography
                       key={geo.rsmKey}
                       geography={geo}
-                      fill={hoveredCountry === iso2 ? '#c6f0e0' : fill}
+                      fill={hoveredCountry === iso2 && count > 0 ? '#c6f0e0' : fill}
                       stroke="#d1d5db"
                       strokeWidth={0.4}
-                      onMouseEnter={function () { if (count > 0) setHoveredCountry(iso2); }}
+                      onMouseEnter={function () { if (count > 0 && iso2) setHoveredCountry(iso2); }}
                       onMouseLeave={function () { setHoveredCountry(null); }}
                       style={{
                         default: { outline: 'none', transition: 'fill 0.2s' },
@@ -485,10 +564,8 @@ export default function SeoGlobe() {
             </Geographies>
 
             {/* Connexions animées vers Paris */}
-            {v.filter(function (vis) { return coordsFor(vis); }).slice(0, 30).map(function (vis) {
-              var coords = coordsFor(vis);
-              if (!coords || (Math.abs(coords[0] - PARIS[0]) < 0.5 && Math.abs(coords[1] - PARIS[1]) < 0.5)) return null;
-              return <ConnectionLine key={'line-' + vis.visitor_id} from={coords} />;
+            {connectionLines.map(function (line) {
+              return <ConnectionLine key={'line-' + line.id} from={line.coords} />;
             })}
 
             {/* Point Paris (siège) */}
