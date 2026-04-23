@@ -144,19 +144,16 @@ function coordsFor(visitor) { return rawCoordsFor(visitor); }
 //  - zoom 5-6 (pays) : 0.05° (~5km) → ville
 //  - zoom 7+ (ville) : 0.01° (~1km) → quartier → presque plus de clusters
 // ═══════════════════════════════════════════════════════════════
-// Grille de clustering plus AGRESSIVE : on veut agréger tant que les
-// dots se chevaucheraient visuellement. À bas zoom, une grande zone.
-// À très haut zoom (zoom 10+), on permet enfin l'éclatement individuel.
+// Grille de clustering — taillée pour éclater les dots dès qu'on zoom.
+// Le jitter backend (±300m) les sépare déjà visuellement, donc on a
+// seulement besoin de clusteriser à bas zoom (vue monde/continent).
 function clusterGridSize(zoom) {
   var z = Math.max(zoom || 1, 0.8);
-  if (z < 2) return 2.0;     // 200km — IDF entière + Normandie en 1 cluster à zoom monde
-  if (z < 3) return 1.0;     // 100km — IDF entière
-  if (z < 4) return 0.5;     // 50km — agglo parisienne
-  if (z < 5) return 0.25;    // 25km — grande ville
-  if (z < 6) return 0.12;    // 12km — ville
-  if (z < 8) return 0.05;    // 5km — quartier
-  if (z < 10) return 0.02;   // 2km — zone
-  return 0.008;              // 800m — rue (éclatement final)
+  if (z < 2) return 1.5;     // 150km — vue monde, agréger les métropoles
+  if (z < 3) return 0.6;     // 60km — vue continentale
+  if (z < 4) return 0.15;    // 15km — vue pays, quasi éclaté
+  if (z < 5) return 0.05;    // 5km — vue régionale, dots distincts
+  return 0.002;              // 200m — zoom ville, tout éclaté
 }
 
 function buildClusters(visitors, zoom) {
@@ -619,24 +616,62 @@ function LiveFeed({ visitors, liveCount }) {
 // ─────────────── Panel "Pays en direct" ────────────────────────
 // Liste TOUS les pays avec visiteurs sur la période, triée par nb live
 // puis nb total. Voyant vert pulsant pour pays avec ≥1 visiteur LIVE.
-function CountriesLivePanel({ allVisitors, onSelectCountry, selectedCountry }) {
+function CountriesLivePanel({ allVisitors, onSelectCountry, selectedCountry, onZoomToCity }) {
+  var [expanded, setExpanded] = useState(new Set());
+
+  // Agrégation par pays + villes (mondial : fonctionne pour Paris, Tokyo, Dakar...)
   var byCountry = useMemo(function () {
     var map = {};
     (allVisitors || []).forEach(function (v) {
       var cc = (v.location?.country_code || '').toUpperCase();
-      var name = v.location?.country || cc;
+      var countryName = v.location?.country || cc;
       if (!cc) return;
-      if (!map[cc]) map[cc] = { code: cc, name: name, total: 0, live: 0, identified: 0, hot: 0 };
+      if (!map[cc]) map[cc] = {
+        code: cc, name: countryName, total: 0, live: 0, identified: 0, hot: 0,
+        cities: {}
+      };
       map[cc].total += 1;
       if (isLive(v)) map[cc].live += 1;
       if (v.identified) map[cc].identified += 1;
       if ((v.cta_clicks || 0) + (v.phone_clicks || 0) > 0) map[cc].hot += 1;
+
+      // Regroupement par ville (utilise coords originales si jittered, pour
+      // éviter que 2 visiteurs "Paris" aient des coords décalées dans la map)
+      var city = v.location?.city || '—';
+      var lat = v.location?.lat_original ?? v.location?.lat;
+      var lon = v.location?.lon_original ?? v.location?.lon;
+      if (!map[cc].cities[city]) {
+        map[cc].cities[city] = {
+          name: city, total: 0, live: 0, identified: 0,
+          postal: v.location?.postal,
+          region: v.location?.region,
+          coords: (lat != null && lon != null) ? [Number(lon), Number(lat)] : null,
+        };
+      }
+      map[cc].cities[city].total += 1;
+      if (isLive(v)) map[cc].cities[city].live += 1;
+      if (v.identified) map[cc].cities[city].identified += 1;
     });
-    return Object.values(map).sort(function (a, b) {
+    return Object.values(map).map(function (c) {
+      c.citiesList = Object.values(c.cities).sort(function (a, b) {
+        if (b.live !== a.live) return b.live - a.live;
+        return b.total - a.total;
+      });
+      return c;
+    }).sort(function (a, b) {
       if (b.live !== a.live) return b.live - a.live;
       return b.total - a.total;
     });
   }, [allVisitors]);
+
+  function toggleExpand(code) {
+    setExpanded(function (prev) {
+      var next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
+  }
 
   var totalLive = byCountry.reduce(function (a, c) { return a + c.live; }, 0);
 
@@ -683,55 +718,127 @@ function CountriesLivePanel({ allVisitors, onSelectCountry, selectedCountry }) {
           </div>
         ) : byCountry.map(function (c) {
           var active = selectedCountry === c.code;
+          var isOpen = expanded.has(c.code);
+          var hasMultipleCities = c.citiesList.length > 1;
           return (
-            <div key={c.code} onClick={function () { onSelectCountry(active ? '' : c.code); }}
-              style={{
-                padding: '9px 14px', borderBottom: '1px solid #f8fafc',
-                display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
-                background: active ? 'rgba(16,185,129,0.08)' : 'transparent',
-                borderLeft: active ? '3px solid ' + LIVE_COLOR : '3px solid transparent',
-                transition: 'background 0.15s',
-              }}>
-              {/* Voyant vert pulsant si LIVE */}
-              <div style={{ flexShrink: 0, width: 10, display: 'flex', justifyContent: 'center' }}>
-                {c.live > 0 ? (
-                  <span className="gch-beacon" style={{
-                    width: 9, height: 9, borderRadius: 999, background: LIVE_COLOR,
-                  }} />
-                ) : (
-                  <span style={{
-                    width: 6, height: 6, borderRadius: 999, background: '#cbd5e1',
-                  }} />
-                )}
-              </div>
-              <ReactCountryFlag countryCode={c.code} svg style={{ width: 20, height: 14, borderRadius: 2, flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  fontSize: 12, fontWeight: c.live > 0 ? 700 : 500,
-                  color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            <div key={c.code}>
+              {/* Ligne pays */}
+              <div
+                onClick={function (e) {
+                  // Click sur chevron = expand, click ailleurs = filtre pays
+                  if (e.target.closest('[data-chevron]')) return;
+                  onSelectCountry(active ? '' : c.code);
+                }}
+                style={{
+                  padding: '9px 14px', borderBottom: isOpen ? 'none' : '1px solid #f8fafc',
+                  display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+                  background: active ? 'rgba(16,185,129,0.08)' : 'transparent',
+                  borderLeft: active ? '3px solid ' + LIVE_COLOR : '3px solid transparent',
+                  transition: 'background 0.15s',
                 }}>
-                  {c.name}
+                {/* Voyant vert pulsant si LIVE */}
+                <div style={{ flexShrink: 0, width: 10, display: 'flex', justifyContent: 'center' }}>
+                  {c.live > 0 ? (
+                    <span className="gch-beacon" style={{ width: 9, height: 9, borderRadius: 999, background: LIVE_COLOR }} />
+                  ) : (
+                    <span style={{ width: 6, height: 6, borderRadius: 999, background: '#cbd5e1' }} />
+                  )}
                 </div>
-                <div style={{ fontSize: 10, color: '#64748b', marginTop: 1 }}>
-                  {c.identified ? c.identified + ' identifiés · ' : ''}{c.hot} engagés
-                </div>
-              </div>
-              <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                {c.live > 0 && (
+                <ReactCountryFlag countryCode={c.code} svg style={{ width: 20, height: 14, borderRadius: 2, flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
-                    fontSize: 11, fontWeight: 800, fontFamily: 'JetBrains Mono, monospace',
-                    color: '#15803d',
+                    fontSize: 12, fontWeight: c.live > 0 ? 700 : 500,
+                    color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
-                    {c.live} live
+                    {c.name}
                   </div>
-                )}
-                <div style={{
-                  fontSize: 10, color: c.live > 0 ? '#64748b' : 'var(--ink-2)',
-                  fontFamily: 'JetBrains Mono, monospace', fontWeight: c.live > 0 ? 400 : 700,
-                }}>
-                  {c.total} total
+                  <div style={{ fontSize: 10, color: '#64748b', marginTop: 1 }}>
+                    {c.citiesList.length} ville{c.citiesList.length > 1 ? 's' : ''}
+                    {c.identified ? ' · ' + c.identified + ' identifiés' : ''}
+                  </div>
                 </div>
+                <div style={{ textAlign: 'right', flexShrink: 0, marginRight: 4 }}>
+                  {c.live > 0 && (
+                    <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'JetBrains Mono, monospace', color: '#15803d' }}>
+                      {c.live} live
+                    </div>
+                  )}
+                  <div style={{
+                    fontSize: 10, color: c.live > 0 ? '#64748b' : 'var(--ink-2)',
+                    fontFamily: 'JetBrains Mono, monospace', fontWeight: c.live > 0 ? 400 : 700,
+                  }}>
+                    {c.total} total
+                  </div>
+                </div>
+                {hasMultipleCities && (
+                  <button data-chevron
+                    onClick={function (e) { e.stopPropagation(); toggleExpand(c.code); }}
+                    style={{
+                      border: 'none', background: 'transparent', cursor: 'pointer',
+                      padding: 4, display: 'flex', alignItems: 'center', color: '#64748b',
+                    }}
+                    title={isOpen ? 'Masquer les villes' : 'Afficher les villes'}>
+                    <svg width="12" height="12" viewBox="0 0 12 12" style={{
+                      transform: isOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.15s',
+                    }}>
+                      <path d="M2 4 L6 8 L10 4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                )}
               </div>
+
+              {/* Villes (déroulant) */}
+              {(isOpen || !hasMultipleCities) && c.citiesList.map(function (city) {
+                return (
+                  <div key={city.name}
+                    onClick={function () { if (city.coords && onZoomToCity) onZoomToCity(city.coords); }}
+                    style={{
+                      padding: '6px 14px 6px 46px', borderBottom: '1px solid #f8fafc',
+                      display: 'flex', alignItems: 'center', gap: 8, cursor: city.coords ? 'pointer' : 'default',
+                      background: '#fafbfc', fontSize: 11,
+                      transition: 'background 0.12s',
+                    }}
+                    onMouseEnter={function (e) { if (city.coords) e.currentTarget.style.background = '#f0fdf4'; }}
+                    onMouseLeave={function (e) { e.currentTarget.style.background = '#fafbfc'; }}>
+                    <div style={{ flexShrink: 0 }}>
+                      {city.live > 0 ? (
+                        <span className="gch-beacon" style={{ width: 7, height: 7, borderRadius: 999, background: LIVE_COLOR, display: 'inline-block' }} />
+                      ) : (
+                        <span style={{ width: 5, height: 5, borderRadius: 999, background: '#cbd5e1', display: 'inline-block' }} />
+                      )}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 11, fontWeight: city.live > 0 ? 700 : 500, color: 'var(--ink)',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {city.name}{city.postal ? ' · ' + city.postal : ''}
+                      </div>
+                      {city.region && city.region !== city.name && (
+                        <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 1 }}>{city.region}</div>
+                      )}
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      {city.live > 0 && (
+                        <div style={{ fontSize: 10, fontWeight: 800, fontFamily: 'JetBrains Mono, monospace', color: '#15803d' }}>
+                          {city.live} live
+                        </div>
+                      )}
+                      <div style={{
+                        fontSize: 9, color: '#64748b',
+                        fontFamily: 'JetBrains Mono, monospace',
+                      }}>
+                        {city.total}
+                      </div>
+                    </div>
+                    {city.coords && (
+                      <svg width="10" height="10" viewBox="0 0 10 10" style={{ color: '#94a3b8', flexShrink: 0 }}>
+                        <path d="M3 2 L7 5 L3 8" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           );
         })}
@@ -920,7 +1027,18 @@ export default function SeoGlobe() {
   // Singletons (cluster à 1 visiteur) = on rend en VisitorDot individuel
   // Groupes (cluster à 2+) = on rend en ClusterMarker agrégé
   var singletons = useMemo(function () {
-    return clusters.filter(function (c) { return c.visitors.length === 1; });
+    // Tri Z-index : anonymes → hot → identified → live (les plus importants
+    // rendus en dernier = au-dessus, donc toujours cliquables)
+    var priorityOf = function (c) {
+      var vis = c.visitors[0];
+      if (isLive(vis)) return 4;
+      if (vis.identified) return 3;
+      if ((vis.cta_clicks || 0) + (vis.phone_clicks || 0) > 0) return 2;
+      return 1;
+    };
+    return clusters.filter(function (c) { return c.visitors.length === 1; })
+      .slice()
+      .sort(function (a, b) { return priorityOf(a) - priorityOf(b); });
   }, [clusters]);
   var multiClusters = useMemo(function () {
     return clusters.filter(function (c) { return c.visitors.length > 1; });
@@ -1366,11 +1484,12 @@ export default function SeoGlobe() {
           </div>
         )}
 
-        {/* Panel Pays en direct (gauche) */}
+        {/* Panel Pays en direct (gauche) — avec villes déroulantes + zoom auto */}
         <CountriesLivePanel
           allVisitors={allVisitors}
           selectedCountry={filters.country}
           onSelectCountry={function (cc) { setFilters(function (f) { return { ...f, country: cc }; }); }}
+          onZoomToCity={function (coords) { setCenter(coords); setZoom(8); }}
         />
 
         {/* Panel visiteurs live (droite) */}

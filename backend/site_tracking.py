@@ -8,11 +8,73 @@ Couche de tracking avancee au dessus de /api/tracking/event :
 - Attribution UTM par campagne
 """
 import os
+import math
 import logging
 from typing import Optional
 from datetime import datetime, timedelta, timezone
+from collections import defaultdict
 from fastapi import APIRouter, Request, Response, HTTPException
 from fastapi.responses import PlainTextResponse
+
+
+def deterministic_jitter(visitor_id: str) -> tuple:
+    """Offset stable (dx_lon, dy_lat) en degrés basé sur le hash du visitor_id.
+
+    MAX ~300 mètres (0.003°). Garantit que deux visiteurs avec le même
+    visitor_id aient toujours le même offset (pas de saut entre refresh),
+    ET que deux visiteurs différents à la même ville soient séparés
+    visuellement.
+
+    Fonctionne mondialement par construction — s'applique à n'importe
+    quelles coordonnées GPS (Paris, Tokyo, Dakar, Lima, etc.).
+    """
+    if not visitor_id:
+        return (0.0, 0.0)
+    # Hash FNV-like déterministe
+    h = 2166136261
+    for c in visitor_id:
+        h = ((h ^ ord(c)) * 16777619) & 0xFFFFFFFF
+    # Angle uniformément réparti sur 360°
+    angle_rad = (h % 36000) / 36000.0 * 2.0 * math.pi
+    # Rayon : 80-300m pour que les dots soient séparés mais restent dans
+    # le même quartier visuellement (≈ 0.0008° à 0.003°)
+    radius_deg = 0.0008 + ((h >> 16) % 2200) / 1000000.0
+    dx = radius_deg * math.cos(angle_rad)
+    dy = radius_deg * math.sin(angle_rad)
+    return (dx, dy)
+
+
+def apply_location_jitter(visitors_list):
+    """Applique un jitter déterministe aux visiteurs qui partagent des
+    coordonnées identiques (cas fréquent avec la géoloc IP city-level qui
+    retourne toujours le centre de la ville).
+
+    Modifie `visitors_list` in-place. Chaque visiteur conserve ses
+    coordonnées originales dans `location.lat_original` / `lon_original`.
+    """
+    coord_groups = defaultdict(list)
+    for v in visitors_list:
+        loc = v.get('location')
+        if loc and loc.get('lat') is not None and loc.get('lon') is not None:
+            # Clé arrondie à 4 décimales = ~11m de précision
+            key = (round(float(loc['lat']), 4), round(float(loc['lon']), 4))
+            coord_groups[key].append(v)
+
+    for key, group in coord_groups.items():
+        # Jitter appliqué seulement quand 2+ visiteurs partagent exactement
+        # les mêmes coords (signe qu'ipapi.co a retourné la même position
+        # city-level générique)
+        if len(group) < 2:
+            continue
+        for v in group:
+            loc = v['location']
+            loc['lat_original'] = float(loc['lat'])
+            loc['lon_original'] = float(loc['lon'])
+            dx, dy = deterministic_jitter(v.get('visitor_id'))
+            loc['lat'] = float(loc['lat']) + dy
+            loc['lon'] = float(loc['lon']) + dx
+            loc['jittered'] = True
+            loc['jitter_group_size'] = len(group)
 
 logger = logging.getLogger(__name__)
 tracker_router = APIRouter(prefix="/api/tracking", tags=["tracking"])
@@ -721,6 +783,11 @@ async def list_visitors(request: Request, hours: int = 24, limit: int = 100, inc
                 "created_at": lead.get("created_at"),
             } if lead else None,
         })
+
+    # Jitter anti-collision : les visiteurs d'une même ville partagent les
+    # mêmes lat/lon via ipapi.co. On les décale de ±300m max pour qu'ils
+    # soient visuellement distincts sur la carte SANS sortir du quartier.
+    apply_location_jitter(out)
 
     return {
         "period_hours": hours,
