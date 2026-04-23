@@ -157,9 +157,30 @@ function clusterGridSize(zoom) {
 }
 
 function buildClusters(visitors, zoom) {
+  var list = visitors || [];
+
+  // BYPASS clustering si petit volume : chaque visiteur a son propre
+  // "cluster" singleton. Le jitter backend (±300m) les sépare visuellement.
+  // Évite les gros blocs de cercle pour les sites avec peu de trafic.
+  if (list.length <= 12) {
+    return list.map(function (v, i) {
+      var c = rawCoordsFor(v);
+      if (!c) return null;
+      return {
+        id: 'solo-' + (v.visitor_id || i),
+        coords: c,
+        sumLon: c[0], sumLat: c[1],
+        visitors: [v],
+        live: isLive(v) ? 1 : 0,
+        identified: v.identified ? 1 : 0,
+        hot: ((v.cta_clicks || 0) + (v.phone_clicks || 0) + (v.email_clicks || 0) + (v.whatsapp_clicks || 0) > 0) ? 1 : 0,
+      };
+    }).filter(Boolean);
+  }
+
   var grid = clusterGridSize(zoom);
   var buckets = {};
-  (visitors || []).forEach(function (v) {
+  list.forEach(function (v) {
     var c = rawCoordsFor(v);
     if (!c) return;
     // Clé de bucket : arrondi à la grille courante
@@ -249,9 +270,9 @@ var ClusterMarker = memo(function ClusterMarker({ cluster, onHover, onLeave, onC
   var z = currentZoom || 1;
   var scale = 1 / Math.sqrt(Math.max(z, 1));
   var count = cluster.visitors.length;
-  // Taille du cercle selon count + zoom (borné pour rester lisible)
-  var base = count >= 100 ? 26 : count >= 20 ? 22 : count >= 10 ? 19 : count >= 5 ? 16 : 14;
-  var r = Math.max(base * scale, 11);
+  // Taille du cercle — plus compacte qu'avant pour ne pas masquer la carte
+  var base = count >= 100 ? 20 : count >= 20 ? 17 : count >= 10 ? 14 : count >= 5 ? 12 : 10;
+  var r = Math.max(base * scale, 9);
   var color = clusterColor(cluster);
   var hasLive = cluster.live > 0;
   var label = count >= 99 ? '99+' : String(count);
@@ -1461,7 +1482,6 @@ export default function SeoGlobe() {
             onMoveEnd={function (e) { setZoom(e.zoom); setCenter(e.coordinates); }}
             minZoom={0.8}
             maxZoom={16}
-            translateExtent={[[-1000, -500], [1000, 500]]}
           >
             {/* Pays avec heatmap — ISO2 extrait depuis ID numérique du topojson */}
             <Geographies geography={WORLD_TOPO}>
