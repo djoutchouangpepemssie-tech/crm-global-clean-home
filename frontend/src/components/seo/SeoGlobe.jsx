@@ -111,14 +111,89 @@ function geoIso2(geo) {
   return null;
 }
 
-// Dispersion : décale les points qui ont des coordonnées trop proches
-// pour éviter qu'ils se chevauchent sur la carte
-function coordsFor(visitor) {
+// Coordonnées brutes d'un visiteur (avant dispersion)
+function rawCoordsFor(visitor) {
   if (visitor.location?.lat && visitor.location?.lon)
     return [Number(visitor.location.lon), Number(visitor.location.lat)];
   var city = visitor.location?.city;
   if (city && CITY_COORDS[city]) return CITY_COORDS[city];
   return null;
+}
+
+// Dispersion intelligente : quand plusieurs visiteurs partagent les mêmes
+// coordonnées (même ville, même IP), on les répartit en spirale autour du
+// point central via l'angle d'or (137.5°) — donne une distribution homogène
+// qui évite les chevauchements. Les offsets sont stables (basés sur l'index
+// dans le groupe trié), donc un visiteur reste à la même position entre
+// deux refetch.
+//
+// Le rayon de dispersion est réduit quand on zoom (plus on zoom, plus les
+// points sont séparés visuellement donc moins besoin de les écarter
+// géographiquement).
+//
+// Retourne une Map { visitor_id → [lon, lat] } pour lookup O(1).
+var GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5)); // ≈ 137.5°
+
+function buildDispersedCoords(visitors, zoom) {
+  var result = new Map();
+  if (!visitors || !visitors.length) return result;
+
+  // Grouper par coordonnées arrondies (pour déclencher la dispersion seulement
+  // quand deux visiteurs sont VRAIMENT au même endroit, pas juste proches)
+  var groups = {};
+  visitors.forEach(function (v) {
+    var c = rawCoordsFor(v);
+    if (!c) return;
+    // Arrondi à 0.01° (~1km) pour grouper les co-localisés
+    var key = c[0].toFixed(2) + ',' + c[1].toFixed(2);
+    if (!groups[key]) groups[key] = { base: c, members: [] };
+    groups[key].members.push(v);
+  });
+
+  // Rayon de dispersion en degrés — adapté au zoom
+  // Zoom 1 : 0.35° (~35km) · Zoom 4 : 0.15° (~15km) · Zoom 8 : 0.07° (~7km)
+  var z = Math.max(zoom || 1, 1);
+  var baseRadius = 0.5 / Math.sqrt(z);
+
+  Object.keys(groups).forEach(function (key) {
+    var g = groups[key];
+    var base = g.base;
+    // Tri stable par visitor_id pour que la position ne change pas entre refresh
+    var members = g.members.slice().sort(function (a, b) {
+      return (a.visitor_id || '').localeCompare(b.visitor_id || '');
+    });
+
+    if (members.length === 1) {
+      // Seul visiteur : pas de dispersion
+      result.set(members[0].visitor_id, base);
+      return;
+    }
+
+    // Dispersion en spirale — angle d'or
+    members.forEach(function (v, i) {
+      // i=0 → centre exact ; i>=1 → spirale
+      if (i === 0) {
+        result.set(v.visitor_id, base);
+        return;
+      }
+      var radius = baseRadius * Math.sqrt(i / members.length);
+      var angle = i * GOLDEN_ANGLE;
+      var dx = radius * Math.cos(angle);
+      var dy = radius * Math.sin(angle);
+      result.set(v.visitor_id, [base[0] + dx, base[1] + dy]);
+    });
+  });
+
+  return result;
+}
+
+// Coordonnées finales (dispersées si groupe multiple)
+function coordsFor(visitor, dispersedMap) {
+  if (dispersedMap) {
+    var c = dispersedMap.get(visitor.visitor_id);
+    if (c) return c;
+  }
+  return rawCoordsFor(visitor);
 }
 
 function dotSize(visitor) {
@@ -151,8 +226,7 @@ function visitorStatus(visitor) {
 // ── VisitorDot — taille variable + couleur selon statut ─────────
 // Scaling doux (1/√z) : les points restent visibles au zoom sans exploser en taille.
 // Stroke non-scaling via vectorEffect : contours toujours nets quel que soit le zoom.
-var VisitorDot = memo(function VisitorDot({ visitor, onHover, onLeave, currentZoom }) {
-  var coords = coordsFor(visitor);
+var VisitorDot = memo(function VisitorDot({ visitor, onHover, onLeave, currentZoom, coords }) {
   if (!coords) return null;
   var z = currentZoom || 1;
   var scale = 1 / Math.sqrt(Math.max(z, 1));
@@ -167,20 +241,20 @@ var VisitorDot = memo(function VisitorDot({ visitor, onHover, onLeave, currentZo
       <g style={{ cursor: 'pointer' }}
         onMouseEnter={function () { onHover(visitor); }}
         onMouseLeave={onLeave}>
-        {/* Anneau LIVE ultra visible — pulse vert géant + rotation */}
+        {/* Anneau LIVE — plus compact pour ne pas empiéter sur les voisins */}
         {live && (
           <>
-            <circle r={r * 3.5} fill="none" stroke={LIVE_COLOR} strokeWidth="1.5"
+            <circle r={r * 2.2} fill="none" stroke={LIVE_COLOR} strokeWidth="1.5"
               vectorEffect="non-scaling-stroke" className="gch-live-ring"
-              opacity="0.6" />
-            <circle r={r * 2.5} fill={LIVE_COLOR} className="gch-live-halo" opacity="0.25" />
+              opacity="0.7" />
+            <circle r={r * 1.6} fill={LIVE_COLOR} className="gch-live-halo" opacity="0.3" />
           </>
         )}
-        {/* Halo "récent" ou "identifié/hot" */}
+        {/* Halo standard — réduit aussi */}
         {!live && (
-          <circle r={r * 2} fill={color}
+          <circle r={r * 1.5} fill={color}
             className={identified ? 'gch-id-halo' : (hot ? 'gch-hot-halo' : undefined)}
-            opacity={identified || hot ? 0.18 : 0.08} />
+            opacity={identified || hot ? 0.22 : 0.12} />
         )}
         {/* Point principal */}
         <circle r={r} fill={live ? LIVE_COLOR : color}
@@ -189,7 +263,6 @@ var VisitorDot = memo(function VisitorDot({ visitor, onHover, onLeave, currentZo
         {identified && !live && (
           <circle r={Math.max(r - 1.8, 1.2)} fill="white" opacity="0.95" />
         )}
-        {/* Voyant vert interne pour LIVE identifié */}
         {live && identified && (
           <circle r={Math.max(r - 2, 1.2)} fill="white" opacity="0.95" />
         )}
@@ -203,7 +276,8 @@ var VisitorDot = memo(function VisitorDot({ visitor, onHover, onLeave, currentZo
     && a.visitor.event_count === b.visitor.event_count
     && a.visitor.identified === b.visitor.identified
     && a.visitor.last_seen === b.visitor.last_seen
-    && Math.abs((a.currentZoom || 1) - (b.currentZoom || 1)) < 0.15;
+    && Math.abs((a.currentZoom || 1) - (b.currentZoom || 1)) < 0.15
+    && a.coords?.[0] === b.coords?.[0] && a.coords?.[1] === b.coords?.[1];
 });
 
 // ── Connexion animée visiteur → Paris ───────────────────────────
@@ -718,13 +792,28 @@ export default function SeoGlobe() {
     return allVisitors.filter(isLive).length;
   }, [allVisitors]);
 
+  // Map des coordonnées dispersées — évite les chevauchements quand plusieurs
+  // visiteurs partagent la même ville (ex: 8 visiteurs tous à Paris)
+  var dispersedCoords = useMemo(function () {
+    return buildDispersedCoords(v, zoom);
+  }, [v, zoom]);
+
   // Connexions vers Paris — memoizées pour éviter la recréation à chaque render
+  // On utilise les coords brutes (pas dispersées) pour les connexions, car
+  // on ne veut qu'une ligne par ville et pas par visiteur
   var connectionLines = useMemo(function () {
+    var seen = new Set();
     return v
-      .map(function (vis) { return { id: vis.visitor_id, coords: coordsFor(vis) }; })
+      .map(function (vis) { return { id: vis.visitor_id, coords: rawCoordsFor(vis) }; })
       .filter(function (x) {
-        return x.coords
-          && !(Math.abs(x.coords[0] - PARIS[0]) < 0.5 && Math.abs(x.coords[1] - PARIS[1]) < 0.5);
+        if (!x.coords) return false;
+        // Skip si Paris (distance < 0.5°)
+        if (Math.abs(x.coords[0] - PARIS[0]) < 0.5 && Math.abs(x.coords[1] - PARIS[1]) < 0.5) return false;
+        // Une seule ligne par localisation
+        var key = x.coords[0].toFixed(1) + ',' + x.coords[1].toFixed(1);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
       })
       .slice(0, 30);
   }, [v]);
@@ -1000,9 +1089,11 @@ export default function SeoGlobe() {
               <circle r={4} fill="white" />
             </Marker>
 
-            {/* Points visiteurs */}
+            {/* Points visiteurs — coordonnées dispersées pour éviter
+                les chevauchements en ville */}
             {v.map(function (visitor) {
               return <VisitorDot key={visitor.visitor_id} visitor={visitor}
+                coords={dispersedCoords.get(visitor.visitor_id) || rawCoordsFor(visitor)}
                 onHover={onDotHover} onLeave={onDotLeave} currentZoom={zoom} />;
             })}
           </ZoomableGroup>
