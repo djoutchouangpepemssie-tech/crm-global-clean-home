@@ -54,15 +54,19 @@ const ISO3_TO_2 = {
 
 // Dispersion : décale les points qui ont des coordonnées trop proches
 // pour éviter qu'ils se chevauchent sur la carte
+// Micro-dispersion : décale TRÈS légèrement les points exactement superposés
+// (même ville). Le décalage est quasi invisible au zoom normal mais suffit
+// pour que les points ne soient pas strictement empilés pixel par pixel.
 var _usedCoords = {};
-function disperseCoords(lon, lat, id) {
-  var key = Math.round(lon * 10) + '_' + Math.round(lat * 10);
+function disperseCoords(lon, lat) {
+  // Arrondi à 0.01° (~1km) pour détecter les vrais doublons
+  var key = Math.round(lon * 100) + '_' + Math.round(lat * 100);
   if (!_usedCoords[key]) { _usedCoords[key] = 0; }
   var n = _usedCoords[key]++;
   if (n === 0) return [lon, lat];
-  // Spirale pour disperser les points superposés (petits décalages)
-  var angle = n * 2.4; // angle d'or en radians
-  var radius = 0.15 + n * 0.08; // rayon croissant mais petit
+  // Très petit décalage en spirale (0.02° ≈ 2km max)
+  var angle = n * 2.4;
+  var radius = 0.02 + n * 0.015;
   return [lon + Math.cos(angle) * radius, lat + Math.sin(angle) * radius];
 }
 
