@@ -60,9 +60,9 @@ function disperseCoords(lon, lat, id) {
   if (!_usedCoords[key]) { _usedCoords[key] = 0; }
   var n = _usedCoords[key]++;
   if (n === 0) return [lon, lat];
-  // Spirale pour disperser les points superposés
+  // Spirale pour disperser les points superposés (petits décalages)
   var angle = n * 2.4; // angle d'or en radians
-  var radius = 0.3 + n * 0.15; // rayon croissant
+  var radius = 0.15 + n * 0.08; // rayon croissant mais petit
   return [lon + Math.cos(angle) * radius, lat + Math.sin(angle) * radius];
 }
 
@@ -98,10 +98,15 @@ function dotColor(visitor) {
 }
 
 // ── VisitorDot — taille variable + couleur selon statut ─────────
-var VisitorDot = memo(function VisitorDot({ visitor, onHover, onLeave }) {
+var VisitorDot = memo(function VisitorDot({ visitor, onHover, onLeave, currentZoom }) {
   var coords = coordsFor(visitor);
   if (!coords) return null;
-  var r = dotSize(visitor);
+  // Réduire la taille des éléments quand on zoome pour qu'ils ne se chevauchent pas
+  var z = currentZoom || 1;
+  var scale = 1 / Math.max(z, 1); // plus on zoome, plus les éléments rapetissent
+  var r = dotSize(visitor) * scale;
+  var minR = 2; // rayon minimum visible
+  r = Math.max(r, minR);
   var color = dotColor(visitor);
   var identified = visitor.identified;
   return (
@@ -109,22 +114,17 @@ var VisitorDot = memo(function VisitorDot({ visitor, onHover, onLeave }) {
       <g style={{ cursor: 'pointer' }}
         onMouseEnter={function () { onHover(visitor); }}
         onMouseLeave={onLeave}>
-        {/* Zone de hover invisible mais grande (facile à cibler avec la souris) */}
-        <circle r={Math.max(r * 4, 18)} fill="transparent" />
-        {/* Halo extérieur */}
-        <circle r={r * 3} fill={color} opacity="0.06" />
-        {/* Pulse animé */}
-        <circle r={r * 2} fill={color} opacity="0.2">
-          <animate attributeName="r" from={r * 1.5} to={r * 3} dur="2.5s" repeatCount="indefinite" />
-          <animate attributeName="opacity" from="0.3" to="0.03" dur="2.5s" repeatCount="indefinite" />
-        </circle>
+        {/* Zone de hover invisible (taille fixe pour faciliter le clic) */}
+        <circle r={Math.max(8 * scale, 6)} fill="transparent" />
+        {/* Petit halo discret */}
+        <circle r={r * 1.8} fill={color} opacity="0.1" />
         {/* Point principal */}
-        <circle r={r} fill={color} stroke="white" strokeWidth="2" />
-        {identified && <circle r={r - 2} fill="white" opacity="0.9" />}
+        <circle r={r} fill={color} stroke="white" strokeWidth={Math.max(1, 1.5 * scale)} />
+        {identified && <circle r={Math.max(r - 1.5, 1)} fill="white" opacity="0.9" />}
       </g>
     </Marker>
   );
-}, function (a, b) { return a.visitor.visitor_id === b.visitor.visitor_id; });
+}, function (a, b) { return a.visitor.visitor_id === b.visitor.visitor_id && a.currentZoom === b.currentZoom; });
 
 // ── Connexion animée visiteur → Paris ───────────────────────────
 function ConnectionLine({ from }) {
@@ -499,7 +499,7 @@ export default function SeoGlobe() {
             {/* Points visiteurs */}
             {v.map(function (visitor) {
               return <VisitorDot key={visitor.visitor_id} visitor={visitor}
-                onHover={onDotHover} onLeave={onDotLeave} />;
+                onHover={onDotHover} onLeave={onDotLeave} currentZoom={zoom} />;
             })}
           </ZoomableGroup>
         </ComposableMap>
