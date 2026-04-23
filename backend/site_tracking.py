@@ -885,6 +885,9 @@ async def get_journey(visitor_id: str, request: Request):
     sessions_map = {}
     for e in events:
         sid = e.get("session_id") or "unknown"
+        page = e.get("page") or {}
+        utm = e.get("utm") or {}
+        page_url = page.get("url") or e.get("page_url") or ""
         if sid not in sessions_map:
             sessions_map[sid] = {
                 "session_id": sid,
@@ -892,16 +895,23 @@ async def get_journey(visitor_id: str, request: Request):
                 "end": e.get("timestamp"),
                 "events": [],
                 "pages": set(),
-                "utm_source": e.get("utm_source"),
-                "utm_campaign": e.get("utm_campaign"),
-                "referrer": e.get("referrer"),
+                "entry_page": urlparse_path(page_url),
+                "exit_page": urlparse_path(page_url),
+                "utm_source": utm.get("source") or e.get("utm_source"),
+                "utm_campaign": utm.get("campaign") or e.get("utm_campaign"),
+                "referrer": page.get("referrer") or e.get("referrer"),
+                "converted_in_session": False,
             }
         s = sessions_map[sid]
         s["end"] = e.get("timestamp")
+        s["exit_page"] = urlparse_path(page_url) or s["exit_page"]
         s["events"].append(e)
-        if e.get("page_url"):
+        etype = e.get("event_type") or ""
+        if etype in ("form_submit", "phone_click", "click_phone", "email_click", "click_email", "whatsapp_click", "click_whatsapp"):
+            s["converted_in_session"] = True
+        if page_url:
             try:
-                s["pages"].add(urlparse_path(e.get("page_url")))
+                s["pages"].add(urlparse_path(page_url))
             except Exception:
                 pass
 
@@ -909,43 +919,64 @@ async def get_journey(visitor_id: str, request: Request):
     for sid, s in sessions_map.items():
         sessions.append({
             "session_id": sid,
+            "started_at": s["start"],
+            "ended_at": s["end"],
             "start": s["start"],
             "end": s["end"],
-            "duration_sec": _compute_duration_sec(s["start"], s["end"]),
+            "duration_seconds": _compute_duration_sec(s["start"], s["end"]),
             "events_count": len(s["events"]),
             "pageviews": sum(1 for e in s["events"] if e.get("event_type") == "page_view"),
             "unique_pages": len(s["pages"]),
-            "pages": sorted(s["pages"]),
-            "utm_source": s["utm_source"],
-            "utm_campaign": s["utm_campaign"],
+            "pages_visited": sorted(s["pages"]),
+            "entry_page": s.get("entry_page", "/"),
+            "exit_page": s.get("exit_page", "/"),
+            "converted_in_session": s.get("converted_in_session", False),
+            "utm": {"source": s["utm_source"], "campaign": s["utm_campaign"]},
             "referrer": s["referrer"],
         })
     sessions.sort(key=lambda x: x["start"] or "")
 
     # Timeline normalisée (pour rendu frontend)
+    # Le tracker v3 envoie page.url, page.path, page.title (objets imbriqués)
+    # mais l'ancien tracker envoyait page_url, page_title (champs plats).
+    # On gère les deux formats.
     timeline = []
     for e in events:
+        page = e.get("page") or {}
+        event_data = e.get("event_data") or {}
+        page_url = page.get("url") or e.get("page_url") or ""
+        page_path = page.get("path") or e.get("path") or urlparse_path(page_url)
+        page_title = page.get("title") or e.get("page_title") or ""
+        referrer = page.get("referrer") or e.get("referrer") or ""
         timeline.append({
             "timestamp": e.get("timestamp") or e.get("server_timestamp"),
-            "type": e.get("event_type"),
-            "page_url": e.get("page_url"),
-            "page_title": e.get("page_title"),
-            "path": urlparse_path(e.get("page_url")) if e.get("page_url") else None,
-            "referrer": e.get("referrer"),
+            "event_type": e.get("event_type") or e.get("type") or "unknown",
+            "page_url": page_url,
+            "page_title": page_title,
+            "path": page_path,
+            "referrer": referrer,
             "session_id": e.get("session_id"),
-            "cta_label": e.get("cta_label"),
-            "cta_href": e.get("cta_href"),
-            "depth": e.get("depth"),
-            "seconds": e.get("seconds"),
-            "form_name": e.get("form_name"),
+            "cta_label": event_data.get("text") or event_data.get("cta_label") or e.get("cta_label"),
+            "cta_href": event_data.get("href") or event_data.get("cta_href") or e.get("cta_href"),
+            "phone": event_data.get("phone"),
+            "depth": event_data.get("depth") or event_data.get("scroll_percent") or e.get("depth"),
+            "seconds": event_data.get("seconds") or event_data.get("time_seconds") or e.get("seconds"),
+            "form_name": event_data.get("form_name") or e.get("form_name"),
+            "fields_filled": event_data.get("fields_filled"),
             "lead_data": e.get("lead_data"),
+            "location": event_data.get("location"),
         })
 
-    # Géoloc via cache
+    # Géoloc via cache — extraire le sous-objet "location" (pas le document entier)
     geo = None
     if profile and profile.get("ip"):
         try:
-            geo = await _db.ip_geocache.find_one({"ip": profile["ip"]}, {"_id": 0})
+            cached = await _db.ip_geocache.find_one({"ip": profile["ip"]}, {"_id": 0})
+            if cached and isinstance(cached.get("location"), dict):
+                geo = cached["location"]
+            elif cached:
+                # Ancien format : les champs sont directement dans le document
+                geo = {k: cached.get(k) for k in ["city", "region", "country", "country_code", "lat", "lon", "timezone", "isp"] if cached.get(k)}
         except Exception:
             pass
 
@@ -962,7 +993,8 @@ async def get_journey(visitor_id: str, request: Request):
     page_counts = {}
     for e in events:
         if e.get("event_type") == "page_view":
-            p = urlparse_path(e.get("page_url"))
+            page = e.get("page") or {}
+            p = urlparse_path(page.get("url") or e.get("page_url") or "")
             if p:
                 page_counts[p] = page_counts.get(p, 0) + 1
     top_pages = sorted(page_counts.items(), key=lambda x: -x[1])
