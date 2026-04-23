@@ -739,13 +739,21 @@ async def list_journeys(
     sort_map = {
         "last_seen": [("last_seen", -1)],
         "pageviews": [("pageviews", -1), ("last_seen", -1)],
-        "sessions": [("sessions", -1), ("last_seen", -1)],
+        "sessions": [("events_total", -1), ("last_seen", -1)],  # sessions est un array, pas triable directement
         "events": [("events_total", -1), ("last_seen", -1)],
     }
     sort_field = sort_map.get(sort, sort_map["last_seen"])
 
-    total = await _db.visitor_profiles.count_documents(query)
-    profiles = await _db.visitor_profiles.find(query, {"_id": 0}).sort(sort_field).skip(skip).limit(limit).to_list(limit)
+    try:
+        total = await _db.visitor_profiles.count_documents(query)
+    except Exception as e:
+        logger.error(f"journeys count error: {e}")
+        total = 0
+    try:
+        profiles = await _db.visitor_profiles.find(query, {"_id": 0}).sort(sort_field).skip(skip).limit(limit).to_list(limit)
+    except Exception as e:
+        logger.error(f"journeys find error: {e}")
+        profiles = []
 
     # Post-filter par country + min_sessions (ils nécessitent un enrichissement)
     out = []
@@ -758,10 +766,16 @@ async def list_journeys(
         ip = p.get("ip")
         if ip and _db:
             try:
-                geo = await _db.ip_geocache.find_one({"ip": ip}, {"_id": 0})
+                cached = await _db.ip_geocache.find_one({"ip": ip}, {"_id": 0})
+                if cached and cached.get("location"):
+                    geo = cached["location"]
+                elif cached:
+                    # Le document existe mais location est None (IP non résolue)
+                    geo = None
             except Exception:
                 pass
-        if country and (not geo or (geo.get("country_code") or "").upper() != country.upper()):
+        cc = (geo.get("country_code") or "").upper() if geo and isinstance(geo, dict) else ""
+        if country and cc != country.upper():
             continue
         out.append({
             "visitor_id": p.get("visitor_id"),
