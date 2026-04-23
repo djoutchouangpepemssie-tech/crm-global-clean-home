@@ -233,8 +233,9 @@ export function useVisitors(hours = 24, limit = 100) {
   return useQuery({
     queryKey: ['tracker', 'visitors', hours, limit],
     queryFn: async () => (await api.get(`/tracking/visitors?hours=${hours}&limit=${limit}`)).data,
-    refetchInterval: 60_000,
-    staleTime: 30_000,
+    refetchInterval: 15_000,  // Polling rapide pour détection systématique
+    staleTime: 5_000,
+    refetchIntervalInBackground: false,  // Pas de polling quand onglet CRM inactif
   });
 }
 

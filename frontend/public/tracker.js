@@ -534,6 +534,28 @@
   }, 5000);
 
   // ═══════════════════════════════════════════════════════════════
+  // HEARTBEAT — détection systématique des visiteurs en ligne
+  // Envoie un event léger toutes les 30s tant que l'onglet est visible.
+  // Permet au backend de mettre à jour `last_seen` en continu → compteur
+  // LIVE du CRM reste à jour même si le visiteur ne clique sur rien.
+  // Aucun envoi quand l'onglet est caché (économise la batterie mobile
+  // et évite les faux positifs "en ligne" alors que l'onglet est en fond).
+  // ═══════════════════════════════════════════════════════════════
+  var HEARTBEAT_INTERVAL = 30000; // 30 secondes
+  setInterval(function () {
+    try {
+      if (silent) return;
+      if (document.visibilityState !== 'visible') return;
+      sendEventImmediate({
+        event_type: 'heartbeat',
+        event_data: {
+          alive_seconds: Math.round((Date.now() - timeTrackingStart) / 1000),
+        },
+      });
+    } catch (e) {}
+  }, HEARTBEAT_INTERVAL);
+
+  // ═══════════════════════════════════════════════════════════════
   // EVENT: session_end (beforeunload + pagehide)
   // ═══════════════════════════════════════════════════════════════
   function sendSessionEnd() {
