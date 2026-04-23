@@ -356,7 +356,8 @@ function SpiderfiedCluster({ cluster, currentZoom, onDotHover, onDotLeave, onClo
             strokeDasharray="3 3"
             strokeLinecap="round"
             vectorEffect="non-scaling-stroke"
-            opacity="0.5" />
+            opacity="0.5"
+            className="gch-spider-line" />
         );
       })}
 
@@ -373,17 +374,21 @@ function SpiderfiedCluster({ cluster, currentZoom, onDotHover, onDotLeave, onClo
         </g>
       </Marker>
 
-      {/* Dots éclatés — chacun rendu comme VisitorDot standard */}
-      {spiderDots.map(function (sd) {
+      {/* Dots éclatés — chacun rendu comme VisitorDot standard avec
+          animation d'entrée (fanout depuis le centre) */}
+      {spiderDots.map(function (sd, i) {
         return (
-          <VisitorDot
-            key={'spider-dot-' + sd.visitor.visitor_id}
-            visitor={sd.visitor}
-            coords={sd.coords}
-            onHover={onDotHover}
-            onLeave={onDotLeave}
-            currentZoom={currentZoom}
-          />
+          <g key={'spider-dot-' + sd.visitor.visitor_id}
+             className="gch-spider-dot"
+             style={{ animationDelay: (i * 30) + 'ms' }}>
+            <VisitorDot
+              visitor={sd.visitor}
+              coords={sd.coords}
+              onHover={onDotHover}
+              onLeave={onDotLeave}
+              currentZoom={currentZoom}
+            />
+          </g>
         );
       })}
     </g>
@@ -1140,19 +1145,48 @@ export default function SeoGlobe() {
   // Spiderfy : éclate un cluster en cercle pixel au click (comme Leaflet
   // Markercluster). Permet de voir chaque visiteur individuellement même
   // quand ils sont dans la même ville et invisibles séparément par zoom.
-  var [spiderfiedId, setSpiderfiedId] = useState(null);
+  //
+  // IMPORTANT : on mémorise le zoom au moment du click. Si l'utilisateur
+  // change le zoom de plus de 0.3, on ferme automatiquement le spiderfy
+  // pour éviter que les dots "sautent" (la conversion pixel→degré dépend
+  // du zoom, donc un changement de zoom sans reset ferait dériver les
+  // positions).
+  var [spiderState, setSpiderState] = useState(null); // { id, zoom }
+  var spiderfiedId = spiderState?.id || null;
+  // Click sur un cluster : logique intelligente
+  //  - Si zoom bas (<6) : zoom auto sur la ville pour désagréger naturellement
+  //    (Paris reste à Paris, Marseille à Marseille, etc.)
+  //  - Si zoom déjà élevé (>=6) : spiderfy car les coords sont identiques
+  //    (même ville, impossible de les séparer géographiquement)
   var onClusterClick = useCallback(function (cluster) {
-    setSpiderfiedId(function (current) {
-      return current === cluster.id ? null : cluster.id;
-    });
-  }, []);
-  // Désactiver spiderfy au zoom out fort ou click ailleurs
-  useMemo(function () {
-    // Reset si plus aucun cluster ne correspond à spiderfiedId
-    if (spiderfiedId && !clusters.some(function (c) { return c.id === spiderfiedId; })) {
-      setSpiderfiedId(null);
+    // Toggle off si déjà spiderfied
+    if (spiderState && spiderState.id === cluster.id) {
+      setSpiderState(null);
+      return;
     }
-  }, [clusters, spiderfiedId]);
+
+    if (zoom < 6) {
+      // Zoom auto sur le centre du cluster pour désagréger
+      setCenter(cluster.coords);
+      // Niveau 7 = vue ville (Paris entière tient dans la viewport)
+      // Les clusters IDF vs Marseille vs Lyon se sépareront automatiquement
+      setZoom(Math.max(7, zoom + 2));
+      setSpiderState(null);
+    } else {
+      // Zoom déjà élevé : même ville, on éclate en spiderfy
+      setSpiderState({ id: cluster.id, zoom: zoom });
+    }
+  }, [zoom, spiderState]);
+
+  // Auto-close si zoom a trop changé OU si le cluster n'existe plus
+  React.useEffect(function () {
+    if (!spiderState) return;
+    var zoomDelta = Math.abs(zoom - spiderState.zoom);
+    var clusterGone = !clusters.some(function (c) { return c.id === spiderState.id; });
+    if (zoomDelta > 0.3 || clusterGone) {
+      setSpiderState(null);
+    }
+  }, [zoom, clusters, spiderState]);
 
   // Connexions vers Paris — memoizées pour éviter la recréation à chaque render
   // On utilise les coords brutes (pas dispersées) pour les connexions, car
@@ -1236,6 +1270,21 @@ export default function SeoGlobe() {
         /* Highlight nouvelle ligne (quand nouveau visiteur arrive) */
         @keyframes newRowFlash{0%{background:rgba(34,197,94,.22)}100%{background:transparent}}
         .gch-new-flash{animation:newRowFlash 2.5s ease-out}
+
+        /* Smoothing des dots au zoom/pan — interpolation douce des tailles */
+        .rsm-marker > g > circle { transition: r 0.18s ease-out, stroke-width 0.18s ease-out; }
+        /* Mais PAS le halo pulsant qui doit rester animé */
+        .rsm-marker .gch-live-ring,
+        .rsm-marker .gch-hot-halo,
+        .rsm-marker .gch-id-halo { transition: none; }
+
+        /* Animation entrée d'un dot spiderfied (apparition fluide) */
+        @keyframes spiderFanOut{from{opacity:0;transform:scale(.3)}to{opacity:1;transform:scale(1)}}
+        .gch-spider-dot{transform-origin:center;transform-box:fill-box;animation:spiderFanOut .25s ease-out backwards}
+
+        /* Ligne pointillée du spiderfy */
+        @keyframes spiderLine{from{stroke-dashoffset:8;opacity:0}to{stroke-dashoffset:0;opacity:.5}}
+        .gch-spider-line{animation:spiderLine .25s ease-out}
       `}</style>
 
       <PageHeader
@@ -1411,7 +1460,8 @@ export default function SeoGlobe() {
             center={center}
             onMoveEnd={function (e) { setZoom(e.zoom); setCenter(e.coordinates); }}
             minZoom={0.8}
-            maxZoom={8}
+            maxZoom={16}
+            translateExtent={[[-1000, -500], [1000, 500]]}
           >
             {/* Pays avec heatmap — ISO2 extrait depuis ID numérique du topojson */}
             <Geographies geography={WORLD_TOPO}>
@@ -1590,7 +1640,7 @@ export default function SeoGlobe() {
               marginTop: 10, paddingTop: 8, borderTop: '1px solid #f1f5f9',
               fontSize: 10, color: 'var(--ink-3)', fontStyle: 'italic',
             }}>
-              💡 Cliquer pour zoomer et éclater le groupe
+              💡 Cliquer pour zoomer sur la ville et voir chaque visiteur
             </div>
           </div>
         )}
@@ -1600,7 +1650,7 @@ export default function SeoGlobe() {
           allVisitors={allVisitors}
           selectedCountry={filters.country}
           onSelectCountry={function (cc) { setFilters(function (f) { return { ...f, country: cc }; }); }}
-          onZoomToCity={function (coords) { setCenter(coords); setZoom(8); }}
+          onZoomToCity={function (coords) { setCenter(coords); setZoom(10); }}
         />
 
         {/* Panel visiteurs live (droite) */}
