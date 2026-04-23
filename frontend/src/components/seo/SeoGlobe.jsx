@@ -64,8 +64,8 @@ function coordsFor(visitor) {
 
 function dotSize(visitor) {
   var events = visitor.event_count || visitor.events_total || 1;
-  if (events > 50) return 10;
-  if (events > 20) return 8;
+  if (events > 50) return 9;
+  if (events > 20) return 7.5;
   if (events > 5) return 6;
   return 5;
 }
@@ -83,35 +83,47 @@ function dotColor(visitor) {
 }
 
 // ── VisitorDot — taille variable + couleur selon statut ─────────
+// Scaling doux (1/√z) : les points restent visibles au zoom sans exploser en taille.
+// Stroke non-scaling via vectorEffect : contours toujours nets quel que soit le zoom.
 var VisitorDot = memo(function VisitorDot({ visitor, onHover, onLeave, currentZoom }) {
   var coords = coordsFor(visitor);
   if (!coords) return null;
-  // Réduire la taille des éléments quand on zoome pour qu'ils ne se chevauchent pas
   var z = currentZoom || 1;
-  var scale = 1 / Math.max(z, 1); // plus on zoome, plus les éléments rapetissent
-  var r = dotSize(visitor) * scale;
-  var minR = 2; // rayon minimum visible
-  r = Math.max(r, minR);
+  var scale = 1 / Math.sqrt(Math.max(z, 1)); // √-scaling : plus doux que 1/z
+  var base = dotSize(visitor);
+  var r = Math.max(base * scale, 3.5); // minimum 3.5 pour rester clairement visible
   var color = dotColor(visitor);
   var identified = visitor.identified;
+  var hot = color === HOT_COLOR;
   return (
     <Marker coordinates={coords}>
       <g style={{ cursor: 'pointer' }}
         onMouseEnter={function () { onHover(visitor); }}
         onMouseLeave={onLeave}>
-        {/* Zone de hover invisible (taille fixe pour faciliter le clic) */}
-        <circle r={Math.max(8 * scale, 6)} fill="transparent" />
-        {/* Petit halo discret */}
-        <circle r={r * 1.8} fill={color} opacity="0.1" />
-        {/* Point principal */}
-        <circle r={r} fill={color} stroke="white" strokeWidth={Math.max(1, 1.5 * scale)} />
-        {identified && <circle r={Math.max(r - 1.5, 1)} fill="white" opacity="0.9" />}
+        {/* Halo : pulse CSS pour identifiés/hot, statique pour anonymes */}
+        <circle r={r * 2} fill={color}
+          className={identified ? 'gch-id-halo' : (hot ? 'gch-hot-halo' : undefined)}
+          opacity={identified || hot ? 0.18 : 0.08} />
+        {/* Point principal — contour net grâce à vectorEffect */}
+        <circle r={r} fill={color} stroke="white" strokeWidth="1.5"
+          vectorEffect="non-scaling-stroke" />
+        {identified && (
+          <circle r={Math.max(r - 1.8, 1.2)} fill="white" opacity="0.95" />
+        )}
+        {/* Zone de clic agrandie (invisible) */}
+        <circle r={Math.max(r * 2.2, 10)} fill="transparent" />
       </g>
     </Marker>
   );
-}, function (a, b) { return a.visitor.visitor_id === b.visitor.visitor_id && a.currentZoom === b.currentZoom; });
+}, function (a, b) {
+  return a.visitor.visitor_id === b.visitor.visitor_id
+    && a.visitor.event_count === b.visitor.event_count
+    && a.visitor.identified === b.visitor.identified
+    && Math.abs((a.currentZoom || 1) - (b.currentZoom || 1)) < 0.15; // évite re-render sur micro-mouvements
+});
 
 // ── Connexion animée visiteur → Paris ───────────────────────────
+// Flux pointillé animé via CSS (0 coût JS) — effet "trafic vers le siège"
 function ConnectionLine({ from }) {
   if (!from) return null;
   return (
@@ -122,7 +134,8 @@ function ConnectionLine({ from }) {
       strokeWidth={0.8}
       strokeLinecap="round"
       strokeDasharray="4 4"
-      strokeOpacity={0.3}
+      strokeOpacity={0.35}
+      className="gch-line"
     />
   );
 }
@@ -389,7 +402,13 @@ export default function SeoGlobe() {
 
   return (
     <div className="seo-fade">
-      <style>{'@keyframes livepulse{0%,100%{opacity:.6}50%{opacity:1}}'}</style>
+      <style>{`
+        @keyframes livepulse{0%,100%{opacity:.6}50%{opacity:1}}
+        @keyframes dotpulse{0%,100%{transform:scale(1);opacity:.18}50%{transform:scale(1.35);opacity:.05}}
+        .gch-hot-halo,.gch-id-halo{transform-origin:center;transform-box:fill-box;animation:dotpulse 2.2s ease-in-out infinite}
+        @keyframes dashflow{to{stroke-dashoffset:-20}}
+        .gch-line{animation:dashflow 1.6s linear infinite}
+      `}</style>
 
       <PageHeader
         eyebrow="Globe · Audience"
