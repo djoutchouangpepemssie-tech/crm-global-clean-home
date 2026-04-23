@@ -30,11 +30,13 @@ const HOT_COLOR = '#f59e0b';
 const IDENTIFIED_COLOR = '#3b82f6';
 const LIVE_COLOR = '#22c55e'; // Vert plus vif pour les LIVE actifs
 
-// Fenêtres temporelles alignées sur Google Analytics :
-// - LIVE : dernière activité < 30 min (= "utilisateurs en ligne" chez GA4)
-// - RECENT : 30 min - 1 h (encore affiché mais plus en LIVE visuel)
-const LIVE_WINDOW_MS = 30 * 60 * 1000;
-const RECENT_WINDOW_MS = 60 * 60 * 1000;
+// Fenêtres temporelles — seuil élargi à 1h pour rester pertinent sur un
+// site B2B où les prospects consultent plusieurs pages en prenant leur temps
+// avant d'appeler ou de remplir un devis.
+// - LIVE : dernière activité < 1 h (visiteur encore potentiellement actif)
+// - RECENT : 1 h - 3 h (affiché mais en statut "récent")
+const LIVE_WINDOW_MS = 60 * 60 * 1000;
+const RECENT_WINDOW_MS = 3 * 60 * 60 * 1000;
 
 function isLive(visitor) {
   if (!visitor?.last_seen) return false;
@@ -1360,7 +1362,7 @@ export default function SeoGlobe() {
               if (mAgo < 1440) return 'Dernier visiteur il y a ' + Math.round(mAgo / 60) + 'h';
               return 'Dernier visiteur il y a ' + Math.round(mAgo / 1440) + 'j';
             })() :
-              (liveCount === 1 ? 'visiteur actif (30 dernières min)' : 'visiteurs actifs (30 dernières min)')}
+              (liveCount === 1 ? 'visiteur actif (dernière heure)' : 'visiteurs actifs (dernière heure)')}
             {liveData?.active_pages?.[0] && liveCount > 0 && ' · ' + liveData.active_pages[0].path}
           </div>
           {/* Badge pulsant en haut à droite */}
