@@ -1059,3 +1059,179 @@ async def tracker_keywords(request: Request, days: int = 28, limit: int = 50):
     except Exception as e:
         logger.error(f"tracker/keywords: {e}")
         raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+# ============= STATS OVERVIEW =============
+
+@tracker_router.get("/stats/overview")
+async def tracker_stats_overview(request: Request, days: int = 7):
+    """KPIs agrégés pour le header de la page Visitor Journeys."""
+    try:
+        from server import require_auth
+        await require_auth(request)
+    except Exception:
+        pass
+    if _db is None:
+        raise HTTPException(status_code=500, detail="DB non initialisee")
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    cutoff_prev = (datetime.now(timezone.utc) - timedelta(days=days * 2)).isoformat()
+
+    # Visiteurs uniques période courante vs précédente
+    query = {"last_seen": {"$gte": cutoff}}
+    query_prev = {"last_seen": {"$gte": cutoff_prev, "$lt": cutoff}}
+
+    unique_current = await _db.visitor_profiles.count_documents(query)
+    unique_prev = await _db.visitor_profiles.count_documents(query_prev)
+
+    # Convertis
+    converted_current = await _db.visitor_profiles.count_documents({**query, "lead_id": {"$exists": True, "$ne": None}})
+    converted_prev = await _db.visitor_profiles.count_documents({**query_prev, "lead_id": {"$exists": True, "$ne": None}})
+
+    conversion_rate = round((converted_current / max(unique_current, 1)) * 100, 1)
+    conversion_rate_prev = round((converted_prev / max(unique_prev, 1)) * 100, 1)
+
+    # Pages vues (somme des pageviews)
+    pv_pipeline = [
+        {"$match": {"last_seen": {"$gte": cutoff}}},
+        {"$group": {"_id": None, "total": {"$sum": "$pageviews"}}},
+    ]
+    pv_result = await _db.visitor_profiles.aggregate(pv_pipeline).to_list(1)
+    total_pageviews = pv_result[0]["total"] if pv_result else 0
+
+    # Moyenne visites avant conversion
+    avg_pipeline = [
+        {"$match": {"lead_id": {"$exists": True, "$ne": None}}},
+        {"$group": {"_id": None,
+                    "avg_sessions": {"$avg": {"$size": {"$ifNull": ["$sessions", []]}}},
+                    "avg_pages": {"$avg": "$pageviews"}}},
+    ]
+    avg_result = await _db.visitor_profiles.aggregate(avg_pipeline).to_list(1)
+    avg_visits = round(avg_result[0]["avg_sessions"], 1) if avg_result else 0
+    avg_pages = round(avg_result[0]["avg_pages"], 1) if avg_result else 0
+
+    # Top 5 pays
+    country_pipeline = [
+        {"$match": {"last_seen": {"$gte": cutoff}, "location.country_code": {"$exists": True}}},
+        {"$group": {"_id": "$location.country_code", "name": {"$first": "$location.country"}, "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 5},
+    ]
+    top_countries = await _db.visitor_profiles.aggregate(country_pipeline).to_list(5)
+
+    # Top 5 pages
+    page_pipeline = [
+        {"$match": {"last_seen": {"$gte": cutoff}, "pages_visited": {"$exists": True}}},
+        {"$unwind": "$pages_visited"},
+        {"$group": {"_id": "$pages_visited", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 5},
+    ]
+    top_pages = await _db.visitor_profiles.aggregate(page_pipeline).to_list(5)
+
+    # Top 5 sources
+    source_pipeline = [
+        {"$match": {"last_seen": {"$gte": cutoff}, "first_utm.utm_source": {"$exists": True}}},
+        {"$group": {"_id": "$first_utm.utm_source", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 5},
+    ]
+    top_sources = await _db.visitor_profiles.aggregate(source_pipeline).to_list(5)
+
+    # Device breakdown
+    device_pipeline = [
+        {"$match": {"last_seen": {"$gte": cutoff}}},
+        {"$group": {"_id": "$device_type", "count": {"$sum": 1}}},
+    ]
+    device_raw = await _db.visitor_profiles.aggregate(device_pipeline).to_list(10)
+    device_breakdown = {d["_id"] or "unknown": d["count"] for d in device_raw}
+
+    return {
+        "period_days": days,
+        "unique_visitors": unique_current,
+        "unique_visitors_prev": unique_prev,
+        "unique_visitors_delta": unique_current - unique_prev,
+        "total_pageviews": total_pageviews,
+        "conversion_rate": conversion_rate,
+        "conversion_rate_prev": conversion_rate_prev,
+        "conversion_rate_delta": round(conversion_rate - conversion_rate_prev, 1),
+        "converted_count": converted_current,
+        "avg_visits_before_conversion": avg_visits,
+        "avg_pages_before_conversion": avg_pages,
+        "top_countries": [{"code": c["_id"], "name": c.get("name", c["_id"]), "count": c["count"]} for c in top_countries],
+        "top_pages": [{"path": p["_id"], "count": p["count"]} for p in top_pages],
+        "top_sources": [{"source": s["_id"], "count": s["count"]} for s in top_sources],
+        "device_breakdown": device_breakdown,
+    }
+
+
+# ============= REALTIME (visiteurs actifs 5 dernières minutes) =============
+
+@tracker_router.get("/stats/realtime")
+async def tracker_stats_realtime(request: Request):
+    """Visiteurs actifs dans les 5 dernières minutes (badge LIVE)."""
+    try:
+        from server import require_auth
+        await require_auth(request)
+    except Exception:
+        pass
+    if _db is None:
+        return {"active_visitors": 0, "active_pages": []}
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+    active = await _db.visitor_profiles.count_documents({"last_seen": {"$gte": cutoff}})
+
+    # Pages actives en ce moment
+    active_pages_pipeline = [
+        {"$match": {"last_seen": {"$gte": cutoff}}},
+        {"$group": {"_id": "$last_page", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 5},
+    ]
+    pages = await _db.visitor_profiles.aggregate(active_pages_pipeline).to_list(5)
+
+    return {
+        "active_visitors": active,
+        "active_pages": [{"path": p["_id"], "count": p["count"]} for p in pages],
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+# ============= DROIT À L'OUBLI RGPD =============
+
+@tracker_router.delete("/visitor/{visitor_id}")
+async def delete_visitor_data(visitor_id: str, request: Request):
+    """Supprime toutes les données d'un visiteur (RGPD droit à l'oubli).
+    Supprime le profil, tous les événements et les sessions."""
+    try:
+        from server import require_auth
+        await require_auth(request)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Authentification requise")
+
+    if _db is None:
+        raise HTTPException(status_code=500, detail="DB non initialisee")
+
+    # Supprimer le profil
+    result_profile = await _db.visitor_profiles.delete_one({"visitor_id": visitor_id})
+    # Supprimer tous les événements (si la collection existe)
+    result_events = 0
+    try:
+        r = await _db.tracking_events.delete_many({"visitor_id": visitor_id})
+        result_events = r.deleted_count
+    except Exception:
+        pass
+    # Supprimer les sessions (si la collection existe)
+    try:
+        await _db.visitor_sessions.delete_many({"visitor_id": visitor_id})
+    except Exception:
+        pass
+
+    deleted = result_profile.deleted_count > 0
+    return {
+        "deleted": deleted,
+        "visitor_id": visitor_id,
+        "profile_deleted": result_profile.deleted_count,
+        "events_deleted": result_events,
+        "message": f"Données du visiteur {visitor_id} supprimées" if deleted else "Visiteur non trouvé",
+    }

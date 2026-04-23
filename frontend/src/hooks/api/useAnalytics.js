@@ -7,6 +7,7 @@
  * diffèrent (CRM : 60s, SEO/GA4 : 5min).
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import api from '../../lib/api';
 
 export function useCrmAnalytics() {
@@ -256,6 +257,36 @@ export function useVisitorJourney(visitorId) {
     enabled: !!visitorId,
     refetchInterval: 20_000,  // temps réel
     staleTime: 10_000,
+  });
+}
+
+export function useJourneyOverview(days = 7) {
+  return useQuery({
+    queryKey: ['tracker', 'stats', 'overview', days],
+    queryFn: async () => (await api.get(`/tracker/stats/overview?days=${days}`)).data,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useJourneyRealtime() {
+  return useQuery({
+    queryKey: ['tracker', 'stats', 'realtime'],
+    queryFn: async () => (await api.get('/tracker/stats/realtime')).data,
+    refetchInterval: 10_000,
+    staleTime: 5_000,
+  });
+}
+
+export function useDeleteVisitor() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (visitorId) => (await api.delete(`/tracker/visitor/${visitorId}`)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tracker'] });
+      toast.success('Données visiteur supprimées (RGPD)');
+    },
+    onError: (err) => toast.error(err.message || 'Erreur suppression'),
   });
 }
 
