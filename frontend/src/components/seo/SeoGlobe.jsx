@@ -28,6 +28,24 @@ const PARIS = [2.35, 48.85]; // Siège Global Clean Home
 const VISITOR_COLOR = '#10b981';
 const HOT_COLOR = '#f59e0b';
 const IDENTIFIED_COLOR = '#3b82f6';
+const LIVE_COLOR = '#22c55e'; // Vert plus vif pour les LIVE actifs
+
+// Fenêtre "LIVE" : dernière activité < 5 min = visiteur considéré comme actuellement sur le site
+const LIVE_WINDOW_MS = 5 * 60 * 1000;
+const RECENT_WINDOW_MS = 30 * 60 * 1000;
+
+function isLive(visitor) {
+  if (!visitor?.last_seen) return false;
+  try { return (Date.now() - new Date(visitor.last_seen).getTime()) < LIVE_WINDOW_MS; }
+  catch (_e) { return false; }
+}
+function isRecent(visitor) {
+  if (!visitor?.last_seen) return false;
+  try {
+    var diff = Date.now() - new Date(visitor.last_seen).getTime();
+    return diff >= LIVE_WINDOW_MS && diff < RECENT_WINDOW_MS;
+  } catch (_e) { return false; }
+}
 
 // Villes connues
 const CITY_COORDS = {
@@ -123,6 +141,13 @@ function dotColor(visitor) {
   return VISITOR_COLOR;
 }
 
+// Statut visuel d'un visiteur : live (vert pulsant), recent, ou inactive
+function visitorStatus(visitor) {
+  if (isLive(visitor)) return 'live';
+  if (isRecent(visitor)) return 'recent';
+  return 'inactive';
+}
+
 // ── VisitorDot — taille variable + couleur selon statut ─────────
 // Scaling doux (1/√z) : les points restent visibles au zoom sans exploser en taille.
 // Stroke non-scaling via vectorEffect : contours toujours nets quel que soit le zoom.
@@ -130,28 +155,45 @@ var VisitorDot = memo(function VisitorDot({ visitor, onHover, onLeave, currentZo
   var coords = coordsFor(visitor);
   if (!coords) return null;
   var z = currentZoom || 1;
-  var scale = 1 / Math.sqrt(Math.max(z, 1)); // √-scaling : plus doux que 1/z
+  var scale = 1 / Math.sqrt(Math.max(z, 1));
   var base = dotSize(visitor);
-  var r = Math.max(base * scale, 3.5); // minimum 3.5 pour rester clairement visible
+  var r = Math.max(base * scale, 3.5);
   var color = dotColor(visitor);
   var identified = visitor.identified;
   var hot = color === HOT_COLOR;
+  var live = isLive(visitor);
   return (
     <Marker coordinates={coords}>
       <g style={{ cursor: 'pointer' }}
         onMouseEnter={function () { onHover(visitor); }}
         onMouseLeave={onLeave}>
-        {/* Halo : pulse CSS pour identifiés/hot, statique pour anonymes */}
-        <circle r={r * 2} fill={color}
-          className={identified ? 'gch-id-halo' : (hot ? 'gch-hot-halo' : undefined)}
-          opacity={identified || hot ? 0.18 : 0.08} />
-        {/* Point principal — contour net grâce à vectorEffect */}
-        <circle r={r} fill={color} stroke="white" strokeWidth="1.5"
+        {/* Anneau LIVE ultra visible — pulse vert géant + rotation */}
+        {live && (
+          <>
+            <circle r={r * 3.5} fill="none" stroke={LIVE_COLOR} strokeWidth="1.5"
+              vectorEffect="non-scaling-stroke" className="gch-live-ring"
+              opacity="0.6" />
+            <circle r={r * 2.5} fill={LIVE_COLOR} className="gch-live-halo" opacity="0.25" />
+          </>
+        )}
+        {/* Halo "récent" ou "identifié/hot" */}
+        {!live && (
+          <circle r={r * 2} fill={color}
+            className={identified ? 'gch-id-halo' : (hot ? 'gch-hot-halo' : undefined)}
+            opacity={identified || hot ? 0.18 : 0.08} />
+        )}
+        {/* Point principal */}
+        <circle r={r} fill={live ? LIVE_COLOR : color}
+          stroke="white" strokeWidth={live ? 2 : 1.5}
           vectorEffect="non-scaling-stroke" />
-        {identified && (
+        {identified && !live && (
           <circle r={Math.max(r - 1.8, 1.2)} fill="white" opacity="0.95" />
         )}
-        {/* Zone de clic agrandie (invisible) */}
+        {/* Voyant vert interne pour LIVE identifié */}
+        {live && identified && (
+          <circle r={Math.max(r - 2, 1.2)} fill="white" opacity="0.95" />
+        )}
+        {/* Zone de clic agrandie */}
         <circle r={Math.max(r * 2.2, 10)} fill="transparent" />
       </g>
     </Marker>
@@ -160,7 +202,8 @@ var VisitorDot = memo(function VisitorDot({ visitor, onHover, onLeave, currentZo
   return a.visitor.visitor_id === b.visitor.visitor_id
     && a.visitor.event_count === b.visitor.event_count
     && a.visitor.identified === b.visitor.identified
-    && Math.abs((a.currentZoom || 1) - (b.currentZoom || 1)) < 0.15; // évite re-render sur micro-mouvements
+    && a.visitor.last_seen === b.visitor.last_seen
+    && Math.abs((a.currentZoom || 1) - (b.currentZoom || 1)) < 0.15;
 });
 
 // ── Connexion animée visiteur → Paris ───────────────────────────
@@ -218,61 +261,283 @@ function VisitorTooltip({ visitor, x, y }) {
 }
 
 // ── Flux live latéral ───────────────────────────────────────────
+function minutesAgo(iso) {
+  if (!iso) return null;
+  try { return Math.round((Date.now() - new Date(iso).getTime()) / 60000); } catch (_e) { return null; }
+}
+
 function LiveFeed({ visitors, liveCount }) {
-  var recent = useMemo(function () {
-    return (visitors || []).slice(0, 8).map(function (v) {
-      var city = v.location?.city || '—';
-      var cc = (v.location?.country_code || '').toUpperCase();
-      return { ...v, city: city, cc: cc };
-    });
+  // Tri : LIVE > récents > inactifs. LIVE en tête pour que les visiteurs
+  // actuellement sur le site soient immédiatement visibles.
+  var sorted = useMemo(function () {
+    return (visitors || [])
+      .map(function (v) {
+        var cc = (v.location?.country_code || '').toUpperCase();
+        var city = v.location?.city || '—';
+        return { ...v, city: city, cc: cc, _status: visitorStatus(v), _mAgo: minutesAgo(v.last_seen) };
+      })
+      .sort(function (a, b) {
+        var order = { live: 0, recent: 1, inactive: 2 };
+        if (order[a._status] !== order[b._status]) return order[a._status] - order[b._status];
+        return new Date(b.last_seen || 0) - new Date(a.last_seen || 0);
+      })
+      .slice(0, 12);
   }, [visitors]);
+
+  var liveCountInList = sorted.filter(function (v) { return v._status === 'live'; }).length;
 
   return (
     <div style={{
-      position: 'absolute', top: 16, right: 16, width: 280,
+      position: 'absolute', top: 16, right: 16, width: 300,
       background: 'white', borderRadius: 14, overflow: 'hidden',
       boxShadow: '0 4px 24px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0',
-      fontSize: 12, maxHeight: 500,
+      fontSize: 12, maxHeight: 520,
     }}>
-      {/* Header live */}
+      {/* Header LIVE — compteur géant animé */}
       <div style={{
-        padding: '10px 14px', background: liveCount > 0 ? 'var(--emerald-soft, #ecfdf5)' : 'var(--surface-2)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '12px 14px',
+        background: liveCountInList > 0
+          ? 'linear-gradient(135deg, #dcfce7, #bbf7d0)'
+          : 'var(--surface-2)',
         borderBottom: '1px solid #f1f5f9',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, color: liveCount > 0 ? 'var(--emerald)' : 'var(--ink-4)' }}>
-          <span style={{ width: 7, height: 7, borderRadius: 999, background: liveCount > 0 ? '#10b981' : '#94a3b8',
-            animation: liveCount > 0 ? 'livepulse 1.6s ease-in-out infinite' : 'none', display: 'inline-block' }} />
-          {liveCount} en direct
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span className={liveCountInList > 0 ? 'gch-beacon' : ''} style={{
+              width: 12, height: 12, borderRadius: 999,
+              background: liveCountInList > 0 ? LIVE_COLOR : '#cbd5e1',
+              display: 'inline-block', flexShrink: 0,
+            }} />
+            <div>
+              <div className={liveCountInList > 0 ? 'gch-live-text' : ''} style={{
+                fontSize: 22, fontWeight: 800,
+                color: liveCountInList > 0 ? '#15803d' : 'var(--ink-4)',
+                lineHeight: 1, fontFamily: 'JetBrains Mono, monospace',
+              }}>
+                {liveCountInList}
+              </div>
+              <div style={{
+                fontSize: 9, fontWeight: 700, letterSpacing: '0.1em',
+                color: liveCountInList > 0 ? '#166534' : 'var(--ink-4)',
+                textTransform: 'uppercase', marginTop: 2,
+              }}>
+                EN CE MOMENT
+              </div>
+            </div>
+          </div>
+          <div style={{ fontSize: 9, color: '#64748b' }}>
+            Refresh<br />20s
+          </div>
         </div>
-        <span style={{ fontSize: 10, color: 'var(--ink-4)' }}>Refresh 20s</span>
       </div>
 
-      {/* Liste des visiteurs récents */}
-      <div style={{ maxHeight: 380, overflowY: 'auto' }}>
-        {recent.length === 0 ? (
-          <div style={{ padding: 20, textAlign: 'center', color: 'var(--ink-4)', fontSize: 11 }}>Aucun visiteur récent</div>
-        ) : recent.map(function (v, i) {
-          var isHot = (v.event_count || 0) > 10 || v.cta_clicks > 0;
+      {/* Liste des visiteurs */}
+      <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+        {sorted.length === 0 ? (
+          <div style={{ padding: 24, textAlign: 'center', color: 'var(--ink-4)', fontSize: 11 }}>
+            Aucun visiteur récent
+          </div>
+        ) : sorted.map(function (v) {
+          var live = v._status === 'live';
+          var recent = v._status === 'recent';
+          var isHot = (v.event_count || 0) > 10 || v.cta_clicks > 0 || v.phone_clicks > 0;
+          var borderLeft = live
+            ? '3px solid ' + LIVE_COLOR
+            : v.identified ? '3px solid ' + IDENTIFIED_COLOR
+            : isHot ? '3px solid ' + HOT_COLOR
+            : '3px solid transparent';
+          var bg = live ? 'rgba(34,197,94,0.06)' : 'white';
+
           return (
-            <div key={v.visitor_id || i} style={{
-              padding: '8px 14px', borderBottom: '1px solid #f8fafc',
+            <div key={v.visitor_id} style={{
+              padding: '9px 14px', borderBottom: '1px solid #f8fafc',
               display: 'flex', alignItems: 'center', gap: 10,
-              borderLeft: v.identified ? '3px solid ' + IDENTIFIED_COLOR : (isHot ? '3px solid ' + HOT_COLOR : '3px solid transparent'),
+              borderLeft: borderLeft, background: bg,
             }}>
-              <div style={{ flexShrink: 0, width: 24, textAlign: 'center' }}>
-                {v.cc ? <ReactCountryFlag countryCode={v.cc} svg style={{ width: 16, height: 12 }} /> : <GlobeIcon style={{ width: 14, height: 14, color: 'var(--ink-4)' }} />}
+              {/* Voyant de statut (gros vert pulsant pour LIVE) */}
+              <div style={{ flexShrink: 0, width: 18, display: 'flex', justifyContent: 'center' }}>
+                {live ? (
+                  <span className="gch-beacon" style={{
+                    width: 10, height: 10, borderRadius: 999, background: LIVE_COLOR,
+                    display: 'inline-block',
+                  }} />
+                ) : recent ? (
+                  <span style={{
+                    width: 7, height: 7, borderRadius: 999, background: '#22c55e', opacity: 0.55,
+                    display: 'inline-block',
+                  }} />
+                ) : (
+                  <span style={{
+                    width: 6, height: 6, borderRadius: 999, background: '#cbd5e1',
+                    display: 'inline-block',
+                  }} />
+                )}
               </div>
+
+              {/* Drapeau */}
+              <div style={{ flexShrink: 0, width: 20, textAlign: 'center' }}>
+                {v.cc
+                  ? <ReactCountryFlag countryCode={v.cc} svg style={{ width: 16, height: 12 }} />
+                  : <GlobeIcon style={{ width: 13, height: 13, color: 'var(--ink-4)' }} />}
+              </div>
+
+              {/* Identité + infos */}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <div style={{
+                  fontSize: 12, fontWeight: live ? 700 : 500, color: 'var(--ink)',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}>
                   {v.lead_name || v.city}
+                  {live && (
+                    <span style={{
+                      padding: '1px 6px', borderRadius: 4, background: '#dcfce7',
+                      color: '#166534', fontSize: 8, fontWeight: 700, letterSpacing: '0.08em',
+                    }}>LIVE</span>
+                  )}
                 </div>
                 <div style={{ fontSize: 10, color: 'var(--ink-4)' }}>
                   {v.event_count || 0} events · {v.device || v.device_type || '—'}
+                  {v.pageviews ? ' · ' + v.pageviews + ' pages' : ''}
                 </div>
               </div>
-              <div style={{ fontSize: 10, color: 'var(--ink-4)', whiteSpace: 'nowrap' }}>
-                {v.last_seen ? new Date(v.last_seen).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '—'}
+
+              {/* Temps */}
+              <div style={{
+                fontSize: live ? 10 : 9, fontWeight: live ? 700 : 400,
+                color: live ? '#15803d' : 'var(--ink-4)', whiteSpace: 'nowrap',
+                textAlign: 'right',
+              }}>
+                {v._mAgo !== null ? (
+                  v._mAgo < 1 ? 'maintenant'
+                    : v._mAgo < 60 ? 'il y a ' + v._mAgo + ' min'
+                    : v._mAgo < 1440 ? 'il y a ' + Math.round(v._mAgo / 60) + 'h'
+                    : 'il y a ' + Math.round(v._mAgo / 1440) + 'j'
+                ) : '—'}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────── Panel "Pays en direct" ────────────────────────
+// Liste TOUS les pays avec visiteurs sur la période, triée par nb live
+// puis nb total. Voyant vert pulsant pour pays avec ≥1 visiteur LIVE.
+function CountriesLivePanel({ allVisitors, onSelectCountry, selectedCountry }) {
+  var byCountry = useMemo(function () {
+    var map = {};
+    (allVisitors || []).forEach(function (v) {
+      var cc = (v.location?.country_code || '').toUpperCase();
+      var name = v.location?.country || cc;
+      if (!cc) return;
+      if (!map[cc]) map[cc] = { code: cc, name: name, total: 0, live: 0, identified: 0, hot: 0 };
+      map[cc].total += 1;
+      if (isLive(v)) map[cc].live += 1;
+      if (v.identified) map[cc].identified += 1;
+      if ((v.cta_clicks || 0) + (v.phone_clicks || 0) > 0) map[cc].hot += 1;
+    });
+    return Object.values(map).sort(function (a, b) {
+      if (b.live !== a.live) return b.live - a.live;
+      return b.total - a.total;
+    });
+  }, [allVisitors]);
+
+  var totalLive = byCountry.reduce(function (a, c) { return a + c.live; }, 0);
+
+  return (
+    <div style={{
+      position: 'absolute', top: 16, left: 16, width: 260,
+      background: 'white', borderRadius: 14, overflow: 'hidden',
+      boxShadow: '0 4px 24px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0',
+      fontSize: 12, maxHeight: 520, display: 'flex', flexDirection: 'column',
+    }}>
+      <div style={{
+        padding: '12px 14px', borderBottom: '1px solid #f1f5f9',
+        background: 'linear-gradient(135deg,#f8fafc,#ffffff)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: '#334155' }}>
+            <GlobeIcon style={{ width: 13, height: 13 }} />
+            PAYS EN DIRECT
+          </div>
+          <span style={{
+            fontSize: 10, padding: '2px 8px', borderRadius: 999,
+            background: totalLive > 0 ? '#dcfce7' : '#f1f5f9',
+            color: totalLive > 0 ? '#166534' : '#64748b',
+            fontWeight: 700,
+          }}>
+            {byCountry.length} pays
+          </span>
+        </div>
+        {totalLive > 0 && (
+          <div style={{ fontSize: 10, color: '#16a34a', marginTop: 4, fontWeight: 600 }}>
+            <span className="gch-beacon" style={{
+              width: 6, height: 6, borderRadius: 999, background: LIVE_COLOR,
+              display: 'inline-block', verticalAlign: 'middle', marginRight: 4,
+            }} />
+            {totalLive} visiteur{totalLive > 1 ? 's' : ''} actif{totalLive > 1 ? 's' : ''} maintenant
+          </div>
+        )}
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        {byCountry.length === 0 ? (
+          <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 11 }}>
+            Aucun pays détecté
+          </div>
+        ) : byCountry.map(function (c) {
+          var active = selectedCountry === c.code;
+          return (
+            <div key={c.code} onClick={function () { onSelectCountry(active ? '' : c.code); }}
+              style={{
+                padding: '9px 14px', borderBottom: '1px solid #f8fafc',
+                display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+                background: active ? 'rgba(16,185,129,0.08)' : 'transparent',
+                borderLeft: active ? '3px solid ' + LIVE_COLOR : '3px solid transparent',
+                transition: 'background 0.15s',
+              }}>
+              {/* Voyant vert pulsant si LIVE */}
+              <div style={{ flexShrink: 0, width: 10, display: 'flex', justifyContent: 'center' }}>
+                {c.live > 0 ? (
+                  <span className="gch-beacon" style={{
+                    width: 9, height: 9, borderRadius: 999, background: LIVE_COLOR,
+                  }} />
+                ) : (
+                  <span style={{
+                    width: 6, height: 6, borderRadius: 999, background: '#cbd5e1',
+                  }} />
+                )}
+              </div>
+              <ReactCountryFlag countryCode={c.code} svg style={{ width: 20, height: 14, borderRadius: 2, flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontSize: 12, fontWeight: c.live > 0 ? 700 : 500,
+                  color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {c.name}
+                </div>
+                <div style={{ fontSize: 10, color: '#64748b', marginTop: 1 }}>
+                  {c.identified ? c.identified + ' identifiés · ' : ''}{c.hot} engagés
+                </div>
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                {c.live > 0 && (
+                  <div style={{
+                    fontSize: 11, fontWeight: 800, fontFamily: 'JetBrains Mono, monospace',
+                    color: '#15803d',
+                  }}>
+                    {c.live} live
+                  </div>
+                )}
+                <div style={{
+                  fontSize: 10, color: c.live > 0 ? '#64748b' : 'var(--ink-2)',
+                  fontFamily: 'JetBrains Mono, monospace', fontWeight: c.live > 0 ? 400 : 700,
+                }}>
+                  {c.total} total
+                </div>
               </div>
             </div>
           );
@@ -378,11 +643,49 @@ export default function SeoGlobe() {
   var { data: visitors, isLoading } = useVisitors(visitorHours, 200);
   var [tooltip, setTooltip] = useState(null);
   var [filters, setFilters] = useState({ country: '', device: '', identified: '' });
+  var [liveOnly, setLiveOnly] = useState(false);
   var [hoveredCountry, setHoveredCountry] = useState(null);
   var [zoom, setZoom] = useState(1.2);
   var [center, setCenter] = useState([10, 30]);
   var mapRef = React.useRef(null);
   var [mouse, setMouse] = useState({ x: 0, y: 0 });
+
+  // Tracking : alerte visuelle quand un nouveau visiteur arrive
+  var [newVisitorIds, setNewVisitorIds] = useState(new Set());
+  var knownIdsRef = React.useRef(new Set());
+
+  React.useEffect(function () {
+    var current = visitors?.visitors || [];
+    if (!current.length) return;
+    // Premier chargement : stocker sans notifier
+    if (knownIdsRef.current.size === 0) {
+      current.forEach(function (v) { if (v.visitor_id) knownIdsRef.current.add(v.visitor_id); });
+      return;
+    }
+    // Nouveaux IDs (arrivés depuis le dernier refetch)
+    var fresh = new Set();
+    current.forEach(function (v) {
+      if (v.visitor_id && !knownIdsRef.current.has(v.visitor_id) && isLive(v)) {
+        fresh.add(v.visitor_id);
+        knownIdsRef.current.add(v.visitor_id);
+      }
+    });
+    if (fresh.size > 0) {
+      setNewVisitorIds(function (prev) {
+        var merged = new Set(prev);
+        fresh.forEach(function (id) { merged.add(id); });
+        return merged;
+      });
+      // Retire le flash après 3s
+      setTimeout(function () {
+        setNewVisitorIds(function (prev) {
+          var next = new Set(prev);
+          fresh.forEach(function (id) { next.delete(id); });
+          return next;
+        });
+      }, 3000);
+    }
+  }, [visitors]);
 
   var onDotHover = useCallback(function (visitor) { setTooltip(visitor); }, []);
   var onDotLeave = useCallback(function () { setTooltip(null); }, []);
@@ -406,8 +709,14 @@ export default function SeoGlobe() {
     if (filters.device) list = list.filter(function (x) { return (x.device || x.device_type) === filters.device; });
     if (filters.identified === 'true') list = list.filter(function (x) { return x.identified; });
     if (filters.identified === 'false') list = list.filter(function (x) { return !x.identified; });
+    if (liveOnly) list = list.filter(isLive);
     return list;
-  }, [allVisitors, filters]);
+  }, [allVisitors, filters, liveOnly]);
+
+  // Compteur LIVE précis (calculé depuis last_seen des visitors, plus fiable que liveData)
+  var liveVisitorsCount = useMemo(function () {
+    return allVisitors.filter(isLive).length;
+  }, [allVisitors]);
 
   // Connexions vers Paris — memoizées pour éviter la recréation à chaque render
   var connectionLines = useMemo(function () {
@@ -448,7 +757,13 @@ export default function SeoGlobe() {
     return Object.values(map).sort(function (a, b) { return b.count - a.count; });
   }, [allVisitors]);
 
-  var liveCount = liveData?.active_visitors || realtime?.active_users || 0;
+  // On privilégie le compteur calculé depuis la data réelle (les visiteurs
+  // avec last_seen < 5min), mais on garde le max avec les sources live externes
+  var liveCount = Math.max(
+    liveVisitorsCount,
+    liveData?.active_visitors || 0,
+    realtime?.active_users || 0
+  );
 
   if (isLoading && !visitors) return <LoadingState message="Chargement des visiteurs…" />;
 
@@ -460,6 +775,24 @@ export default function SeoGlobe() {
         .gch-hot-halo,.gch-id-halo{transform-origin:center;transform-box:fill-box;animation:dotpulse 2.2s ease-in-out infinite}
         @keyframes dashflow{to{stroke-dashoffset:-20}}
         .gch-line{animation:dashflow 1.6s linear infinite}
+
+        /* LIVE — halo grand qui pulse fort pour identifier les visiteurs actifs */
+        @keyframes liveHalo{0%{transform:scale(.7);opacity:.55}70%{transform:scale(2.2);opacity:0}100%{transform:scale(2.2);opacity:0}}
+        @keyframes liveRing{0%{transform:scale(1);opacity:.6}50%{transform:scale(1.25);opacity:.9}100%{transform:scale(1);opacity:.6}}
+        .gch-live-halo{transform-origin:center;transform-box:fill-box;animation:liveHalo 1.8s ease-out infinite}
+        .gch-live-ring{transform-origin:center;transform-box:fill-box;animation:liveRing 1.8s ease-in-out infinite}
+
+        /* Voyant vert pulsant — utilisé dans les panels */
+        @keyframes greenBeacon{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.7)}50%{box-shadow:0 0 0 6px rgba(34,197,94,0)}}
+        .gch-beacon{animation:greenBeacon 1.6s ease-out infinite}
+
+        /* Compteur LIVE — scintille */
+        @keyframes liveText{0%,100%{opacity:1}50%{opacity:.85}}
+        .gch-live-text{animation:liveText 1.6s ease-in-out infinite}
+
+        /* Highlight nouvelle ligne (quand nouveau visiteur arrive) */
+        @keyframes newRowFlash{0%{background:rgba(34,197,94,.22)}100%{background:transparent}}
+        .gch-new-flash{animation:newRowFlash 2.5s ease-out}
       `}</style>
 
       <PageHeader
@@ -468,11 +801,56 @@ export default function SeoGlobe() {
         subtitle={fmt(v.length) + ' visiteurs sur ' + (visitorHours <= 24 ? visitorHours + 'h' : Math.round(visitorHours / 24) + 'j') + ' · ' + fmt(visitors?.identified || 0) + ' identifiés · ' + countries.length + ' pays'}
       />
 
-      {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 16 }}>
-        <KpiTile label="En direct" value={fmt(liveCount)}
-          tone={liveCount > 0 ? 'var(--emerald)' : 'var(--ink-4)'} icon={Zap}
-          sub={liveData?.active_pages?.[0] ? liveData.active_pages[0].path : '—'} />
+      {/* KPIs — LIVE hero géant + 4 autres KPIs */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr 1fr 1fr', gap: 14, marginBottom: 16 }}>
+        {/* LIVE Hero — hors KpiTile pour être bien visible et animé */}
+        <div style={{
+          padding: 20, borderRadius: 14,
+          background: liveCount > 0
+            ? 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)'
+            : '#f8fafc',
+          border: '1px solid ' + (liveCount > 0 ? '#86efac' : '#e2e8f0'),
+          position: 'relative', overflow: 'hidden',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <span className={liveCount > 0 ? 'gch-beacon' : ''} style={{
+              width: 12, height: 12, borderRadius: 999,
+              background: liveCount > 0 ? LIVE_COLOR : '#cbd5e1',
+              display: 'inline-block',
+            }} />
+            <span style={{
+              fontFamily: 'JetBrains Mono, monospace', fontSize: 10,
+              letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700,
+              color: liveCount > 0 ? '#166534' : '#64748b',
+            }}>
+              EN CE MOMENT SUR LE SITE
+            </span>
+          </div>
+          <div className={liveCount > 0 ? 'gch-live-text' : ''} style={{
+            fontSize: 48, fontFamily: 'Fraunces, serif', fontWeight: 500,
+            color: liveCount > 0 ? '#14532d' : '#94a3b8',
+            lineHeight: 1, marginBottom: 4,
+          }}>
+            {fmt(liveCount)}
+          </div>
+          <div style={{ fontSize: 11, color: liveCount > 0 ? '#166534' : '#64748b' }}>
+            {liveCount === 0 ? 'Aucun visiteur actif' :
+              liveCount === 1 ? 'visiteur actif maintenant' : 'visiteurs actifs maintenant'}
+            {liveData?.active_pages?.[0] && ' · ' + liveData.active_pages[0].path}
+          </div>
+          {/* Badge pulsant en haut à droite */}
+          {liveCount > 0 && (
+            <div style={{
+              position: 'absolute', top: 12, right: 12,
+              padding: '3px 10px', borderRadius: 999,
+              background: LIVE_COLOR, color: 'white',
+              fontSize: 9, fontWeight: 800, letterSpacing: '0.12em',
+            }} className="gch-live-text">
+              ● LIVE
+            </div>
+          )}
+        </div>
+
         <KpiTile label={'Total ' + (visitorHours <= 24 ? visitorHours + 'h' : Math.round(visitorHours / 24) + 'j')}
           value={fmt(allVisitors.length)} tone="var(--navy)" icon={Users} />
         <KpiTile label="Identifiés" value={fmt(visitors?.identified || 0)} tone="var(--emerald)" icon={User}
@@ -480,6 +858,54 @@ export default function SeoGlobe() {
         <KpiTile label="Pays touchés" value={fmt(countries.length)} tone="var(--gold)" icon={GlobeIcon} />
         <KpiTile label="Taux conversion" value={(overview?.conversion_rate || 0) + '%'} tone="var(--emerald)" icon={TrendingUp}
           sub={fmt(overview?.converted_count || 0) + ' convertis'} />
+      </div>
+
+      {/* Toggle Live only + notification new visitors */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14, flexWrap: 'wrap' }}>
+        <button onClick={function () { setLiveOnly(function (x) { return !x; }); }}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '8px 14px', borderRadius: 999,
+            background: liveOnly ? LIVE_COLOR : 'white',
+            color: liveOnly ? 'white' : '#334155',
+            border: '1px solid ' + (liveOnly ? LIVE_COLOR : '#e2e8f0'),
+            cursor: 'pointer', fontSize: 11, fontWeight: 700,
+            fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            boxShadow: liveOnly ? '0 0 0 3px rgba(34,197,94,0.2)' : 'none',
+            transition: 'all 0.15s',
+          }}>
+          <span className={liveOnly ? 'gch-beacon' : ''} style={{
+            width: 8, height: 8, borderRadius: 999,
+            background: liveOnly ? 'white' : LIVE_COLOR,
+          }} />
+          Live only {liveOnly ? '· ON' : '· OFF'}
+        </button>
+        {filters.country && (
+          <button onClick={function () { setFilters(function (f) { return { ...f, country: '' }; }); }}
+            style={{
+              padding: '6px 12px', borderRadius: 999,
+              background: '#f1f5f9', border: '1px solid #cbd5e1',
+              cursor: 'pointer', fontSize: 11, fontWeight: 600,
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              color: '#334155',
+            }}>
+            <ReactCountryFlag countryCode={filters.country} svg style={{ width: 14, height: 10 }} />
+            {filters.country}
+            <X style={{ width: 11, height: 11 }} />
+          </button>
+        )}
+        {newVisitorIds.size > 0 && (
+          <div style={{
+            padding: '6px 14px', borderRadius: 999,
+            background: LIVE_COLOR, color: 'white',
+            fontSize: 11, fontWeight: 700, letterSpacing: '0.05em',
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+          }} className="gch-live-text">
+            <span style={{ fontSize: 14 }}>●</span>
+            {newVisitorIds.size} nouveau{newVisitorIds.size > 1 ? 'x' : ''} visiteur{newVisitorIds.size > 1 ? 's' : ''}
+          </div>
+        )}
       </div>
 
       {/* Filtres */}
@@ -636,6 +1062,14 @@ export default function SeoGlobe() {
 
         {tooltip && <VisitorTooltip visitor={tooltip} x={mouse.x} y={mouse.y} />}
 
+        {/* Panel Pays en direct (gauche) */}
+        <CountriesLivePanel
+          allVisitors={allVisitors}
+          selectedCountry={filters.country}
+          onSelectCountry={function (cc) { setFilters(function (f) { return { ...f, country: cc }; }); }}
+        />
+
+        {/* Panel visiteurs live (droite) */}
         <LiveFeed visitors={v} liveCount={liveCount} />
 
         {/* Hover pays info */}
