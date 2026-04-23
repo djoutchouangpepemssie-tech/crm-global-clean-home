@@ -302,6 +302,94 @@ var ClusterMarker = memo(function ClusterMarker({ cluster, onHover, onLeave, onC
     && Math.abs((a.currentZoom || 1) - (b.currentZoom || 1)) < 0.1;
 });
 
+// ═══════════════════════════════════════════════════════════════
+// SpiderfiedCluster — quand l'user clique sur un cluster, on éclate
+// les visiteurs en cercle PIXEL autour du centre. Les positions sont
+// constantes en pixels écran quel que soit le zoom — on convertit
+// pixels → degrés en inversant la projection Mercator au zoom courant.
+//
+// Permet de voir chaque visiteur individuellement même quand ils sont
+// tous dans la même ville (impossible à séparer géographiquement).
+// ═══════════════════════════════════════════════════════════════
+function SpiderfiedCluster({ cluster, currentZoom, onDotHover, onDotLeave, onClose }) {
+  var N = cluster.visitors.length;
+  var center = cluster.coords;
+  var z = Math.max(currentZoom || 1, 0.8);
+
+  // Rayon en pixels écran du cercle de spiderfy
+  // Plus de visiteurs → rayon plus grand pour éviter chevauchement
+  var pixelRadius = N <= 6 ? 55 : N <= 12 ? 75 : N <= 20 ? 95 : 120;
+
+  // Conversion pixels écran → degrés pour la projection Mercator avec scale 140
+  // À l'équateur : 1° lon ≈ (scale * zoom / 180 * PI) pixels SVG — ZoomableGroup
+  // multiplie tout par zoom. Donc 1 pixel écran = 1 / (2.44 * zoom) degrés
+  // à l'équateur. Ajusté par cos(lat) pour les latitudes plus élevées.
+  var latRad = (center[1] * Math.PI) / 180;
+  var pixelsPerDegreeLat = 2.44 * z; // 140/π ≈ 44.56 / 18 degré Mercator
+  // En réalité pour react-simple-maps scale 140, c'est ~2.44 px SVG par degré.
+  // Le ZoomableGroup multiplie par z donc = 2.44 * z pixels écran par degré.
+  var pixelsPerDegreeLon = 2.44 * z * Math.cos(latRad);
+
+  // Points en spirale/cercle autour du centre
+  var spiderDots = cluster.visitors.map(function (v, i) {
+    var angle = (i / N) * 2 * Math.PI - Math.PI / 2; // commence en haut
+    var dxPx = pixelRadius * Math.cos(angle);
+    var dyPx = pixelRadius * Math.sin(angle);
+    // Conversion en degrés (attention : y SVG inversé = lat diminue quand y monte)
+    var dLon = dxPx / Math.max(pixelsPerDegreeLon, 0.01);
+    var dLat = -dyPx / Math.max(pixelsPerDegreeLat, 0.01);
+    return {
+      visitor: v,
+      coords: [center[0] + dLon, center[1] + dLat],
+      angle: angle,
+    };
+  });
+
+  return (
+    <g>
+      {/* Lignes pointillées du centre vers chaque dot éclaté */}
+      {spiderDots.map(function (sd) {
+        return (
+          <Line key={'spider-line-' + sd.visitor.visitor_id}
+            from={center} to={sd.coords}
+            stroke="#94a3b8" strokeWidth={1}
+            strokeDasharray="3 3"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+            opacity="0.5" />
+        );
+      })}
+
+      {/* Petit cercle au centre (indicateur de cluster éclaté + bouton close) */}
+      <Marker coordinates={center}>
+        <g style={{ cursor: 'pointer' }} onClick={onClose}>
+          <circle r={9} fill="white" stroke="#334155" strokeWidth={2}
+            vectorEffect="non-scaling-stroke" />
+          <text textAnchor="middle" dominantBaseline="central"
+            fontSize={11} fontWeight={800} fill="#334155"
+            style={{ pointerEvents: 'none' }}>
+            ×
+          </text>
+        </g>
+      </Marker>
+
+      {/* Dots éclatés — chacun rendu comme VisitorDot standard */}
+      {spiderDots.map(function (sd) {
+        return (
+          <VisitorDot
+            key={'spider-dot-' + sd.visitor.visitor_id}
+            visitor={sd.visitor}
+            coords={sd.coords}
+            onHover={onDotHover}
+            onLeave={onDotLeave}
+            currentZoom={currentZoom}
+          />
+        );
+      })}
+    </g>
+  );
+}
+
 // Hash stable d'un visitor_id en [0, 1000) — sert à désynchroniser les
 // animations (delay différent pour chaque dot) et à garantir le déterminisme
 function hashId(id) {
@@ -1048,11 +1136,23 @@ export default function SeoGlobe() {
   var [clusterTooltip, setClusterTooltip] = useState(null);
   var onClusterHover = useCallback(function (cluster) { setClusterTooltip(cluster); }, []);
   var onClusterLeave = useCallback(function () { setClusterTooltip(null); }, []);
+
+  // Spiderfy : éclate un cluster en cercle pixel au click (comme Leaflet
+  // Markercluster). Permet de voir chaque visiteur individuellement même
+  // quand ils sont dans la même ville et invisibles séparément par zoom.
+  var [spiderfiedId, setSpiderfiedId] = useState(null);
   var onClusterClick = useCallback(function (cluster) {
-    // Au click : zoom sur la zone pour éclater le cluster
-    setCenter(cluster.coords);
-    setZoom(function (current) { return Math.min(8, Math.max(current * 2.2, 4)); });
+    setSpiderfiedId(function (current) {
+      return current === cluster.id ? null : cluster.id;
+    });
   }, []);
+  // Désactiver spiderfy au zoom out fort ou click ailleurs
+  useMemo(function () {
+    // Reset si plus aucun cluster ne correspond à spiderfiedId
+    if (spiderfiedId && !clusters.some(function (c) { return c.id === spiderfiedId; })) {
+      setSpiderfiedId(null);
+    }
+  }, [clusters, spiderfiedId]);
 
   // Connexions vers Paris — memoizées pour éviter la recréation à chaque render
   // On utilise les coords brutes (pas dispersées) pour les connexions, car
@@ -1357,6 +1457,17 @@ export default function SeoGlobe() {
 
             {/* Clusters multi-visiteurs (agrégation pour éviter les chevauchements) */}
             {multiClusters.map(function (cluster) {
+              if (cluster.id === spiderfiedId) {
+                // SPIDERFY : éclate en cercle pixel autour du centre
+                return <SpiderfiedCluster
+                  key={'spider-' + cluster.id}
+                  cluster={cluster}
+                  currentZoom={zoom}
+                  onDotHover={onDotHover}
+                  onDotLeave={onDotLeave}
+                  onClose={function () { setSpiderfiedId(null); }}
+                />;
+              }
               return <ClusterMarker key={'cluster-' + cluster.id} cluster={cluster}
                 onHover={onClusterHover} onLeave={onClusterLeave} onClick={onClusterClick}
                 currentZoom={zoom} />;
