@@ -13,7 +13,7 @@ import {
   PageHeader, SectionHeader, KpiTile, LoadingState, EmptyState,
   fmt, useSeoFilter,
 } from './SeoShared';
-import { useJourneys } from '../../hooks/api';
+import { useJourneys, useJourneyOverview, useJourneyRealtime } from '../../hooks/api';
 
 function fmtTime(iso) {
   if (!iso) return '—';
@@ -184,6 +184,8 @@ export default function SeoJourneys() {
   }, [days, sort, segment, minPages]);
 
   const { data, isLoading, error, refetch } = useJourneys(filters);
+  const { data: overview } = useJourneyOverview(days);
+  const { data: realtime } = useJourneyRealtime();
 
   const filtered = useMemo(() => {
     let list = data?.visitors || [];
@@ -222,15 +224,29 @@ export default function SeoJourneys() {
         }
       />
 
-      {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 22 }}>
-        <KpiTile label="Visiteurs total" value={fmt(data?.total || 0)} tone="var(--navy)" icon={Users} sub={`${days}j`} />
-        <KpiTile label="Identifiés" value={fmt(stats.identified || 0)} tone="var(--gold)" icon={User}
-          sub={data?.total ? `${Math.round((stats.identified || 0) / data.total * 100)}% du total` : '—'} />
-        <KpiTile label="Convertis en lead" value={fmt(stats.converted || 0)} tone="var(--emerald)" icon={UserCheck}
-          sub={data?.total ? `${Math.round((stats.converted || 0) / data.total * 100)}% taux de conversion` : '—'} />
-        <KpiTile label="Temps réel" value="LIVE" tone="var(--warm)" icon={Zap} sub="Refresh auto 20s" />
+      {/* KPIs — branchés sur stats/overview + realtime */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 22 }}>
+        <KpiTile label="Visiteurs uniques" value={fmt(overview?.unique_visitors || data?.total || 0)} tone="var(--navy)" icon={Users}
+          sub={overview?.unique_visitors_delta ? `${overview.unique_visitors_delta > 0 ? '+' : ''}${overview.unique_visitors_delta} vs période préc.` : `${days}j`} />
+        <KpiTile label="Taux de conversion" value={`${overview?.conversion_rate || 0}%`} tone="var(--emerald)" icon={TrendingUp}
+          sub={overview?.conversion_rate_delta ? `${overview.conversion_rate_delta > 0 ? '+' : ''}${overview.conversion_rate_delta}% vs préc.` : `${fmt(overview?.converted_count || stats.converted || 0)} convertis`} />
+        <KpiTile label="Visites avant conversion" value={fmt(overview?.avg_visits_before_conversion || 0)} tone="var(--gold)" icon={Gauge}
+          sub={`${fmt(overview?.avg_pages_before_conversion || 0)} pages en moy.`} />
+        <KpiTile label="Pages vues" value={fmt(overview?.total_pageviews || 0)} tone="var(--ink-2)" icon={Eye}
+          sub={`${days}j`} />
+        <KpiTile
+          label={<span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 6, height: 6, borderRadius: 999, background: (realtime?.active_visitors || 0) > 0 ? '#10b981' : '#94a3b8',
+                          animation: (realtime?.active_visitors || 0) > 0 ? 'pulse 1.6s ease-in-out infinite' : 'none', display: 'inline-block' }} />
+            En direct
+          </span>}
+          value={fmt(realtime?.active_visitors || 0)}
+          tone={(realtime?.active_visitors || 0) > 0 ? 'var(--emerald)' : 'var(--ink-4)'}
+          icon={Zap}
+          sub={realtime?.active_pages?.[0] ? `${realtime.active_pages[0].path} (${realtime.active_pages[0].count})` : 'Aucun actif'}
+        />
       </div>
+      <style>{`@keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }`}</style>
 
       {/* Segments */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>

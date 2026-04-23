@@ -13,7 +13,7 @@ import {
   PageHeader, LoadingState, ErrorState, KpiTile, SectionHeader, EmptyState,
   fmt,
 } from './SeoShared';
-import { useVisitorJourney } from '../../hooks/api';
+import { useVisitorJourney, useDeleteVisitor } from '../../hooks/api';
 
 function fmtDateTime(iso) {
   if (!iso) return '—';
@@ -163,6 +163,7 @@ function SessionCard({ session, index, total }) {
 export default function SeoJourneyDetail() {
   const { visitor_id } = useParams();
   const navigate = useNavigate();
+  const deleteVisitor = useDeleteVisitor();
   const { data, isLoading, error } = useVisitorJourney(visitor_id);
 
   if (isLoading && !data) return <LoadingState message="Chargement du parcours…" />;
@@ -203,12 +204,26 @@ export default function SeoJourneyDetail() {
           </span>
         }
         actions={
-          lead?.lead_id && (
-            <Link to={`/leads/${lead.lead_id}`} className="seo-cta">
-              <UserCheck style={{ width: 14, height: 14 }} />
-              Voir le dossier lead
-            </Link>
-          )
+          <div style={{ display: 'flex', gap: 8 }}>
+            {lead?.lead_id && (
+              <Link to={`/leads/${lead.lead_id}`} className="seo-cta">
+                <UserCheck style={{ width: 14, height: 14 }} />
+                Voir le dossier lead
+              </Link>
+            )}
+            <button
+              onClick={async () => {
+                if (!window.confirm('Supprimer toutes les données de ce visiteur ? (RGPD — irréversible)')) return;
+                await deleteVisitor.mutateAsync(visitor_id);
+                navigate('/seo/journeys');
+              }}
+              className="seo-chip"
+              style={{ color: 'var(--rouge)', borderColor: 'var(--rouge)' }}
+              disabled={deleteVisitor.isPending}
+            >
+              {deleteVisitor.isPending ? 'Suppression…' : '🗑 RGPD · Supprimer'}
+            </button>
+          </div>
         }
       />
 
