@@ -52,20 +52,43 @@ const ISO3_TO_2 = {
   NGA:'NGA', COD:'CD', GAB:'GA', MLI:'ML', BFA:'BF', GIN:'GN', TGO:'TG', BEN:'BJ',
 };
 
+// Dispersion : décale les points qui ont des coordonnées trop proches
+// pour éviter qu'ils se chevauchent sur la carte
+var _usedCoords = {};
+function disperseCoords(lon, lat, id) {
+  var key = Math.round(lon * 10) + '_' + Math.round(lat * 10);
+  if (!_usedCoords[key]) { _usedCoords[key] = 0; }
+  var n = _usedCoords[key]++;
+  if (n === 0) return [lon, lat];
+  // Spirale pour disperser les points superposés
+  var angle = n * 2.4; // angle d'or en radians
+  var radius = 0.3 + n * 0.15; // rayon croissant
+  return [lon + Math.cos(angle) * radius, lat + Math.sin(angle) * radius];
+}
+
 function coordsFor(visitor) {
-  if (visitor.location?.lat && visitor.location?.lon)
-    return [Number(visitor.location.lon), Number(visitor.location.lat)];
-  var city = visitor.location?.city;
-  if (city && CITY_COORDS[city]) return CITY_COORDS[city];
-  return null;
+  var lon, lat;
+  if (visitor.location?.lat && visitor.location?.lon) {
+    lon = Number(visitor.location.lon);
+    lat = Number(visitor.location.lat);
+  } else {
+    var city = visitor.location?.city;
+    if (city && CITY_COORDS[city]) {
+      lon = CITY_COORDS[city][0];
+      lat = CITY_COORDS[city][1];
+    } else {
+      return null;
+    }
+  }
+  return disperseCoords(lon, lat, visitor.visitor_id);
 }
 
 function dotSize(visitor) {
   var events = visitor.event_count || visitor.events_total || 1;
-  if (events > 50) return 9;
-  if (events > 20) return 7;
-  if (events > 5) return 5;
-  return 4;
+  if (events > 50) return 10;
+  if (events > 20) return 8;
+  if (events > 5) return 6;
+  return 5;
 }
 
 function dotColor(visitor) {
@@ -86,12 +109,17 @@ var VisitorDot = memo(function VisitorDot({ visitor, onHover, onLeave }) {
       <g style={{ cursor: 'pointer' }}
         onMouseEnter={function () { onHover(visitor); }}
         onMouseLeave={onLeave}>
-        <circle r={r * 3.5} fill={color} opacity="0.06" />
+        {/* Zone de hover invisible mais grande (facile à cibler avec la souris) */}
+        <circle r={Math.max(r * 4, 18)} fill="transparent" />
+        {/* Halo extérieur */}
+        <circle r={r * 3} fill={color} opacity="0.06" />
+        {/* Pulse animé */}
         <circle r={r * 2} fill={color} opacity="0.2">
           <animate attributeName="r" from={r * 1.5} to={r * 3} dur="2.5s" repeatCount="indefinite" />
           <animate attributeName="opacity" from="0.3" to="0.03" dur="2.5s" repeatCount="indefinite" />
         </circle>
-        <circle r={r} fill={color} stroke="white" strokeWidth="1.5" />
+        {/* Point principal */}
+        <circle r={r} fill={color} stroke="white" strokeWidth="2" />
         {identified && <circle r={r - 2} fill="white" opacity="0.9" />}
       </g>
     </Marker>
@@ -312,6 +340,8 @@ export default function SeoGlobe() {
   var [tooltip, setTooltip] = useState(null);
   var [filters, setFilters] = useState({ country: '', device: '', identified: '' });
   var [hoveredCountry, setHoveredCountry] = useState(null);
+  var [zoom, setZoom] = useState(1.2);
+  var [center, setCenter] = useState([10, 30]);
   var mapRef = React.useRef(null);
   var [mouse, setMouse] = useState({ x: 0, y: 0 });
 
@@ -329,6 +359,9 @@ export default function SeoGlobe() {
   }, []);
 
   var allVisitors = visitors?.visitors || [];
+
+  // Reset la dispersion quand les visiteurs changent
+  useMemo(function () { _usedCoords = {}; }, [allVisitors]);
 
   // Filtrage
   var v = useMemo(function () {
@@ -411,7 +444,13 @@ export default function SeoGlobe() {
           projectionConfig={{ scale: 140 }}
           style={{ width: '100%', height: '100%' }}
         >
-          <ZoomableGroup zoom={1.1} center={[10, 30]}>
+          <ZoomableGroup
+            zoom={zoom}
+            center={center}
+            onMoveEnd={function (e) { setZoom(e.zoom); setCenter(e.coordinates); }}
+            minZoom={0.8}
+            maxZoom={8}
+          >
             {/* Pays avec heatmap */}
             <Geographies geography={WORLD_TOPO}>
               {function ({ geographies }) {
@@ -466,6 +505,56 @@ export default function SeoGlobe() {
         </ComposableMap>
 
         <Legend />
+
+        {/* Contrôles de zoom */}
+        <div style={{
+          position: 'absolute', bottom: 16, right: 16,
+          display: 'flex', flexDirection: 'column', gap: 4,
+        }}>
+          <button onClick={function () { setZoom(function (z) { return Math.min(8, z * 1.5); }); }}
+            style={{
+              width: 36, height: 36, borderRadius: 10, border: '1px solid #e2e8f0',
+              background: 'white', cursor: 'pointer', fontSize: 18, fontWeight: 700,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.06)', color: 'var(--ink)',
+            }}>+</button>
+          <button onClick={function () { setZoom(function (z) { return Math.max(0.8, z / 1.5); }); }}
+            style={{
+              width: 36, height: 36, borderRadius: 10, border: '1px solid #e2e8f0',
+              background: 'white', cursor: 'pointer', fontSize: 18, fontWeight: 700,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.06)', color: 'var(--ink)',
+            }}>−</button>
+          <button onClick={function () { setZoom(1.2); setCenter([10, 30]); }}
+            title="Réinitialiser le zoom"
+            style={{
+              width: 36, height: 36, borderRadius: 10, border: '1px solid #e2e8f0',
+              background: 'white', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.06)', color: 'var(--ink-3)',
+            }}>⟲</button>
+          {/* Boutons zoom rapide sur zones */}
+          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <button onClick={function () { setZoom(3.5); setCenter([2.5, 46.5]); }}
+              style={{
+                padding: '4px 8px', borderRadius: 8, border: '1px solid #e2e8f0',
+                background: 'white', cursor: 'pointer', fontSize: 10, fontWeight: 600,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)', color: 'var(--ink-2)',
+              }}>🇫🇷 France</button>
+            <button onClick={function () { setZoom(2); setCenter([15, 50]); }}
+              style={{
+                padding: '4px 8px', borderRadius: 8, border: '1px solid #e2e8f0',
+                background: 'white', cursor: 'pointer', fontSize: 10, fontWeight: 600,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)', color: 'var(--ink-2)',
+              }}>🇪🇺 Europe</button>
+            <button onClick={function () { setZoom(1.8); setCenter([15, 5]); }}
+              style={{
+                padding: '4px 8px', borderRadius: 8, border: '1px solid #e2e8f0',
+                background: 'white', cursor: 'pointer', fontSize: 10, fontWeight: 600,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)', color: 'var(--ink-2)',
+              }}>🌍 Afrique</button>
+          </div>
+        </div>
 
         {tooltip && <VisitorTooltip visitor={tooltip} x={mouse.x} y={mouse.y} />}
 
