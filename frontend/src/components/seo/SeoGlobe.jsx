@@ -1302,18 +1302,33 @@ export default function SeoGlobe() {
     return Math.max(1, ...Object.values(countryVisitorCounts));
   }, [countryVisitorCounts]);
 
-  // Top pays pour les stats
+  // Stats pays enrichies — agrégation complète (tous les pays détectés)
   var countries = useMemo(function () {
     var map = {};
     allVisitors.forEach(function (vis) {
       var cc = vis.location?.country_code;
       var cn = vis.location?.country;
       if (cc && cn) {
-        if (!map[cc]) map[cc] = { code: cc, name: cn, count: 0 };
+        if (!map[cc]) map[cc] = {
+          code: cc, name: cn, count: 0,
+          live: 0, identified: 0, cities: new Set(),
+          last_seen: null,
+        };
         map[cc].count++;
+        if (isLive(vis)) map[cc].live++;
+        if (vis.identified) map[cc].identified++;
+        if (vis.location?.city) map[cc].cities.add(vis.location.city);
+        if (vis.last_seen && (!map[cc].last_seen || vis.last_seen > map[cc].last_seen)) {
+          map[cc].last_seen = vis.last_seen;
+        }
       }
     });
-    return Object.values(map).sort(function (a, b) { return b.count - a.count; });
+    return Object.values(map)
+      .map(function (c) { c.cityCount = c.cities.size; return c; })
+      .sort(function (a, b) {
+        if (b.live !== a.live) return b.live - a.live;
+        return b.count - a.count;
+      });
   }, [allVisitors]);
 
   // On privilégie le compteur calculé depuis la data réelle (les visiteurs
@@ -1560,18 +1575,26 @@ export default function SeoGlobe() {
                 return geographies.map(function (geo) {
                   var iso2 = geoIso2(geo);
                   var count = iso2 ? (countryVisitorCounts[iso2] || 0) : 0;
-                  var intensity = count > 0 ? 0.15 + 0.65 * (count / maxCountryCount) : 0;
+                  // Échelle sqrt pour que les pays avec 1-2 visiteurs soient
+                  // quand même bien visibles (pas écrasés par le dominant).
+                  // Intensité minimale élevée à 0.35 pour garantir visibilité.
+                  var intensity = count > 0
+                    ? 0.35 + 0.55 * Math.sqrt(count / maxCountryCount)
+                    : 0;
                   var fill = count > 0
                     ? 'rgba(16, 185, 129, ' + intensity + ')'
                     : '#e9edf0';
+                  // Contour plus marqué pour les pays avec visiteurs
+                  var strokeColor = count > 0 ? '#10b981' : '#d1d5db';
+                  var strokeW = count > 0 ? 0.8 : 0.4;
 
                   return (
                     <Geography
                       key={geo.rsmKey}
                       geography={geo}
-                      fill={hoveredCountry === iso2 && count > 0 ? '#c6f0e0' : fill}
-                      stroke="#d1d5db"
-                      strokeWidth={0.4}
+                      fill={hoveredCountry === iso2 && count > 0 ? '#86efac' : fill}
+                      stroke={strokeColor}
+                      strokeWidth={strokeW}
                       onMouseEnter={function () { if (count > 0 && iso2) setHoveredCountry(iso2); }}
                       onMouseLeave={function () { setHoveredCountry(null); }}
                       style={{
@@ -1762,27 +1785,63 @@ export default function SeoGlobe() {
         )}
       </div>
 
-      {/* Stats pays */}
+      {/* Stats pays — TOUS les pays détectés */}
       {countries.length > 0 && (
         <>
-          <SectionHeader eyebrow="Répartition" title={'Top pays (' + countries.length + ')'}
-            subtitle="Nombre de visiteurs par pays sur la période sélectionnée." />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10, marginBottom: 28 }}>
-            {countries.slice(0, 12).map(function (c) {
+          <SectionHeader eyebrow="Répartition" title={'Tous les pays détectés (' + countries.length + ')'}
+            subtitle="Tous les pays depuis lesquels ton site a été consulté sur la période. Triés par nombre de visiteurs LIVE puis total." />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10, marginBottom: 28 }}>
+            {countries.map(function (c) {
               var pct = Math.round((c.count / Math.max(allVisitors.length, 1)) * 100);
+              var hasLive = c.live > 0;
+              var lastSeenText = c.last_seen ? (function () {
+                var mAgo = Math.round((Date.now() - new Date(c.last_seen).getTime()) / 60000);
+                if (mAgo < 1) return 'à l\'instant';
+                if (mAgo < 60) return mAgo + ' min';
+                if (mAgo < 1440) return Math.round(mAgo / 60) + 'h';
+                return Math.round(mAgo / 1440) + 'j';
+              })() : null;
               return (
-                <div key={c.code} className="seo-card" style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <ReactCountryFlag countryCode={c.code} svg style={{ width: 28, height: 20, borderRadius: 3 }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{c.name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>{c.count} visiteur{c.count > 1 ? 's' : ''} · {pct}%</div>
+                <div key={c.code} className="seo-card" style={{
+                  padding: 14, display: 'flex', alignItems: 'center', gap: 12,
+                  borderLeft: hasLive ? '3px solid ' + LIVE_COLOR : '3px solid transparent',
+                  background: hasLive ? 'rgba(34,197,94,0.04)' : undefined,
+                }}>
+                  <ReactCountryFlag countryCode={c.code} svg style={{ width: 32, height: 24, borderRadius: 3, flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {c.name}
+                      {hasLive && (
+                        <span className="gch-beacon" style={{
+                          width: 7, height: 7, borderRadius: 999, background: LIVE_COLOR, display: 'inline-block',
+                        }} />
+                      )}
+                    </div>
+                    <div style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 2, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                      <span>{c.count} visiteur{c.count > 1 ? 's' : ''}</span>
+                      <span>·</span>
+                      <span>{pct}%</span>
+                      {c.cityCount > 0 && (<><span>·</span><span>{c.cityCount} ville{c.cityCount > 1 ? 's' : ''}</span></>)}
+                    </div>
+                    <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 2, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {c.identified > 0 && (<span style={{ color: '#1e40af', fontWeight: 700 }}>✓ {c.identified} identifiés</span>)}
+                      {lastSeenText && (<span style={{ fontStyle: 'italic' }}>· Vu il y a {lastSeenText}</span>)}
+                    </div>
                   </div>
                   <div style={{
-                    width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontFamily: 'JetBrains Mono, monospace', fontSize: 14, fontWeight: 800,
-                    background: 'var(--emerald-soft, #ecfdf5)', color: 'var(--emerald, #10b981)',
+                    width: 44, height: 44, borderRadius: 10, display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    fontFamily: 'JetBrains Mono, monospace',
+                    background: hasLive ? 'rgba(34,197,94,0.15)' : 'var(--emerald-soft, #ecfdf5)',
+                    color: hasLive ? '#15803d' : 'var(--emerald, #10b981)',
+                    border: hasLive ? '1px solid rgba(34,197,94,0.4)' : 'none',
                   }}>
-                    {c.count}
+                    <span style={{ fontSize: 14, fontWeight: 800 }}>{c.count}</span>
+                    {hasLive && (
+                      <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.05em' }}>
+                        {c.live} live
+                      </span>
+                    )}
                   </div>
                 </div>
               );
