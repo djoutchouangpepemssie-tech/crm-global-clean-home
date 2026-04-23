@@ -35,6 +35,30 @@
   var DEBUG = false;
 
   // ═══════════════════════════════════════════════════════════════
+  // GOOGLE ADS — Enhanced Conversions
+  // Tag ID : AW-18111778685 (Global Clean Home)
+  // Conversion Label : zUcdCNaq0qAcEP2er7xD (Soumission formulaire)
+  // ═══════════════════════════════════════════════════════════════
+  var GOOGLE_ADS = {
+    tagId: 'AW-18111778685',
+    conversionLabels: {
+      form_submit: 'zUcdCNaq0qAcEP2er7xD',     // Lead principal
+      click_phone: 'zUcdCNaq0qAcEP2er7xD',     // Même conversion pour appel direct
+      click_whatsapp: 'zUcdCNaq0qAcEP2er7xD',  // Même conversion pour WhatsApp
+      click_email: 'zUcdCNaq0qAcEP2er7xD',     // Même conversion pour email
+    },
+    // Valeur estimée par type de conversion (pour optimisation des enchères)
+    values: {
+      form_submit: 50,      // Lead = valeur plus élevée (intent explicite)
+      click_phone: 30,      // Appel = conversion mi-chaude
+      click_whatsapp: 25,
+      click_email: 15,
+    },
+    currency: 'EUR',
+    enabled: true,
+  };
+
+  // ═══════════════════════════════════════════════════════════════
   // GUARDS : Do-Not-Track, bots, environnement
   // ═══════════════════════════════════════════════════════════════
   var dnt = navigator.doNotTrack === '1' || navigator.doNotTrack === 'yes';
@@ -292,9 +316,44 @@
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // DUAL TRACKING — GA4 + Meta Pixel
+  // DUAL TRACKING — GA4 + Meta Pixel + Google Ads Enhanced Conversions
   // ═══════════════════════════════════════════════════════════════
+
+  // Loader gtag.js — chargé automatiquement si pas déjà présent sur la page.
+  // Permet à Google Ads de recevoir les conversions en temps réel, avec
+  // support des Enhanced Conversions (hash côté Google).
+  function loadGtagIfNeeded() {
+    if (!GOOGLE_ADS.enabled) return;
+    if (silent) return;
+    if (window.__gchGtagLoaded) return;
+
+    try {
+      // Si gtag existe déjà (installé via GTM ou GA4), on utilise juste la config
+      if (typeof window.gtag !== 'function') {
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = function () { window.dataLayer.push(arguments); };
+      }
+      // Charger le script Google Ads Tag
+      var script = document.createElement('script');
+      script.async = true;
+      script.src = 'https://www.googletagmanager.com/gtag/js?id=' + GOOGLE_ADS.tagId;
+      document.head.appendChild(script);
+      window.gtag('js', new Date());
+      window.gtag('config', GOOGLE_ADS.tagId, {
+        allow_enhanced_conversions: true,
+      });
+      window.__gchGtagLoaded = true;
+      log('Google Ads gtag loaded', GOOGLE_ADS.tagId);
+    } catch (e) {
+      log('gtag load error', e);
+    }
+  }
+
+  // Charger gtag au démarrage du tracker
+  loadGtagIfNeeded();
+
   function forwardConversion(eventType, eventData) {
+    // 1. GA4 (si présent)
     try {
       if (typeof window.gtag === 'function') {
         window.gtag('event', eventType, {
@@ -304,6 +363,8 @@
         log('→ GA4 forwarded', eventType);
       }
     } catch (e) {}
+
+    // 2. Meta Pixel (si présent)
     try {
       if (typeof window.fbq === 'function') {
         var metaMap = { click_phone: 'Contact', click_email: 'Contact', click_whatsapp: 'Contact', form_submit: 'Lead' };
@@ -313,6 +374,44 @@
         }
       }
     } catch (e) {}
+
+    // 3. Google Ads — Conversion avec Enhanced Conversions
+    try {
+      if (!GOOGLE_ADS.enabled) return;
+      var label = GOOGLE_ADS.conversionLabels[eventType];
+      if (!label || typeof window.gtag !== 'function') return;
+
+      // Enhanced Conversions : on passe les PII à Google, il les hash
+      // côté serveur avant envoi (aucune PII n'est envoyée en clair dans
+      // la requête réseau). Compense le blocage cookies iOS / adblockers.
+      var userData = {};
+      if (eventData) {
+        if (eventData.email) userData.email = String(eventData.email).trim().toLowerCase();
+        if (eventData.phone) userData.phone_number = String(eventData.phone).replace(/\s+/g, '');
+        if (eventData.name) {
+          var parts = String(eventData.name).trim().split(/\s+/);
+          userData.first_name = parts[0];
+          if (parts.length > 1) userData.last_name = parts.slice(1).join(' ');
+        }
+        if (eventData.address) {
+          userData.street = String(eventData.address);
+        }
+      }
+      if (Object.keys(userData).length > 0) {
+        window.gtag('set', 'user_data', userData);
+      }
+
+      // Déclencher la conversion
+      window.gtag('event', 'conversion', {
+        send_to: GOOGLE_ADS.tagId + '/' + label,
+        value: GOOGLE_ADS.values[eventType] || 0,
+        currency: GOOGLE_ADS.currency,
+        transaction_id: (eventData && eventData.transaction_id) || (visitorId + '_' + Date.now()),
+      });
+      log('→ Google Ads conversion fired', eventType, 'value=' + (GOOGLE_ADS.values[eventType] || 0) + GOOGLE_ADS.currency);
+    } catch (e) {
+      log('Google Ads conversion error', e);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -470,9 +569,20 @@
       }
 
       var fieldNames = [];
+      // Capture des PII pour Enhanced Conversions Google Ads
+      // (hashés automatiquement par Google côté serveur, pas envoyés
+      // au backend CRM dans event_data pour respecter RGPD minimal)
+      var leadData = {};
       for (var i = 0; i < form.elements.length; i++) {
         var el = form.elements[i];
-        if (el.name && el.value) fieldNames.push(el.name);
+        if (el.name && el.value) {
+          fieldNames.push(el.name);
+          var n = el.name.toLowerCase();
+          if (/email|mail/.test(n) && !leadData.email) leadData.email = el.value;
+          else if (/phone|tel|mobile|gsm/.test(n) && !leadData.phone) leadData.phone = el.value;
+          else if (/name|nom|prenom/.test(n) && !leadData.name) leadData.name = el.value;
+          else if (/address|adresse/.test(n) && !leadData.address) leadData.address = el.value;
+        }
       }
       sendEventImmediate({
         event_type: 'form_submit',
@@ -482,10 +592,15 @@
           form_action: (form.action || location.href).slice(0, 200),
           fields_filled: fieldNames,
           fields_count: fieldNames.length,
-          visitor_id: visitorId
+          visitor_id: visitorId,
+          // PII passées à forwardConversion pour Enhanced Conversions
+          email: leadData.email,
+          phone: leadData.phone,
+          name: leadData.name,
+          address: leadData.address,
         }
       });
-      log('form_submit', fieldNames);
+      log('form_submit', fieldNames, leadData.email ? 'enhanced' : 'basic');
     } catch (e) {}
   }, { passive: true, capture: true });
 
