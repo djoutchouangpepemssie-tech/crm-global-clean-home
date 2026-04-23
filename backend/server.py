@@ -4322,6 +4322,23 @@ async def _process_single_tracking_event(data: dict, request):
                 add_to_set["sessions"] = sid
             if path:
                 add_to_set["pages_visited"] = path
+
+            # ───── GPS précis (si le visiteur a accordé la permission) ─────
+            # Précision ~10m vs ~50km via IP. Stocké dans precise_location.
+            if etype == "gps_location":
+                ed = data.get("event_data") or {}
+                lat = ed.get("lat")
+                lon = ed.get("lon")
+                if lat is not None and lon is not None:
+                    set_update["precise_location"] = {
+                        "lat": float(lat),
+                        "lon": float(lon),
+                        "accuracy_m": ed.get("accuracy_m"),
+                        "source": "browser_gps",
+                        "captured_at": now_iso,
+                    }
+                    set_update["precise_location_source"] = "browser_gps"
+
             update_ops = {"$set": set_update, "$setOnInsert": set_on_insert, "$inc": inc}
             if add_to_set:
                 update_ops["$addToSet"] = add_to_set

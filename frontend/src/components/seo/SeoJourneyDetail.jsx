@@ -340,9 +340,41 @@ export default function SeoJourneyDetail() {
               {cc ? <ReactCountryFlag countryCode={cc} svg style={{ width: 48, height: 36, borderRadius: 4 }} /> : <Globe style={{ width: 48, height: 48, color: 'var(--ink-3)' }} />}
             </div>
             <InfoRow label="Ville" value={loc.city || '—'} />
+            <InfoRow label="Code postal" value={loc.postal || '—'} />
             <InfoRow label="Pays" value={loc.country || '—'} />
             <InfoRow label="Région" value={loc.region} />
             <InfoRow label="Timezone" value={loc.timezone} />
+            {loc.lat && loc.lon && (
+              <InfoRow label="Coordonnées IP"
+                value={Number(loc.lat).toFixed(4) + ', ' + Number(loc.lon).toFixed(4)} />
+            )}
+            {profile?.precise_location && profile.precise_location.lat && (
+              <div style={{
+                marginTop: 10, padding: 10, borderRadius: 8,
+                background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
+                border: '1px solid #93c5fd',
+              }}>
+                <div style={{ fontSize: 10, fontWeight: 800, color: '#1e40af', letterSpacing: '0.1em', marginBottom: 4 }}>
+                  🎯 GPS PRÉCIS (navigateur)
+                </div>
+                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#1e3a8a', fontWeight: 600 }}>
+                  {Number(profile.precise_location.lat).toFixed(5)}, {Number(profile.precise_location.lon).toFixed(5)}
+                </div>
+                <div style={{ fontSize: 10, color: '#3730a3', marginTop: 2 }}>
+                  Précision ±{Math.round(profile.precise_location.accuracy_m || 0)}m
+                  {profile.precise_location.captured_at && ' · ' + fmtDT(profile.precise_location.captured_at)}
+                </div>
+                <a
+                  href={`https://www.google.com/maps?q=${profile.precise_location.lat},${profile.precise_location.lon}`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-block', marginTop: 6, fontSize: 10,
+                    color: '#1e40af', fontWeight: 700, textDecoration: 'underline',
+                  }}>
+                  → Voir sur Google Maps
+                </a>
+              </div>
+            )}
           </InfoCard>
 
           {/* Device */}

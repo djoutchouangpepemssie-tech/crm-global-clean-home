@@ -649,12 +649,16 @@ async def list_visitors(request: Request, hours: int = 24, limit: int = 100, inc
                         loc = {
                             "city": d.get("city"),
                             "region": d.get("region"),
+                            "region_code": d.get("region_code"),
+                            "postal": d.get("postal"),  # Code postal via géoloc IP
                             "country": d.get("country_name"),
                             "country_code": d.get("country_code"),
                             "lat": d.get("latitude"),
                             "lon": d.get("longitude"),
                             "timezone": d.get("timezone"),
                             "isp": d.get("org"),
+                            "asn": d.get("asn"),
+                            "currency": d.get("currency"),
                         }
         except Exception as e:
             logger.debug(f"geoip error for {ip[:8]}***: {e}")

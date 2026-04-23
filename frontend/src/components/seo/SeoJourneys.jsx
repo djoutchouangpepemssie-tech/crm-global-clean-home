@@ -94,8 +94,10 @@ function SourceCell({ v }) {
 
 var Row = memo(function Row({ v, onOpen }) {
   var city = v.location?.city || '';
+  var postal = v.location?.postal || '';
   var country = v.location?.country || '';
   var cc = (v.location?.country_code || '').toUpperCase();
+  var hasPreciseGps = v.precise_location && v.precise_location.lat;
   var isConverted = !!v.lead_id;
   var sessions = v.sessions_count || (v.sessions ? v.sessions.length : 0) || 0;
   var visitsBeforeConv = isConverted ? (v.visits_before_conversion || sessions || null) : null;
@@ -104,7 +106,21 @@ var Row = memo(function Row({ v, onOpen }) {
       onMouseEnter={function (e) { e.currentTarget.style.background = 'var(--surface-2)'; }}
       onMouseLeave={function (e) { e.currentTarget.style.background = 'transparent'; }}>
       <td style={td}><StatusDot visitor={v} /></td>
-      <td style={td}><div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><CFlag code={cc} /><span style={{ fontSize: 12, fontWeight: 500, color: 'var(--ink)' }}>{city ? city + ', ' + country : country || '—'}</span></div></td>
+      <td style={td}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <CFlag code={cc} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {city ? city + (postal ? ' ' + postal : '') + ', ' + country : country || '—'}
+            </div>
+            {hasPreciseGps && (
+              <div style={{ fontSize: 9, color: '#1e40af', fontWeight: 700, marginTop: 1 }}>
+                🎯 GPS ±{Math.round(v.precise_location.accuracy_m || 0)}m
+              </div>
+            )}
+          </div>
+        </div>
+      </td>
       <td style={td}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <span className="seo-mono" style={{ fontSize: 11, color: 'var(--ink-3)' }}>{v.lead_name || (v.visitor_id || '').slice(0, 10)}</span>

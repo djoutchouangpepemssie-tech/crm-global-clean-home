@@ -549,6 +549,50 @@
   window.addEventListener('beforeunload', sendSessionEnd);
 
   // ═══════════════════════════════════════════════════════════════
+  // GPS : localisation précise (opt-in RGPD — uniquement si le visiteur
+  // accorde la permission au navigateur). Précision ~10m vs ~50km IP.
+  // ═══════════════════════════════════════════════════════════════
+  function requestGeolocation(opts) {
+    opts = opts || {};
+    if (!navigator.geolocation) {
+      if (opts.onError) opts.onError({ code: 'UNSUPPORTED', message: 'Géolocalisation non supportée' });
+      return;
+    }
+    try {
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          var c = pos.coords;
+          sendEventImmediate({
+            event_type: 'gps_location',
+            event_data: {
+              lat: c.latitude,
+              lon: c.longitude,
+              accuracy_m: c.accuracy,
+              altitude: c.altitude,
+              heading: c.heading,
+              speed: c.speed,
+              source: 'browser_gps'
+            }
+          });
+          if (opts.onSuccess) opts.onSuccess({ lat: c.latitude, lon: c.longitude, accuracy: c.accuracy });
+          log('gps_location', c.latitude.toFixed(4) + ',' + c.longitude.toFixed(4) + ' ±' + Math.round(c.accuracy) + 'm');
+        },
+        function (err) {
+          if (opts.onError) opts.onError({ code: err.code, message: err.message });
+          log('gps_denied', err.message);
+        },
+        {
+          enableHighAccuracy: opts.highAccuracy !== false,
+          timeout: opts.timeout || 10000,
+          maximumAge: opts.maxAge || 300000,
+        }
+      );
+    } catch (e) {
+      if (opts.onError) opts.onError({ code: 'EXCEPTION', message: String(e) });
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
   // API PUBLIQUE
   // ═══════════════════════════════════════════════════════════════
   window.__gchTracker = {
@@ -558,14 +602,22 @@
     trackConversion: function (eventType, eventData) {
       sendEventImmediate({ event_type: eventType || 'custom_conversion', event_data: eventData || {} });
     },
+    requestLocation: requestGeolocation,
     getVisitorId: function () { return visitorId; },
     getSessionId: function () { return sessionId; },
     getQueue: function () { return eventQueue.slice(); },
     flush: flushQueue,
     set debug(v) { DEBUG = !!v; },
     get debug() { return DEBUG; },
-    version: '3.0.0'
+    version: '3.1.0'
   };
+
+  // Déclencheur automatique : quand un bouton a l'attribut data-gch-locate,
+  // clic → demande la permission GPS et envoie l'event
+  document.addEventListener('click', function (e) {
+    var target = e.target && e.target.closest ? e.target.closest('[data-gch-locate]') : null;
+    if (target) requestGeolocation();
+  }, { capture: true, passive: true });
 
   log('Tracker v3.0.0 initialized', { visitorId: visitorId, sessionId: sessionId, silent: silent, dnt: dnt });
 

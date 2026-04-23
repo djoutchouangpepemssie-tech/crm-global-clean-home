@@ -111,7 +111,7 @@ function geoIso2(geo) {
   return null;
 }
 
-// Coordonnées brutes d'un visiteur (avant dispersion)
+// Coordonnées brutes d'un visiteur
 function rawCoordsFor(visitor) {
   if (visitor.location?.lat && visitor.location?.lon)
     return [Number(visitor.location.lon), Number(visitor.location.lat)];
@@ -120,80 +120,82 @@ function rawCoordsFor(visitor) {
   return null;
 }
 
-// Dispersion intelligente : quand plusieurs visiteurs partagent les mêmes
-// coordonnées (même ville, même IP), on les répartit en spirale autour du
-// point central via l'angle d'or (137.5°) — donne une distribution homogène
-// qui évite les chevauchements. Les offsets sont stables (basés sur l'index
-// dans le groupe trié), donc un visiteur reste à la même position entre
-// deux refetch.
+// Alias legacy (plus utilisé après passage au clustering, gardé pour safety)
+function coordsFor(visitor) { return rawCoordsFor(visitor); }
+
+// ═══════════════════════════════════════════════════════════════
+// CLUSTERING — regroupe les visiteurs co-localisés en un seul marker
+// agrégé. C'est la SEULE approche qui fonctionne vraiment à tous les
+// niveaux de zoom : à zoom monde, 1° ≈ 4 pixels donc toute tentative
+// de dispersion géographique reste invisible.
 //
-// Le rayon de dispersion est réduit quand on zoom (plus on zoom, plus les
-// points sont séparés visuellement donc moins besoin de les écarter
-// géographiquement).
-//
-// Retourne une Map { visitor_id → [lon, lat] } pour lookup O(1).
-var GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5)); // ≈ 137.5°
-
-function buildDispersedCoords(visitors, zoom) {
-  var result = new Map();
-  if (!visitors || !visitors.length) return result;
-
-  // Grouper par coordonnées arrondies (pour déclencher la dispersion seulement
-  // quand deux visiteurs sont VRAIMENT au même endroit, pas juste proches)
-  var groups = {};
-  visitors.forEach(function (v) {
-    var c = rawCoordsFor(v);
-    if (!c) return;
-    // Arrondi à 0.01° (~1km) pour grouper les co-localisés
-    var key = c[0].toFixed(2) + ',' + c[1].toFixed(2);
-    if (!groups[key]) groups[key] = { base: c, members: [] };
-    groups[key].members.push(v);
-  });
-
-  // Rayon de dispersion en degrés — adapté au zoom
-  // Zoom 1 : 0.35° (~35km) · Zoom 4 : 0.15° (~15km) · Zoom 8 : 0.07° (~7km)
-  var z = Math.max(zoom || 1, 1);
-  var baseRadius = 0.5 / Math.sqrt(z);
-
-  Object.keys(groups).forEach(function (key) {
-    var g = groups[key];
-    var base = g.base;
-    // Tri stable par visitor_id pour que la position ne change pas entre refresh
-    var members = g.members.slice().sort(function (a, b) {
-      return (a.visitor_id || '').localeCompare(b.visitor_id || '');
-    });
-
-    if (members.length === 1) {
-      // Seul visiteur : pas de dispersion
-      result.set(members[0].visitor_id, base);
-      return;
-    }
-
-    // Dispersion en spirale — angle d'or
-    members.forEach(function (v, i) {
-      // i=0 → centre exact ; i>=1 → spirale
-      if (i === 0) {
-        result.set(v.visitor_id, base);
-        return;
-      }
-      var radius = baseRadius * Math.sqrt(i / members.length);
-      var angle = i * GOLDEN_ANGLE;
-      var dx = radius * Math.cos(angle);
-      var dy = radius * Math.sin(angle);
-      result.set(v.visitor_id, [base[0] + dx, base[1] + dy]);
-    });
-  });
-
-  return result;
+// Grille d'agrégation adaptée au zoom :
+//  - zoom 1-2 (monde) : clé à 0.5° (~50km) → toute la région parisienne
+//  - zoom 3-4 (Europe) : 0.2° (~20km) → agglomération
+//  - zoom 5-6 (pays) : 0.05° (~5km) → ville
+//  - zoom 7+ (ville) : 0.01° (~1km) → quartier → presque plus de clusters
+// ═══════════════════════════════════════════════════════════════
+function clusterGridSize(zoom) {
+  var z = Math.max(zoom || 1, 0.8);
+  if (z < 2) return 0.8;
+  if (z < 3) return 0.4;
+  if (z < 4) return 0.2;
+  if (z < 5) return 0.1;
+  if (z < 6) return 0.05;
+  if (z < 7) return 0.02;
+  return 0.01;
 }
 
-// Coordonnées finales (dispersées si groupe multiple)
-function coordsFor(visitor, dispersedMap) {
-  if (dispersedMap) {
-    var c = dispersedMap.get(visitor.visitor_id);
-    if (c) return c;
-  }
-  return rawCoordsFor(visitor);
+function buildClusters(visitors, zoom) {
+  var grid = clusterGridSize(zoom);
+  var buckets = {};
+  (visitors || []).forEach(function (v) {
+    var c = rawCoordsFor(v);
+    if (!c) return;
+    // Clé de bucket : arrondi à la grille courante
+    var key = Math.round(c[0] / grid) * grid + ',' + Math.round(c[1] / grid) * grid;
+    if (!buckets[key]) {
+      buckets[key] = {
+        id: key,
+        coords: null,         // calculé après (barycentre)
+        sumLon: 0,
+        sumLat: 0,
+        visitors: [],
+        live: 0,
+        identified: 0,
+        hot: 0,
+      };
+    }
+    var b = buckets[key];
+    b.visitors.push(v);
+    b.sumLon += c[0];
+    b.sumLat += c[1];
+    if (isLive(v)) b.live++;
+    if (v.identified) b.identified++;
+    var hot = (v.cta_clicks || 0) + (v.phone_clicks || 0) + (v.email_clicks || 0) + (v.whatsapp_clicks || 0) > 0;
+    if (hot) b.hot++;
+  });
+  // Barycentre de chaque bucket (plus visuel que centre de grille)
+  var out = Object.values(buckets).map(function (b) {
+    b.coords = [b.sumLon / b.visitors.length, b.sumLat / b.visitors.length];
+    return b;
+  });
+  return out;
+}
+
+// Statut dominant d'un cluster pour sa couleur
+function clusterStatus(cluster) {
+  if (cluster.live > 0) return 'live';
+  if (cluster.identified > 0) return 'identified';
+  if (cluster.hot > 0) return 'hot';
+  return 'anonymous';
+}
+function clusterColor(cluster) {
+  var s = clusterStatus(cluster);
+  if (s === 'live') return LIVE_COLOR;
+  if (s === 'identified') return IDENTIFIED_COLOR;
+  if (s === 'hot') return HOT_COLOR;
+  return VISITOR_COLOR;
 }
 
 function dotSize(visitor) {
@@ -226,6 +228,73 @@ function visitorStatus(visitor) {
 // ── VisitorDot — taille variable + couleur selon statut ─────────
 // Scaling doux (1/√z) : les points restent visibles au zoom sans exploser en taille.
 // Stroke non-scaling via vectorEffect : contours toujours nets quel que soit le zoom.
+// ═══════════════════════════════════════════════════════════════
+// ClusterMarker — cercle agrégé style Google Maps
+// Quand plusieurs visiteurs partagent une zone : cercle taille adapté
+// au count, couleur selon statut dominant, nombre affiché au centre.
+// Halo vert pulsant si ≥1 visiteur LIVE dans le cluster.
+// ═══════════════════════════════════════════════════════════════
+var ClusterMarker = memo(function ClusterMarker({ cluster, onHover, onLeave, onClick, currentZoom }) {
+  if (!cluster || !cluster.coords) return null;
+  var z = currentZoom || 1;
+  var scale = 1 / Math.sqrt(Math.max(z, 1));
+  var count = cluster.visitors.length;
+  // Taille du cercle selon count + zoom (borné pour rester lisible)
+  var base = count >= 100 ? 26 : count >= 20 ? 22 : count >= 10 ? 19 : count >= 5 ? 16 : 14;
+  var r = Math.max(base * scale, 11);
+  var color = clusterColor(cluster);
+  var hasLive = cluster.live > 0;
+  var label = count >= 99 ? '99+' : String(count);
+
+  return (
+    <Marker coordinates={cluster.coords}>
+      <g style={{ cursor: 'pointer' }}
+        onMouseEnter={function () { onHover(cluster); }}
+        onMouseLeave={onLeave}
+        onClick={function () { onClick && onClick(cluster); }}>
+        {/* Anneau LIVE autour du cluster si des visiteurs actifs */}
+        {hasLive && (
+          <>
+            <circle r={r * 1.7} fill="none" stroke={LIVE_COLOR} strokeWidth="2"
+              vectorEffect="non-scaling-stroke" className="gch-live-ring"
+              opacity="0.7" />
+            <circle r={r * 1.35} fill={LIVE_COLOR} className="gch-live-halo" opacity="0.22" />
+          </>
+        )}
+        {/* Cercle principal */}
+        <circle r={r} fill={color} stroke="white" strokeWidth={2.5}
+          vectorEffect="non-scaling-stroke"
+          style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }} />
+        {/* Disque interne plus clair pour le contraste */}
+        <circle r={r * 0.82} fill={color} opacity="0.85" />
+        {/* Chiffre au centre */}
+        <text
+          textAnchor="middle" dominantBaseline="central"
+          fill="white" fontWeight="800"
+          fontFamily="'JetBrains Mono', monospace"
+          fontSize={count >= 100 ? r * 0.58 : count >= 10 ? r * 0.7 : r * 0.9}
+          style={{ pointerEvents: 'none', userSelect: 'none' }}
+        >
+          {label}
+        </text>
+        {/* Petit voyant LIVE */}
+        {hasLive && (
+          <g transform={'translate(' + (r * 0.75) + ',' + (-r * 0.75) + ')'}>
+            <circle r={r * 0.25} fill={LIVE_COLOR} stroke="white" strokeWidth={1.5}
+              vectorEffect="non-scaling-stroke" className="gch-live-halo" />
+            <circle r={r * 0.15} fill="white" />
+          </g>
+        )}
+      </g>
+    </Marker>
+  );
+}, function (a, b) {
+  return a.cluster.id === b.cluster.id
+    && a.cluster.visitors.length === b.cluster.visitors.length
+    && a.cluster.live === b.cluster.live
+    && Math.abs((a.currentZoom || 1) - (b.currentZoom || 1)) < 0.1;
+});
+
 var VisitorDot = memo(function VisitorDot({ visitor, onHover, onLeave, currentZoom, coords }) {
   if (!coords) return null;
   var z = currentZoom || 1;
@@ -299,20 +368,32 @@ function ConnectionLine({ from }) {
 }
 
 // ── Tooltip enrichi ─────────────────────────────────────────────
+// Format : "Paris, 75001, Île-de-France, FR" si toutes les infos dispo
+function fullLocation(loc) {
+  if (!loc) return '—';
+  var parts = [];
+  if (loc.city) parts.push(loc.city);
+  if (loc.postal) parts.push(loc.postal);
+  if (loc.region && loc.region !== loc.city) parts.push(loc.region);
+  if (loc.country) parts.push(loc.country);
+  return parts.length ? parts.join(', ') : '—';
+}
+
 function VisitorTooltip({ visitor, x, y }) {
   if (!visitor) return null;
-  var city = visitor.location?.city || '—';
-  var country = visitor.location?.country || '—';
-  var cc = (visitor.location?.country_code || '').toUpperCase();
+  var loc = visitor.location || {};
+  var cc = (loc.country_code || '').toUpperCase();
   var name = visitor.lead?.name || visitor.lead_name;
   var events = visitor.event_count || visitor.events_total || 0;
   var color = dotColor(visitor);
+  var precise = visitor.precise_location;
+  var hasPrecise = precise && precise.lat && precise.lon;
 
   return (
     <div style={{
       position: 'absolute', left: Math.min(x + 16, 500), top: Math.max(y - 20, 10),
       background: 'white', borderRadius: 14, padding: '14px 18px',
-      boxShadow: '0 8px 32px rgba(0,0,0,0.12)', fontSize: 12, minWidth: 220, maxWidth: 300,
+      boxShadow: '0 8px 32px rgba(0,0,0,0.12)', fontSize: 12, minWidth: 240, maxWidth: 320,
       pointerEvents: 'none', zIndex: 50, border: '1px solid #e2e8f0',
       borderLeft: '4px solid ' + color,
     }}>
@@ -323,7 +404,20 @@ function VisitorTooltip({ visitor, x, y }) {
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, color: 'var(--ink-3)' }}>
-        <span><MapPin style={{ width: 11, height: 11, verticalAlign: 'middle' }} /> {city}, {country}</span>
+        <span style={{ display: 'flex', alignItems: 'flex-start', gap: 5 }}>
+          <MapPin style={{ width: 12, height: 12, marginTop: 1, flexShrink: 0 }} />
+          <span style={{ lineHeight: 1.4 }}>{fullLocation(loc)}</span>
+        </span>
+        {hasPrecise && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '2px 8px', borderRadius: 999, alignSelf: 'flex-start',
+            background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
+            color: '#1e40af', fontSize: 10, fontWeight: 700,
+          }}>
+            🎯 GPS ±{Math.round(precise.accuracy_m || 0)}m
+          </span>
+        )}
         <span>{visitor.device === 'mobile' || visitor.device_type === 'mobile' ? '📱' : '💻'} {visitor.device || visitor.device_type || '—'}</span>
         <span><Activity style={{ width: 11, height: 11, verticalAlign: 'middle' }} /> {events} événements</span>
         {visitor.last_page && <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>📄 {visitor.last_page}</span>}
@@ -792,11 +886,30 @@ export default function SeoGlobe() {
     return allVisitors.filter(isLive).length;
   }, [allVisitors]);
 
-  // Map des coordonnées dispersées — évite les chevauchements quand plusieurs
-  // visiteurs partagent la même ville (ex: 8 visiteurs tous à Paris)
-  var dispersedCoords = useMemo(function () {
-    return buildDispersedCoords(v, zoom);
+  // Clusters : regroupe les visiteurs co-localisés en un seul marker agrégé
+  // (évite 100% des chevauchements). Grille adaptée au zoom courant.
+  var clusters = useMemo(function () {
+    return buildClusters(v, zoom);
   }, [v, zoom]);
+
+  // Singletons (cluster à 1 visiteur) = on rend en VisitorDot individuel
+  // Groupes (cluster à 2+) = on rend en ClusterMarker agrégé
+  var singletons = useMemo(function () {
+    return clusters.filter(function (c) { return c.visitors.length === 1; });
+  }, [clusters]);
+  var multiClusters = useMemo(function () {
+    return clusters.filter(function (c) { return c.visitors.length > 1; });
+  }, [clusters]);
+
+  // Tooltip cluster (différent du tooltip visiteur unique)
+  var [clusterTooltip, setClusterTooltip] = useState(null);
+  var onClusterHover = useCallback(function (cluster) { setClusterTooltip(cluster); }, []);
+  var onClusterLeave = useCallback(function () { setClusterTooltip(null); }, []);
+  var onClusterClick = useCallback(function (cluster) {
+    // Au click : zoom sur la zone pour éclater le cluster
+    setCenter(cluster.coords);
+    setZoom(function (current) { return Math.min(8, Math.max(current * 2.2, 4)); });
+  }, []);
 
   // Connexions vers Paris — memoizées pour éviter la recréation à chaque render
   // On utilise les coords brutes (pas dispersées) pour les connexions, car
@@ -1089,11 +1202,18 @@ export default function SeoGlobe() {
               <circle r={4} fill="white" />
             </Marker>
 
-            {/* Points visiteurs — coordonnées dispersées pour éviter
-                les chevauchements en ville */}
-            {v.map(function (visitor) {
+            {/* Clusters multi-visiteurs (agrégation pour éviter les chevauchements) */}
+            {multiClusters.map(function (cluster) {
+              return <ClusterMarker key={'cluster-' + cluster.id} cluster={cluster}
+                onHover={onClusterHover} onLeave={onClusterLeave} onClick={onClusterClick}
+                currentZoom={zoom} />;
+            })}
+
+            {/* Visiteurs solo (1 seul par zone) */}
+            {singletons.map(function (cluster) {
+              var visitor = cluster.visitors[0];
               return <VisitorDot key={visitor.visitor_id} visitor={visitor}
-                coords={dispersedCoords.get(visitor.visitor_id) || rawCoordsFor(visitor)}
+                coords={cluster.coords}
                 onHover={onDotHover} onLeave={onDotLeave} currentZoom={zoom} />;
             })}
           </ZoomableGroup>
@@ -1152,6 +1272,64 @@ export default function SeoGlobe() {
         </div>
 
         {tooltip && <VisitorTooltip visitor={tooltip} x={mouse.x} y={mouse.y} />}
+        {clusterTooltip && (
+          <div style={{
+            position: 'absolute',
+            left: Math.min(mouse.x + 16, 520),
+            top: Math.max(mouse.y - 20, 10),
+            background: 'white', borderRadius: 14, padding: '14px 16px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.14)', fontSize: 12,
+            minWidth: 240, maxWidth: 320, pointerEvents: 'none', zIndex: 50,
+            border: '1px solid #e2e8f0',
+            borderLeft: '4px solid ' + clusterColor(clusterTooltip),
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: 999,
+                background: clusterColor(clusterTooltip), color: 'white',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: 'JetBrains Mono, monospace', fontSize: 13, fontWeight: 800,
+              }}>
+                {clusterTooltip.visitors.length}
+              </div>
+              <div>
+                <div style={{ fontFamily: 'Fraunces, serif', fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>
+                  {clusterTooltip.visitors.length} visiteurs dans cette zone
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 1 }}>
+                  {(clusterTooltip.visitors[0].location?.city || '—')}
+                  {clusterTooltip.visitors[0].location?.postal ? ' · ' + clusterTooltip.visitors[0].location.postal : ''}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 11 }}>
+              {clusterTooltip.live > 0 && (
+                <div style={{ color: '#15803d', fontWeight: 700 }}>
+                  🟢 {clusterTooltip.live} LIVE
+                </div>
+              )}
+              {clusterTooltip.identified > 0 && (
+                <div style={{ color: IDENTIFIED_COLOR, fontWeight: 700 }}>
+                  ✓ {clusterTooltip.identified} identifiés
+                </div>
+              )}
+              {clusterTooltip.hot > 0 && (
+                <div style={{ color: HOT_COLOR, fontWeight: 700 }}>
+                  🔥 {clusterTooltip.hot} engagés
+                </div>
+              )}
+              <div style={{ color: 'var(--ink-3)' }}>
+                👥 {clusterTooltip.visitors.length - clusterTooltip.identified} anonymes
+              </div>
+            </div>
+            <div style={{
+              marginTop: 10, paddingTop: 8, borderTop: '1px solid #f1f5f9',
+              fontSize: 10, color: 'var(--ink-3)', fontStyle: 'italic',
+            }}>
+              💡 Cliquer pour zoomer et éclater le groupe
+            </div>
+          </div>
+        )}
 
         {/* Panel Pays en direct (gauche) */}
         <CountriesLivePanel
