@@ -161,26 +161,6 @@ function clusterGridSize(zoom) {
 
 function buildClusters(visitors, zoom) {
   var list = visitors || [];
-
-  // BYPASS clustering si petit volume : chaque visiteur a son propre
-  // "cluster" singleton. Le jitter backend (±300m) les sépare visuellement.
-  // Évite les gros blocs de cercle pour les sites avec peu de trafic.
-  if (list.length <= 12) {
-    return list.map(function (v, i) {
-      var c = rawCoordsFor(v);
-      if (!c) return null;
-      return {
-        id: 'solo-' + (v.visitor_id || i),
-        coords: c,
-        sumLon: c[0], sumLat: c[1],
-        visitors: [v],
-        live: isLive(v) ? 1 : 0,
-        identified: v.identified ? 1 : 0,
-        hot: ((v.cta_clicks || 0) + (v.phone_clicks || 0) + (v.email_clicks || 0) + (v.whatsapp_clicks || 0) > 0) ? 1 : 0,
-      };
-    }).filter(Boolean);
-  }
-
   var grid = clusterGridSize(zoom);
   var buckets = {};
   list.forEach(function (v) {
@@ -273,9 +253,9 @@ var ClusterMarker = memo(function ClusterMarker({ cluster, onHover, onLeave, onC
   var z = currentZoom || 1;
   var scale = 1 / Math.sqrt(Math.max(z, 1));
   var count = cluster.visitors.length;
-  // Taille du cercle — plus compacte qu'avant pour ne pas masquer la carte
-  var base = count >= 100 ? 20 : count >= 20 ? 17 : count >= 10 ? 14 : count >= 5 ? 12 : 10;
-  var r = Math.max(base * scale, 9);
+  // Taille du cercle — compacte, ne masque pas la carte
+  var base = count >= 100 ? 18 : count >= 20 ? 15 : count >= 10 ? 13 : count >= 5 ? 11 : 9;
+  var r = Math.max(base * scale, 8);
   var color = clusterColor(cluster);
   var hasLive = cluster.live > 0;
   var label = count >= 99 ? '99+' : String(count);
@@ -286,11 +266,11 @@ var ClusterMarker = memo(function ClusterMarker({ cluster, onHover, onLeave, onC
         onMouseEnter={function () { onHover(cluster); }}
         onMouseLeave={onLeave}
         onClick={function () { onClick && onClick(cluster); }}>
-        {/* Anneau LIVE autour du cluster — compact */}
+        {/* Anneau LIVE autour du cluster — ultra compact */}
         {hasLive && (
-          <circle r={r * 1.3} fill="none" stroke={LIVE_COLOR} strokeWidth="2"
+          <circle r={r * 1.15} fill="none" stroke={LIVE_COLOR} strokeWidth="1.5"
             vectorEffect="non-scaling-stroke" className="gch-live-ring"
-            opacity="0.8" />
+            opacity="0.75" />
         )}
         {/* Cercle principal */}
         <circle r={r} fill={color} stroke="white" strokeWidth={2.5}
@@ -1314,7 +1294,19 @@ export default function SeoGlobe() {
       <PageHeader
         eyebrow="Globe · Audience"
         title={<>Carte <em>mondiale des visiteurs</em></>}
-        subtitle={fmt(v.length) + ' visiteurs sur ' + (visitorHours <= 24 ? visitorHours + 'h' : Math.round(visitorHours / 24) + 'j') + ' · ' + fmt(visitors?.identified || 0) + ' identifiés · ' + countries.length + ' pays'}
+        subtitle={(function () {
+          var n = v.length;
+          var identified = visitors?.identified || 0;
+          var geoloc = v.filter(function (x) { return x.location?.country_code; }).length;
+          var noLoc = n - geoloc;
+          var parts = [
+            fmt(n) + ' visiteurs sur ' + (visitorHours <= 24 ? visitorHours + 'h' : Math.round(visitorHours / 24) + 'j'),
+            fmt(identified) + ' identifiés',
+            countries.length + ' pays',
+          ];
+          if (noLoc > 0) parts.push(noLoc + ' sans localisation');
+          return parts.join(' · ');
+        })()}
       />
 
       {/* KPIs — LIVE hero géant + 4 autres KPIs */}
@@ -1517,16 +1509,17 @@ export default function SeoGlobe() {
               }}
             </Geographies>
 
-            {/* Connexions animées vers Paris */}
+            {/* Connexions animées vers Paris — désactivées car trop bruyantes
+                quand plusieurs visiteurs sont proches de Paris. Les dots
+                suffisent à montrer les localisations.
             {connectionLines.map(function (line) {
               return <ConnectionLine key={'line-' + line.id} from={line.coords} />;
             })}
+            */}
 
-            {/* Point Paris (siège) */}
-            <Marker coordinates={PARIS}>
-              <circle r={8} fill="#6366f1" stroke="white" strokeWidth="2" opacity="0.8" />
-              <circle r={4} fill="white" />
-            </Marker>
+            {/* Siège Paris supprimé — masquait les visiteurs parisiens.
+                Les connexions animées pointent déjà vers Paris, c'est
+                suffisant comme indicateur. */}
 
             {/* Clusters multi-visiteurs (agrégation pour éviter les chevauchements) */}
             {multiClusters.map(function (cluster) {
