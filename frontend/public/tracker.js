@@ -423,12 +423,52 @@
   }, { passive: true, capture: true });
 
   // ═══════════════════════════════════════════════════════════════
+  // AUTO-INJECT visitor_id DANS LES FORMULAIRES
+  // Permet au backend de relier le lead au parcours visiteur quand
+  // le formulaire est soumis à /api/leads.
+  // ═══════════════════════════════════════════════════════════════
+  function injectVisitorIdInForms() {
+    try {
+      var forms = document.querySelectorAll('form');
+      forms.forEach(function (form) {
+        if (form.querySelector('input[name="visitor_id"]')) return; // déjà injecté
+        var hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'visitor_id';
+        hidden.value = visitorId;
+        form.appendChild(hidden);
+      });
+    } catch (e) {}
+  }
+  // Injecter au chargement + surveiller les nouveaux formulaires (SPA)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', injectVisitorIdInForms);
+  } else {
+    injectVisitorIdInForms();
+  }
+  // Re-injecter si le DOM change (formulaires ajoutés dynamiquement)
+  try {
+    new MutationObserver(function () { injectVisitorIdInForms(); })
+      .observe(document.body, { childList: true, subtree: true });
+  } catch (e) {}
+
+  // ═══════════════════════════════════════════════════════════════
   // EVENT: form_submit
   // ═══════════════════════════════════════════════════════════════
   document.addEventListener('submit', function (e) {
     try {
       var form = e.target;
       if (!form || !form.elements) return;
+
+      // S'assurer que le visitor_id est dans le formulaire
+      if (!form.querySelector('input[name="visitor_id"]')) {
+        var hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'visitor_id';
+        hidden.value = visitorId;
+        form.appendChild(hidden);
+      }
+
       var fieldNames = [];
       for (var i = 0; i < form.elements.length; i++) {
         var el = form.elements[i];
@@ -441,7 +481,8 @@
           form_name: form.getAttribute('name') || form.className || 'unnamed',
           form_action: (form.action || location.href).slice(0, 200),
           fields_filled: fieldNames,
-          fields_count: fieldNames.length
+          fields_count: fieldNames.length,
+          visitor_id: visitorId
         }
       });
       log('form_submit', fieldNames);

@@ -469,6 +469,7 @@ class LeadCreate(BaseModel):
     service_details: Optional[dict] = None
     date_preference: Optional[str] = None
     manual: Optional[bool] = False
+    visitor_id: Optional[str] = None  # ID du tracker pour relier le lead au parcours visiteur
 
     @field_validator("phone")
     @classmethod
@@ -1452,6 +1453,62 @@ async def create_lead(input: LeadCreate, request: Request):
     lead_dict["score"] = calculate_lead_score(lead_dict)
 
     await db.leads.insert_one(lead_dict)
+
+    # ── ENRICHISSEMENT VISITOR_PROFILES ──────────────────────────
+    # Si le lead a un visitor_id (passé par le formulaire du site via le tracker),
+    # on marque le visiteur comme identifié et on le relie au lead.
+    # C'est ce qui fait apparaître le visiteur dans "Visiteurs identifiés" sur /seo/journeys.
+    vid = lead_dict.get("visitor_id")
+    if vid:
+        try:
+            await db.visitor_profiles.update_one(
+                {"visitor_id": vid},
+                {"$set": {
+                    "identified": True,
+                    "lead_id": lead_id,
+                    "lead_name": lead_dict.get("name"),
+                    "lead_email": str(lead_dict.get("email", "")),
+                    "lead_phone": lead_dict.get("phone"),
+                    "lead_service_type": lead_dict.get("service_type"),
+                    "lead_address": lead_dict.get("address"),
+                    "converted_at": now.isoformat(),
+                    "conversion_event": "form_submit",
+                }}
+            )
+            logger.info(f"Visitor {vid} linked to lead {lead_id}")
+        except Exception as e:
+            logger.warning(f"Failed to enrich visitor_profile for {vid}: {e}")
+    else:
+        # Fallback : essayer de matcher par email dans les visitor_profiles récents
+        try:
+            email_str = str(lead_dict.get("email", ""))
+            if email_str:
+                # Chercher un événement form_submit récent avec cet email dans tracking_events
+                recent = await db.tracking_events.find_one(
+                    {"event_type": "form_submit", "lead_data.email": email_str},
+                    sort=[("timestamp", -1)]
+                )
+                if recent and recent.get("visitor_id"):
+                    matched_vid = recent["visitor_id"]
+                    await db.visitor_profiles.update_one(
+                        {"visitor_id": matched_vid},
+                        {"$set": {
+                            "identified": True,
+                            "lead_id": lead_id,
+                            "lead_name": lead_dict.get("name"),
+                            "lead_email": email_str,
+                            "lead_phone": lead_dict.get("phone"),
+                            "lead_service_type": lead_dict.get("service_type"),
+                            "lead_address": lead_dict.get("address"),
+                            "converted_at": now.isoformat(),
+                            "conversion_event": "form_submit_matched",
+                        }}
+                    )
+                    # Aussi stocker le visitor_id dans le lead pour référence
+                    await db.leads.update_one({"lead_id": lead_id}, {"$set": {"visitor_id": matched_vid}})
+                    logger.info(f"Visitor {matched_vid} matched to lead {lead_id} via email {email_str}")
+        except Exception as e:
+            logger.warning(f"Failed to match visitor by email: {e}")
 
     # Log activity if authenticated
     user = await get_current_user(request)
