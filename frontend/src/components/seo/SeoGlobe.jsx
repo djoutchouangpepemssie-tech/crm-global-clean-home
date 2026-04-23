@@ -30,9 +30,11 @@ const HOT_COLOR = '#f59e0b';
 const IDENTIFIED_COLOR = '#3b82f6';
 const LIVE_COLOR = '#22c55e'; // Vert plus vif pour les LIVE actifs
 
-// Fenêtre "LIVE" : dernière activité < 5 min = visiteur considéré comme actuellement sur le site
-const LIVE_WINDOW_MS = 5 * 60 * 1000;
-const RECENT_WINDOW_MS = 30 * 60 * 1000;
+// Fenêtres temporelles alignées sur Google Analytics :
+// - LIVE : dernière activité < 30 min (= "utilisateurs en ligne" chez GA4)
+// - RECENT : 30 min - 1 h (encore affiché mais plus en LIVE visuel)
+const LIVE_WINDOW_MS = 30 * 60 * 1000;
+const RECENT_WINDOW_MS = 60 * 60 * 1000;
 
 function isLive(visitor) {
   if (!visitor?.last_seen) return false;
@@ -45,6 +47,13 @@ function isRecent(visitor) {
     var diff = Date.now() - new Date(visitor.last_seen).getTime();
     return diff >= LIVE_WINDOW_MS && diff < RECENT_WINDOW_MS;
   } catch (_e) { return false; }
+}
+
+// Dernière activité d'un visiteur en minutes
+function minutesSince(iso) {
+  if (!iso) return null;
+  try { return Math.round((Date.now() - new Date(iso).getTime()) / 60000); }
+  catch (_e) { return null; }
 }
 
 // Villes connues
@@ -1025,7 +1034,7 @@ export default function SeoGlobe() {
               letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700,
               color: liveCount > 0 ? '#166534' : '#64748b',
             }}>
-              EN CE MOMENT SUR LE SITE
+              {liveCount > 0 ? 'EN LIGNE MAINTENANT' : 'EN CE MOMENT SUR LE SITE'}
             </span>
           </div>
           <div className={liveCount > 0 ? 'gch-live-text' : ''} style={{
@@ -1036,9 +1045,21 @@ export default function SeoGlobe() {
             {fmt(liveCount)}
           </div>
           <div style={{ fontSize: 11, color: liveCount > 0 ? '#166534' : '#64748b' }}>
-            {liveCount === 0 ? 'Aucun visiteur actif' :
-              liveCount === 1 ? 'visiteur actif maintenant' : 'visiteurs actifs maintenant'}
-            {liveData?.active_pages?.[0] && ' · ' + liveData.active_pages[0].path}
+            {liveCount === 0 ? (() => {
+              // Si personne LIVE, afficher quand même le dernier visiteur pour contextualiser
+              var latest = allVisitors.reduce(function (acc, vis) {
+                if (!vis.last_seen) return acc;
+                if (!acc) return vis;
+                return new Date(vis.last_seen) > new Date(acc.last_seen) ? vis : acc;
+              }, null);
+              var mAgo = latest ? minutesSince(latest.last_seen) : null;
+              if (mAgo === null) return 'Aucun visiteur récent';
+              if (mAgo < 60) return 'Dernier visiteur il y a ' + mAgo + ' min';
+              if (mAgo < 1440) return 'Dernier visiteur il y a ' + Math.round(mAgo / 60) + 'h';
+              return 'Dernier visiteur il y a ' + Math.round(mAgo / 1440) + 'j';
+            })() :
+              (liveCount === 1 ? 'visiteur actif (30 dernières min)' : 'visiteurs actifs (30 dernières min)')}
+            {liveData?.active_pages?.[0] && liveCount > 0 && ' · ' + liveData.active_pages[0].path}
           </div>
           {/* Badge pulsant en haut à droite */}
           {liveCount > 0 && (
