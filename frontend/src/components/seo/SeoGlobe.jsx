@@ -72,7 +72,13 @@ function dotSize(visitor) {
 
 function dotColor(visitor) {
   if (visitor.identified || visitor.lead) return IDENTIFIED_COLOR;
-  if ((visitor.event_count || 0) > 10 || visitor.cta_clicks > 0) return HOT_COLOR;
+  // "Hot" = visiteur engagé : CTA clické OU beaucoup d'events (hors time_on_page auto)
+  var hot = (visitor.cta_clicks || 0) > 0
+    || (visitor.phone_clicks || 0) > 0
+    || (visitor.email_clicks || 0) > 0
+    || (visitor.whatsapp_clicks || 0) > 0
+    || (visitor.event_count || 0) >= 30;
+  if (hot) return HOT_COLOR;
   return VISITOR_COLOR;
 }
 

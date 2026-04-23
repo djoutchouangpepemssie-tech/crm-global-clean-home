@@ -4194,7 +4194,11 @@ async def track_event(request: Request):
 
 
 async def _process_single_tracking_event(data: dict, request):
-    """Traite un seul événement de tracking."""
+    """Traite un seul événement de tracking.
+    Accepte 2 formats :
+    - Legacy flat : { page_url, referrer, device_info:{...}, utm_source, ... }
+    - v3 nested  : { page:{url,path,title,referrer}, device:{user_agent,...}, utm:{source,...} }
+    """
     try:
         # Add server timestamp
         data["server_timestamp"] = datetime.now(timezone.utc).isoformat()
@@ -4206,6 +4210,51 @@ async def _process_single_tracking_event(data: dict, request):
         if ip:
             data["ip"] = ip
 
+        # ─── NORMALISATION : extraire les champs utiles des 2 formats ───
+        page_obj = data.get("page") or {}
+        device_obj = data.get("device") or data.get("device_info") or {}
+        utm_obj = data.get("utm") or {}
+
+        # URL + titre + referrer : nested > flat
+        page_url = page_obj.get("url") or data.get("page_url") or ""
+        page_title = page_obj.get("title") or data.get("page_title") or ""
+        referrer = page_obj.get("referrer") or data.get("referrer") or ""
+
+        # Device : user_agent et device_type (détecté depuis UA si absent)
+        user_agent = device_obj.get("user_agent") or ""
+        device_type = device_obj.get("device_type")
+        if not device_type and user_agent:
+            ua_lower = user_agent.lower()
+            if any(k in ua_lower for k in ["mobi", "android", "iphone", "ipod", "blackberry", "opera mini"]):
+                device_type = "mobile"
+            elif "ipad" in ua_lower or "tablet" in ua_lower:
+                device_type = "tablet"
+            else:
+                device_type = "desktop"
+        lang = device_obj.get("lang") or device_obj.get("language") or ""
+        tz = device_obj.get("tz") or device_obj.get("timezone") or ""
+
+        # UTM : v3 utilise {source,medium,campaign}, flat utilise {utm_source,utm_medium,utm_campaign}
+        utm_source = utm_obj.get("source") or utm_obj.get("utm_source") or data.get("utm_source")
+        utm_medium = utm_obj.get("medium") or utm_obj.get("utm_medium") or data.get("utm_medium")
+        utm_campaign = utm_obj.get("campaign") or utm_obj.get("utm_campaign") or data.get("utm_campaign")
+        gclid = utm_obj.get("gclid") or data.get("gclid")
+        fbclid = utm_obj.get("fbclid") or data.get("fbclid")
+
+        # Écrase les champs plats pour que les queries existantes fonctionnent
+        data["page_url"] = page_url
+        data["page_title"] = page_title
+        data["referrer"] = referrer
+        data["utm_source"] = utm_source
+        data["utm_medium"] = utm_medium
+        data["utm_campaign"] = utm_campaign
+        data["gclid"] = gclid
+        data["fbclid"] = fbclid
+        data["device_type"] = device_type
+        data["user_agent"] = user_agent[:300] if user_agent else ""
+        data["lang"] = lang
+        data["tz"] = tz
+
         # Store in tracking_events collection
         await db.tracking_events.insert_one(data)
 
@@ -4216,13 +4265,13 @@ async def _process_single_tracking_event(data: dict, request):
         if vid:
             sid = data.get("session_id")
             etype = data.get("event_type")
-            page_url = data.get("page_url")
-            path = ""
-            try:
-                from urllib.parse import urlparse
-                path = urlparse(page_url).path or "/"
-            except Exception:
-                pass
+            path = page_obj.get("path") or ""
+            if not path:
+                try:
+                    from urllib.parse import urlparse
+                    path = urlparse(page_url).path or "/"
+                except Exception:
+                    pass
             now_iso = data.get("server_timestamp")
 
             inc = {"events_total": 1}
@@ -4248,12 +4297,12 @@ async def _process_single_tracking_event(data: dict, request):
                 "visitor_id": vid,
                 "first_seen": now_iso,
                 "first_page": path,
-                "first_referrer": data.get("referrer", ""),
-                "first_utm_source": data.get("utm_source"),
-                "first_utm_campaign": data.get("utm_campaign"),
-                "first_utm_medium": data.get("utm_medium"),
-                "first_gclid": data.get("gclid"),
-                "first_fbclid": data.get("fbclid"),
+                "first_referrer": referrer,
+                "first_utm_source": utm_source,
+                "first_utm_campaign": utm_campaign,
+                "first_utm_medium": utm_medium,
+                "first_gclid": gclid,
+                "first_fbclid": fbclid,
                 "created_at": now_iso,
             }
             set_update = {
@@ -4262,10 +4311,10 @@ async def _process_single_tracking_event(data: dict, request):
                 "last_event_type": etype,
                 "last_session_id": sid,
                 "ip": data.get("ip"),
-                "device_type": (data.get("device_info") or {}).get("device_type"),
-                "user_agent": (data.get("device_info") or {}).get("user_agent", "")[:200],
-                "lang": (data.get("device_info") or {}).get("lang"),
-                "tz": (data.get("device_info") or {}).get("tz"),
+                "device_type": device_type,
+                "user_agent": user_agent[:200] if user_agent else "",
+                "lang": lang,
+                "tz": tz,
                 "updated_at": now_iso,
             }
             add_to_set = {}

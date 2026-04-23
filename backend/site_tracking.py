@@ -242,16 +242,19 @@ async def serve_tracker_script():
 
 @tracker_router.get("/snippet")
 async def get_snippet_html():
-    """HTML pret a copier pour integration site (dev + prod)."""
-    src = f"{BACKEND_URL}/api/tracker/script.js"
-    html = f'<script defer src="{src}"></script>'
+    """HTML pret a copier pour integration site (dev + prod).
+    Tracker v3 hébergé sur Vercel (frontend). `data-cfasync=\"false\"` est
+    CRITIQUE : empêche Cloudflare Rocket Loader de bloquer le script."""
+    src = "https://crm.globalcleanhome.com/tracker.min.js"
+    html = f'<script src="{src}" async defer data-cfasync="false"></script>'
     return {
         "html": html,
         "src": src,
         "instructions": [
-            "Copier la balise ci-dessous.",
+            "Copier la balise ci-dessous TELLE QUELLE (ne pas retirer data-cfasync).",
             "La coller juste avant </head> de toutes les pages de " + SITE_URL + ".",
-            "Aucune conf supplementaire : visitor_id + session_id + UTM captures automatiquement.",
+            "⚠️ data-cfasync=\"false\" empêche Cloudflare Rocket Loader de bloquer le tracker.",
+            "Aucune conf supplémentaire : visitor_id + session_id + UTM captures automatiquement.",
             "Tag un bouton avec data-gch-cta=\"devis\" pour le forcer en CTA.",
         ],
     }
@@ -313,11 +316,14 @@ async def _check_tracker():
         now = datetime.now(timezone.utc)
         last24 = (now - timedelta(hours=24)).isoformat()
         last7d = (now - timedelta(days=7)).isoformat()
-        events_24h = await _db.tracking_events.count_documents({"timestamp": {"$gte": last24}})
-        events_7d = await _db.tracking_events.count_documents({"timestamp": {"$gte": last7d}})
-        last_ev = await _db.tracking_events.find_one({}, sort=[("timestamp", -1)])
-        last_ts = (last_ev or {}).get("timestamp") or (last_ev or {}).get("server_timestamp")
-        visitors_24h = len(await _db.tracking_events.distinct("visitor_id", {"timestamp": {"$gte": last24}}))
+        # Compte sur timestamp OU server_timestamp (selon version tracker)
+        q24 = {"$or": [{"timestamp": {"$gte": last24}}, {"server_timestamp": {"$gte": last24}}]}
+        q7d = {"$or": [{"timestamp": {"$gte": last7d}}, {"server_timestamp": {"$gte": last7d}}]}
+        events_24h = await _db.tracking_events.count_documents(q24)
+        events_7d = await _db.tracking_events.count_documents(q7d)
+        last_ev = await _db.tracking_events.find_one({}, sort=[("server_timestamp", -1)])
+        last_ts = (last_ev or {}).get("server_timestamp") or (last_ev or {}).get("timestamp")
+        visitors_24h = len(await _db.tracking_events.distinct("visitor_id", q24))
         if events_24h == 0 and events_7d == 0:
             status = "disconnected"
             detail = "Aucun event recu. Installer le snippet sur " + SITE_URL
@@ -399,22 +405,25 @@ async def tracker_recent(request: Request, limit: int = 50):
     except Exception:
         pass
     limit = max(1, min(200, int(limit)))
-    rows = await _db.tracking_events.find({}, {"_id": 0}).sort("timestamp", -1).to_list(limit)
-    # Normalise champs utiles
+    rows = await _db.tracking_events.find({}, {"_id": 0}).sort("server_timestamp", -1).to_list(limit)
+    # Normalise champs utiles (supporte payload plat + nested v3)
     out = []
     for r in rows:
+        page_o = r.get("page") or {}
+        utm_o = r.get("utm") or {}
+        device_o = r.get("device") or r.get("device_info") or {}
         out.append({
             "event_type": r.get("event_type"),
             "timestamp": r.get("timestamp") or r.get("server_timestamp"),
-            "page_url": r.get("page_url"),
-            "page_title": r.get("page_title"),
+            "page_url": r.get("page_url") or page_o.get("url"),
+            "page_title": r.get("page_title") or page_o.get("title"),
             "visitor_id": r.get("visitor_id"),
             "session_id": r.get("session_id"),
-            "utm_source": r.get("utm_source"),
-            "utm_medium": r.get("utm_medium"),
-            "utm_campaign": r.get("utm_campaign"),
-            "referrer": r.get("referrer"),
-            "device_type": (r.get("device_info") or {}).get("device_type"),
+            "utm_source": r.get("utm_source") or utm_o.get("source"),
+            "utm_medium": r.get("utm_medium") or utm_o.get("medium"),
+            "utm_campaign": r.get("utm_campaign") or utm_o.get("campaign"),
+            "referrer": r.get("referrer") or page_o.get("referrer"),
+            "device_type": r.get("device_type") or device_o.get("device_type"),
             "extra": {k: v for k, v in r.items() if k in ("cta_label", "cta_href", "depth", "seconds", "form_id", "lead_data")},
         })
     return {"count": len(out), "events": out}
@@ -555,9 +564,13 @@ async def list_visitors(request: Request, hours: int = 24, limit: int = 100, inc
     since = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
 
     # Pipeline aggregation : grouper par visitor_id, derniere activite
+    # Match sur timestamp OU server_timestamp (robuste aux 2 formats de tracker)
     pipeline = [
-        {"$match": {"timestamp": {"$gte": since}, "visitor_id": {"$ne": None}}},
-        {"$sort": {"timestamp": -1}},
+        {"$match": {
+            "$or": [{"timestamp": {"$gte": since}}, {"server_timestamp": {"$gte": since}}],
+            "visitor_id": {"$ne": None},
+        }},
+        {"$sort": {"server_timestamp": -1}},
         {"$group": {
             "_id": "$visitor_id",
             "visitor_id": {"$first": "$visitor_id"},
@@ -571,8 +584,16 @@ async def list_visitors(request: Request, hours: int = 24, limit: int = 100, inc
             "utm_medium": {"$first": "$utm_medium"},
             "utm_campaign": {"$first": "$utm_campaign"},
             "device_info": {"$first": "$device_info"},
+            "device": {"$first": "$device"},
+            "device_type_flat": {"$first": "$device_type"},
+            "user_agent_flat": {"$first": "$user_agent"},
             "ip": {"$first": "$ip"},
             "event_count": {"$sum": 1},
+            "cta_clicks": {"$sum": {"$cond": [{"$eq": ["$event_type", "cta_click"]}, 1, 0]}},
+            "phone_clicks": {"$sum": {"$cond": [{"$eq": ["$event_type", "phone_click"]}, 1, 0]}},
+            "email_clicks": {"$sum": {"$cond": [{"$eq": ["$event_type", "email_click"]}, 1, 0]}},
+            "whatsapp_clicks": {"$sum": {"$cond": [{"$eq": ["$event_type", "whatsapp_click"]}, 1, 0]}},
+            "form_submits": {"$sum": {"$cond": [{"$eq": ["$event_type", "form_submit"]}, 1, 0]}},
         }},
         {"$sort": {"last_seen": -1}},
         {"$limit": limit},
@@ -669,9 +690,18 @@ async def list_visitors(request: Request, hours: int = 24, limit: int = 100, inc
             "referrer": v.get("last_referrer"),
             "utm_source": v.get("utm_source"),
             "utm_campaign": v.get("utm_campaign"),
-            "device": (v.get("device_info") or {}).get("device_type"),
-            "user_agent": (v.get("device_info") or {}).get("user_agent", "")[:80],
+            "device": (v.get("device_type_flat")
+                       or (v.get("device_info") or {}).get("device_type")
+                       or (v.get("device") or {}).get("device_type")),
+            "user_agent": (v.get("user_agent_flat")
+                           or (v.get("device_info") or {}).get("user_agent", "")
+                           or (v.get("device") or {}).get("user_agent", ""))[:80],
             "event_count": v.get("event_count", 0),
+            "cta_clicks": v.get("cta_clicks", 0),
+            "phone_clicks": v.get("phone_clicks", 0),
+            "email_clicks": v.get("email_clicks", 0),
+            "whatsapp_clicks": v.get("whatsapp_clicks", 0),
+            "form_submits": v.get("form_submits", 0),
             "identified": is_identified,
             "location": loc,  # Ville/pays approximatif via IP
             "lead": {
