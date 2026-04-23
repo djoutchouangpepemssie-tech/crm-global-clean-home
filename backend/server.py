@@ -4114,10 +4114,31 @@ async def global_search(
 
 @api_router.post("/tracking/event")
 async def track_event(request: Request):
-    """Public endpoint to receive tracking events from website."""
+    """Public endpoint to receive tracking events from website.
+    Accepte deux formats :
+    - Objet unique : { event_type, visitor_id, ... }
+    - Batch : { batch: [ {event1}, {event2}, ... ] }
+    """
     try:
-        data = await request.json()
+        raw = await request.json()
 
+        # Support batch : si le payload contient un champ "batch", traiter chaque event
+        if isinstance(raw, dict) and "batch" in raw and isinstance(raw["batch"], list):
+            for item in raw["batch"]:
+                await _process_single_tracking_event(item, request)
+            return {"status": "ok", "processed": len(raw["batch"])}
+
+        # Format standard : objet unique
+        data = raw
+        return await _process_single_tracking_event(data, request)
+    except Exception as e:
+        logger.warning(f"tracking/event error: {type(e).__name__}: {str(e)[:200]}")
+        return {"status": "error", "detail": str(e)[:200]}
+
+
+async def _process_single_tracking_event(data: dict, request):
+    """Traite un seul événement de tracking."""
+    try:
         # Add server timestamp
         data["server_timestamp"] = datetime.now(timezone.utc).isoformat()
 
