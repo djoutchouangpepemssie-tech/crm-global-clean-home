@@ -144,15 +144,19 @@ function coordsFor(visitor) { return rawCoordsFor(visitor); }
 //  - zoom 5-6 (pays) : 0.05° (~5km) → ville
 //  - zoom 7+ (ville) : 0.01° (~1km) → quartier → presque plus de clusters
 // ═══════════════════════════════════════════════════════════════
+// Grille de clustering plus AGRESSIVE : on veut agréger tant que les
+// dots se chevaucheraient visuellement. À bas zoom, une grande zone.
+// À très haut zoom (zoom 10+), on permet enfin l'éclatement individuel.
 function clusterGridSize(zoom) {
   var z = Math.max(zoom || 1, 0.8);
-  if (z < 2) return 0.8;
-  if (z < 3) return 0.4;
-  if (z < 4) return 0.2;
-  if (z < 5) return 0.1;
-  if (z < 6) return 0.05;
-  if (z < 7) return 0.02;
-  return 0.01;
+  if (z < 2) return 2.0;     // 200km — IDF entière + Normandie en 1 cluster à zoom monde
+  if (z < 3) return 1.0;     // 100km — IDF entière
+  if (z < 4) return 0.5;     // 50km — agglo parisienne
+  if (z < 5) return 0.25;    // 25km — grande ville
+  if (z < 6) return 0.12;    // 12km — ville
+  if (z < 8) return 0.05;    // 5km — quartier
+  if (z < 10) return 0.02;   // 2km — zone
+  return 0.008;              // 800m — rue (éclatement final)
 }
 
 function buildClusters(visitors, zoom) {
@@ -261,14 +265,11 @@ var ClusterMarker = memo(function ClusterMarker({ cluster, onHover, onLeave, onC
         onMouseEnter={function () { onHover(cluster); }}
         onMouseLeave={onLeave}
         onClick={function () { onClick && onClick(cluster); }}>
-        {/* Anneau LIVE autour du cluster si des visiteurs actifs */}
+        {/* Anneau LIVE autour du cluster — compact */}
         {hasLive && (
-          <>
-            <circle r={r * 1.7} fill="none" stroke={LIVE_COLOR} strokeWidth="2"
-              vectorEffect="non-scaling-stroke" className="gch-live-ring"
-              opacity="0.7" />
-            <circle r={r * 1.35} fill={LIVE_COLOR} className="gch-live-halo" opacity="0.22" />
-          </>
+          <circle r={r * 1.3} fill="none" stroke={LIVE_COLOR} strokeWidth="2"
+            vectorEffect="non-scaling-stroke" className="gch-live-ring"
+            opacity="0.8" />
         )}
         {/* Cercle principal */}
         <circle r={r} fill={color} stroke="white" strokeWidth={2.5}
@@ -290,7 +291,7 @@ var ClusterMarker = memo(function ClusterMarker({ cluster, onHover, onLeave, onC
         {hasLive && (
           <g transform={'translate(' + (r * 0.75) + ',' + (-r * 0.75) + ')'}>
             <circle r={r * 0.25} fill={LIVE_COLOR} stroke="white" strokeWidth={1.5}
-              vectorEffect="non-scaling-stroke" className="gch-live-halo" />
+              vectorEffect="non-scaling-stroke" />
             <circle r={r * 0.15} fill="white" />
           </g>
         )}
@@ -304,48 +305,63 @@ var ClusterMarker = memo(function ClusterMarker({ cluster, onHover, onLeave, onC
     && Math.abs((a.currentZoom || 1) - (b.currentZoom || 1)) < 0.1;
 });
 
+// Hash stable d'un visitor_id en [0, 1000) — sert à désynchroniser les
+// animations (delay différent pour chaque dot) et à garantir le déterminisme
+function hashId(id) {
+  if (!id) return 0;
+  var h = 0;
+  for (var i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  return Math.abs(h) % 1000;
+}
+
 var VisitorDot = memo(function VisitorDot({ visitor, onHover, onLeave, currentZoom, coords }) {
   if (!coords) return null;
   var z = currentZoom || 1;
   var scale = 1 / Math.sqrt(Math.max(z, 1));
   var base = dotSize(visitor);
-  var r = Math.max(base * scale, 3.5);
+  // Rayon plus petit pour laisser de l'air entre dots voisins
+  var r = Math.max(base * scale * 0.85, 3);
   var color = dotColor(visitor);
   var identified = visitor.identified;
   var hot = color === HOT_COLOR;
   var live = isLive(visitor);
+  // Délai d'animation désynchronisé (0-1.8s) basé sur le hash du visitor_id
+  var animDelay = (hashId(visitor.visitor_id) / 1000) * 1.8;
   return (
     <Marker coordinates={coords}>
       <g style={{ cursor: 'pointer' }}
         onMouseEnter={function () { onHover(visitor); }}
         onMouseLeave={onLeave}>
-        {/* Anneau LIVE — plus compact pour ne pas empiéter sur les voisins */}
+        {/* Anneau LIVE — RÉDUIT DRASTIQUEMENT pour éviter empiétement voisin */}
         {live && (
-          <>
-            <circle r={r * 2.2} fill="none" stroke={LIVE_COLOR} strokeWidth="1.5"
-              vectorEffect="non-scaling-stroke" className="gch-live-ring"
-              opacity="0.7" />
-            <circle r={r * 1.6} fill={LIVE_COLOR} className="gch-live-halo" opacity="0.3" />
-          </>
+          <circle r={r * 1.4} fill="none" stroke={LIVE_COLOR} strokeWidth="1.5"
+            vectorEffect="non-scaling-stroke" className="gch-live-ring"
+            style={{ animationDelay: '-' + animDelay + 's' }}
+            opacity="0.8" />
         )}
-        {/* Halo standard — réduit aussi */}
-        {!live && (
-          <circle r={r * 1.5} fill={color}
-            className={identified ? 'gch-id-halo' : (hot ? 'gch-hot-halo' : undefined)}
-            opacity={identified || hot ? 0.22 : 0.12} />
+        {/* Halo très discret — même pour identified / hot */}
+        {!live && (identified || hot) && (
+          <circle r={r * 1.2} fill={color}
+            className={identified ? 'gch-id-halo' : 'gch-hot-halo'}
+            style={{ animationDelay: '-' + animDelay + 's' }}
+            opacity="0.2" />
         )}
         {/* Point principal */}
         <circle r={r} fill={live ? LIVE_COLOR : color}
           stroke="white" strokeWidth={live ? 2 : 1.5}
-          vectorEffect="non-scaling-stroke" />
+          vectorEffect="non-scaling-stroke"
+          style={{ pointerEvents: 'auto' }} />
         {identified && !live && (
-          <circle r={Math.max(r - 1.8, 1.2)} fill="white" opacity="0.95" />
+          <circle r={Math.max(r - 1.8, 1.2)} fill="white" opacity="0.95"
+            style={{ pointerEvents: 'none' }} />
         )}
         {live && identified && (
-          <circle r={Math.max(r - 2, 1.2)} fill="white" opacity="0.95" />
+          <circle r={Math.max(r - 2, 1.2)} fill="white" opacity="0.95"
+            style={{ pointerEvents: 'none' }} />
         )}
-        {/* Zone de clic agrandie */}
-        <circle r={Math.max(r * 2.2, 10)} fill="transparent" />
+        {/* Zone de clic STRICTE — limitée au dot visible pour qu'un dot
+            voisin ne capture pas le hover */}
+        <circle r={r * 1.3} fill="transparent" />
       </g>
     </Marker>
   );
@@ -987,11 +1003,9 @@ export default function SeoGlobe() {
         @keyframes dashflow{to{stroke-dashoffset:-20}}
         .gch-line{animation:dashflow 1.6s linear infinite}
 
-        /* LIVE — halo grand qui pulse fort pour identifier les visiteurs actifs */
-        @keyframes liveHalo{0%{transform:scale(.7);opacity:.55}70%{transform:scale(2.2);opacity:0}100%{transform:scale(2.2);opacity:0}}
-        @keyframes liveRing{0%{transform:scale(1);opacity:.6}50%{transform:scale(1.25);opacity:.9}100%{transform:scale(1);opacity:.6}}
-        .gch-live-halo{transform-origin:center;transform-box:fill-box;animation:liveHalo 1.8s ease-out infinite}
-        .gch-live-ring{transform-origin:center;transform-box:fill-box;animation:liveRing 1.8s ease-in-out infinite}
+        /* LIVE — anneau discret qui pulse (scale max 1.15 pour éviter empiétement) */
+        @keyframes liveRing{0%{transform:scale(1);opacity:.7}50%{transform:scale(1.15);opacity:.95}100%{transform:scale(1);opacity:.7}}
+        .gch-live-ring{transform-origin:center;transform-box:fill-box;animation:liveRing 2s ease-in-out infinite}
 
         /* Voyant vert pulsant — utilisé dans les panels */
         @keyframes greenBeacon{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.7)}50%{box-shadow:0 0 0 6px rgba(34,197,94,0)}}
