@@ -16,6 +16,9 @@ from fastapi.responses import PlainTextResponse
 
 logger = logging.getLogger(__name__)
 tracker_router = APIRouter(prefix="/api/tracking", tags=["tracking"])
+# Legacy compat : l'ancien prefix /api/tracker est encore utilisé par le script
+# injecté sur globalcleanhome.com. Ce router redirige vers les nouvelles routes.
+tracker_legacy_router = APIRouter(prefix="/api/tracker", tags=["tracker-legacy"])
 _db = None
 
 SITE_URL = os.environ.get("SITE_URL", "https://www.globalcleanhome.com")
@@ -781,7 +784,7 @@ async def _list_journeys_impl(identified, converted, country, min_pages, min_ses
         # Géoloc via cache IP (sans fetch externe ici — trop lourd pour la liste)
         geo = None
         ip = p.get("ip")
-        if ip and _db:
+        if ip and _db is not None:
             try:
                 cached = await _db.ip_geocache.find_one({"ip": ip}, {"_id": 0})
                 if cached and cached.get("location"):
@@ -1266,3 +1269,15 @@ async def delete_visitor_data(visitor_id: str, request: Request):
         "events_deleted": result_events,
         "message": f"Données du visiteur {visitor_id} supprimées" if deleted else "Visiteur non trouvé",
     }
+
+
+# ═══════════════════════════════════════════════════════════════
+# LEGACY COMPAT : /api/tracker/* redirige vers /api/tracking/*
+# Le site globalcleanhome.com utilise encore l'ancien prefix.
+# ═══════════════════════════════════════════════════════════════
+
+@tracker_legacy_router.get("/script.js")
+async def legacy_script_js(request: Request):
+    """Sert le tracker.js depuis l'ancien endpoint /api/tracker/script.js."""
+    js = TRACKER_JS.replace("__BACKEND__", BACKEND_URL).replace("__SITE__", SITE_URL)
+    return PlainTextResponse(js, media_type="application/javascript")

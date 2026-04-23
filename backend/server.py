@@ -5142,8 +5142,9 @@ app.include_router(intervenant_router)
 from analytics_ga4 import analytics_router as ga4_router, init_analytics_db
 app.include_router(ga4_router)
 
-from site_tracking import tracker_router, init_site_tracking_db
+from site_tracking import tracker_router, tracker_legacy_router, init_site_tracking_db
 app.include_router(tracker_router)
+app.include_router(tracker_legacy_router)  # Compat /api/tracker/* pour le site existant
 
 from seo_advanced import seo_advanced_router, init_seo_advanced_db, _ensure_indexes as _seo_ensure_indexes
 app.include_router(seo_advanced_router)
