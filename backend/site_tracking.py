@@ -720,6 +720,17 @@ async def list_journeys(
     if _db is None:
         raise HTTPException(status_code=500, detail="DB non initialisee")
 
+    try:
+        return await _list_journeys_impl(identified, converted, country, min_pages, min_sessions, source, days, sort, limit, skip)
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        logger.error(f"journeys error: {type(e).__name__}: {e}\n{tb}")
+        raise HTTPException(status_code=500, detail=f"Erreur journeys: {type(e).__name__}: {str(e)[:300]}")
+
+
+async def _list_journeys_impl(identified, converted, country, min_pages, min_sessions, source, days, sort, limit, skip):
+
     since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
     query: dict = {"last_seen": {"$gte": since}}
 
