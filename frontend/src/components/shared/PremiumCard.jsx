@@ -9,14 +9,11 @@ export const Card = ({
 }) => (
   <div
     className={`
-      rounded-2xl ${padded ? 'p-5' : ''}
-      bg-white
-      ${!noBorder ? 'border border-neutral-200' : ''}
-      shadow-card
-      transition-all duration-200
-      ${hoverable ? 'hover:shadow-card-lg hover:border-neutral-300 cursor-pointer' : ''}
+      glass ${hoverable ? 'glass-interactive' : ''}
+      ${padded ? 'p-5' : ''}
       ${className}
     `}
+    style={{ borderRadius: 'var(--lg-radius)' }}
   >
     {children}
   </div>
