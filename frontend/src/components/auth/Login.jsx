@@ -48,10 +48,8 @@ const Login = () => {
 
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-lg bg-terracotta-600 flex items-center justify-center shadow-accent"
-                 style={{ boxShadow: 'inset 0 -2px 0 rgba(0,0,0,0.18)' }}>
-              <span className="font-display text-white text-lg font-semibold tracking-tight">G</span>
-            </div>
+            <img src="/logo-mark.svg" width="44" height="44" alt="Global Clean Home"
+                 style={{ display: 'block', filter: 'drop-shadow(0 4px 14px rgba(16,185,129,0.35))' }} />
             <div>
               <span className="font-display text-white text-lg font-semibold tracking-tight block leading-none">
                 Global Clean Home
@@ -128,9 +126,8 @@ const Login = () => {
 
           {/* Logo mobile */}
           <div className="lg:hidden flex items-center gap-3 mb-12">
-            <div className="w-11 h-11 rounded-lg bg-terracotta-600 flex items-center justify-center shadow-accent">
-              <span className="font-display text-white text-lg font-semibold">G</span>
-            </div>
+            <img src="/logo-mark.svg" width="44" height="44" alt="Global Clean Home"
+                 style={{ display: 'block', filter: 'drop-shadow(0 4px 12px rgba(16,185,129,0.25))' }} />
             <span className="font-display text-neutral-900 text-lg font-semibold tracking-tight">
               Global Clean Home
             </span>

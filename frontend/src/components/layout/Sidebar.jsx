@@ -205,16 +205,8 @@ export default function Sidebar() {
       }}>
         {!collapsed && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{
-              width: '34px', height: '34px',
-              background: C.accent,
-              borderRadius: '8px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
-              boxShadow: 'inset 0 -2px 0 rgba(0,0,0,0.15)',
-            }}>
-              <span style={{ color: '#F5EFE3', fontSize: '15px', fontWeight: 700, fontFamily: 'var(--font-display, "Fraunces", serif)', letterSpacing: '-0.02em' }}>G</span>
-            </div>
+            <img src="/logo-mark.svg" width="36" height="36" alt="Global Clean Home"
+                 style={{ display: 'block', flexShrink: 0, filter: 'drop-shadow(0 2px 6px rgba(4,120,87,0.25))' }} />
             <div>
               <p style={{ color: C.textMain, fontSize: '13px', fontWeight: 600, lineHeight: 1.2, margin: 0, fontFamily: 'var(--font-display, "Fraunces", serif)', letterSpacing: '-0.01em' }}>
                 Global Clean
@@ -226,14 +218,8 @@ export default function Sidebar() {
           </div>
         )}
         {collapsed && (
-          <div style={{
-            width: '34px', height: '34px',
-            background: C.accent,
-            borderRadius: '8px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <span style={{ color: '#F5EFE3', fontSize: '15px', fontWeight: 700, fontFamily: 'var(--font-display, "Fraunces", serif)' }}>G</span>
-          </div>
+          <img src="/logo-mark.svg" width="36" height="36" alt="GCH"
+               style={{ display: 'block', filter: 'drop-shadow(0 2px 6px rgba(4,120,87,0.25))' }} />
         )}
         {!collapsed && (
           <button

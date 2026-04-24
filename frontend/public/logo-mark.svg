@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <!-- Liquid glass core : dégradé émeraude multicouche -->
+    <radialGradient id="lm-core" cx="30%" cy="22%" r="95%">
+      <stop offset="0%" stop-color="#A7F3D0"/>
+      <stop offset="20%" stop-color="#34D399"/>
+      <stop offset="50%" stop-color="#10B981"/>
+      <stop offset="78%" stop-color="#047857"/>
+      <stop offset="100%" stop-color="#022C22"/>
+    </radialGradient>
+
+    <!-- Glass highlight top -->
+    <linearGradient id="lm-shine" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.7"/>
+      <stop offset="40%" stop-color="#FFFFFF" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Inner glow (profondeur) -->
+    <radialGradient id="lm-glow" cx="50%" cy="60%" r="60%">
+      <stop offset="0%" stop-color="#6EE7B7" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#6EE7B7" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Bottom shadow (profondeur verre) -->
+    <linearGradient id="lm-bottom" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#064E3B" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#022C22" stop-opacity="0.45"/>
+    </linearGradient>
+
+    <!-- Rim lumineux (bord supérieur du verre) -->
+    <linearGradient id="lm-rim-top" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#D1FAE5" stop-opacity="0.3"/>
+      <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#D1FAE5" stop-opacity="0.3"/>
+    </linearGradient>
+
+    <!-- Goutte terracotta -->
+    <radialGradient id="lm-drop" cx="35%" cy="28%" r="75%">
+      <stop offset="0%" stop-color="#FDEAE0"/>
+      <stop offset="55%" stop-color="#D97757"/>
+      <stop offset="100%" stop-color="#8C3A24"/>
+    </radialGradient>
+
+    <!-- Ombre portée extérieure du mark -->
+    <filter id="lm-dropshadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="8"/>
+      <feOffset dx="0" dy="6" result="s"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.35"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Letter shadow subtle -->
+    <filter id="lm-letter-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="1"/>
+      <feOffset dx="0" dy="2"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.35"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <g filter="url(#lm-dropshadow)">
+    <!-- Socle liquid glass émeraude -->
+    <rect x="16" y="16" width="224" height="224" rx="56" fill="url(#lm-core)"/>
+
+    <!-- Inner glow central (lueur de profondeur) -->
+    <rect x="16" y="16" width="224" height="224" rx="56" fill="url(#lm-glow)"/>
+
+    <!-- Bottom shadow (ajoute de la profondeur) -->
+    <rect x="16" y="16" width="224" height="224" rx="56" fill="url(#lm-bottom)"/>
+
+    <!-- Rim fin tout autour (verre brillant) -->
+    <rect x="17" y="17" width="222" height="222" rx="55" fill="none"
+          stroke="#D1FAE5" stroke-width="1.5" stroke-opacity="0.35"/>
+
+    <!-- Highlight supérieur (reflet principal liquid glass) -->
+    <path d="M 60 16 L 196 16 Q 240 16 240 56 L 240 110 Q 180 88 128 88 Q 76 88 16 110 L 16 56 Q 16 16 60 16 Z"
+          fill="url(#lm-shine)"/>
+
+    <!-- Rim supérieur lumineux -->
+    <path d="M 60 18 L 196 18 Q 238 18 238 56" fill="none"
+          stroke="url(#lm-rim-top)" stroke-width="2" stroke-linecap="round"/>
+
+    <!-- Lettre G Fraunces (display, opsz 144) -->
+    <text x="128" y="178" text-anchor="middle"
+          font-family="Fraunces, 'Playfair Display', Georgia, serif"
+          font-weight="700" font-size="168" fill="#FAF7F0"
+          filter="url(#lm-letter-shadow)"
+          style="font-variation-settings:'opsz' 144,'wght' 700">G</text>
+
+    <!-- Goutte terracotta (signature métier : propreté) -->
+    <g transform="translate(188, 56)">
+      <path d="M 0 -18 C 0 -18, -12 -4, -12 4 C -12 10.5, -6.5 16, 0 16 C 6.5 16, 12 10.5, 12 4 C 12 -4, 0 -18, 0 -18 Z"
+            fill="url(#lm-drop)"/>
+      <ellipse cx="-4" cy="-2" rx="3" ry="5" fill="#FFFFFF" opacity="0.6"/>
+    </g>
+  </g>
+</svg>
