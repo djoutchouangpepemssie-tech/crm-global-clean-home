@@ -1,88 +1,127 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 140" width="520" height="140">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 160" width="640" height="160">
   <defs>
-    <radialGradient id="lw-core" cx="30%" cy="22%" r="95%">
-      <stop offset="0%" stop-color="#A7F3D0"/>
-      <stop offset="20%" stop-color="#34D399"/>
-      <stop offset="50%" stop-color="#10B981"/>
-      <stop offset="78%" stop-color="#047857"/>
-      <stop offset="100%" stop-color="#022C22"/>
+    <radialGradient id="w-core" cx="28%" cy="18%" r="115%">
+      <stop offset="0%"  stop-color="#A7F3D0"/>
+      <stop offset="24%" stop-color="#6EE7B7"/>
+      <stop offset="48%" stop-color="#34D399"/>
+      <stop offset="68%" stop-color="#10B981"/>
+      <stop offset="88%" stop-color="#047857"/>
+      <stop offset="100%" stop-color="#012117"/>
     </radialGradient>
-    <linearGradient id="lw-shine" x1="50%" y1="0%" x2="50%" y2="100%">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.7"/>
-      <stop offset="40%" stop-color="#FFFFFF" stop-opacity="0.15"/>
+    <linearGradient id="w-shine" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.85"/>
+      <stop offset="35%" stop-color="#FFFFFF" stop-opacity="0.25"/>
       <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
     </linearGradient>
-    <radialGradient id="lw-glow" cx="50%" cy="60%" r="60%">
-      <stop offset="0%" stop-color="#6EE7B7" stop-opacity="0.35"/>
-      <stop offset="100%" stop-color="#6EE7B7" stop-opacity="0"/>
+    <linearGradient id="w-rim" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"  stop-color="#D1FAE5"/>
+      <stop offset="35%" stop-color="#FFFFFF"/>
+      <stop offset="65%" stop-color="#F5E6A8"/>
+      <stop offset="100%" stop-color="#6EE7B7"/>
+    </linearGradient>
+    <radialGradient id="w-glow" cx="50%" cy="58%" r="55%">
+      <stop offset="0%" stop-color="#A7F3D0" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#047857" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="lw-bottom" x1="50%" y1="0%" x2="50%" y2="100%">
-      <stop offset="0%" stop-color="#064E3B" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#022C22" stop-opacity="0.45"/>
+    <linearGradient id="w-depth" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#022C22" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.5"/>
     </linearGradient>
-    <linearGradient id="lw-rim-top" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#D1FAE5" stop-opacity="0.3"/>
-      <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.95"/>
-      <stop offset="100%" stop-color="#D1FAE5" stop-opacity="0.3"/>
-    </linearGradient>
-    <radialGradient id="lw-drop" cx="35%" cy="28%" r="75%">
+    <radialGradient id="w-drop" cx="35%" cy="28%" r="78%">
       <stop offset="0%" stop-color="#FDEAE0"/>
       <stop offset="55%" stop-color="#D97757"/>
-      <stop offset="100%" stop-color="#8C3A24"/>
+      <stop offset="100%" stop-color="#5A2214"/>
     </radialGradient>
-    <filter id="lw-dropshadow" x="-10%" y="-10%" width="120%" height="140%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="5"/>
-      <feOffset dx="0" dy="4"/>
-      <feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer>
+    <linearGradient id="w-gold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#D97757" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#D4A94A"/>
+      <stop offset="100%" stop-color="#D97757" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="w-shadow" x="-15%" y="-15%" width="130%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="6"/>
+      <feOffset dx="0" dy="5"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.32"/></feComponentTransfer>
       <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
-    <filter id="lw-letter-shadow" x="-10%" y="-10%" width="120%" height="120%">
+    <filter id="w-letter-shadow" x="-8%" y="-8%" width="116%" height="120%">
       <feGaussianBlur in="SourceAlpha" stdDeviation="0.6"/>
       <feOffset dx="0" dy="1.5"/>
-      <feComponentTransfer><feFuncA type="linear" slope="0.35"/></feComponentTransfer>
+      <feComponentTransfer><feFuncA type="linear" slope="0.4"/></feComponentTransfer>
       <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
+    <clipPath id="w-clip"><rect x="10" y="10" width="140" height="140" rx="34"/></clipPath>
   </defs>
 
-  <!-- Mark (icône à gauche) -->
-  <g filter="url(#lw-dropshadow)" transform="translate(10, 10)">
-    <rect x="0" y="0" width="120" height="120" rx="30" fill="url(#lw-core)"/>
-    <rect x="0" y="0" width="120" height="120" rx="30" fill="url(#lw-glow)"/>
-    <rect x="0" y="0" width="120" height="120" rx="30" fill="url(#lw-bottom)"/>
-    <rect x="0.8" y="0.8" width="118.4" height="118.4" rx="29.2"
-          fill="none" stroke="#D1FAE5" stroke-width="1" stroke-opacity="0.4"/>
-    <path d="M 32 0 L 88 0 Q 120 0 120 30 L 120 55 Q 88 42 60 42 Q 32 42 0 55 L 0 30 Q 0 0 32 0 Z"
-          fill="url(#lw-shine)"/>
-    <path d="M 32 1 L 88 1 Q 119 1 119 30" fill="none"
-          stroke="url(#lw-rim-top)" stroke-width="1.2" stroke-linecap="round"/>
-    <text x="60" y="88" text-anchor="middle"
-          font-family="Fraunces, 'Playfair Display', Georgia, serif"
-          font-weight="700" font-size="82" fill="#FAF7F0"
-          filter="url(#lw-letter-shadow)"
-          style="font-variation-settings:'opsz' 144,'wght' 700">G</text>
-    <g transform="translate(92, 28)">
-      <path d="M 0 -10 C 0 -10, -7 -2, -7 2.5 C -7 6, -4 9, 0 9 C 4 9, 7 6, 7 2.5 C 7 -2, 0 -10, 0 -10 Z"
-            fill="url(#lw-drop)"/>
-      <ellipse cx="-2.2" cy="-1" rx="1.6" ry="2.8" fill="#FFFFFF" opacity="0.6"/>
+  <!-- ═══ MARK GCH compact (gauche) ═══ -->
+  <g filter="url(#w-shadow)">
+    <rect x="10" y="10" width="140" height="140" rx="34" fill="url(#w-core)"/>
+    <g clip-path="url(#w-clip)">
+      <rect x="10" y="10" width="140" height="140" fill="url(#w-glow)"/>
+      <rect x="10" y="10" width="140" height="140" fill="url(#w-depth)"/>
+      <path d="M 40 10 L 120 10 Q 150 10 150 40 L 150 70 Q 110 56 80 56 Q 50 56 10 70 L 10 40 Q 10 10 40 10 Z"
+            fill="url(#w-shine)"/>
     </g>
+    <rect x="10" y="10" width="140" height="140" rx="34"
+          fill="none" stroke="url(#w-rim)" stroke-width="1.2" stroke-opacity="0.6"/>
+    <path d="M 40 12 Q 120 12 148 40" fill="none"
+          stroke="#FFFFFF" stroke-width="1.2" stroke-linecap="round" stroke-opacity="0.85"/>
   </g>
 
-  <!-- Wordmark à droite -->
-  <g transform="translate(150, 0)">
-    <text x="0" y="72" font-family="Fraunces, 'Playfair Display', Georgia, serif"
-          font-weight="600" font-size="46" fill="#1C1917"
-          style="font-variation-settings:'opsz' 144,'wght' 600;letter-spacing:-0.02em">
+  <!-- 3 mini-drops (couronne) -->
+  <circle cx="80" cy="38" r="3" fill="url(#w-drop)"/>
+  <circle cx="80" cy="37.5" r="0.9" fill="#FFFFFF" opacity="0.7"/>
+  <circle cx="68" cy="42" r="1.7" fill="url(#w-drop)" opacity="0.78"/>
+  <circle cx="92" cy="42" r="1.7" fill="url(#w-drop)" opacity="0.78"/>
+
+  <!-- GCH (3 couches : ombre + corps + outline) -->
+  <text x="80" y="98" text-anchor="middle"
+        font-family="Fraunces, 'Playfair Display', Georgia, serif"
+        font-weight="700" font-size="46" fill="#022C22" opacity="0.5" letter-spacing="2"
+        style="font-variation-settings:'opsz' 144,'wght' 700">GCH</text>
+  <text x="80" y="97" text-anchor="middle"
+        font-family="Fraunces, 'Playfair Display', Georgia, serif"
+        font-weight="700" font-size="46" fill="#FAF7F0"
+        filter="url(#w-letter-shadow)" letter-spacing="2"
+        style="font-variation-settings:'opsz' 144,'wght' 700">GCH</text>
+  <text x="80" y="97" text-anchor="middle"
+        font-family="Fraunces, 'Playfair Display', Georgia, serif"
+        font-weight="700" font-size="46" fill="none"
+        stroke="#6EE7B7" stroke-width="0.2" stroke-opacity="0.4" letter-spacing="2"
+        style="font-variation-settings:'opsz' 144,'wght' 700">GCH</text>
+
+  <!-- Filet or -->
+  <g transform="translate(80, 113)">
+    <path d="M 0 -2 L 2 0 L 0 2 L -2 0 Z" fill="#F5E6A8"/>
+    <line x1="-5" y1="0" x2="-22" y2="0" stroke="url(#w-gold)" stroke-width="0.7" stroke-linecap="round"/>
+    <line x1="5"  y1="0" x2="22"  y2="0" stroke="url(#w-gold)" stroke-width="0.7" stroke-linecap="round"/>
+  </g>
+
+  <!-- ATELIER mono -->
+  <text x="80" y="128" text-anchor="middle"
+        font-family="'JetBrains Mono', ui-monospace, monospace"
+        font-weight="500" font-size="6.5" fill="#D1FAE5"
+        letter-spacing="3" opacity="0.92">ATELIER</text>
+
+  <!-- ═══ WORDMARK (droite) ═══ -->
+  <g transform="translate(180, 0)">
+    <!-- "Global Clean" -->
+    <text x="0" y="68" font-family="Fraunces, 'Playfair Display', Georgia, serif"
+          font-weight="600" font-size="52" fill="#1C1917"
+          style="font-variation-settings:'opsz' 144,'wght' 600;letter-spacing:-0.025em">
       Global Clean
     </text>
-    <text x="0" y="108" font-family="Fraunces, 'Playfair Display', Georgia, serif"
-          font-style="italic" font-weight="400" font-size="30" fill="#D97757"
-          style="font-variation-settings:'opsz' 144,'wght' 400;letter-spacing:-0.01em">
+    <!-- "Home" italic terracotta -->
+    <text x="0" y="112" font-family="Fraunces, 'Playfair Display', Georgia, serif"
+          font-style="italic" font-weight="500" font-size="36" fill="#D97757"
+          style="font-variation-settings:'opsz' 144,'wght' 500;letter-spacing:-0.015em">
       Home
     </text>
-    <!-- Sous-titre mono -->
-    <text x="0" y="128" font-family="'JetBrains Mono', ui-monospace, monospace"
+    <!-- Filet or de séparation -->
+    <line x1="120" y1="100" x2="180" y2="100" stroke="url(#w-gold)" stroke-width="1" stroke-linecap="round" opacity="0.7"/>
+    <!-- Sub mono "ATELIER · CRM" -->
+    <text x="0" y="135" font-family="'JetBrains Mono', ui-monospace, monospace"
           font-weight="500" font-size="11" fill="#78716C"
-          style="letter-spacing:0.15em;text-transform:uppercase">
+          style="letter-spacing:0.18em;text-transform:uppercase">
       Atelier · CRM
     </text>
   </g>

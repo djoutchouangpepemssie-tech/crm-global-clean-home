@@ -1,98 +1,175 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Global Clean Home — Atelier">
   <defs>
-    <!-- Liquid glass core : dégradé émeraude multicouche -->
-    <radialGradient id="lm-core" cx="30%" cy="22%" r="95%">
-      <stop offset="0%" stop-color="#A7F3D0"/>
-      <stop offset="20%" stop-color="#34D399"/>
-      <stop offset="50%" stop-color="#10B981"/>
-      <stop offset="78%" stop-color="#047857"/>
-      <stop offset="100%" stop-color="#022C22"/>
+    <radialGradient id="core" cx="26%" cy="16%" r="115%">
+      <stop offset="0%"  stop-color="#E6FFF4"/>
+      <stop offset="10%" stop-color="#A7F3D0"/>
+      <stop offset="24%" stop-color="#6EE7B7"/>
+      <stop offset="42%" stop-color="#34D399"/>
+      <stop offset="62%" stop-color="#10B981"/>
+      <stop offset="82%" stop-color="#047857"/>
+      <stop offset="100%" stop-color="#012117"/>
     </radialGradient>
 
-    <!-- Glass highlight top -->
-    <linearGradient id="lm-shine" x1="50%" y1="0%" x2="50%" y2="100%">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.7"/>
-      <stop offset="40%" stop-color="#FFFFFF" stop-opacity="0.15"/>
+    <pattern id="caustic" x="0" y="0" width="80" height="80" patternUnits="userSpaceOnUse">
+      <path d="M 0 40 Q 20 20, 40 40 T 80 40" fill="none" stroke="#A7F3D0" stroke-width="0.6" stroke-opacity="0.22"/>
+      <path d="M 0 60 Q 20 45, 40 60 T 80 60" fill="none" stroke="#D1FAE5" stroke-width="0.4" stroke-opacity="0.15"/>
+      <path d="M 0 20 Q 30 5, 60 20 T 80 25" fill="none" stroke="#FFFFFF" stroke-width="0.3" stroke-opacity="0.12"/>
+    </pattern>
+
+    <linearGradient id="refract-top" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"  stop-color="#A7F3D0" stop-opacity="0"/>
+      <stop offset="30%" stop-color="#FFFFFF" stop-opacity="0.3"/>
+      <stop offset="48%" stop-color="#FFFFFF" stop-opacity="0.55"/>
+      <stop offset="62%" stop-color="#D1FAE5" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#6EE7B7" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="refract-bot" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%"  stop-color="#D97757" stop-opacity="0"/>
+      <stop offset="40%" stop-color="#F5E6A8" stop-opacity="0.15"/>
+      <stop offset="55%" stop-color="#FDEAE0" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#A7F3D0" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="shine" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%"  stop-color="#FFFFFF" stop-opacity="0.88"/>
+      <stop offset="25%" stop-color="#FFFFFF" stop-opacity="0.35"/>
       <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
     </linearGradient>
 
-    <!-- Inner glow (profondeur) -->
-    <radialGradient id="lm-glow" cx="50%" cy="60%" r="60%">
-      <stop offset="0%" stop-color="#6EE7B7" stop-opacity="0.4"/>
-      <stop offset="100%" stop-color="#6EE7B7" stop-opacity="0"/>
-    </radialGradient>
-
-    <!-- Bottom shadow (profondeur verre) -->
-    <linearGradient id="lm-bottom" x1="50%" y1="0%" x2="50%" y2="100%">
-      <stop offset="0%" stop-color="#064E3B" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#022C22" stop-opacity="0.45"/>
+    <linearGradient id="depth" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%"   stop-color="#064E3B" stop-opacity="0"/>
+      <stop offset="55%"  stop-color="#022C22" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.55"/>
     </linearGradient>
 
-    <!-- Rim lumineux (bord supérieur du verre) -->
-    <linearGradient id="lm-rim-top" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#D1FAE5" stop-opacity="0.3"/>
-      <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.95"/>
-      <stop offset="100%" stop-color="#D1FAE5" stop-opacity="0.3"/>
-    </linearGradient>
-
-    <!-- Goutte terracotta -->
-    <radialGradient id="lm-drop" cx="35%" cy="28%" r="75%">
-      <stop offset="0%" stop-color="#FDEAE0"/>
-      <stop offset="55%" stop-color="#D97757"/>
-      <stop offset="100%" stop-color="#8C3A24"/>
+    <radialGradient id="glow" cx="50%" cy="58%" r="52%">
+      <stop offset="0%"   stop-color="#A7F3D0" stop-opacity="0.5"/>
+      <stop offset="60%"  stop-color="#34D399" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#047857" stop-opacity="0"/>
     </radialGradient>
 
-    <!-- Ombre portée extérieure du mark -->
-    <filter id="lm-dropshadow" x="-10%" y="-10%" width="120%" height="130%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="8"/>
-      <feOffset dx="0" dy="6" result="s"/>
-      <feComponentTransfer><feFuncA type="linear" slope="0.35"/></feComponentTransfer>
+    <linearGradient id="rim-chroma" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"  stop-color="#D1FAE5"/>
+      <stop offset="25%" stop-color="#FFFFFF"/>
+      <stop offset="50%" stop-color="#F5E6A8"/>
+      <stop offset="75%" stop-color="#FDEAE0"/>
+      <stop offset="100%" stop-color="#6EE7B7"/>
+    </linearGradient>
+    <linearGradient id="rim-inner" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"  stop-color="#FFFFFF" stop-opacity="0.85"/>
+      <stop offset="45%" stop-color="#A7F3D0" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#022C22" stop-opacity="0.5"/>
+    </linearGradient>
+
+    <radialGradient id="drop" cx="35%" cy="28%" r="78%">
+      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="18%"  stop-color="#FDEAE0"/>
+      <stop offset="55%"  stop-color="#D97757"/>
+      <stop offset="100%" stop-color="#5A2214"/>
+    </radialGradient>
+
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"  stop-color="#D97757" stop-opacity="0"/>
+      <stop offset="20%" stop-color="#E8C674" stop-opacity="0.9"/>
+      <stop offset="50%" stop-color="#F5E6A8"/>
+      <stop offset="80%" stop-color="#E8C674" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#D97757" stop-opacity="0"/>
+    </linearGradient>
+
+    <filter id="f-outer-shadow" x="-18%" y="-15%" width="136%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="12"/>
+      <feOffset dx="0" dy="10"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.42"/></feComponentTransfer>
       <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
 
-    <!-- Letter shadow subtle -->
-    <filter id="lm-letter-shadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="1"/>
-      <feOffset dx="0" dy="2"/>
-      <feComponentTransfer><feFuncA type="linear" slope="0.35"/></feComponentTransfer>
+    <filter id="f-glass"><feGaussianBlur stdDeviation="0.5"/></filter>
+
+    <filter id="f-letter-shadow" x="-8%" y="-8%" width="116%" height="120%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="1.5"/>
+      <feOffset dx="0" dy="3"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.5"/></feComponentTransfer>
       <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
+
+    <clipPath id="clip-main"><rect x="16" y="16" width="224" height="224" rx="56"/></clipPath>
   </defs>
 
-  <g filter="url(#lm-dropshadow)">
-    <!-- Socle liquid glass émeraude -->
-    <rect x="16" y="16" width="224" height="224" rx="56" fill="url(#lm-core)"/>
-
-    <!-- Inner glow central (lueur de profondeur) -->
-    <rect x="16" y="16" width="224" height="224" rx="56" fill="url(#lm-glow)"/>
-
-    <!-- Bottom shadow (ajoute de la profondeur) -->
-    <rect x="16" y="16" width="224" height="224" rx="56" fill="url(#lm-bottom)"/>
-
-    <!-- Rim fin tout autour (verre brillant) -->
-    <rect x="17" y="17" width="222" height="222" rx="55" fill="none"
-          stroke="#D1FAE5" stroke-width="1.5" stroke-opacity="0.35"/>
-
-    <!-- Highlight supérieur (reflet principal liquid glass) -->
-    <path d="M 60 16 L 196 16 Q 240 16 240 56 L 240 110 Q 180 88 128 88 Q 76 88 16 110 L 16 56 Q 16 16 60 16 Z"
-          fill="url(#lm-shine)"/>
-
-    <!-- Rim supérieur lumineux -->
-    <path d="M 60 18 L 196 18 Q 238 18 238 56" fill="none"
-          stroke="url(#lm-rim-top)" stroke-width="2" stroke-linecap="round"/>
-
-    <!-- Lettre G Fraunces (display, opsz 144) -->
-    <text x="128" y="178" text-anchor="middle"
-          font-family="Fraunces, 'Playfair Display', Georgia, serif"
-          font-weight="700" font-size="168" fill="#FAF7F0"
-          filter="url(#lm-letter-shadow)"
-          style="font-variation-settings:'opsz' 144,'wght' 700">G</text>
-
-    <!-- Goutte terracotta (signature métier : propreté) -->
-    <g transform="translate(188, 56)">
-      <path d="M 0 -18 C 0 -18, -12 -4, -12 4 C -12 10.5, -6.5 16, 0 16 C 6.5 16, 12 10.5, 12 4 C 12 -4, 0 -18, 0 -18 Z"
-            fill="url(#lm-drop)"/>
-      <ellipse cx="-4" cy="-2" rx="3" ry="5" fill="#FFFFFF" opacity="0.6"/>
+  <g filter="url(#f-outer-shadow)">
+    <rect x="16" y="16" width="224" height="224" rx="56" fill="url(#core)"/>
+    <g clip-path="url(#clip-main)">
+      <rect x="16" y="16" width="224" height="224" fill="url(#caustic)" opacity="0.7"/>
+      <rect x="16" y="16" width="224" height="224" fill="url(#glow)"/>
+      <polygon points="16,72 240,12 240,64 16,124" fill="url(#refract-top)" opacity="0.6" filter="url(#f-glass)"/>
+      <polygon points="16,184 240,124 240,176 16,240" fill="url(#refract-bot)" opacity="0.45" filter="url(#f-glass)"/>
+      <rect x="16" y="16" width="224" height="224" fill="url(#depth)"/>
+      <path d="M 72 16 L 184 16 Q 240 16 240 72 L 240 122 Q 180 98 128 98 Q 76 98 16 122 L 16 72 Q 16 16 72 16 Z"
+            fill="url(#shine)"/>
     </g>
+    <rect x="16" y="16" width="224" height="224" rx="56" fill="none"
+          stroke="url(#rim-chroma)" stroke-width="1.5" stroke-opacity="0.55"/>
+    <rect x="18" y="18" width="220" height="220" rx="54" fill="none"
+          stroke="url(#rim-inner)" stroke-width="1" stroke-opacity="0.8"/>
+    <path d="M 72 18 Q 184 18 238 72" fill="none"
+          stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round" stroke-opacity="0.85"/>
   </g>
+
+  <!-- Couronne de gouttes -->
+  <g transform="translate(128, 58)">
+    <path d="M 0 -10 C 0 -10, -7 0, -7 4 C -7 7.7, -4 10.5, 0 10.5 C 4 10.5, 7 7.7, 7 4 C 7 0, 0 -10, 0 -10 Z" fill="url(#drop)"/>
+    <ellipse cx="-2" cy="0" rx="1.6" ry="3" fill="#FFFFFF" opacity="0.75"/>
+  </g>
+  <g transform="translate(106, 64)">
+    <circle r="3.5" fill="url(#drop)" opacity="0.82"/>
+    <circle cx="-0.8" cy="-0.8" r="1.2" fill="#FFFFFF" opacity="0.7"/>
+  </g>
+  <g transform="translate(150, 64)">
+    <circle r="3.5" fill="url(#drop)" opacity="0.82"/>
+    <circle cx="-0.8" cy="-0.8" r="1.2" fill="#FFFFFF" opacity="0.7"/>
+  </g>
+  <circle cx="92"  cy="70" r="1.4" fill="#FDEAE0" opacity="0.55"/>
+  <circle cx="164" cy="70" r="1.4" fill="#FDEAE0" opacity="0.55"/>
+
+  <!-- Monogramme GCH embossé (4 couches) -->
+  <text x="128" y="157" text-anchor="middle"
+        font-family="Fraunces, 'Playfair Display', 'Cormorant Garamond', Georgia, serif"
+        font-weight="700" font-size="74" fill="#022C22" opacity="0.55" letter-spacing="3"
+        style="font-variation-settings:'opsz' 144,'wght' 700">GCH</text>
+  <text x="128" y="155" text-anchor="middle"
+        font-family="Fraunces, 'Playfair Display', Georgia, serif"
+        font-weight="700" font-size="74" fill="#FFFFFF" opacity="0.45" letter-spacing="3"
+        style="font-variation-settings:'opsz' 144,'wght' 700">GCH</text>
+  <text x="128" y="156" text-anchor="middle"
+        font-family="Fraunces, 'Playfair Display', Georgia, serif"
+        font-weight="700" font-size="74" fill="#FAF7F0"
+        filter="url(#f-letter-shadow)" letter-spacing="3"
+        style="font-variation-settings:'opsz' 144,'wght' 700">GCH</text>
+  <text x="128" y="156" text-anchor="middle"
+        font-family="Fraunces, 'Playfair Display', Georgia, serif"
+        font-weight="700" font-size="74" fill="none"
+        stroke="#6EE7B7" stroke-width="0.25" stroke-opacity="0.4" letter-spacing="3"
+        style="font-variation-settings:'opsz' 144,'wght' 700">GCH</text>
+
+  <!-- Filet or ornemental -->
+  <g transform="translate(128, 180)">
+    <path d="M 0 -3 L 3 0 L 0 3 L -3 0 Z" fill="#F5E6A8"/>
+    <path d="M 0 -2 L 2 0 L 0 2 L -2 0 Z" fill="#D97757"/>
+    <line x1="-7" y1="0" x2="-38" y2="0" stroke="url(#gold)" stroke-width="1" stroke-linecap="round"/>
+    <circle cx="-42" cy="0" r="1.2" fill="#F5E6A8"/>
+    <line x1="7" y1="0" x2="38" y2="0" stroke="url(#gold)" stroke-width="1" stroke-linecap="round"/>
+    <circle cx="42" cy="0" r="1.2" fill="#F5E6A8"/>
+  </g>
+
+  <!-- ATELIER mono -->
+  <text x="128" y="203" text-anchor="middle"
+        font-family="'JetBrains Mono', 'SF Mono', ui-monospace, monospace"
+        font-weight="500" font-size="9" fill="#D1FAE5"
+        letter-spacing="5" opacity="0.92">ATELIER</text>
+
+  <!-- "Global Clean Home" italic gravé -->
+  <text x="128" y="222" text-anchor="middle"
+        font-family="Fraunces, 'Playfair Display', Georgia, serif"
+        font-style="italic" font-weight="400" font-size="11" fill="#A7F3D0"
+        letter-spacing="1.2" opacity="0.7"
+        style="font-variation-settings:'opsz' 144,'wght' 400">Global Clean Home</text>
 </svg>

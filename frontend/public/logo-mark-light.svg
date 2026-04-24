@@ -1,0 +1,192 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Global Clean Home — Atelier (light)">
+  <defs>
+    <!-- Core crème (liquid glass light) : beige chaud avec lueur émeraude -->
+    <radialGradient id="lc-core" cx="30%" cy="20%" r="110%">
+      <stop offset="0%"   stop-color="#FFFFFF"/>
+      <stop offset="25%"  stop-color="#FDFBF5"/>
+      <stop offset="55%"  stop-color="#F5EFE3"/>
+      <stop offset="80%"  stop-color="#E8DFC9"/>
+      <stop offset="100%" stop-color="#C9B896"/>
+    </radialGradient>
+
+    <!-- Caustic pattern subtil émeraude -->
+    <pattern id="lc-caustic" x="0" y="0" width="80" height="80" patternUnits="userSpaceOnUse">
+      <path d="M 0 40 Q 20 20, 40 40 T 80 40" fill="none" stroke="#10B981" stroke-width="0.5" stroke-opacity="0.1"/>
+      <path d="M 0 60 Q 20 45, 40 60 T 80 60" fill="none" stroke="#047857" stroke-width="0.4" stroke-opacity="0.08"/>
+      <path d="M 0 20 Q 30 5, 60 20 T 80 25" fill="none" stroke="#34D399" stroke-width="0.3" stroke-opacity="0.06"/>
+    </pattern>
+
+    <!-- Refraction bands en émeraude translucide -->
+    <linearGradient id="lc-refract-top" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"  stop-color="#A7F3D0" stop-opacity="0"/>
+      <stop offset="30%" stop-color="#D1FAE5" stop-opacity="0.45"/>
+      <stop offset="48%" stop-color="#FFFFFF" stop-opacity="0.6"/>
+      <stop offset="62%" stop-color="#A7F3D0" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#6EE7B7" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="lc-refract-bot" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%"  stop-color="#D97757" stop-opacity="0"/>
+      <stop offset="40%" stop-color="#FDEAE0" stop-opacity="0.28"/>
+      <stop offset="55%" stop-color="#F5E6A8" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#D1FAE5" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Top shine ultra-clair -->
+    <linearGradient id="lc-shine" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="35%"  stop-color="#FFFFFF" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Depth inférieure : ombre beige -->
+    <linearGradient id="lc-depth" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%"   stop-color="#C9B896" stop-opacity="0"/>
+      <stop offset="60%"  stop-color="#8B7D5F" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#5A4F38" stop-opacity="0.22"/>
+    </linearGradient>
+
+    <!-- Inner glow chaud -->
+    <radialGradient id="lc-glow" cx="50%" cy="58%" r="52%">
+      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity="0.65"/>
+      <stop offset="60%"  stop-color="#FDEAE0" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#F5EFE3" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Rim chromatique (émeraude → or → cuivre) -->
+    <linearGradient id="lc-rim-chroma" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#047857"/>
+      <stop offset="25%"  stop-color="#10B981"/>
+      <stop offset="50%"  stop-color="#D97757"/>
+      <stop offset="75%"  stop-color="#E8C674"/>
+      <stop offset="100%" stop-color="#047857"/>
+    </linearGradient>
+    <linearGradient id="lc-rim-inner" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="45%"  stop-color="#FDEAE0" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#8B7D5F" stop-opacity="0.35"/>
+    </linearGradient>
+
+    <!-- Droplet terracotta -->
+    <radialGradient id="lc-drop" cx="35%" cy="28%" r="78%">
+      <stop offset="0%"   stop-color="#FFFFFF"/>
+      <stop offset="18%"  stop-color="#FDEAE0"/>
+      <stop offset="55%"  stop-color="#D97757"/>
+      <stop offset="100%" stop-color="#6B2817"/>
+    </radialGradient>
+
+    <!-- Gold line -->
+    <linearGradient id="lc-gold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#D97757" stop-opacity="0"/>
+      <stop offset="20%"  stop-color="#B8941E" stop-opacity="0.8"/>
+      <stop offset="50%"  stop-color="#D4A94A"/>
+      <stop offset="80%"  stop-color="#B8941E" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#D97757" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Émeraude pour les lettres -->
+    <linearGradient id="lc-letter" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"  stop-color="#059669"/>
+      <stop offset="50%" stop-color="#047857"/>
+      <stop offset="100%" stop-color="#022C22"/>
+    </linearGradient>
+
+    <!-- Filters -->
+    <filter id="lc-shadow-out" x="-18%" y="-15%" width="136%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="10"/>
+      <feOffset dx="0" dy="8"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.22"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="lc-glass"><feGaussianBlur stdDeviation="0.5"/></filter>
+    <filter id="lc-letter-shadow" x="-8%" y="-8%" width="116%" height="120%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="1"/>
+      <feOffset dx="0" dy="2"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.18"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <clipPath id="lc-clip"><rect x="16" y="16" width="224" height="224" rx="56"/></clipPath>
+  </defs>
+
+  <g filter="url(#lc-shadow-out)">
+    <rect x="16" y="16" width="224" height="224" rx="56" fill="url(#lc-core)"/>
+    <g clip-path="url(#lc-clip)">
+      <rect x="16" y="16" width="224" height="224" fill="url(#lc-caustic)" opacity="0.9"/>
+      <rect x="16" y="16" width="224" height="224" fill="url(#lc-glow)"/>
+      <polygon points="16,72 240,12 240,64 16,124" fill="url(#lc-refract-top)" opacity="0.65" filter="url(#lc-glass)"/>
+      <polygon points="16,184 240,124 240,176 16,240" fill="url(#lc-refract-bot)" opacity="0.5" filter="url(#lc-glass)"/>
+      <rect x="16" y="16" width="224" height="224" fill="url(#lc-depth)"/>
+      <path d="M 72 16 L 184 16 Q 240 16 240 72 L 240 122 Q 180 98 128 98 Q 76 98 16 122 L 16 72 Q 16 16 72 16 Z"
+            fill="url(#lc-shine)"/>
+    </g>
+    <rect x="16" y="16" width="224" height="224" rx="56" fill="none"
+          stroke="url(#lc-rim-chroma)" stroke-width="1.5" stroke-opacity="0.5"/>
+    <rect x="18" y="18" width="220" height="220" rx="54" fill="none"
+          stroke="url(#lc-rim-inner)" stroke-width="1" stroke-opacity="0.75"/>
+    <path d="M 72 18 Q 184 18 238 72" fill="none"
+          stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round" stroke-opacity="0.9"/>
+  </g>
+
+  <!-- Couronne de gouttes -->
+  <g transform="translate(128, 58)">
+    <path d="M 0 -10 C 0 -10, -7 0, -7 4 C -7 7.7, -4 10.5, 0 10.5 C 4 10.5, 7 7.7, 7 4 C 7 0, 0 -10, 0 -10 Z" fill="url(#lc-drop)"/>
+    <ellipse cx="-2" cy="0" rx="1.6" ry="3" fill="#FFFFFF" opacity="0.85"/>
+  </g>
+  <g transform="translate(106, 64)">
+    <circle r="3.5" fill="url(#lc-drop)" opacity="0.85"/>
+    <circle cx="-0.8" cy="-0.8" r="1.2" fill="#FFFFFF" opacity="0.85"/>
+  </g>
+  <g transform="translate(150, 64)">
+    <circle r="3.5" fill="url(#lc-drop)" opacity="0.85"/>
+    <circle cx="-0.8" cy="-0.8" r="1.2" fill="#FFFFFF" opacity="0.85"/>
+  </g>
+  <circle cx="92"  cy="70" r="1.4" fill="#D97757" opacity="0.55"/>
+  <circle cx="164" cy="70" r="1.4" fill="#D97757" opacity="0.55"/>
+
+  <!-- Monogramme GCH émeraude embossé (4 couches) -->
+  <!-- Ombre beige (profondeur) -->
+  <text x="128" y="158" text-anchor="middle"
+        font-family="Fraunces, 'Playfair Display', 'Cormorant Garamond', Georgia, serif"
+        font-weight="700" font-size="74" fill="#8B7D5F" opacity="0.25" letter-spacing="3"
+        style="font-variation-settings:'opsz' 144,'wght' 700">GCH</text>
+  <!-- Highlight blanc (relief) -->
+  <text x="128" y="155" text-anchor="middle"
+        font-family="Fraunces, 'Playfair Display', Georgia, serif"
+        font-weight="700" font-size="74" fill="#FFFFFF" opacity="0.6" letter-spacing="3"
+        style="font-variation-settings:'opsz' 144,'wght' 700">GCH</text>
+  <!-- Corps principal émeraude gradient -->
+  <text x="128" y="156" text-anchor="middle"
+        font-family="Fraunces, 'Playfair Display', Georgia, serif"
+        font-weight="700" font-size="74" fill="url(#lc-letter)"
+        filter="url(#lc-letter-shadow)" letter-spacing="3"
+        style="font-variation-settings:'opsz' 144,'wght' 700">GCH</text>
+  <!-- Outline or ultra-fin (shimmer) -->
+  <text x="128" y="156" text-anchor="middle"
+        font-family="Fraunces, 'Playfair Display', Georgia, serif"
+        font-weight="700" font-size="74" fill="none"
+        stroke="#D4A94A" stroke-width="0.3" stroke-opacity="0.35" letter-spacing="3"
+        style="font-variation-settings:'opsz' 144,'wght' 700">GCH</text>
+
+  <!-- Filet or ornemental -->
+  <g transform="translate(128, 180)">
+    <path d="M 0 -3 L 3 0 L 0 3 L -3 0 Z" fill="#D4A94A"/>
+    <path d="M 0 -2 L 2 0 L 0 2 L -2 0 Z" fill="#D97757"/>
+    <line x1="-7" y1="0" x2="-38" y2="0" stroke="url(#lc-gold)" stroke-width="1" stroke-linecap="round"/>
+    <circle cx="-42" cy="0" r="1.2" fill="#D4A94A"/>
+    <line x1="7" y1="0" x2="38" y2="0" stroke="url(#lc-gold)" stroke-width="1" stroke-linecap="round"/>
+    <circle cx="42" cy="0" r="1.2" fill="#D4A94A"/>
+  </g>
+
+  <!-- ATELIER mono -->
+  <text x="128" y="203" text-anchor="middle"
+        font-family="'JetBrains Mono', 'SF Mono', ui-monospace, monospace"
+        font-weight="600" font-size="9" fill="#047857"
+        letter-spacing="5" opacity="0.85">ATELIER</text>
+
+  <!-- "Global Clean Home" italic -->
+  <text x="128" y="222" text-anchor="middle"
+        font-family="Fraunces, 'Playfair Display', Georgia, serif"
+        font-style="italic" font-weight="500" font-size="11" fill="#059669"
+        letter-spacing="1.2" opacity="0.85"
+        style="font-variation-settings:'opsz' 144,'wght' 500">Global Clean Home</text>
+</svg>
