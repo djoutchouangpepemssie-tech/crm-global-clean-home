@@ -876,25 +876,30 @@ async def _list_journeys_impl(identified, converted, country, min_pages, min_ses
         logger.error(f"journeys find error: {e}")
         profiles = []
 
+    # ─── BATCH GEOLOC : 1 seule query MongoDB pour toutes les IPs ───
+    # Avant : 200 await find_one() séquentiels = 10-15 secondes
+    # Après : 1 query find({ip:{$in:[...]}}) = ~50ms
+    geo_by_ip: dict = {}
+    if _db is not None:
+        ips = list({p.get("ip") for p in profiles if p.get("ip")})
+        if ips:
+            try:
+                async for doc in _db.ip_geocache.find(
+                    {"ip": {"$in": ips}},
+                    {"_id": 0, "ip": 1, "location": 1},
+                ):
+                    geo_by_ip[doc["ip"]] = doc.get("location")
+            except Exception as e:
+                logger.warning(f"batch geoip lookup failed: {e}")
+
     # Post-filter par country + min_sessions (ils nécessitent un enrichissement)
     out = []
     for p in profiles:
         sessions_count = len(p.get("sessions") or [])
         if min_sessions and sessions_count < min_sessions:
             continue
-        # Géoloc via cache IP (sans fetch externe ici — trop lourd pour la liste)
-        geo = None
         ip = p.get("ip")
-        if ip and _db is not None:
-            try:
-                cached = await _db.ip_geocache.find_one({"ip": ip}, {"_id": 0})
-                if cached and cached.get("location"):
-                    geo = cached["location"]
-                elif cached:
-                    # Le document existe mais location est None (IP non résolue)
-                    geo = None
-            except Exception:
-                pass
+        geo = geo_by_ip.get(ip) if ip else None
         cc = (geo.get("country_code") or "").upper() if geo and isinstance(geo, dict) else ""
         if country and cc != country.upper():
             continue

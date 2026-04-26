@@ -16,7 +16,10 @@ import BACKEND_URL from '../config';
 
 const api = axios.create({
   baseURL: `${BACKEND_URL}/api`.replace('http://', 'https://'),
-  timeout: 15000,
+  // 30s : marge de sécurité pour les endpoints qui agrègent beaucoup de
+  // données (journeys avec géoloc batch, dashboard stats sur 90j, etc.).
+  // Au-delà, c'est qu'il y a un vrai problème backend, pas un retard normal.
+  timeout: 30000,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
