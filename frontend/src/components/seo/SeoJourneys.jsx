@@ -281,7 +281,20 @@ export default function SeoJourneys() {
 
       {/* Tableau */}
       {isLoading && !data ? <LoadingState message="Chargement des parcours visiteurs…" />
-        : error ? <div className="seo-card" style={{ padding: 40, textAlign: 'center' }}><div style={{ color: 'var(--rouge)', marginBottom: 12 }}>Erreur de chargement</div><button onClick={function () { refetch(); }} className="seo-chip">Réessayer</button></div>
+        : error ? (
+          <div className="seo-card" style={{ padding: 40, textAlign: 'center' }}>
+            <div style={{ color: 'var(--rouge,#dc2626)', marginBottom: 8, fontWeight: 600 }}>
+              Erreur de chargement
+            </div>
+            <div style={{ color: 'var(--ink-3)', fontSize: 12, marginBottom: 4, fontFamily: 'JetBrains Mono, monospace' }}>
+              {error?.status ? 'HTTP ' + error.status + ' · ' : ''}{String(error?.message || error?.detail || error || 'Erreur inconnue').slice(0, 200)}
+            </div>
+            <div style={{ color: 'var(--ink-4)', fontSize: 10, marginBottom: 16, fontFamily: 'JetBrains Mono, monospace', opacity: 0.6 }}>
+              GET /api/tracking/journeys
+            </div>
+            <button onClick={function () { refetch(); }} className="seo-chip">Réessayer</button>
+          </div>
+        )
         : filtered.length === 0 ? <EmptyState icon={Users} title="Aucun visiteur dans ce filtre" message={hasFilters ? 'Essayez un autre segment.' : 'Attendez qu\'un visiteur arrive sur le site.'} />
         : (
           <div className="seo-card" style={{ padding: 0, overflow: 'hidden' }}>
