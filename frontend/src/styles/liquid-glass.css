@@ -770,6 +770,106 @@ img.bg-white,
 }
 
 /* ════════════════════════════════════════════════════════════════════
+   AUTO-UPGRADE STYLES INLINE
+   Beaucoup de pages utilisent style={{ background: 'var(--paper)' }}
+   ou similaire au lieu de Tailwind. On les cible via [style*="..."].
+   Pages concernées : Dashboard, LeadsList, QuotesList, InvoicesList,
+   AccountingERP, PayrollRH, AdsDashboard, IntervenantPortal,
+   VoiceQuote, RentabiliteModule, PlanningCalendar, EmptyState,
+   GlobalSearch, SatisfactionDashboard, TemplatesManager, SEODashboard,
+   Analytics, ClientPortalAtelier, PlanningFil, DynamicDashboard.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Cibles : toutes les divs avec background = surface/paper/bg-card/white inline */
+div[style*="background: var(--paper)"],
+div[style*="background:var(--paper)"],
+div[style*="background: var(--surface)"],
+div[style*="background:var(--surface)"],
+div[style*="background: var(--bg-card)"],
+div[style*="background:var(--bg-card)"],
+div[style*="background: var(--bg-elevated)"],
+div[style*="background:var(--bg-elevated)"],
+div[style*="background: 'white'"],
+div[style*="background: white"],
+div[style*="background:white"],
+section[style*="background: var(--paper)"],
+section[style*="background:var(--paper)"],
+section[style*="background: var(--surface)"],
+section[style*="background:var(--surface)"],
+section[style*="background: var(--bg-card)"],
+section[style*="background:var(--bg-card)"] {
+  background: var(--lg-surface) !important;
+  backdrop-filter: blur(var(--lg-blur));
+  -webkit-backdrop-filter: blur(var(--lg-blur));
+  box-shadow: var(--lg-shadow);
+  position: relative;
+}
+
+[data-theme="dark"] div[style*="background: var(--paper)"],
+[data-theme="dark"] div[style*="background:var(--paper)"],
+[data-theme="dark"] div[style*="background: var(--surface)"],
+[data-theme="dark"] div[style*="background:var(--surface)"],
+[data-theme="dark"] div[style*="background: var(--bg-card)"],
+[data-theme="dark"] div[style*="background:var(--bg-card)"],
+[data-theme="dark"] div[style*="background: 'white'"],
+[data-theme="dark"] div[style*="background: white"],
+[data-theme="dark"] div[style*="background:white"] {
+  background: var(--lg-surface) !important;
+}
+
+/* Surface secondaire (var(--surface-2)) → glass-subtle */
+div[style*="background: var(--surface-2)"],
+div[style*="background:var(--surface-2)"],
+div[style*="background: var(--bg-muted)"],
+div[style*="background:var(--bg-muted)"] {
+  background: var(--lg-surface-subtle) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Petits éléments inline (boutons, chips, dots) — JAMAIS de glass */
+/* On exclut via les attributs width/height/padding petits */
+button[style*="background: var(--paper)"],
+button[style*="background: var(--surface)"],
+button[style*="background: var(--bg-card)"],
+button[style*="background: white"],
+button[style*="background:white"],
+span[style*="background"][style*="border-radius: 999"],
+div[style*="width: 4px"],
+div[style*="width: 6px"],
+div[style*="width: 8px"],
+div[style*="width: 10px"],
+div[style*="width: 12px"][style*="border-radius: 999"] {
+  background: white !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none;
+}
+
+/* Garder les boutons dans toolbars sans glass mais avec léger shadow */
+button[style*="background:var(--surface)"],
+button[style*="background: var(--surface)"] {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Cellules de tableau : ne pas appliquer de glass */
+td[style*="background"], th[style*="background"], tr[style*="background"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Fond de page (atelier-root, page wrapper) : surtout pas de glass */
+.atelier-root,
+[class*="page-wrapper"],
+[style*="min-height: 100vh"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════
    PERFORMANCE — disable backdrop-filter sur low-end devices
    ════════════════════════════════════════════════════════════════════ */
 @media (prefers-reduced-transparency: reduce) {
