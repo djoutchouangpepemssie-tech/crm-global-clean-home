@@ -597,6 +597,179 @@ textarea:focus {
 }
 
 /* ════════════════════════════════════════════════════════════════════
+   AUTO-UPGRADE TAILWIND PATTERNS
+   Le CRM utilise massivement "bg-white border border-neutral-200
+   rounded-xl" comme pattern de carte (53+ occurrences). On upgrade
+   tous ces patterns sans toucher aux composants individuels.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Cartes Tailwind — pattern dominant : bg-white + border + rounded-xl/2xl */
+.bg-white.rounded-xl,
+.bg-white.rounded-2xl,
+.bg-white.rounded-3xl {
+  background: var(--lg-surface) !important;
+  backdrop-filter: blur(var(--lg-blur));
+  -webkit-backdrop-filter: blur(var(--lg-blur));
+  box-shadow: var(--lg-shadow);
+  position: relative;
+  isolation: isolate;
+}
+
+[data-theme="dark"] .bg-white.rounded-xl,
+[data-theme="dark"] .bg-white.rounded-2xl,
+[data-theme="dark"] .bg-white.rounded-3xl {
+  background: var(--lg-surface) !important;
+}
+
+/* Override pour les boutons et petits éléments — ils gardent bg-white plein */
+button.bg-white,
+.bg-white.w-8,
+.bg-white.w-10,
+.bg-white.w-11,
+.bg-white.w-12,
+.bg-white.h-8,
+.bg-white.h-10,
+.bg-white.h-11,
+.bg-white.h-12 {
+  background: white !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Cartes neutres claires */
+.bg-neutral-50.rounded-xl,
+.bg-neutral-50.rounded-2xl,
+.bg-neutral-100.rounded-xl,
+.bg-neutral-100.rounded-2xl {
+  background: var(--lg-surface-subtle) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--lg-shadow-sm);
+}
+
+/* Cartes avec shadow-card explicite (composants Premium*) */
+.shadow-card,
+.shadow-card-lg {
+  box-shadow: var(--lg-shadow) !important;
+}
+.shadow-card-lg {
+  box-shadow: var(--lg-shadow-lg) !important;
+}
+
+/* Headers sticky — vrai glass effect */
+header,
+.sticky.bg-white,
+.sticky[style*="background"] {
+  background: rgba(255, 255, 255, 0.78) !important;
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+}
+
+[data-theme="dark"] header,
+[data-theme="dark"] .sticky.bg-white {
+  background: rgba(26, 24, 20, 0.78) !important;
+}
+
+/* Cartes vides centrées (état EmptyState) */
+.bg-white.rounded-xl.text-center,
+.bg-white.rounded-2xl.text-center {
+  background: var(--lg-surface) !important;
+  border: 1px dashed var(--lg-border-color) !important;
+}
+
+/* Tabs panels */
+[role="tabpanel"] {
+  background: var(--lg-surface);
+  backdrop-filter: blur(var(--lg-blur));
+  -webkit-backdrop-filter: blur(var(--lg-blur));
+  border-radius: var(--lg-radius);
+}
+
+/* ────────── Sidebar items premium (sélecteurs Tailwind courants) ──────────── */
+nav button.bg-brand-50,
+nav a.bg-brand-50,
+nav [class*="bg-brand-100"]:not(button) {
+  background: linear-gradient(
+    180deg,
+    rgba(167, 243, 208, 0.55) 0%,
+    rgba(167, 243, 208, 0.18) 100%
+  ) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 -1px 0 rgba(5, 150, 105, 0.08) inset,
+    0 2px 6px rgba(5, 150, 105, 0.10);
+}
+
+/* ────────── Toasts (Sonner) — glass premium ──────────── */
+[data-sonner-toast],
+[data-sonner-toaster] [role="status"] {
+  background: var(--lg-surface-elevated) !important;
+  backdrop-filter: blur(var(--lg-blur-strong));
+  -webkit-backdrop-filter: blur(var(--lg-blur-strong));
+  box-shadow: var(--lg-shadow-lg);
+  border: 1px solid var(--lg-border-color);
+}
+
+/* ────────── Sélecteurs Radix / Headless UI ──────────── */
+[data-radix-popper-content-wrapper] > *,
+[data-headlessui-state] {
+  background: var(--lg-surface-elevated);
+  backdrop-filter: blur(var(--lg-blur-strong));
+  -webkit-backdrop-filter: blur(var(--lg-blur-strong));
+  box-shadow: var(--lg-shadow-lg);
+}
+
+/* ────────── Overlay des modals (backdrop blur pour vrai glass) ──────────── */
+[data-state="open"][class*="overlay"],
+.modal-overlay,
+.dialog-overlay {
+  background: rgba(38, 36, 31, 0.4) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+[data-theme="dark"] [data-state="open"][class*="overlay"],
+[data-theme="dark"] .modal-overlay,
+[data-theme="dark"] .dialog-overlay {
+  background: rgba(0, 0, 0, 0.6) !important;
+}
+
+/* ────────── Dashboard widgets (fréquents : div avec p-4/p-5/p-6 + bg-white) ──────────── */
+.bg-white.p-4.rounded-lg,
+.bg-white.p-5.rounded-lg,
+.bg-white.p-6.rounded-lg {
+  background: var(--lg-surface) !important;
+  backdrop-filter: blur(var(--lg-blur));
+  -webkit-backdrop-filter: blur(var(--lg-blur));
+  box-shadow: var(--lg-shadow-sm);
+}
+
+/* ────────── Lifts subtils sur cartes interactives Tailwind ──────────── */
+.bg-white.rounded-xl.cursor-pointer:hover,
+.bg-white.rounded-2xl.cursor-pointer:hover,
+.bg-white.hover\:shadow-card-lg:hover,
+.shadow-card.hover\:shadow-card-lg:hover {
+  box-shadow: var(--lg-shadow-hover) !important;
+  transform: translateY(-2px);
+}
+
+/* ────────── Forçage scope : on ne touche pas aux Logos / Avatars / Pastilles ──────────── */
+img.bg-white,
+.bg-white.rounded-full {
+  background: white !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none;
+}
+.bg-brand-600.rounded-full,
+.bg-terracotta-600.rounded-full {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════
    PERFORMANCE — disable backdrop-filter sur low-end devices
    ════════════════════════════════════════════════════════════════════ */
 @media (prefers-reduced-transparency: reduce) {

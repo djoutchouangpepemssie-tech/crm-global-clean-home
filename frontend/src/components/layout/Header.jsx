@@ -10,8 +10,9 @@ import NotificationCenter from '../notifications/NotificationCenter';
 const Header = ({ title, subtitle, actions }) => {
   return (
     <div style={{
-      background: 'var(--bg-card, #FFFFFF)',
+      background: 'rgba(251, 250, 246, 0.72)',
       borderBottom: '1px solid var(--border-default, #E5E0D6)',
+      boxShadow: '0 1px 0 rgba(255,255,255,0.6) inset, 0 4px 20px rgba(38,36,31,0.04)',
       padding: '0 24px',
       height: '64px',
       display: 'flex',
@@ -20,7 +21,8 @@ const Header = ({ title, subtitle, actions }) => {
       position: 'sticky',
       top: 0,
       zIndex: 30,
-      backdropFilter: 'blur(12px)',
+      backdropFilter: 'blur(20px) saturate(160%)',
+      WebkitBackdropFilter: 'blur(20px) saturate(160%)',
       gap: '16px',
     }}>
 
