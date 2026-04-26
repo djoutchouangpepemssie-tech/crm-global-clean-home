@@ -290,7 +290,7 @@ export default function SeoJourneys() {
               {error?.status ? 'HTTP ' + error.status + ' · ' : ''}{String(error?.message || error?.detail || error || 'Erreur inconnue').slice(0, 200)}
             </div>
             <div style={{ color: 'var(--ink-4)', fontSize: 10, marginBottom: 16, fontFamily: 'JetBrains Mono, monospace', opacity: 0.6 }}>
-              GET /api/tracking/journeys
+              GET /api/audience/journeys
             </div>
             <button onClick={function () { refetch(); }} className="seo-chip">Réessayer</button>
           </div>

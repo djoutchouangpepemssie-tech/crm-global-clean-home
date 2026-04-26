@@ -1414,3 +1414,55 @@ async def legacy_script_js(request: Request):
     """Sert le tracker.js depuis l'ancien endpoint /api/tracker/script.js."""
     js = TRACKER_JS.replace("__BACKEND__", BACKEND_URL).replace("__SITE__", SITE_URL)
     return PlainTextResponse(js, media_type="application/javascript")
+
+
+# ═══════════════════════════════════════════════════════════════════
+# AUDIENCE ROUTER — alias /api/audience/* qui mirror /api/tracking/*
+#
+# Pourquoi : les adblockers (uBlock Origin, Brave Shield, AdGuard,
+# Pi-hole, certains DNS publics) bloquent automatiquement toute URL
+# contenant /tracking, /track, /analytics, /ads. Conséquence : les
+# pages admin du CRM qui consultent les visiteurs renvoient "Erreur
+# réseau" alors que le backend marche parfaitement.
+#
+# Solution : exposer les MÊMES handlers sous un prefix neutre. Le CRM
+# admin (Vercel → Railway) utilise /api/audience/*. Le tracker public
+# (site → Railway POST /event) garde /api/tracking/event car le POST
+# n'est pas bloqué par les listes anti-tracking habituelles.
+# ═══════════════════════════════════════════════════════════════════
+audience_router = APIRouter(prefix="/api/audience", tags=["audience"])
+
+def _mirror_tracker_routes_to_audience():
+    """Re-monte chaque route GET/DELETE de tracker_router sous /api/audience."""
+    TRACKING_PREFIX = "/api/tracking"
+    SKIP_PATHS = {"/api/tracking/script.js", "/api/tracking/snippet"}
+    for route in list(tracker_router.routes):
+        # APIRoute stocke le path complet (prefix + path local)
+        full_path = getattr(route, "path", None)
+        if not full_path or full_path in SKIP_PATHS:
+            continue
+        methods = set(getattr(route, "methods", set()) or set()) - {"HEAD", "OPTIONS"}
+        # Le tracker public (POST /event) garde /api/tracking — ne pas dupliquer
+        if "POST" in methods:
+            continue
+        if not methods:
+            continue
+        # Strip le prefix /api/tracking pour ne garder que le sous-chemin
+        if not full_path.startswith(TRACKING_PREFIX):
+            continue
+        sub_path = full_path[len(TRACKING_PREFIX):] or "/"
+        endpoint = getattr(route, "endpoint", None)
+        if endpoint is None:
+            continue
+        try:
+            audience_router.add_api_route(
+                path=sub_path,
+                endpoint=endpoint,
+                methods=list(methods),
+                name=f"audience_{getattr(route, 'name', 'route')}",
+                include_in_schema=False,
+            )
+        except Exception as e:
+            logger.warning(f"audience mirror failed for {full_path}: {e}")
+
+_mirror_tracker_routes_to_audience()
