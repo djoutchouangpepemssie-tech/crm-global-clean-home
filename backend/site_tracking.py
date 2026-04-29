@@ -690,42 +690,85 @@ async def list_visitors(request: Request, hours: int = 24, limit: int = 100, inc
     # Résultat : chargement instantané pour les visiteurs récurrents.
 
     async def geoip(ip: str):
+        """Géoloc IP avec fallback en chaîne :
+        1. Cache MongoDB (instantané, persistent)
+        2. ipapi.co (1000 req/jour gratuit, riche en données)
+        3. ip-api.com (45 req/min gratuit, fournit le 'zip' = code postal)
+
+        Si une source ne retourne pas le postal, on essaye la suivante
+        avant de cacher le résultat. Évite les locations sans code postal.
+        """
         if not ip or ip in ("unknown", "127.0.0.1", "localhost"):
             return None
 
-        # 1. Chercher dans le cache MongoDB
+        # 1. Cache MongoDB
         cached = await _db.ip_geocache.find_one({"ip": ip})
-        if cached:
-            loc = cached.get("location")
-            return loc  # peut être None (IP non résolue → on re-tente pas avant TTL)
+        loc = cached.get("location") if cached else None
 
-        # 2. Appel ipapi.co (seulement si pas en cache)
-        loc = None
-        try:
-            import httpx
-            async with httpx.AsyncClient() as c:
-                r = await c.get(f"https://ipapi.co/{ip}/json/", timeout=4)
-                if r.status_code == 200:
-                    d = r.json()
-                    if not d.get("error"):
-                        loc = {
-                            "city": d.get("city"),
-                            "region": d.get("region"),
-                            "region_code": d.get("region_code"),
-                            "postal": d.get("postal"),  # Code postal via géoloc IP
-                            "country": d.get("country_name"),
-                            "country_code": d.get("country_code"),
-                            "lat": d.get("latitude"),
-                            "lon": d.get("longitude"),
-                            "timezone": d.get("timezone"),
-                            "isp": d.get("org"),
-                            "asn": d.get("asn"),
-                            "currency": d.get("currency"),
-                        }
-        except Exception as e:
-            logger.debug(f"geoip error for {ip[:8]}***: {e}")
+        # Cache HIT complet (avec postal) → return immédiat
+        if loc and loc.get("postal"):
+            return loc
 
-        # 3. Persister dans le cache (même si None → évite de re-tenter)
+        # Si déjà en cache : ne pas rappeler ipapi.co (probablement rate-limit
+        # ou data partielle). On va directement à ip-api pour enrichir.
+        skip_ipapi = bool(cached)
+
+        import httpx
+
+        # 2. ipapi.co (primary, seulement si jamais tenté pour cette IP)
+        if not loc and not skip_ipapi:
+            try:
+                async with httpx.AsyncClient() as c:
+                    r = await c.get(f"https://ipapi.co/{ip}/json/", timeout=4)
+                    if r.status_code == 200:
+                        d = r.json()
+                        if not d.get("error"):
+                            loc = {
+                                "city": d.get("city"),
+                                "region": d.get("region"),
+                                "region_code": d.get("region_code"),
+                                "postal": d.get("postal"),
+                                "country": d.get("country_name"),
+                                "country_code": d.get("country_code"),
+                                "lat": d.get("latitude"),
+                                "lon": d.get("longitude"),
+                                "timezone": d.get("timezone"),
+                                "isp": d.get("org"),
+                                "asn": d.get("asn"),
+                                "currency": d.get("currency"),
+                            }
+            except Exception as e:
+                logger.debug(f"ipapi.co error for {ip[:8]}***: {e}")
+
+        # 3. Fallback ip-api.com — toujours essayé si pas de postal
+        # (ipapi.co peut retourner une loc sans postal, ip-api le fournit toujours via 'zip')
+        if not loc or not loc.get("postal"):
+            try:
+                async with httpx.AsyncClient() as c:
+                    fields = "status,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as,query"
+                    r = await c.get(f"http://ip-api.com/json/{ip}?fields={fields}&lang=fr", timeout=4)
+                    if r.status_code == 200:
+                        d = r.json()
+                        if d.get("status") == "success":
+                            # Merge : enrichit la loc partielle avec les données ip-api
+                            new_loc = {
+                                "city": d.get("city") or (loc or {}).get("city"),
+                                "region": d.get("regionName") or (loc or {}).get("region"),
+                                "region_code": d.get("region") or (loc or {}).get("region_code"),
+                                "postal": d.get("zip") or (loc or {}).get("postal"),
+                                "country": d.get("country") or (loc or {}).get("country"),
+                                "country_code": d.get("countryCode") or (loc or {}).get("country_code"),
+                                "lat": d.get("lat") or (loc or {}).get("lat"),
+                                "lon": d.get("lon") or (loc or {}).get("lon"),
+                                "timezone": d.get("timezone") or (loc or {}).get("timezone"),
+                                "isp": d.get("isp") or d.get("org") or (loc or {}).get("isp"),
+                                "asn": d.get("as") or (loc or {}).get("asn"),
+                            }
+                            loc = new_loc
+            except Exception as e:
+                logger.debug(f"ip-api.com error for {ip[:8]}***: {e}")
+
+        # 4. Persister dans le cache (même si None → évite de re-tenter)
         try:
             await _db.ip_geocache.update_one(
                 {"ip": ip},
@@ -733,7 +776,7 @@ async def list_visitors(request: Request, hours: int = 24, limit: int = 100, inc
                 upsert=True,
             )
         except Exception:
-            pass  # Non-bloquant
+            pass
 
         return loc
 
@@ -880,6 +923,7 @@ async def _list_journeys_impl(identified, converted, country, min_pages, min_ses
     # Avant : 200 await find_one() séquentiels = 10-15 secondes
     # Après : 1 query find({ip:{$in:[...]}}) = ~50ms
     geo_by_ip: dict = {}
+    ips_missing_postal = []  # IPs cachées mais sans postal → enrichir via ip-api
     if _db is not None:
         ips = list({p.get("ip") for p in profiles if p.get("ip")})
         if ips:
@@ -888,7 +932,48 @@ async def _list_journeys_impl(identified, converted, country, min_pages, min_ses
                     {"ip": {"$in": ips}},
                     {"_id": 0, "ip": 1, "location": 1},
                 ):
-                    geo_by_ip[doc["ip"]] = doc.get("location")
+                    loc = doc.get("location")
+                    geo_by_ip[doc["ip"]] = loc
+                    # Marquer les IPs avec loc mais sans postal pour enrichissement
+                    if loc and not loc.get("postal"):
+                        ips_missing_postal.append(doc["ip"])
+                # Aussi : IPs absentes du cache OU avec loc=null → essayer ip-api
+                ips_uncached = [ip for ip in ips if ip not in geo_by_ip]
+                ips_null_cached = [ip for ip, loc in geo_by_ip.items() if loc is None]
+                ips_to_enrich = list(set(ips_uncached + ips_null_cached + ips_missing_postal))[:30]
+                # Limit 30 par requête pour respecter rate-limit ip-api (45/min)
+                if ips_to_enrich:
+                    import httpx
+                    async with httpx.AsyncClient() as c:
+                        for ip in ips_to_enrich:
+                            try:
+                                fields = "status,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,query"
+                                r = await c.get(f"http://ip-api.com/json/{ip}?fields={fields}&lang=fr", timeout=2)
+                                if r.status_code == 200:
+                                    d = r.json()
+                                    if d.get("status") == "success":
+                                        existing = geo_by_ip.get(ip) or {}
+                                        new_loc = {
+                                            "city": d.get("city") or existing.get("city"),
+                                            "region": d.get("regionName") or existing.get("region"),
+                                            "region_code": d.get("region") or existing.get("region_code"),
+                                            "postal": d.get("zip") or existing.get("postal"),
+                                            "country": d.get("country") or existing.get("country"),
+                                            "country_code": d.get("countryCode") or existing.get("country_code"),
+                                            "lat": d.get("lat") or existing.get("lat"),
+                                            "lon": d.get("lon") or existing.get("lon"),
+                                            "timezone": d.get("timezone") or existing.get("timezone"),
+                                            "isp": d.get("isp") or d.get("org") or existing.get("isp"),
+                                        }
+                                        geo_by_ip[ip] = new_loc
+                                        # Persist
+                                        await _db.ip_geocache.update_one(
+                                            {"ip": ip},
+                                            {"$set": {"ip": ip, "location": new_loc, "cached_at": datetime.now(timezone.utc).isoformat()}},
+                                            upsert=True,
+                                        )
+                            except Exception as e:
+                                logger.debug(f"ip-api enrich {ip[:8]}***: {e}")
             except Exception as e:
                 logger.warning(f"batch geoip lookup failed: {e}")
 
