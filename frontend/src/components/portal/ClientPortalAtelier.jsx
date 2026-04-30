@@ -10,8 +10,12 @@ import {
   Phone, MapPin, ChevronRight, Check, X, Send, ArrowRight, Download,
   Star, Gift, LogOut, Edit3, Sparkles, Plus, RefreshCw, ExternalLink,
   Shield, Award, Clock, CheckCircle, AlertCircle, HelpCircle, Folder,
-  Settings, Copy, TrendingUp, Navigation,
+  Settings, Copy, TrendingUp, TrendingDown, Navigation, Activity, Zap, Receipt,
 } from 'lucide-react';
+import {
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip,
+  BarChart, Bar, Cell, ReferenceLine,
+} from 'recharts';
 import BACKEND_URL from '../../config.js';
 
 const API_URL = BACKEND_URL + '/api/portal';
@@ -621,7 +625,7 @@ function BottomSheet({ onClose, children, maxHeight = '94vh' }) {
   );
 }
 
-/* ═══════════ VUE ACCUEIL ═══════════ */
+/* ═══════════ VUE ACCUEIL — Dashboard data-driven ═══════════ */
 function ViewAccueil({ client, quotes, invoices, interventions, loyalty, onOpenQuote, onOpenInvoice, onOpenIntv, onSelectTab }) {
   const pendingQuote = quotes.find(q => ['envoyé', 'envoye'].includes(q.status));
   const urgentInvoice = invoices.find(i => i.status === 'en_retard') || invoices.find(i => i.status === 'en_attente');
@@ -629,34 +633,97 @@ function ViewAccueil({ client, quotes, invoices, interventions, loyalty, onOpenQ
     .sort((a, b) => (a.scheduled_date || '').localeCompare(b.scheduled_date || ''))[0];
   const firstName = (client?.name || client?.full_name || '').split(' ')[0] || '';
 
-  const stats = {
-    quotes: quotes.length,
-    invoices: invoices.length,
-    interventions: interventions.length,
-    totalSpent: invoices.filter(i => ['payée', 'payee'].includes(i.status)).reduce((s, i) => s + Number(i.amount_ttc || i.amount || 0), 0),
-  };
+  // ═══ Aggregations data-driven (12 derniers mois + comparaison N vs N-1) ═══
+  const dash = useMemo(() => {
+    const now = new Date();
+    const Y = now.getFullYear();
+    const PY = Y - 1;
+    const isPaid = (i) => ['payée', 'payee'].includes(i.status);
+    const dateOf = (x) => x.paid_at || x.created_at || x.scheduled_date || x.completed_at;
+    const yearOf = (iso) => { try { return new Date(iso).getFullYear(); } catch { return null; } };
+    const ymOf = (iso) => { try { return iso.slice(0, 7); } catch { return ''; } };
+
+    // Interventions par année
+    const intvY = interventions.filter(i => yearOf(dateOf(i)) === Y);
+    const intvPY = interventions.filter(i => yearOf(dateOf(i)) === PY);
+
+    // Dépenses par année (factures payées)
+    const sumPaid = (year) => invoices.filter(isPaid).filter(i => yearOf(dateOf(i)) === year)
+      .reduce((s, i) => s + Number(i.amount_ttc || i.amount || 0), 0);
+    const spentY = sumPaid(Y);
+    const spentPY = sumPaid(PY);
+
+    // Évolution YoY
+    const yoyPct = spentPY > 0 ? Math.round(((spentY - spentPY) / spentPY) * 100) : null;
+
+    // Heures cumulées (estimation 2h si non renseigné)
+    const totalHours = intvY.reduce((s, i) => s + Number(i.duration_hours || 2), 0);
+
+    // Crédit d'impôt 50 % (services à la personne — France)
+    const taxCredit = Math.round(spentY * 0.5);
+
+    // Série 12 mois glissants : { month, cur, prev }
+    const monthly = [];
+    for (let m = 11; m >= 0; m--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - m, 1);
+      const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const kPrev = `${d.getFullYear() - 1}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const sumMonth = (key) => invoices.filter(isPaid)
+        .filter(i => ymOf(String(dateOf(i) || '')) === key)
+        .reduce((s, i) => s + Number(i.amount_ttc || i.amount || 0), 0);
+      monthly.push({
+        m: d.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', ''),
+        cur: Math.round(sumMonth(k)),
+        prev: Math.round(sumMonth(kPrev)),
+      });
+    }
+    const peakCur = Math.max(...monthly.map(p => p.cur), 0);
+
+    // Répartition services (top 5)
+    const services = {};
+    intvY.forEach(i => {
+      const k = (i.service_type || i.title || 'Autre').toString().trim() || 'Autre';
+      services[k] = (services[k] || 0) + 1;
+    });
+    const serviceList = Object.entries(services)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    return {
+      Y, PY,
+      intvY: intvY.length, intvPY: intvPY.length,
+      spentY, spentPY, yoyPct,
+      totalHours, taxCredit,
+      monthly, peakCur,
+      serviceList,
+      hasData: intvY.length + intvPY.length + spentY > 0,
+    };
+  }, [interventions, invoices]);
 
   return (
     <div className="cpa-fade" style={{ padding: '20px 20px 40px' }}>
+      {/* Header */}
       <div style={{ marginBottom: 18 }}>
         <div className="cpa-label">{new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
         <h1 className="cpa-display" style={{ fontSize: 40, fontWeight: 300, lineHeight: 0.95, margin: '10px 0 6px' }}>
           {greeting()} <em className="cpa-italic">{firstName || 'vous'}</em>.
         </h1>
         <div style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--ink-3)' }}>
-          {stats.quotes} devis · {stats.invoices} facture{stats.invoices > 1 ? 's' : ''} · {stats.interventions} intervention{stats.interventions > 1 ? 's' : ''}
+          Votre tableau de bord <span style={{ color: 'var(--emerald)' }}>{dash.Y}</span> — {dash.intvY} intervention{dash.intvY > 1 ? 's' : ''} cette année
         </div>
       </div>
 
+      {/* Alertes prioritaires */}
       {pendingQuote && (
-        <div onClick={() => onOpenQuote(pendingQuote)} className="cpa-fade" style={{ cursor: 'pointer', marginBottom: 16 }}>
+        <div onClick={() => onOpenQuote(pendingQuote)} className="cpa-fade" style={{ cursor: 'pointer', marginBottom: 14 }}>
           <QuoteHeroPreview quote={pendingQuote} />
         </div>
       )}
 
       {urgentInvoice && (
         <div className="cpa-card cpa-card-click" style={{
-          marginBottom: 16,
+          marginBottom: 14,
           borderColor: urgentInvoice.status === 'en_retard' ? 'var(--rouge)' : 'var(--gold)',
           borderWidth: 1,
         }} onClick={() => onOpenInvoice(urgentInvoice)}>
@@ -685,8 +752,9 @@ function ViewAccueil({ client, quotes, invoices, interventions, loyalty, onOpenQ
         </div>
       )}
 
+      {/* Prochaine intervention */}
       {upcoming && (
-        <div className="cpa-card cpa-card-click" style={{ marginBottom: 16 }} onClick={() => onOpenIntv(upcoming)}>
+        <div className="cpa-card cpa-card-click" style={{ marginBottom: 18 }} onClick={() => onOpenIntv(upcoming)}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
             <div className="cpa-label">Prochaine intervention</div>
             {upcoming.is_recurring && <span className="cpa-pill" style={{ color: 'var(--emerald-deep)', background: 'var(--emerald-soft)', borderColor: 'var(--emerald)' }}>Récurrent</span>}
@@ -712,34 +780,177 @@ function ViewAccueil({ client, quotes, invoices, interventions, loyalty, onOpenQ
         </div>
       )}
 
-      {/* Stats grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 8 }}>
+      {/* ═══════════ DASHBOARD ANNUEL ═══════════ */}
+      {dash.hasData && (
+        <>
+          <SectionLabel>Cette année · {dash.Y}</SectionLabel>
+
+          {/* Hero KPI : Dépenses + comparaison YoY */}
+          <div className="cpa-card" style={{ marginBottom: 12, padding: '20px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div>
+                <div className="cpa-label">Dépenses cumulées</div>
+                <div className="cpa-display" style={{ fontSize: 42, fontWeight: 300, lineHeight: 1, color: 'var(--ink)', marginTop: 6 }}>
+                  {fmtEur(dash.spentY)} <span style={{ fontSize: 16, fontStyle: 'italic', color: 'var(--ink-3)' }}>€</span>
+                </div>
+              </div>
+              {dash.yoyPct !== null && (
+                <YoYBadge pct={dash.yoyPct} prevYear={dash.PY} />
+              )}
+            </div>
+
+            {/* Sparkline 12 mois */}
+            <div style={{ height: 90, margin: '0 -6px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={dash.monthly} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="curFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="oklch(0.52 0.13 165)" stopOpacity={0.42} />
+                      <stop offset="100%" stopColor="oklch(0.52 0.13 165)" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis
+                    dataKey="m"
+                    tick={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, fill: 'oklch(0.52 0.010 60)' }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval={1}
+                  />
+                  <YAxis hide />
+                  <Tooltip
+                    contentStyle={{
+                      background: 'oklch(0.98 0.008 85)',
+                      border: '1px solid oklch(0.85 0.012 75)',
+                      borderRadius: 10,
+                      fontFamily: 'JetBrains Mono, monospace',
+                      fontSize: 11,
+                      padding: '6px 10px',
+                    }}
+                    cursor={{ stroke: 'oklch(0.85 0.012 75)', strokeWidth: 1, strokeDasharray: '3 3' }}
+                    formatter={(v, k) => [`${fmtEur(v)} €`, k === 'cur' ? dash.Y : dash.PY]}
+                    labelStyle={{ color: 'oklch(0.32 0.012 60)', fontWeight: 500 }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="prev"
+                    stroke="oklch(0.72 0.008 70)"
+                    strokeWidth={1}
+                    strokeDasharray="3 3"
+                    fill="transparent"
+                    dot={false}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="cur"
+                    stroke="oklch(0.52 0.13 165)"
+                    strokeWidth={2}
+                    fill="url(#curFill)"
+                    dot={false}
+                    activeDot={{ r: 4, fill: 'oklch(0.38 0.14 160)', stroke: '#fff', strokeWidth: 2 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 14, marginTop: 4 }}>
+              <ChartLegendDot color="oklch(0.52 0.13 165)" label={dash.Y} />
+              <ChartLegendDot color="oklch(0.72 0.008 70)" label={dash.PY} dashed />
+            </div>
+          </div>
+
+          {/* KPIs grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+            <KpiTile
+              icon={<Activity style={{ width: 16, height: 16, color: 'var(--emerald)' }} />}
+              label="Interventions"
+              value={dash.intvY}
+              hint={dash.intvPY > 0 ? `vs ${dash.intvPY} en ${dash.PY}` : 'Première année'}
+              onClick={() => onSelectTab('interventions')}
+            />
+            <KpiTile
+              icon={<Clock style={{ width: 16, height: 16, color: 'var(--sepia)' }} />}
+              label="Heures de ménage"
+              value={`${dash.totalHours} h`}
+              hint={`≈ ${Math.round(dash.totalHours / 8)} journées`}
+            />
+            <KpiTile
+              icon={<Receipt style={{ width: 16, height: 16, color: 'var(--gold)' }} />}
+              label="Crédit d'impôt"
+              value={fmtEur(dash.taxCredit) + ' €'}
+              hint="50 % automatique"
+              tone="gold"
+            />
+            <KpiTile
+              icon={<Zap style={{ width: 16, height: 16, color: 'var(--cool)' }} />}
+              label="Mois de pointe"
+              value={dash.peakCur > 0 ? fmtEur(dash.peakCur) + ' €' : '—'}
+              hint={dash.peakCur > 0 ? (dash.monthly.find(m => m.cur === dash.peakCur)?.m || '') : 'Aucun paiement'}
+            />
+          </div>
+
+          {/* Répartition services */}
+          {dash.serviceList.length > 0 && (
+            <div className="cpa-card" style={{ marginBottom: 14, padding: '16px 18px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
+                <div className="cpa-label">Répartition des services</div>
+                <div className="cpa-mono" style={{ fontSize: 10, color: 'var(--ink-3)' }}>
+                  {dash.serviceList.reduce((s, x) => s + x.count, 0)} passage{dash.serviceList.reduce((s, x) => s + x.count, 0) > 1 ? 's' : ''}
+                </div>
+              </div>
+              {(() => {
+                const max = Math.max(...dash.serviceList.map(s => s.count), 1);
+                const palette = ['var(--emerald)', 'var(--gold)', 'var(--sepia)', 'var(--cool)', 'var(--rouge)'];
+                return dash.serviceList.map((s, i) => (
+                  <div key={s.name} style={{ marginBottom: i === dash.serviceList.length - 1 ? 0 : 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <div style={{ fontFamily: 'Fraunces, serif', fontSize: 13, color: 'var(--ink)', fontWeight: 500 }}>{s.name}</div>
+                      <div className="cpa-mono" style={{ fontSize: 11, color: 'var(--ink-2)' }}>{s.count}</div>
+                    </div>
+                    <div style={{ height: 5, background: 'var(--surface-2)', borderRadius: 999, overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${(s.count / max) * 100}%`,
+                        background: palette[i % palette.length],
+                        borderRadius: 999,
+                        transition: 'width .4s ease',
+                      }} />
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ═══════════ Accès rapide aux espaces ═══════════ */}
+      <SectionLabel>Mes documents</SectionLabel>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
         <button onClick={() => onSelectTab('quotes')} style={tileStyle}>
           <FileText style={{ width: 18, height: 18, color: 'var(--emerald)' }} />
           <div>
             <div className="cpa-label">Devis</div>
-            <div className="cpa-display" style={{ fontSize: 22, fontWeight: 500, color: 'var(--ink)', lineHeight: 1, marginTop: 4 }}>{stats.quotes}</div>
+            <div className="cpa-display" style={{ fontSize: 22, fontWeight: 500, color: 'var(--ink)', lineHeight: 1, marginTop: 4 }}>{quotes.length}</div>
           </div>
         </button>
         <button onClick={() => onSelectTab('invoices')} style={tileStyle}>
           <CreditCard style={{ width: 18, height: 18, color: 'var(--gold)' }} />
           <div>
             <div className="cpa-label">Factures</div>
-            <div className="cpa-display" style={{ fontSize: 22, fontWeight: 500, color: 'var(--ink)', lineHeight: 1, marginTop: 4 }}>{stats.invoices}</div>
+            <div className="cpa-display" style={{ fontSize: 22, fontWeight: 500, color: 'var(--ink)', lineHeight: 1, marginTop: 4 }}>{invoices.length}</div>
           </div>
         </button>
         <button onClick={() => onSelectTab('interventions')} style={tileStyle}>
           <Calendar style={{ width: 18, height: 18, color: 'var(--sepia)' }} />
           <div>
             <div className="cpa-label">Passages</div>
-            <div className="cpa-display" style={{ fontSize: 22, fontWeight: 500, color: 'var(--ink)', lineHeight: 1, marginTop: 4 }}>{stats.interventions}</div>
+            <div className="cpa-display" style={{ fontSize: 22, fontWeight: 500, color: 'var(--ink)', lineHeight: 1, marginTop: 4 }}>{interventions.length}</div>
           </div>
         </button>
         <button onClick={() => onSelectTab('documents')} style={tileStyle}>
           <Folder style={{ width: 18, height: 18, color: 'var(--cool)' }} />
           <div>
-            <div className="cpa-label">Documents</div>
-            <div className="cpa-display" style={{ fontSize: 22, fontWeight: 500, color: 'var(--ink)', lineHeight: 1, marginTop: 4 }}>{stats.quotes + stats.invoices}</div>
+            <div className="cpa-label">Tous documents</div>
+            <div className="cpa-display" style={{ fontSize: 22, fontWeight: 500, color: 'var(--ink)', lineHeight: 1, marginTop: 4 }}>{quotes.length + invoices.length}</div>
           </div>
         </button>
       </div>
@@ -747,7 +958,7 @@ function ViewAccueil({ client, quotes, invoices, interventions, loyalty, onOpenQ
       {/* Loyalty preview */}
       {loyalty && loyalty.points > 0 && (
         <div onClick={() => onSelectTab('fidelite')} className="cpa-card-click" style={{
-          marginTop: 16, padding: '18px 20px', borderRadius: 18,
+          marginBottom: 16, padding: '18px 20px', borderRadius: 18,
           background: 'linear-gradient(135deg, oklch(0.93 0.05 165) 0%, oklch(0.95 0.08 85) 100%)',
           border: '1px solid var(--emerald)',
           cursor: 'pointer',
@@ -768,21 +979,100 @@ function ViewAccueil({ client, quotes, invoices, interventions, loyalty, onOpenQ
       )}
 
       {/* Quick actions */}
-      <div style={{ marginTop: 20 }}>
-        <div className="cpa-label" style={{ marginBottom: 10 }}>Actions rapides</div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button onClick={() => onSelectTab('demande')} className="cpa-chip-btn">
-            <Plus style={{ width: 11, height: 11 }} /> Demander une intervention
-          </button>
-          <button onClick={() => onSelectTab('conseiller')} className="cpa-chip-btn">
-            <MessageSquare style={{ width: 11, height: 11 }} /> Écrire au conseiller
-          </button>
-          <button onClick={() => onSelectTab('fidelite')} className="cpa-chip-btn">
-            <Gift style={{ width: 11, height: 11 }} /> Parrainer
-          </button>
-        </div>
+      <SectionLabel>Actions rapides</SectionLabel>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button onClick={() => onSelectTab('demande')} className="cpa-chip-btn">
+          <Plus style={{ width: 11, height: 11 }} /> Demander une intervention
+        </button>
+        <button onClick={() => onSelectTab('conseiller')} className="cpa-chip-btn">
+          <MessageSquare style={{ width: 11, height: 11 }} /> Écrire au conseiller
+        </button>
+        <button onClick={() => onSelectTab('fidelite')} className="cpa-chip-btn">
+          <Gift style={{ width: 11, height: 11 }} /> Parrainer
+        </button>
       </div>
     </div>
+  );
+}
+
+/* ═══════════ Composants dashboard ═══════════ */
+function SectionLabel({ children }) {
+  return (
+    <div className="cpa-label" style={{
+      marginBottom: 10, marginTop: 6,
+      display: 'flex', alignItems: 'center', gap: 8,
+    }}>
+      <span style={{ flex: '0 0 12px', height: 1, background: 'var(--line)' }} />
+      {children}
+      <span style={{ flex: 1, height: 1, background: 'var(--line)' }} />
+    </div>
+  );
+}
+
+function YoYBadge({ pct, prevYear }) {
+  const positive = pct > 0;
+  const flat = pct === 0;
+  const color = flat ? 'var(--ink-3)' : positive ? 'var(--rouge)' : 'var(--emerald-deep)';
+  const bg = flat ? 'var(--surface-2)' : positive ? 'var(--rouge-soft)' : 'var(--emerald-soft)';
+  const Icon = positive ? TrendingUp : (flat ? null : TrendingDown);
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      padding: '6px 10px', borderRadius: 10,
+      background: bg, color,
+      fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 600,
+    }}>
+      {Icon && <Icon style={{ width: 12, height: 12 }} />}
+      {pct > 0 ? '+' : ''}{pct}%
+      <span style={{ fontSize: 9, opacity: 0.75, fontWeight: 400, marginLeft: 2 }}>vs {prevYear}</span>
+    </div>
+  );
+}
+
+function ChartLegendDot({ color, label, dashed }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: 'var(--ink-3)' }}>
+      <span style={{
+        width: 12, height: dashed ? 0 : 6, borderRadius: dashed ? 0 : 999,
+        background: dashed ? 'transparent' : color,
+        borderTop: dashed ? `1.5px dashed ${color}` : 'none',
+      }} />
+      {label}
+    </div>
+  );
+}
+
+function KpiTile({ icon, label, value, hint, onClick, tone }) {
+  const accent = tone === 'gold' ? 'oklch(0.94 0.06 85)' : 'var(--paper)';
+  return (
+    <button
+      onClick={onClick}
+      disabled={!onClick}
+      style={{
+        padding: '14px 14px',
+        borderRadius: 14,
+        background: accent,
+        border: '1px solid var(--line)',
+        textAlign: 'left',
+        cursor: onClick ? 'pointer' : 'default',
+        display: 'flex', flexDirection: 'column', gap: 6,
+        transition: 'transform .15s, box-shadow .15s',
+        font: 'inherit',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span className="cpa-label">{label}</span>
+        {icon}
+      </div>
+      <div className="cpa-display" style={{ fontSize: 22, fontWeight: 500, color: 'var(--ink)', lineHeight: 1.05 }}>
+        {value}
+      </div>
+      {hint && (
+        <div className="cpa-mono" style={{ fontSize: 9, color: 'var(--ink-3)', letterSpacing: '0.06em' }}>
+          {hint}
+        </div>
+      )}
+    </button>
   );
 }
 
