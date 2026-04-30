@@ -101,9 +101,12 @@ const tokenStyle = `
 
   /* ═══ Layout shell ═══ */
   .cpa-shell {
-    max-width: 1200px; margin: 0 auto;
-    padding: 0 28px;
+    max-width: 1320px; margin: 0 auto;
+    padding: 0 32px;
     position: relative;
+  }
+  @media (min-width: 1480px) {
+    .cpa-shell { max-width: 1400px; }
   }
 
   /* ═══ Topbar (sticky, sober) ═══ */
@@ -147,7 +150,8 @@ const tokenStyle = `
 
   /* ═══ Hero greeting (XXL serif) ═══ */
   .cpa-hero {
-    margin: 32px 0 28px;
+    margin: 36px 0 32px;
+    position: relative;
   }
   .cpa-hero-eyebrow {
     font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
@@ -155,15 +159,20 @@ const tokenStyle = `
   }
   .cpa-hero-title {
     font-family: 'Fraunces', serif;
-    font-size: clamp(40px, 8vw, 72px);
+    font-size: clamp(40px, 8vw, 80px);
     font-weight: 500; line-height: 1;
     color: var(--ink); letter-spacing: -0.035em;
-    margin: 14px 0 12px;
+    margin: 14px 0 14px;
   }
   .cpa-hero-sub {
     font-family: 'Fraunces', serif;
-    font-size: 18px; line-height: 1.4; color: var(--ink-3);
-    font-style: italic; max-width: 580px;
+    font-size: 18px; line-height: 1.5; color: var(--ink-3);
+    font-style: italic; max-width: 620px;
+  }
+  @media (min-width: 1280px) {
+    .cpa-hero { margin: 48px 0 40px; }
+    .cpa-hero-title { font-size: clamp(56px, 6vw, 88px); }
+    .cpa-hero-sub { font-size: 20px; }
   }
 
   /* ═══ Tabs nav (top center, like reference) ═══ */
@@ -187,14 +196,20 @@ const tokenStyle = `
 
   /* ═══ KPI CARDS (4 colonnes pastel) ═══ */
   .cpa-kpi-grid {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
-    margin-bottom: 28px;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+    margin-bottom: 32px;
   }
   .cpa-kpi {
-    padding: 22px 24px;
+    padding: 24px 26px;
     border-radius: 20px;
     border: 1px solid;
     transition: transform .25s ease, box-shadow .25s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .cpa-kpi:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px -10px rgba(20, 25, 40, 0.12);
   }
   .cpa-kpi-label {
     font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
@@ -202,10 +217,14 @@ const tokenStyle = `
   }
   .cpa-kpi-value {
     font-family: 'Fraunces', serif; font-weight: 500; letter-spacing: -0.03em;
-    font-size: 38px; line-height: 1; margin: 12px 0 8px;
+    font-size: 40px; line-height: 1; margin: 14px 0 8px;
   }
   .cpa-kpi-hint {
     font-size: 12px; opacity: 0.78;
+  }
+  @media (min-width: 1280px) {
+    .cpa-kpi-value { font-size: 44px; }
+    .cpa-kpi { padding: 26px 28px; }
   }
   .cpa-kpi.k-blue { background: var(--pastel-blue); border-color: oklch(0.85 0.06 240); color: var(--pastel-blue-fg); }
   .cpa-kpi.k-sage { background: var(--pastel-sage); border-color: oklch(0.85 0.07 165); color: var(--pastel-sage-fg); }
@@ -215,8 +234,11 @@ const tokenStyle = `
 
   /* ═══ Layout 2 cols (desktop) + stack (mobile) ═══ */
   .cpa-cols {
-    display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
-    gap: 20px; align-items: flex-start;
+    display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+    gap: 24px; align-items: flex-start;
+  }
+  @media (min-width: 1280px) {
+    .cpa-cols { gap: 28px; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); }
   }
   @media (max-width: 880px) {
     .cpa-cols { grid-template-columns: 1fr; gap: 14px; }
@@ -267,23 +289,36 @@ const tokenStyle = `
     background: var(--paper);
     border: 1px solid var(--line);
     border-radius: 24px;
-    padding: 28px 28px;
-    margin-bottom: 20px;
+    padding: 30px 30px;
+    margin-bottom: 22px;
+    transition: border-color .25s ease, box-shadow .25s ease;
+  }
+  .cpa-section:hover {
+    border-color: oklch(0.82 0.014 240);
   }
   .cpa-section-head {
     display: flex; justify-content: space-between; align-items: baseline;
-    margin-bottom: 18px;
+    margin-bottom: 20px;
   }
   .cpa-section-title {
-    font-family: 'Fraunces', serif; font-size: 28px; font-weight: 500;
+    font-family: 'Fraunces', serif; font-size: 30px; font-weight: 500;
     color: var(--ink); letter-spacing: -0.02em; line-height: 1;
   }
   .cpa-section-link {
     color: var(--ink-2); text-decoration: none; font-size: 13px;
     font-weight: 500;
     transition: color .2s;
+    display: inline-flex; align-items: center; gap: 4px;
   }
   .cpa-section-link:hover { color: var(--emerald); }
+  @media (min-width: 1280px) {
+    .cpa-section { padding: 32px 34px; }
+    .cpa-section-title { font-size: 32px; }
+  }
+  /* Sticky sidebar sur desktop large pour que le panel droit reste visible au scroll */
+  @media (min-width: 1100px) {
+    .cpa-cols > *:last-child { position: sticky; top: 80px; }
+  }
 
   /* ═══ Intervention row (style référence) ═══ */
   .cpa-intv-row {
@@ -482,6 +517,35 @@ const tokenStyle = `
   .cpa-msg-role { font-size: 12px; color: var(--ink-3); margin-top: 1px; }
   .cpa-msg-time { font-size: 11px; color: var(--ink-3); }
   .cpa-msg-body { font-size: 13px; color: var(--ink-2); line-height: 1.55; }
+
+  /* ═══ INPUTS — anti-autofill (fix invisible text mobile) ═══ */
+  .cpa-root input,
+  .cpa-root textarea,
+  .cpa-root select {
+    color: var(--ink);
+    -webkit-text-fill-color: var(--ink);
+    caret-color: var(--ink);
+    background-color: transparent;
+    font-family: inherit;
+  }
+  .cpa-root input::placeholder,
+  .cpa-root textarea::placeholder {
+    color: var(--ink-3);
+    -webkit-text-fill-color: var(--ink-3);
+    opacity: 1;
+  }
+  .cpa-root input:-webkit-autofill,
+  .cpa-root input:-webkit-autofill:hover,
+  .cpa-root input:-webkit-autofill:focus,
+  .cpa-root input:-webkit-autofill:active {
+    -webkit-text-fill-color: var(--ink) !important;
+    -webkit-box-shadow: 0 0 0 30px var(--surface) inset !important;
+    box-shadow: 0 0 0 30px var(--surface) inset !important;
+    transition: background-color 9999s ease-in-out 0s;
+    caret-color: var(--ink) !important;
+  }
+  .cpa-root input:focus,
+  .cpa-root textarea:focus { outline: none; }
 
   /* ═══ Invoice row (sidebar style) ═══ */
   .cpa-inv-row {
