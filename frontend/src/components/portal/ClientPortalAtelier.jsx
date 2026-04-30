@@ -1412,8 +1412,18 @@ function ViewDocuments({ quotes, invoices }) {
 }
 
 /* ═══════════ VUE FIDÉLITÉ & PARRAINAGE ═══════════ */
-function ViewFidelite({ client, loyalty }) {
+/* ═══════════ TIERS — Bronze / Argent / Or / Platinum ═══════════ */
+const TIERS = [
+  { name: 'Bronze',   min: 0,    max: 99,   color: 'oklch(0.55 0.10 60)',  glow: 'oklch(0.62 0.13 60)',  bg: 'linear-gradient(165deg, oklch(0.30 0.04 60) 0%, oklch(0.20 0.06 50) 100%)' },
+  { name: 'Argent',   min: 100,  max: 499,  color: 'oklch(0.78 0.012 250)', glow: 'oklch(0.85 0.02 250)', bg: 'linear-gradient(165deg, oklch(0.28 0.012 250) 0%, oklch(0.18 0.014 240) 100%)' },
+  { name: 'Or',       min: 500,  max: 999,  color: 'oklch(0.78 0.13 85)',   glow: 'oklch(0.86 0.15 85)',  bg: 'linear-gradient(165deg, oklch(0.28 0.04 70) 0%, oklch(0.18 0.06 60) 100%)' },
+  { name: 'Platinum', min: 1000, max: Infinity, color: 'oklch(0.65 0.13 165)', glow: 'oklch(0.78 0.15 165)', bg: 'linear-gradient(165deg, oklch(0.18 0.04 165) 0%, oklch(0.14 0.06 175) 100%)' },
+];
+
+function ViewFidelite({ client, loyalty, interventions = [], invoices = [] }) {
   const [copied, setCopied] = useState(false);
+  const [unlockedBadge, setUnlockedBadge] = useState(null);
+
   const referralCode = useMemo(() => {
     const base = (client?.name || client?.email || 'AMI').replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 6) || 'AMI';
     const suffix = (client?.lead_id || '').slice(-4).toUpperCase();
@@ -1443,11 +1453,58 @@ function ViewFidelite({ client, loyalty }) {
     }
   };
 
-  const points = loyalty?.points || 0;
-  const tier = points >= 500 ? 'Or' : points >= 200 ? 'Argent' : 'Découverte';
-  const tierColor = points >= 500 ? 'var(--gold)' : points >= 200 ? 'oklch(0.70 0.02 260)' : 'var(--emerald)';
-  const nextThreshold = points >= 500 ? 1000 : points >= 200 ? 500 : 200;
-  const progress = Math.min(100, (points / nextThreshold) * 100);
+  // ═══ Calcul activité (interventions terminées + dépenses + filleuls) ═══
+  const stats = useMemo(() => {
+    const completed = interventions.filter(i => ['terminée', 'terminee'].includes(i.status)).length;
+    const totalSpent = invoices.filter(i => ['payée', 'payee'].includes(i.status))
+      .reduce((s, i) => s + Number(i.amount_ttc || i.amount || 0), 0);
+    const referrals = Number(loyalty?.referrals || client?.referrals_count || 0);
+    const ratingAvg = Number(loyalty?.rating_avg || client?.average_rating || 0);
+    const seniority = client?.created_at ? Math.max(0, Math.floor((Date.now() - new Date(client.created_at).getTime()) / (30 * 86400000))) : 0;
+    return { completed, totalSpent, referrals, ratingAvg, seniority };
+  }, [interventions, invoices, loyalty, client]);
+
+  // Points calculés : priorité au loyalty.points serveur, sinon estimation côté client
+  const points = loyalty?.points != null
+    ? Number(loyalty.points)
+    : stats.completed * 50 + Math.floor(stats.totalSpent / 10) + stats.referrals * 50;
+
+  const currentTier = TIERS.findLast ? TIERS.findLast(t => points >= t.min) : [...TIERS].reverse().find(t => points >= t.min);
+  const tierIdx = TIERS.indexOf(currentTier);
+  const nextTier = TIERS[tierIdx + 1];
+  const progressInTier = nextTier
+    ? Math.min(100, ((points - currentTier.min) / (nextTier.min - currentTier.min)) * 100)
+    : 100;
+  const ptsToNext = nextTier ? Math.max(0, nextTier.min - points) : 0;
+
+  // ═══ Badges débloqués ═══
+  const allBadges = [
+    { id: 'firststep',  icon: '✨', name: 'Premier pas',     desc: '1ʳᵉ intervention réalisée',  cond: stats.completed >= 1 },
+    { id: 'regular',    icon: '🔄', name: 'Régulier',        desc: '5+ interventions',           cond: stats.completed >= 5 },
+    { id: 'loyal',      icon: '💎', name: 'Fidèle',          desc: '10+ interventions',          cond: stats.completed >= 10 },
+    { id: 'veteran',    icon: '🏆', name: 'Vétéran',         desc: '25+ interventions',          cond: stats.completed >= 25 },
+    { id: 'premium',    icon: '👑', name: 'Premium',         desc: '1 000 € dépensés',           cond: stats.totalSpent >= 1000 },
+    { id: 'whale',      icon: '🐋', name: 'Élite',           desc: '5 000 € dépensés',           cond: stats.totalSpent >= 5000 },
+    { id: 'ambassador', icon: '🤝', name: 'Ambassadeur',     desc: '1 filleul recruté',          cond: stats.referrals >= 1 },
+    { id: 'tribe',      icon: '🌟', name: 'Tribu',           desc: '5 filleuls recrutés',        cond: stats.referrals >= 5 },
+    { id: 'perfect',    icon: '🎯', name: 'Note parfaite',   desc: 'Moyenne ≥ 4.8/5',            cond: stats.ratingAvg >= 4.8 },
+    { id: 'anniversary',icon: '🎂', name: 'Anniversaire',    desc: '12 mois d\'ancienneté',      cond: stats.seniority >= 12 },
+    { id: 'eco',        icon: '🌱', name: 'Éco-responsable', desc: 'Produits écologiques choisis', cond: !!loyalty?.eco_choice },
+    { id: 'platinum',   icon: '🛡️', name: 'Platinum',         desc: 'Niveau Platinum atteint',    cond: points >= 1000 },
+  ];
+  const earnedBadges = allBadges.filter(b => b.cond);
+  const lockedBadges = allBadges.filter(b => !b.cond);
+
+  // ═══ Récompenses débloquées par palier ═══
+  const allRewards = [
+    { tierMin: 0,    icon: '🎁', name: '20 € parrainage',         desc: 'Pour vous et votre filleul' },
+    { tierMin: 100,  icon: '🚿', name: 'Produits écologiques',    desc: 'Sans surcoût sur demande' },
+    { tierMin: 200,  icon: '⏱️', name: '+30 min offertes',         desc: 'À votre prochaine prestation' },
+    { tierMin: 500,  icon: '🌟', name: 'Intervention prioritaire',desc: 'Créneaux réservés sous 24 h' },
+    { tierMin: 750,  icon: '✨', name: 'Grand ménage offert',     desc: '1 fois par an' },
+    { tierMin: 1000, icon: '💎', name: 'Conseiller dédié',        desc: 'Numéro direct, 7j/7' },
+    { tierMin: 1500, icon: '🎄', name: 'Cadeau de fin d\'année', desc: 'Coffret artisanal' },
+  ];
 
   return (
     <div className="cpa-fade" style={{ padding: '20px 20px 40px' }}>
@@ -1456,42 +1513,157 @@ function ViewFidelite({ client, loyalty }) {
         Vos <em className="cpa-italic">récompenses</em>
       </h1>
 
-      {/* Carte fidélité XXL */}
-      <div className="cpa-dark" style={{ marginBottom: 18, padding: '22px 22px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18, position: 'relative' }}>
+      {/* ═══════════ Carte fidélité XXL — gradient adapté au tier ═══════════ */}
+      <div style={{
+        position: 'relative', overflow: 'hidden',
+        marginBottom: 16, padding: '24px 22px', borderRadius: 22,
+        background: currentTier.bg,
+        boxShadow: `0 12px 40px ${currentTier.color.replace(')', ' / 0.20)')}, inset 0 1px 0 rgba(255,255,255,0.06)`,
+        border: `1px solid ${currentTier.color.replace(')', ' / 0.32)')}`,
+        color: 'oklch(0.95 0.01 80)',
+      }}>
+        {/* Halo de tier */}
+        <div style={{
+          position: 'absolute', top: -60, right: -60,
+          width: 220, height: 220, borderRadius: 999,
+          background: `radial-gradient(circle, ${currentTier.glow.replace(')', ' / 0.22)')}, transparent 70%)`,
+          filter: 'blur(2px)', pointerEvents: 'none',
+        }} />
+
+        <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22 }}>
           <div>
             <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'oklch(0.72 0.04 80)' }}>
-              Statut · {tier}
+              Statut · <span style={{ color: currentTier.glow, fontWeight: 600 }}>{currentTier.name}</span>
             </div>
-            <div className="cpa-display" style={{ fontSize: 56, fontWeight: 300, color: tierColor, lineHeight: 1, marginTop: 8 }}>
-              {points}
+            <div className="cpa-display" style={{
+              fontSize: 64, fontWeight: 300, color: currentTier.glow, lineHeight: 1, marginTop: 10,
+              textShadow: `0 0 30px ${currentTier.color.replace(')', ' / 0.45)')}`,
+              animation: 'cpa-shimmer 3s ease-in-out infinite',
+            }}>
+              {points.toLocaleString('fr-FR')}
             </div>
-            <div style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 14, color: 'oklch(0.85 0.03 80)', marginTop: 4 }}>
+            <div style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 14, color: 'oklch(0.82 0.03 80)', marginTop: 4 }}>
               points accumulés
             </div>
           </div>
-          <Award style={{ width: 36, height: 36, color: tierColor, opacity: 0.9 }} />
+          <TierMedal tier={currentTier} />
         </div>
 
+        {/* Tier ladder */}
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: 'oklch(0.72 0.04 80)', marginBottom: 6 }}>
-            <span>Palier {tier}</span>
-            <span>{nextThreshold - points} pts pour le palier suivant</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: 'oklch(0.72 0.04 80)', marginBottom: 8, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            {TIERS.map((t, i) => (
+              <span key={t.name} style={{
+                color: i <= tierIdx ? t.glow : 'oklch(0.45 0.02 80)',
+                fontWeight: i === tierIdx ? 700 : 400,
+              }}>
+                {t.name}
+              </span>
+            ))}
           </div>
-          <div style={{ height: 6, background: 'oklch(0.22 0.02 60)', borderRadius: 999, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${progress}%`, background: `linear-gradient(90deg, ${tierColor}, oklch(0.72 0.13 85))`, borderRadius: 999 }} />
+
+          {/* Barre de progression segmentée */}
+          <div style={{ display: 'flex', gap: 4, height: 6, marginBottom: 10 }}>
+            {TIERS.map((t, i) => {
+              const filled = i < tierIdx ? 100 : i === tierIdx ? progressInTier : 0;
+              return (
+                <div key={t.name} style={{
+                  flex: 1, height: '100%', borderRadius: 999,
+                  background: 'oklch(0.22 0.02 60)', position: 'relative', overflow: 'hidden',
+                }}>
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    width: `${filled}%`,
+                    background: `linear-gradient(90deg, ${t.color}, ${t.glow})`,
+                    transition: 'width 1.2s cubic-bezier(.4,0,.2,1)',
+                    boxShadow: i === tierIdx ? `0 0 12px ${t.glow.replace(')', ' / 0.7)')}` : 'none',
+                  }} />
+                </div>
+              );
+            })}
           </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: 'oklch(0.72 0.04 80)' }}>
+            <span>{points.toLocaleString('fr-FR')} pts</span>
+            {nextTier ? (
+              <span><strong style={{ color: currentTier.glow }}>{ptsToNext}</strong> pts → {nextTier.name}</span>
+            ) : (
+              <span style={{ color: currentTier.glow }}>★ Niveau maximum atteint</span>
+            )}
+          </div>
+        </div>
+
+        <style>{`
+          @keyframes cpa-shimmer { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.18); } }
+          @keyframes cpa-badge-glow { 0%,100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+        `}</style>
+      </div>
+
+      {/* ═══════════ Stats activité ═══════════ */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
+        <ActivityChip label="Interventions" value={stats.completed} />
+        <ActivityChip label="Filleuls" value={stats.referrals} />
+        <ActivityChip label="Badges" value={`${earnedBadges.length}/${allBadges.length}`} />
+      </div>
+
+      {/* ═══════════ Badges (débloqués + à débloquer) ═══════════ */}
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+          <div className="cpa-label">Vos badges</div>
+          <div className="cpa-mono" style={{ fontSize: 10, color: 'var(--ink-3)' }}>
+            {earnedBadges.length} sur {allBadges.length}
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))', gap: 8 }}>
+          {earnedBadges.map((b) => (
+            <BadgeTile key={b.id} badge={b} earned onClick={() => setUnlockedBadge(b)} />
+          ))}
+          {lockedBadges.map((b) => (
+            <BadgeTile key={b.id} badge={b} earned={false} onClick={() => setUnlockedBadge(b)} />
+          ))}
         </div>
       </div>
 
-      {/* Parrainage */}
+      {/* ═══════════ Récompenses ═══════════ */}
+      <div className="cpa-card" style={{ marginBottom: 16, padding: '16px 18px' }}>
+        <div className="cpa-label" style={{ marginBottom: 12 }}>Récompenses du palier</div>
+        {allRewards.map((r, i) => {
+          const unlocked = points >= r.tierMin;
+          return (
+            <div key={i} style={{
+              display: 'flex', gap: 12, alignItems: 'center',
+              padding: '10px 0', borderBottom: i < allRewards.length - 1 ? '1px solid var(--line-2)' : 0,
+              opacity: unlocked ? 1 : 0.4,
+            }}>
+              <div style={{
+                fontSize: 22, flexShrink: 0, width: 36, height: 36, textAlign: 'center', lineHeight: '36px',
+                borderRadius: 10,
+                background: unlocked ? 'var(--emerald-soft)' : 'var(--surface-2)',
+                border: `1px solid ${unlocked ? 'var(--emerald)' : 'var(--line)'}`,
+                filter: unlocked ? 'none' : 'grayscale(0.8)',
+              }}>{r.icon}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ fontFamily: 'Fraunces, serif', fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>{r.name}</div>
+                  {unlocked
+                    ? <Check style={{ width: 13, height: 13, color: 'var(--emerald)' }} />
+                    : <span className="cpa-mono" style={{ fontSize: 9, color: 'var(--ink-3)' }}>{r.tierMin} pts</span>}
+                </div>
+                <div style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>{r.desc}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ═══════════ Parrainage ═══════════ */}
       <div className="cpa-card" style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
           <Gift style={{ width: 20, height: 20, color: 'var(--emerald)' }} />
           <div>
             <div className="cpa-label">Parrainez un ami</div>
             <div className="cpa-display" style={{ fontSize: 18, fontWeight: 500, margin: '2px 0 0' }}>
-              +20 € pour <em className="cpa-italic">vous deux</em>
+              +50 pts · 20 € pour <em className="cpa-italic">vous deux</em>
             </div>
           </div>
         </div>
@@ -1516,14 +1688,14 @@ function ViewFidelite({ client, loyalty }) {
         </button>
       </div>
 
-      {/* Avantages */}
+      {/* Avantages permanents */}
       <div className="cpa-card">
-        <div className="cpa-label" style={{ marginBottom: 12 }}>Vos avantages actuels</div>
+        <div className="cpa-label" style={{ marginBottom: 12 }}>Avantages permanents</div>
         {[
           { icon: '⭐', t: 'Crédit d\'impôt 50% automatique', s: 'Attestation fiscale générée chaque année' },
           { icon: '🛡️', t: 'Garantie satisfait ou remboursé', s: 'Intervention reprise gratuitement' },
           { icon: '📞', t: 'Hotline dédiée 7j/7', s: 'Réponse sous 5 min en journée' },
-          { icon: '🎁', t: 'Cadeau anniversaire', s: '10% sur votre prochaine prestation' },
+          { icon: '🎂', t: 'Cadeau anniversaire', s: '10% sur votre prochaine prestation' },
         ].map((a, i) => (
           <div key={i} style={{
             display: 'flex', gap: 12, alignItems: 'center',
@@ -1537,7 +1709,76 @@ function ViewFidelite({ client, loyalty }) {
           </div>
         ))}
       </div>
+
+      {/* Modal détail badge */}
+      {unlockedBadge && (
+        <BottomSheet onClose={() => setUnlockedBadge(null)} maxHeight="60vh">
+          <div style={{ textAlign: 'center', padding: '12px 0 18px' }}>
+            <div style={{
+              fontSize: 64, marginBottom: 14,
+              filter: unlockedBadge.cond ? 'none' : 'grayscale(0.7)',
+              animation: unlockedBadge.cond ? 'cpa-badge-glow 1.6s ease-in-out infinite' : 'none',
+            }}>{unlockedBadge.icon}</div>
+            <div className="cpa-label" style={{ color: unlockedBadge.cond ? 'var(--emerald)' : 'var(--ink-3)' }}>
+              {unlockedBadge.cond ? 'Badge débloqué' : 'À débloquer'}
+            </div>
+            <h3 className="cpa-display" style={{ fontSize: 26, fontWeight: 500, margin: '6px 0 4px' }}>
+              {unlockedBadge.name}
+            </h3>
+            <div style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--ink-3)', marginBottom: 16 }}>
+              {unlockedBadge.desc}
+            </div>
+          </div>
+        </BottomSheet>
+      )}
     </div>
+  );
+}
+
+function TierMedal({ tier }) {
+  return (
+    <div style={{
+      width: 56, height: 56, borderRadius: 999,
+      background: `radial-gradient(circle at 30% 30%, ${tier.glow.replace(')', ' / 0.55)')}, ${tier.color.replace(')', ' / 0.25)')} 70%)`,
+      border: `2px solid ${tier.glow.replace(')', ' / 0.45)')}`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      boxShadow: `0 0 26px ${tier.glow.replace(')', ' / 0.45)')}, inset 0 2px 4px rgba(255,255,255,0.18)`,
+    }}>
+      <Award style={{ width: 28, height: 28, color: tier.glow }} />
+    </div>
+  );
+}
+
+function ActivityChip({ label, value }) {
+  return (
+    <div style={{
+      padding: '12px 10px', borderRadius: 14,
+      background: 'var(--paper)', border: '1px solid var(--line)',
+      textAlign: 'center',
+    }}>
+      <div className="cpa-display" style={{ fontSize: 22, fontWeight: 500, color: 'var(--ink)', lineHeight: 1 }}>{value}</div>
+      <div className="cpa-label" style={{ marginTop: 4, fontSize: 9 }}>{label}</div>
+    </div>
+  );
+}
+
+function BadgeTile({ badge, earned, onClick }) {
+  return (
+    <button onClick={onClick} style={{
+      padding: '12px 6px', borderRadius: 14,
+      background: earned ? 'linear-gradient(165deg, oklch(0.94 0.05 165), oklch(0.96 0.03 85))' : 'var(--surface-2)',
+      border: `1px solid ${earned ? 'var(--emerald)' : 'var(--line)'}`,
+      cursor: 'pointer', textAlign: 'center',
+      opacity: earned ? 1 : 0.55,
+      filter: earned ? 'none' : 'grayscale(0.8)',
+      transition: 'transform .15s, box-shadow .15s',
+      font: 'inherit',
+    }}>
+      <div style={{ fontSize: 26, lineHeight: 1, marginBottom: 4 }}>{badge.icon}</div>
+      <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 8, letterSpacing: '0.06em', textTransform: 'uppercase', color: earned ? 'var(--emerald-deep)' : 'var(--ink-3)', fontWeight: 600 }}>
+        {badge.name}
+      </div>
+    </button>
   );
 }
 
@@ -2368,7 +2609,7 @@ function Dashboard({ client, onLogout, onRefreshClient }) {
         {tab === 'invoices' && <ViewInvoices invoices={invoices} onOpen={() => {}} onPay={handlePay} />}
         {tab === 'interventions' && <ViewInterventions interventions={interventions} onOpen={setOpenIntv} onReview={setReviewIntv} />}
         {tab === 'documents' && <ViewDocuments quotes={quotes} invoices={invoices} />}
-        {tab === 'fidelite' && <ViewFidelite client={client} loyalty={loyalty} />}
+        {tab === 'fidelite' && <ViewFidelite client={client} loyalty={loyalty} interventions={interventions} invoices={invoices} />}
         {tab === 'demande' && <ViewDemande client={client} onSubmit={handleDemande} />}
         {tab === 'conseiller' && <ViewConseiller messages={messages} advisor={advisor} onSend={handleSendMsg} />}
         {tab === 'profil' && <ViewProfil client={client} onSave={handleSaveProfile} onLogout={onLogout} />}
