@@ -1554,32 +1554,304 @@ function RecurrenceCalendar({ interventions, highlightWeekday }) {
 }
 
 /* ═══════════ VUE DOCUMENTS ═══════════ */
-function ViewDocuments({ quotes, invoices }) {
+function ViewDocuments({ quotes, invoices, interventions = [], client }) {
+  // Années disponibles
+  const allYears = useMemo(() => {
+    const ys = new Set();
+    [...quotes, ...invoices, ...interventions].forEach(d => {
+      const dt = d.created_at || d.scheduled_date || d.completed_at;
+      if (dt) ys.add(new Date(dt).getFullYear());
+    });
+    const sorted = [...ys].sort((a, b) => b - a);
+    return sorted.length ? sorted : [new Date().getFullYear()];
+  }, [quotes, invoices, interventions]);
+
+  const [year, setYear] = useState(allYears[0]);
+
+  // Filtrage par année + récap fiscal
+  const fiscal = useMemo(() => {
+    const inYear = (d) => {
+      const dt = d?.paid_at || d?.created_at || d?.scheduled_date || d?.completed_at;
+      if (!dt) return false;
+      try { return new Date(dt).getFullYear() === year; } catch { return false; }
+    };
+    const yearInvoices = invoices.filter(inYear);
+    const yearQuotes = quotes.filter(inYear);
+    const yearIntvs = interventions.filter(inYear);
+    const paidAmount = yearInvoices
+      .filter(i => ['payée', 'payee'].includes(i.status))
+      .reduce((s, i) => s + Number(i.amount_ttc || i.amount || 0), 0);
+    const taxCredit = Math.round(paidAmount * 0.5);
+    const completedIntvs = yearIntvs.filter(i => ['terminée', 'terminee'].includes(i.status)).length;
+    const totalHours = yearIntvs.reduce((s, i) => s + Number(i.duration_hours || 2), 0);
+    return {
+      yearInvoices, yearQuotes, yearIntvs,
+      paidAmount, taxCredit, completedIntvs, totalHours,
+    };
+  }, [invoices, quotes, interventions, year]);
+
+  // ═══ Export CSV (factures) ═══
+  const exportInvoicesCsv = () => {
+    const headers = ['Numéro', 'Date', 'Date paiement', 'Prestation', 'Montant HT', 'Montant TTC', 'Statut'];
+    const rows = fiscal.yearInvoices.map(i => [
+      i.invoice_number || '',
+      (i.created_at || '').slice(0, 10),
+      (i.paid_at || '').slice(0, 10),
+      (i.project || i.service_type || 'Prestation').replace(/[",;]/g, ' '),
+      Number(i.amount_ht || (i.amount_ttc || i.amount || 0) / 1.2).toFixed(2),
+      Number(i.amount_ttc || i.amount || 0).toFixed(2),
+      i.status || '',
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(';')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `factures_${year}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Export CSV généré · ${fiscal.yearInvoices.length} factures`);
+  };
+
+  const exportInterventionsCsv = () => {
+    const headers = ['Date', 'Heure', 'Service', 'Adresse', 'Durée (h)', 'Statut', 'Intervenant'];
+    const rows = fiscal.yearIntvs.map(i => [
+      (i.scheduled_date || '').slice(0, 10),
+      i.scheduled_time || '',
+      (i.service_type || i.title || '').replace(/[",;]/g, ' '),
+      (i.address || '').replace(/[",;]/g, ' '),
+      Number(i.duration_hours || 2),
+      i.status || '',
+      (i.agent_name || '').replace(/[",;]/g, ' '),
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(';')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `interventions_${year}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Export CSV généré · ${fiscal.yearIntvs.length} interventions`);
+  };
+
+  // ═══ Attestation fiscale (page imprimable) ═══
+  const printFiscalCert = () => {
+    const w = window.open('', '_blank');
+    if (!w) { toast.error('Bloqué — autorisez les pop-ups'); return; }
+    const name = client?.name || client?.full_name || 'Client';
+    const addr = client?.address || '';
+    const total = fmtEur2(fiscal.paidAmount);
+    const credit = fmtEur2(fiscal.taxCredit);
+    const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+    const tableRows = fiscal.yearInvoices
+      .filter(i => ['payée', 'payee'].includes(i.status))
+      .map(i => `
+        <tr>
+          <td>${i.invoice_number || ''}</td>
+          <td>${(i.paid_at || i.created_at || '').slice(0, 10)}</td>
+          <td>${(i.project || i.service_type || 'Prestation')}</td>
+          <td style="text-align:right">${fmtEur2(i.amount_ttc || i.amount || 0)} €</td>
+        </tr>`).join('');
+
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Attestation fiscale ${year} — ${name}</title>
+<style>
+  @page { margin: 18mm; size: A4; }
+  body { font-family: 'Times New Roman', Georgia, serif; color: #1a1a1a; line-height: 1.5; }
+  h1 { font-size: 26px; font-weight: 400; letter-spacing: -0.01em; margin: 0 0 4px; }
+  h1 em { color: #1c5d3f; font-style: italic; }
+  .label { font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #666; }
+  .totals { display: flex; gap: 20px; margin: 28px 0; }
+  .total-card { flex: 1; padding: 18px; border: 1px solid #ddd; border-radius: 8px; }
+  .total-card .v { font-size: 26px; font-weight: 500; color: #1c5d3f; }
+  table { width: 100%; border-collapse: collapse; margin: 18px 0 30px; font-size: 12px; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid #e5e5e5; text-align: left; }
+  th { background: #fafaf6; font-weight: 600; font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid #ddd; font-size: 11px; color: #666; }
+  .stamp { display: inline-block; padding: 6px 14px; border: 2px solid #1c5d3f; color: #1c5d3f; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; transform: rotate(-2deg); margin-top: 12px; }
+</style>
+</head><body>
+  <div class="label">Attestation fiscale · Article 199 sexdecies du CGI</div>
+  <h1>Attestation <em>annuelle</em> ${year}</h1>
+  <p style="margin-top:18px"><strong>${name}</strong><br/>${addr}</p>
+  <p>La société Global Clean Home (SIREN 988 506 040) atteste que ${name} a réglé en ${year}
+  des prestations de services à la personne au domicile, ouvrant droit au crédit d'impôt
+  prévu à l'article 199 sexdecies du Code général des impôts.</p>
+
+  <div class="totals">
+    <div class="total-card">
+      <div class="label">Total TTC réglé</div>
+      <div class="v">${total} €</div>
+    </div>
+    <div class="total-card">
+      <div class="label">Crédit d'impôt 50 %</div>
+      <div class="v">${credit} €</div>
+    </div>
+    <div class="total-card">
+      <div class="label">Interventions</div>
+      <div class="v">${fiscal.completedIntvs}</div>
+    </div>
+  </div>
+
+  <div class="label">Détail des règlements ${year}</div>
+  <table>
+    <thead><tr><th>Facture</th><th>Date</th><th>Prestation</th><th style="text-align:right">Montant TTC</th></tr></thead>
+    <tbody>${tableRows || '<tr><td colspan="4" style="text-align:center;color:#999">Aucune facture réglée</td></tr>'}</tbody>
+    <tfoot><tr><th colspan="3">Total</th><th style="text-align:right">${total} €</th></tr></tfoot>
+  </table>
+
+  <div class="footer">
+    <p>Établi à Paris, le ${today}.</p>
+    <p>Global Clean Home · 231 rue Saint-Honoré, 75001 Paris<br/>info@globalcleanhome.com · 06 22 66 53 08</p>
+    <div class="stamp">Document à conserver</div>
+  </div>
+  <script>window.onload = () => setTimeout(() => window.print(), 350);</script>
+</body></html>`);
+    w.document.close();
+  };
+
+  // Liste tous documents de l'année (devis + factures)
   const allDocs = useMemo(() => {
     const docs = [];
-    quotes.forEach(q => docs.push({
+    fiscal.yearQuotes.forEach(q => docs.push({
       type: 'quote', id: q.quote_id, number: q.quote_number || q.quote_id?.slice(-8).toUpperCase(),
       title: q.title || q.service_type, amount: q.amount, date: q.created_at, status: q.status,
       download: `${BACKEND_URL}/api/quotes/${q.quote_id}/pdf`,
     }));
-    invoices.forEach(i => docs.push({
+    fiscal.yearInvoices.forEach(i => docs.push({
       type: 'invoice', id: i.invoice_id, number: i.invoice_number,
       title: i.project || i.service_type || 'Facture', amount: i.amount_ttc || i.amount, date: i.created_at, status: i.status,
       download: `${BACKEND_URL}/api/invoices/${i.invoice_id}/pdf`,
     }));
     return docs.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  }, [quotes, invoices]);
+  }, [fiscal]);
 
   return (
     <div className="cpa-fade" style={{ padding: '20px 20px 40px' }}>
-      <div className="cpa-label">Vos documents</div>
-      <h1 className="cpa-display" style={{ fontSize: 34, fontWeight: 300, margin: '8px 0 18px', lineHeight: 1 }}>
+      <div className="cpa-label">Espace pro · comptable</div>
+      <h1 className="cpa-display" style={{ fontSize: 34, fontWeight: 300, margin: '8px 0 14px', lineHeight: 1 }}>
         La <em className="cpa-italic">bibliothèque</em>
       </h1>
 
+      {/* Sélecteur d'année */}
+      {allYears.length > 1 && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+          {allYears.map(y => (
+            <button key={y} onClick={() => setYear(y)} className="cpa-chip-btn" style={{
+              background: y === year ? 'var(--ink)' : 'var(--surface)',
+              color: y === year ? 'oklch(0.95 0.01 80)' : 'var(--ink-2)',
+              borderColor: y === year ? 'var(--ink)' : 'var(--line)',
+            }}>
+              {y}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ═══════════ Récap fiscal annuel ═══════════ */}
+      <div className="cpa-card" style={{
+        marginBottom: 14, padding: '20px 22px',
+        background: 'linear-gradient(165deg, oklch(0.96 0.018 75) 0%, oklch(0.95 0.04 85) 100%)',
+        border: '1px solid var(--gold)',
+      }}>
+        <div className="cpa-label" style={{ color: 'oklch(0.45 0.13 78)' }}>Bilan fiscal {year}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 14 }}>
+          <div>
+            <div className="cpa-mono" style={{ fontSize: 9, color: 'var(--ink-3)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              Total réglé TTC
+            </div>
+            <div className="cpa-display" style={{ fontSize: 28, fontWeight: 500, color: 'var(--ink)', lineHeight: 1, marginTop: 4 }}>
+              {fmtEur(fiscal.paidAmount)} €
+            </div>
+          </div>
+          <div>
+            <div className="cpa-mono" style={{ fontSize: 9, color: 'var(--ink-3)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              Crédit d'impôt 50 %
+            </div>
+            <div className="cpa-display" style={{ fontSize: 28, fontWeight: 500, color: 'oklch(0.45 0.13 78)', lineHeight: 1, marginTop: 4 }}>
+              {fmtEur(fiscal.taxCredit)} €
+            </div>
+          </div>
+          <div>
+            <div className="cpa-mono" style={{ fontSize: 9, color: 'var(--ink-3)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              Interventions
+            </div>
+            <div className="cpa-display" style={{ fontSize: 22, fontWeight: 500, color: 'var(--ink)', lineHeight: 1, marginTop: 4 }}>
+              {fiscal.completedIntvs}
+            </div>
+          </div>
+          <div>
+            <div className="cpa-mono" style={{ fontSize: 9, color: 'var(--ink-3)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              Heures de ménage
+            </div>
+            <div className="cpa-display" style={{ fontSize: 22, fontWeight: 500, color: 'var(--ink)', lineHeight: 1, marginTop: 4 }}>
+              {fiscal.totalHours} h
+            </div>
+          </div>
+        </div>
+
+        <button onClick={printFiscalCert} disabled={fiscal.paidAmount === 0} style={{
+          width: '100%', marginTop: 18, padding: '14px 18px', borderRadius: 12,
+          background: fiscal.paidAmount > 0 ? 'oklch(0.18 0.03 60)' : 'var(--ink-4)',
+          color: 'oklch(0.95 0.01 80)', border: 'none',
+          fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 600,
+          letterSpacing: '0.08em', textTransform: 'uppercase',
+          cursor: fiscal.paidAmount > 0 ? 'pointer' : 'not-allowed',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        }}>
+          <Receipt style={{ width: 14, height: 14 }} /> Imprimer l'attestation fiscale
+        </button>
+      </div>
+
+      {/* ═══════════ Exports CSV ═══════════ */}
+      <div className="cpa-card" style={{ marginBottom: 14, padding: '16px 18px' }}>
+        <div className="cpa-label" style={{ marginBottom: 12 }}>Exports comptables</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <button onClick={exportInvoicesCsv} disabled={fiscal.yearInvoices.length === 0} style={{
+            padding: '12px', borderRadius: 12,
+            background: 'var(--paper)', border: '1px solid var(--line)',
+            cursor: fiscal.yearInvoices.length > 0 ? 'pointer' : 'not-allowed',
+            opacity: fiscal.yearInvoices.length > 0 ? 1 : 0.5,
+            display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6,
+            font: 'inherit',
+          }}>
+            <Download style={{ width: 14, height: 14, color: 'var(--gold)' }} />
+            <div className="cpa-display" style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>Factures CSV</div>
+            <div className="cpa-mono" style={{ fontSize: 9, color: 'var(--ink-3)' }}>{fiscal.yearInvoices.length} ligne{fiscal.yearInvoices.length > 1 ? 's' : ''}</div>
+          </button>
+          <button onClick={exportInterventionsCsv} disabled={fiscal.yearIntvs.length === 0} style={{
+            padding: '12px', borderRadius: 12,
+            background: 'var(--paper)', border: '1px solid var(--line)',
+            cursor: fiscal.yearIntvs.length > 0 ? 'pointer' : 'not-allowed',
+            opacity: fiscal.yearIntvs.length > 0 ? 1 : 0.5,
+            display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6,
+            font: 'inherit',
+          }}>
+            <Download style={{ width: 14, height: 14, color: 'var(--emerald)' }} />
+            <div className="cpa-display" style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>Interventions CSV</div>
+            <div className="cpa-mono" style={{ fontSize: 9, color: 'var(--ink-3)' }}>{fiscal.yearIntvs.length} ligne{fiscal.yearIntvs.length > 1 ? 's' : ''}</div>
+          </button>
+        </div>
+        <a
+          href={`mailto:?subject=${encodeURIComponent(`Documents Global Clean Home — ${year}`)}&body=${encodeURIComponent(`Bonjour,\n\nVeuillez trouver ci-joint mes documents Global Clean Home pour l'année ${year}.\n\nTotal réglé : ${fmtEur(fiscal.paidAmount)} €\nCrédit d'impôt 50 % : ${fmtEur(fiscal.taxCredit)} €\n\nPortail : https://crm.globalcleanhome.com/portail`)}`}
+          style={{
+            display: 'flex', marginTop: 8, padding: '10px 14px', borderRadius: 999,
+            background: 'transparent', border: '1px solid var(--line)',
+            color: 'var(--ink-2)', textDecoration: 'none',
+            fontFamily: 'JetBrains Mono, monospace', fontSize: 10, fontWeight: 600,
+            letterSpacing: '0.08em', textTransform: 'uppercase',
+            alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}>
+          <Mail style={{ width: 12, height: 12 }} /> Envoyer à mon comptable
+        </a>
+      </div>
+
+      {/* ═══════════ Bibliothèque PDF ═══════════ */}
+      <div className="cpa-label" style={{ marginBottom: 8 }}>Documents PDF · {year}</div>
       {allDocs.length === 0 ? (
         <div className="cpa-card" style={{ textAlign: 'center', padding: 40, fontStyle: 'italic', color: 'var(--ink-3)', fontFamily: 'Fraunces, serif' }}>
-          Aucun document pour le moment.
+          Aucun document pour {year}.
         </div>
       ) : (
         <div className="cpa-card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -2814,7 +3086,7 @@ function Dashboard({ client, onLogout, onRefreshClient }) {
         {tab === 'quotes' && <ViewQuotes quotes={quotes} onOpen={setOpenQuote} />}
         {tab === 'invoices' && <ViewInvoices invoices={invoices} onOpen={() => {}} onPay={handlePay} />}
         {tab === 'interventions' && <ViewInterventions interventions={interventions} onOpen={setOpenIntv} onReview={setReviewIntv} onSelectTab={setTab} />}
-        {tab === 'documents' && <ViewDocuments quotes={quotes} invoices={invoices} />}
+        {tab === 'documents' && <ViewDocuments quotes={quotes} invoices={invoices} interventions={interventions} client={client} />}
         {tab === 'fidelite' && <ViewFidelite client={client} loyalty={loyalty} interventions={interventions} invoices={invoices} />}
         {tab === 'demande' && <ViewDemande client={client} onSubmit={handleDemande} />}
         {tab === 'conseiller' && <ViewConseiller messages={messages} advisor={advisor} onSend={handleSendMsg} />}
