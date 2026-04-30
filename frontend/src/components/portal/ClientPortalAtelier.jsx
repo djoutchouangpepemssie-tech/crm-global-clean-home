@@ -503,57 +503,71 @@ const tokenStyle = `
 
   /* ═══ Burger menu desktop (slide-in depuis la gauche) ═══ */
   .cpa-burger-back {
-    position: fixed; inset: 0; background: oklch(0.20 0.04 250 / 0.45);
-    backdrop-filter: blur(6px); z-index: 90;
+    position: fixed; inset: 0;
+    background: oklch(0.30 0.03 250 / 0.28);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    z-index: 90;
     animation: cpa-fade-bg .25s ease;
   }
   @keyframes cpa-fade-bg { from { opacity: 0; } to { opacity: 1; } }
   .cpa-burger {
     position: fixed; top: 0; left: 0; bottom: 0;
     width: 320px; max-width: 88vw;
-    background: var(--paper); z-index: 91;
-    border-right: 1px solid var(--line);
+    background: #fffaf3;
+    color: oklch(0.20 0.04 250);
+    z-index: 91;
+    border-right: 1px solid oklch(0.88 0.012 240);
     display: flex; flex-direction: column;
-    box-shadow: 6px 0 28px oklch(0.20 0.04 250 / 0.12);
+    box-shadow: 12px 0 40px oklch(0.20 0.04 250 / 0.18);
     animation: cpa-slide-from-left .3s cubic-bezier(.16,1,.3,1);
   }
   @keyframes cpa-slide-from-left { from { transform: translateX(-100%); } to { transform: translateX(0); } }
 
   .cpa-burger-btn {
     width: 40px; height: 40px; border-radius: 12px;
-    background: var(--paper); border: 1px solid var(--line);
+    background: #fffaf3;
+    border: 1px solid oklch(0.88 0.012 240);
     display: none; align-items: center; justify-content: center;
-    cursor: pointer; color: var(--ink-2);
+    cursor: pointer; color: oklch(0.36 0.03 250);
     transition: all .15s;
   }
-  .cpa-burger-btn:hover { border-color: var(--ink); color: var(--ink); }
+  .cpa-burger-btn:hover {
+    border-color: oklch(0.20 0.04 250);
+    color: oklch(0.20 0.04 250);
+    background: oklch(0.99 0.005 85);
+  }
   @media (min-width: 881px) {
     .cpa-burger-btn { display: inline-flex; }
   }
 
   .cpa-burger-item {
     display: flex; align-items: center; gap: 14px;
-    padding: 13px 18px; border-radius: 12px;
-    background: transparent; border: 1px solid transparent;
-    color: var(--ink-2); cursor: pointer;
-    font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500;
+    padding: 13px 16px; border-radius: 12px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: oklch(0.20 0.04 250);
+    cursor: pointer;
+    font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
     text-align: left; width: 100%;
     transition: all .15s; position: relative;
   }
   .cpa-burger-item:hover {
-    background: var(--surface);
-    color: var(--ink);
+    background: oklch(0.96 0.014 80);
+    border-color: oklch(0.88 0.012 240);
   }
   .cpa-burger-item.active {
-    background: var(--ink); color: var(--paper);
-    box-shadow: 0 6px 16px oklch(0.20 0.04 250 / 0.20);
+    background: oklch(0.20 0.04 250);
+    color: #fffaf3 !important;
+    box-shadow: 0 8px 22px oklch(0.20 0.04 250 / 0.30);
   }
-  .cpa-burger-item.active svg { color: var(--paper); }
+  .cpa-burger-item.active * { color: #fffaf3 !important; }
+  .cpa-burger-item.active svg { color: #fffaf3 !important; stroke: #fffaf3; }
   .cpa-burger-item .cpa-burger-dot {
     position: absolute; top: 50%; right: 14px;
     transform: translateY(-50%);
     width: 8px; height: 8px; border-radius: 999px;
-    background: var(--rouge);
+    background: oklch(0.50 0.16 25);
     box-shadow: 0 0 8px oklch(0.50 0.16 25 / 0.6);
   }
 
@@ -4209,30 +4223,50 @@ function BurgerMenu({ open, onClose, tab, onSelectTab, client, onLogout, hasUnre
   const fullName = client?.name || client?.full_name || client?.lead_name || '—';
   const email = client?.email || '';
 
+  // Couleurs explicites pour éviter toute cascade qui assombrirait le drawer
+  const C = {
+    ink: 'oklch(0.20 0.04 250)',     // bleu marine
+    ink2: 'oklch(0.36 0.03 250)',    // gris bleu medium
+    ink3: 'oklch(0.55 0.02 240)',    // gris bleu light
+    paper: '#fffaf3',                // crème chaud
+    surface: 'oklch(0.96 0.014 80)', // crème un peu plus marqué
+    line: 'oklch(0.88 0.012 240)',   // border doux
+    line2: 'oklch(0.93 0.008 240)',  // border encore plus doux
+    sage: 'oklch(0.92 0.05 165)',    // sage pastel bg
+    sageFg: 'oklch(0.32 0.12 165)',  // sage pastel texte
+    rouge: 'oklch(0.50 0.16 25)',    // rouge accent
+    rougeBg: 'oklch(0.93 0.04 25)',  // rouge bg pastel
+  };
+
   return (
     <>
       <div className="cpa-burger-back" onClick={onClose} />
-      <aside className="cpa-burger" role="dialog" aria-label="Menu de navigation">
+      <aside className="cpa-burger" role="dialog" aria-label="Menu de navigation"
+        style={{ background: C.paper, color: C.ink }}>
         {/* Header */}
         <div style={{
           padding: '20px 22px 18px',
-          borderBottom: '1px solid var(--line-2)',
+          borderBottom: `1px solid ${C.line2}`,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           gap: 12,
+          background: C.paper,
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="cpa-label" style={{ marginBottom: 6 }}>Espace Client</div>
-            <div className="cpa-display" style={{
-              fontSize: 24, fontWeight: 500, lineHeight: 1, color: 'var(--ink)',
-              letterSpacing: '-0.02em',
+            <div style={{
+              fontSize: 11, letterSpacing: '0.16em', textTransform: 'uppercase',
+              color: C.ink3, fontWeight: 700, marginBottom: 6,
+            }}>Espace Client</div>
+            <div style={{
+              fontFamily: 'Fraunces, serif', fontSize: 26, fontWeight: 500,
+              lineHeight: 1, color: C.ink, letterSpacing: '-0.02em',
             }}>
-              Bonjour <em className="cpa-italic">{firstName}</em>
+              Bonjour <em style={{ fontStyle: 'italic', color: 'oklch(0.45 0.13 165)', fontWeight: 500 }}>{firstName}</em>
             </div>
           </div>
           <button onClick={onClose} aria-label="Fermer" style={{
             width: 36, height: 36, borderRadius: 999,
-            background: 'var(--surface)', border: '1px solid var(--line)',
-            color: 'var(--ink-2)', cursor: 'pointer',
+            background: C.surface, border: `1px solid ${C.line}`,
+            color: C.ink2, cursor: 'pointer',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>
@@ -4244,27 +4278,30 @@ function BurgerMenu({ open, onClose, tab, onSelectTab, client, onLogout, hasUnre
         {(fullName !== '—' || email) && (
           <div style={{
             padding: '12px 22px',
-            borderBottom: '1px solid var(--line-2)',
+            borderBottom: `1px solid ${C.line2}`,
             display: 'flex', alignItems: 'center', gap: 12,
+            background: C.paper,
           }}>
             <div style={{
-              width: 38, height: 38, borderRadius: 999,
-              background: 'var(--pastel-sage)', color: 'var(--pastel-sage-fg)',
+              width: 40, height: 40, borderRadius: 999,
+              background: C.sage, color: C.sageFg,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'Fraunces, serif', fontSize: 15, fontWeight: 600,
+              fontFamily: 'Fraunces, serif', fontSize: 16, fontWeight: 600,
               flexShrink: 0,
+              border: `1px solid ${C.sageFg}`,
             }}>
               {fullName.charAt(0).toUpperCase()}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{
-                fontFamily: 'Inter', fontSize: 13, fontWeight: 600, color: 'var(--ink)',
+                fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600, color: C.ink,
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               }}>{fullName}</div>
               {email && (
                 <div style={{
-                  fontFamily: 'Inter', fontSize: 11, color: 'var(--ink-3)',
+                  fontFamily: 'Inter, sans-serif', fontSize: 12, color: C.ink3,
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  marginTop: 2,
                 }}>{email}</div>
               )}
             </div>
@@ -4272,7 +4309,7 @@ function BurgerMenu({ open, onClose, tab, onSelectTab, client, onLogout, hasUnre
         )}
 
         {/* Liste des sections */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '14px 14px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '14px 12px', background: C.paper }}>
           {sections.map(s => {
             const Icon = s.icon;
             const active = tab === s.k;
@@ -4283,17 +4320,21 @@ function BurgerMenu({ open, onClose, tab, onSelectTab, client, onLogout, hasUnre
                 onClick={() => select(s.k)}
                 style={{ marginBottom: 4 }}
               >
-                <Icon style={{ width: 18, height: 18, color: active ? 'var(--paper)' : 'var(--ink-3)', flexShrink: 0 }} />
+                <Icon style={{
+                  width: 18, height: 18,
+                  color: active ? C.paper : C.ink3,
+                  flexShrink: 0,
+                }} />
                 <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                   <div style={{
-                    fontFamily: 'Inter', fontSize: 14, fontWeight: 600,
-                    color: active ? 'var(--paper)' : 'var(--ink)',
+                    fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600,
+                    color: active ? C.paper : C.ink,
                     lineHeight: 1.2,
                   }}>{s.label}</div>
                   <div style={{
-                    fontFamily: 'Inter', fontSize: 11, fontWeight: 400,
-                    color: active ? 'oklch(0.78 0.012 80)' : 'var(--ink-3)',
-                    marginTop: 2,
+                    fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 500,
+                    color: active ? 'oklch(0.78 0.012 80)' : C.ink3,
+                    marginTop: 3,
                   }}>{s.hint}</div>
                 </div>
                 {s.unread && <span className="cpa-burger-dot" />}
@@ -4305,17 +4346,18 @@ function BurgerMenu({ open, onClose, tab, onSelectTab, client, onLogout, hasUnre
         {/* Footer */}
         <div style={{
           padding: '14px 18px',
-          borderTop: '1px solid var(--line-2)',
+          borderTop: `1px solid ${C.line2}`,
+          background: C.paper,
         }}>
           <button onClick={() => { onClose(); onLogout(); }} style={{
             width: '100%', padding: 12, borderRadius: 12,
-            background: 'transparent', border: '1px solid oklch(0.85 0.06 25)',
-            color: 'var(--rouge)', cursor: 'pointer',
-            fontFamily: 'Inter', fontSize: 12, fontWeight: 600,
+            background: 'transparent', border: `1px solid oklch(0.85 0.06 25)`,
+            color: C.rouge, cursor: 'pointer',
+            fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             transition: 'all .15s',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'var(--pastel-rose)'; }}
+          onMouseEnter={e => { e.currentTarget.style.background = C.rougeBg; }}
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
             <LogOut style={{ width: 13, height: 13 }} /> Se déconnecter
           </button>
