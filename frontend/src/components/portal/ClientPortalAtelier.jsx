@@ -219,13 +219,47 @@ const tokenStyle = `
     gap: 20px; align-items: flex-start;
   }
   @media (max-width: 880px) {
-    .cpa-cols { grid-template-columns: 1fr; }
-    .cpa-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .cpa-cols { grid-template-columns: 1fr; gap: 14px; }
+    .cpa-kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 18px; }
     .cpa-shell { padding: 0 16px; }
-    .cpa-hero { margin: 22px 0; }
+    .cpa-hero { margin: 18px 0 16px; }
+    .cpa-hero-title { font-size: clamp(32px, 9vw, 52px) !important; }
+    .cpa-section { padding: 20px 18px; border-radius: 18px; }
+    .cpa-section-title { font-size: 22px; }
+    .cpa-tabs { display: flex; overflow-x: auto; max-width: 100%; }
+    .cpa-tab { padding: 9px 16px; font-size: 12px; white-space: nowrap; }
+    .cpa-kpi { padding: 16px 16px; }
+    .cpa-kpi-value { font-size: 30px; }
+    .cpa-intv-row { grid-template-columns: 64px 1fr auto; gap: 12px; padding: 12px; }
+    .cpa-intv-date .day-num { font-size: 18px; }
+    .cpa-cta { padding: 14px 18px; font-size: 12px; }
+    .cpa-amount { font-size: clamp(44px, 11vw, 60px) !important; }
   }
-  @media (max-width: 480px) {
-    .cpa-kpi-grid { grid-template-columns: 1fr; }
+  @media (max-width: 540px) {
+    .cpa-shell { padding: 0 12px; }
+    .cpa-section { padding: 16px 16px; border-radius: 16px; }
+    .cpa-section-head { flex-wrap: wrap; gap: 6px; }
+    .cpa-section-title { font-size: 19px; }
+    .cpa-section-link { font-size: 12px; }
+    .cpa-hero-sub { font-size: 14px; }
+    .cpa-pill { font-size: 9px; padding: 3px 8px; }
+    .cpa-intv-row { padding: 10px; gap: 10px; grid-template-columns: 56px 1fr auto; }
+    .cpa-intv-date { padding: 7px 4px; }
+    .cpa-intv-date .day-num { font-size: 16px; }
+    .cpa-msg { padding: 12px 14px; }
+    .cpa-msg-head { gap: 6px; }
+    .cpa-icon-btn { width: 36px; height: 36px; }
+    .cpa-topbar { padding: 12px 0; }
+    .cpa-topbar-logo { font-size: 16px; }
+  }
+  @media (max-width: 420px) {
+    .cpa-kpi-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .cpa-kpi { padding: 14px 14px; }
+    .cpa-kpi-value { font-size: 26px; }
+    .cpa-kpi-label { font-size: 9px; letter-spacing: 0.1em; }
+    .cpa-kpi-hint { font-size: 11px; }
+    .cpa-shell { padding: 0 10px; }
+    .cpa-tab { padding: 8px 12px; font-size: 11px; }
   }
 
   /* ═══ Section card (like "Prochaines interventions" container) ═══ */
@@ -1180,15 +1214,59 @@ function SignatureSheet({ quote, onClose, onConfirm }) {
 function BottomSheet({ onClose, children, maxHeight = '94vh' }) {
   return (
     <div onClick={onClose} style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-      backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'flex-end', zIndex: 95,
+      position: 'fixed', inset: 0, background: 'rgba(20, 25, 40, 0.45)',
+      backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'flex-end', zIndex: 95,
     }}>
       <div onClick={e => e.stopPropagation()} className="cpa-fade" style={{
         background: 'var(--paper)', width: '100%',
         borderRadius: '24px 24px 0 0', maxHeight, overflowY: 'auto',
         padding: '22px 20px 28px',
+        position: 'relative',
+        boxShadow: '0 -20px 60px rgba(20, 25, 40, 0.18)',
       }}>
-        <div style={{ width: 40, height: 4, background: 'var(--line)', borderRadius: 999, margin: '0 auto 16px' }} />
+        {/* Barre de drag + bouton retour bien visibles */}
+        <div style={{
+          position: 'sticky', top: -22, zIndex: 5,
+          background: 'var(--paper)',
+          margin: '-22px -20px 12px',
+          padding: '14px 18px 10px',
+          borderBottom: '1px solid var(--line-2)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+        }}>
+          <button
+            onClick={onClose}
+            aria-label="Retour"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: 'var(--surface)', border: '1px solid var(--line)',
+              color: 'var(--ink-2)', cursor: 'pointer',
+              padding: '8px 14px', borderRadius: 999,
+              fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600,
+              transition: 'all .15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ink)'; e.currentTarget.style.color = 'var(--ink)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.color = 'var(--ink-2)'; }}
+          >
+            <ChevronRight style={{ width: 14, height: 14, transform: 'rotate(180deg)' }} />
+            Retour
+          </button>
+          <div style={{ width: 40, height: 4, background: 'var(--line)', borderRadius: 999 }} />
+          <button
+            onClick={onClose}
+            aria-label="Fermer"
+            style={{
+              width: 32, height: 32, borderRadius: 999,
+              background: 'var(--surface)', border: '1px solid var(--line)',
+              color: 'var(--ink-2)', cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all .15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--rouge)'; e.currentTarget.style.color = 'var(--rouge)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.color = 'var(--ink-2)'; }}
+          >
+            <X style={{ width: 14, height: 14 }} />
+          </button>
+        </div>
         {children}
       </div>
     </div>
@@ -4051,7 +4129,11 @@ function Dashboard({ client, onLogout, onRefreshClient }) {
       const r = await pAxios.post(`${API_URL}/quotes/${quoteId}/sign`, { signature: fullName });
       if (r.data?.success) {
         toast.success('✓ Devis signé — merci !');
-        setSignQuote(null); setOpenQuote(null); fetchData();
+        // Ferme la feuille de signature mais GARDE le devis ouvert avec le bandeau "Accepté"
+        setSignQuote(null);
+        // Refresh + remplace openQuote par la version mise à jour (statut accepté)
+        await fetchData();
+        // Le useEffect ci-dessous synchronise openQuote avec la liste rafraîchie
       } else {
         toast.error(r.data?.message || 'Réponse inattendue du serveur');
       }
@@ -4061,6 +4143,16 @@ function Dashboard({ client, onLogout, onRefreshClient }) {
       console.error('Sign error', err);
     }
   };
+
+  // Synchronise openQuote avec la liste rafraîchie après signature/refus
+  useEffect(() => {
+    if (!openQuote) return;
+    const currentId = openQuote.quote_id || openQuote.id;
+    const fresh = quotes.find(q => (q.quote_id || q.id) === currentId);
+    if (fresh && fresh.status !== openQuote.status) {
+      setOpenQuote(fresh);
+    }
+  }, [quotes, openQuote]);
   const handleRefuse = async (quote) => {
     const quoteId = quote?.quote_id || quote?.id;
     if (!quoteId) return toast.error('Identifiant du devis introuvable');

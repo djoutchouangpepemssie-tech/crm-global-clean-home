@@ -296,6 +296,42 @@ def generate_quote_pdf(quote_data: dict, lead_data: dict) -> BytesIO:
     elements.append(ob)
     elements.append(Spacer(1, 14))
 
+    # ── BANDEAU SIGNATURE (si devis accepté et signé) ──
+    if quote_data.get('signed') or quote_data.get('status') in ('accepté', 'accepte', 'signé', 'signe'):
+        signed_by = quote_data.get('signature_name') or quote_data.get('lead_name') or lead_data.get('name', '—')
+        signed_at_iso = quote_data.get('signed_at') or quote_data.get('responded_at')
+        try:
+            signed_dt = datetime.fromisoformat(signed_at_iso.replace('Z', '+00:00')) if signed_at_iso else datetime.now()
+            signed_str = signed_dt.strftime('%d/%m/%Y à %H:%M')
+        except Exception:
+            signed_str = datetime.now().strftime('%d/%m/%Y')
+
+        sig_block = Table([
+            [Paragraph("✓  DEVIS ACCEPTÉ ET SIGNÉ ÉLECTRONIQUEMENT",
+                S('SIGH', fontSize=10, textColor=WHITE, fontName='Helvetica-Bold', alignment=TA_CENTER))],
+            [Paragraph(f"<b>Signé par :</b> {signed_by}",
+                S('SIGB1', fontSize=9, textColor=DARK, fontName='Helvetica', alignment=TA_LEFT))],
+            [Paragraph(f"<b>Date :</b> {signed_str}",
+                S('SIGB2', fontSize=9, textColor=DARK, fontName='Helvetica', alignment=TA_LEFT))],
+            [Paragraph(
+                "<i>Signature électronique conforme à l'article 1367 du Code civil — Force probante équivalente à une signature manuscrite.</i>",
+                S('SIGN', fontSize=7, textColor=GRAY, fontName='Helvetica-Oblique', alignment=TA_LEFT))],
+        ], colWidths=[W])
+        sig_block.setStyle(TableStyle([
+            # Bandeau header vert
+            ('BACKGROUND', (0, 0), (-1, 0), GREEN),
+            ('TOPPADDING', (0, 0), (-1, 0), 8), ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            ('LEFTPADDING', (0, 0), (-1, 0), 14), ('RIGHTPADDING', (0, 0), (-1, 0), 14),
+            # Corps
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f0fdf4')),
+            ('TOPPADDING', (0, 1), (-1, -1), 6), ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+            ('LEFTPADDING', (0, 1), (-1, -1), 14), ('RIGHTPADDING', (0, 1), (-1, -1), 14),
+            ('BOX', (0, 0), (-1, -1), 1, GREEN),
+            ('LINEBELOW', (0, 1), (-1, -2), 0.3, colors.HexColor('#bbf7d0')),
+        ]))
+        elements.append(sig_block)
+        elements.append(Spacer(1, 14))
+
     # 2 COLONNES
     def make_block(title, rows, color):
         bl = []

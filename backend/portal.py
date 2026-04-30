@@ -934,7 +934,197 @@ async def sign_quote_portal(quote_id: str, request: Request):
     except Exception as e:
         logger.warning(f"Lead status update after sign failed: {e}")
 
+    # ─── Notifications par mail (admin + copie client) avec PDF signé ───
+    try:
+        signed_quote = await _db.quotes.find_one({"quote_id": quote_id}, {"_id": 0}) or quote
+        lead = await _db.leads.find_one({"lead_id": session["lead_id"]}, {"_id": 0}) or {}
+        await _send_signed_quote_notifications(signed_quote, lead, signature)
+    except Exception as e:
+        logger.exception(f"Sign notification failed for quote {quote_id}: {e}")
+
+    # CRM in-app notification
+    try:
+        from notifications import create_notification
+        amount = signed_quote.get("amount", 0) if 'signed_quote' in locals() else quote.get("amount", 0)
+        await create_notification(
+            type="quote_signed",
+            title=f"✓ Devis signé — {signature}",
+            message=f"{quote.get('quote_number') or quote_id} · {amount:,.2f} € TTC",
+        )
+    except Exception:
+        pass
+
     return {"success": True, "message": "Devis signé avec succès", "quote_id": quote_id}
+
+
+async def _send_signed_quote_notifications(quote: dict, lead: dict, signature_name: str) -> None:
+    """Génère le PDF du devis signé et l'envoie par email :
+       - À l'admin (équipe) avec PDF en pièce jointe
+       - Au client (copie) avec PDF en pièce jointe
+    Utilise Gmail OAuth comme méthode d'envoi principale.
+    """
+    quote_id = quote.get("quote_id", "")
+    quote_number = quote.get("quote_number") or quote_id
+
+    # Génération du PDF avec le bandeau "ACCEPTÉ ET SIGNÉ"
+    try:
+        from integrations import generate_quote_pdf
+        quote_data = {
+            **quote,
+            "lead_name": lead.get("name") or quote.get("lead_name"),
+            "lead_email": lead.get("email"),
+            "lead_phone": lead.get("phone"),
+            "lead_address": lead.get("address"),
+        }
+        pdf_buffer = generate_quote_pdf(quote_data, lead)
+        pdf_bytes = pdf_buffer.getvalue() if hasattr(pdf_buffer, "getvalue") else pdf_buffer
+    except Exception as e:
+        logger.error(f"PDF generation in sign notif failed: {e}")
+        pdf_bytes = None
+
+    pdf_filename = f"devis-signe-{quote_number}.pdf".replace(" ", "_")
+
+    # Récupération du token Gmail
+    try:
+        from gmail_service import _get_any_active_token, _send_gmail_message
+        gmail_token, _ = await _get_any_active_token()
+    except Exception as e:
+        logger.warning(f"No active Gmail token for sign notif: {e}")
+        return
+
+    if not gmail_token:
+        logger.warning("No Gmail account active — sign notification skipped")
+        return
+
+    # Récupération de l'email admin (premier compte actif ou fallback)
+    admin_email = "info@globalcleanhome.com"
+    try:
+        admin_accounts = await _db.email_accounts.find({"is_active": True}, {"_id": 0}).to_list(1)
+        if admin_accounts and admin_accounts[0].get("email"):
+            admin_email = admin_accounts[0]["email"]
+    except Exception:
+        pass
+
+    amount_ttc = float(quote.get("amount", 0) or 0)
+    service = quote.get("service_type") or quote.get("title") or "prestation"
+    signed_at_iso = quote.get("signed_at") or datetime.now(timezone.utc).isoformat()
+    try:
+        signed_dt = datetime.fromisoformat(signed_at_iso.replace("Z", "+00:00"))
+        signed_str = signed_dt.strftime("%d/%m/%Y à %H:%M")
+    except Exception:
+        signed_str = datetime.now().strftime("%d/%m/%Y")
+
+    client_name = lead.get("name") or quote.get("lead_name") or "Client"
+    client_email = lead.get("email") or ""
+
+    # ── Email ADMIN ──
+    admin_html = f"""<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f5f1ea;padding:32px;">
+<div style="max-width:560px;margin:0 auto;background:white;border-radius:18px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.08);">
+  <div style="background:linear-gradient(135deg,#0f766e,#10b981);padding:28px;text-align:center;">
+    <div style="font-size:42px;margin-bottom:6px;">✓</div>
+    <h1 style="color:white;margin:0;font-size:22px;font-weight:600;letter-spacing:-0.01em;">Devis accepté et signé</h1>
+    <p style="color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:13px;">{quote_number}</p>
+  </div>
+  <div style="padding:30px 32px 24px;">
+    <p style="color:#1e293b;font-size:16px;margin:0 0 18px;">
+      <strong>{client_name}</strong> vient de signer son devis.
+    </p>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;color:#475569;line-height:1.7;margin-bottom:20px;">
+      <tr>
+        <td style="padding:8px 0;border-bottom:1px solid #e2e8f0;width:38%;color:#64748b;font-weight:500;">Client</td>
+        <td style="padding:8px 0;border-bottom:1px solid #e2e8f0;color:#1e293b;font-weight:600;">{client_name}{' · ' + client_email if client_email else ''}</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;border-bottom:1px solid #e2e8f0;color:#64748b;font-weight:500;">Prestation</td>
+        <td style="padding:8px 0;border-bottom:1px solid #e2e8f0;color:#1e293b;font-weight:600;">{service}</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;border-bottom:1px solid #e2e8f0;color:#64748b;font-weight:500;">Montant TTC</td>
+        <td style="padding:8px 0;border-bottom:1px solid #e2e8f0;color:#0f766e;font-weight:700;font-size:16px;">{amount_ttc:,.2f} €</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;border-bottom:1px solid #e2e8f0;color:#64748b;font-weight:500;">Signé par</td>
+        <td style="padding:8px 0;border-bottom:1px solid #e2e8f0;color:#1e293b;font-weight:600;">{signature_name}</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;color:#64748b;font-weight:500;">Date / heure</td>
+        <td style="padding:8px 0;color:#1e293b;font-weight:600;">{signed_str}</td>
+      </tr>
+    </table>
+    <div style="background:#f0fdf4;border-left:3px solid #10b981;padding:12px 16px;border-radius:0 10px 10px 0;margin:20px 0 0;">
+      <p style="color:#166534;font-size:13px;margin:0;line-height:1.6;">
+        📎 Le PDF du devis signé est en pièce jointe (force probante équivalente
+        à une signature manuscrite — art. 1367 Code civil). Le statut du lead a
+        été automatiquement passé à <strong>gagné</strong>.
+      </p>
+    </div>
+    <p style="color:#94a3b8;font-size:11px;margin:20px 0 0;text-align:center;">
+      Notification automatique · Global Clean Home CRM
+    </p>
+  </div>
+</div></body></html>"""
+    try:
+        await _send_gmail_message(
+            gmail_token,
+            admin_email,
+            f"✓ Devis signé — {client_name} · {amount_ttc:,.2f} €",
+            admin_html,
+            pdf_data=pdf_bytes,
+            pdf_filename=pdf_filename,
+        )
+        logger.info(f"Sign notif email sent to admin {_mask_email(admin_email)} for quote {quote_id}")
+    except Exception as e:
+        logger.error(f"Sign notif email to admin failed: {e}")
+
+    # ── Email CLIENT (copie) ──
+    if client_email:
+        first_name = client_name.split()[0] if client_name else "vous"
+        client_html = f"""<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f5f1ea;padding:32px;">
+<div style="max-width:560px;margin:0 auto;background:white;border-radius:18px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.08);">
+  <div style="background:linear-gradient(135deg,#0f766e,#10b981);padding:28px;text-align:center;">
+    <div style="font-size:42px;margin-bottom:6px;">✨</div>
+    <h1 style="color:white;margin:0;font-size:22px;font-weight:600;letter-spacing:-0.01em;">Merci pour votre confiance</h1>
+    <p style="color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:13px;">{quote_number} · {amount_ttc:,.2f} € TTC</p>
+  </div>
+  <div style="padding:30px 32px 24px;">
+    <p style="color:#1e293b;font-size:16px;margin:0 0 14px;">Bonjour <strong>{first_name}</strong>,</p>
+    <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 18px;">
+      Nous avons bien reçu votre signature pour le devis <strong>{quote_number}</strong>.
+      Vous trouverez ci-joint la version PDF officielle du devis accepté.
+    </p>
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;margin:18px 0;">
+      <p style="color:#166534;font-size:13px;margin:0 0 6px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">
+        Prochaines étapes
+      </p>
+      <p style="color:#15803d;font-size:13px;margin:0;line-height:1.7;">
+        • Notre équipe vous contacte sous 24 h pour planifier l'intervention<br/>
+        • Vous pouvez suivre votre dossier depuis votre espace client<br/>
+        • Une question ? Répondez à ce mail, nous vous répondons en moyenne sous 5 min
+      </p>
+    </div>
+    <p style="text-align:center;margin:20px 0 8px;">
+      <a href="https://crm.globalcleanhome.com/portail" style="display:inline-block;background:linear-gradient(135deg,#0f766e,#10b981);color:white;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:600;font-size:13px;">
+        📂 Mon espace client
+      </a>
+    </p>
+    <p style="color:#94a3b8;font-size:11px;margin:20px 0 0;text-align:center;line-height:1.5;">
+      Global Clean Home · 231 rue Saint-Honoré, 75001 Paris<br/>
+      06 22 66 53 08 · info@globalcleanhome.com
+    </p>
+  </div>
+</div></body></html>"""
+        try:
+            await _send_gmail_message(
+                gmail_token,
+                client_email,
+                f"✓ Votre devis {quote_number} est accepté — Global Clean Home",
+                client_html,
+                pdf_data=pdf_bytes,
+                pdf_filename=pdf_filename,
+            )
+            logger.info(f"Sign notif copy sent to client {_mask_email(client_email)} for quote {quote_id}")
+        except Exception as e:
+            logger.error(f"Sign notif copy to client failed: {e}")
 
 
 @portal_router.get("/quotes/{quote_id}/pdf")
@@ -975,10 +1165,11 @@ async def download_quote_pdf_portal(quote_id: str, request: Request, token: Opti
         "lead_city": lead.get("city"),
     }
 
-    # Génération du PDF
+    # Génération du PDF (lead_data pour les blocs Émetteur/Client)
     try:
         from integrations import generate_quote_pdf
-        pdf_bytes = generate_quote_pdf(quote_data)
+        pdf_buffer = generate_quote_pdf(quote_data, lead)
+        pdf_bytes = pdf_buffer.getvalue() if hasattr(pdf_buffer, "getvalue") else pdf_buffer
     except Exception as e:
         logger.error(f"PDF generation failed for quote {quote_id}: {e}")
         raise HTTPException(status_code=500, detail="Génération PDF impossible")
