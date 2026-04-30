@@ -35,447 +35,428 @@ if (_init) pAxios.defaults.headers.common['X-Portal-Token'] = _init;
 
 /* ═══════════ TOKENS & STYLES ═══════════ */
 const tokenStyle = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Fraunces:ital,wght@0,300..500;1,300..500&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:ital,wght@0,400..600;1,400..500&display=swap');
 
   .cpa-root {
-    /* Surfaces noires profondes */
-    --bg: oklch(0.10 0.02 250);
-    --bg-2: oklch(0.13 0.02 250);
-    --paper: oklch(0.16 0.02 250 / 0.55);
-    --surface: oklch(0.18 0.02 250 / 0.65);
-    --surface-2: oklch(0.22 0.02 250 / 0.5);
+    /* ═══ Surfaces crème pastel ═══ */
+    --bg: oklch(0.965 0.014 82);
+    --paper: oklch(0.985 0.008 85);
+    --surface: oklch(0.975 0.012 82);
+    --surface-2: oklch(0.945 0.014 78);
 
-    /* Texte */
-    --ink: oklch(0.97 0.005 80);
-    --ink-2: oklch(0.78 0.012 80);
-    --ink-3: oklch(0.58 0.012 80);
-    --ink-4: oklch(0.42 0.014 80);
+    /* ═══ Texte bleu marine profond ═══ */
+    --ink: oklch(0.20 0.04 250);
+    --ink-2: oklch(0.36 0.03 250);
+    --ink-3: oklch(0.55 0.02 240);
+    --ink-4: oklch(0.72 0.014 240);
 
-    /* Bordures */
-    --line: oklch(0.30 0.02 250 / 0.5);
-    --line-2: oklch(0.25 0.02 250 / 0.4);
-    --line-glow: oklch(0.95 0.05 165 / 0.18);
+    /* ═══ Lignes douces ═══ */
+    --line: oklch(0.88 0.012 240);
+    --line-2: oklch(0.93 0.008 240);
 
-    /* Accents (halos colorés) */
-    --emerald: oklch(0.78 0.18 165);
-    --emerald-deep: oklch(0.55 0.18 160);
-    --emerald-soft: oklch(0.32 0.10 165 / 0.40);
-    --gold: oklch(0.85 0.16 85);
-    --gold-soft: oklch(0.32 0.08 75 / 0.40);
-    --rouge: oklch(0.72 0.20 25);
-    --rouge-soft: oklch(0.30 0.10 25 / 0.40);
-    --violet: oklch(0.72 0.18 290);
-    --violet-soft: oklch(0.28 0.10 290 / 0.40);
-    --cool: oklch(0.72 0.16 240);
-    --cool-soft: oklch(0.28 0.10 240 / 0.40);
-    --sepia: oklch(0.78 0.10 60);
-    --sepia-soft: oklch(0.28 0.06 60 / 0.40);
+    /* ═══ Pastels distinctifs ═══ */
+    /* Bleu poudré */
+    --pastel-blue:    oklch(0.92 0.04 240);
+    --pastel-blue-fg: oklch(0.30 0.10 240);
+    /* Sage / vert pastel */
+    --pastel-sage:    oklch(0.92 0.05 165);
+    --pastel-sage-fg: oklch(0.32 0.12 165);
+    /* Rose poudré */
+    --pastel-rose:    oklch(0.93 0.04 25);
+    --pastel-rose-fg: oklch(0.42 0.13 25);
+    /* Ocre / sable */
+    --pastel-ocre:    oklch(0.93 0.05 80);
+    --pastel-ocre-fg: oklch(0.42 0.12 75);
+    /* Lilas */
+    --pastel-lilas:    oklch(0.92 0.04 290);
+    --pastel-lilas-fg: oklch(0.36 0.14 290);
 
-    background:
-      radial-gradient(ellipse 60% 45% at 12% 5%,  oklch(0.45 0.20 165 / 0.28), transparent 65%),
-      radial-gradient(ellipse 55% 40% at 88% 18%, oklch(0.50 0.22 290 / 0.22), transparent 65%),
-      radial-gradient(ellipse 80% 55% at 50% 95%, oklch(0.45 0.20 240 / 0.22), transparent 65%),
-      radial-gradient(ellipse 35% 28% at 88% 75%, oklch(0.55 0.18 85  / 0.16), transparent 70%),
-      var(--bg);
-    background-attachment: fixed;
+    /* ═══ Accents principaux ═══ */
+    --emerald: oklch(0.45 0.13 165);
+    --emerald-deep: oklch(0.32 0.13 160);
+    --emerald-soft: oklch(0.92 0.05 165);
+    --gold: oklch(0.55 0.13 80);
+    --gold-soft: oklch(0.93 0.05 80);
+    --rouge: oklch(0.50 0.16 25);
+    --rouge-soft: oklch(0.93 0.04 25);
+    --cool: oklch(0.46 0.10 240);
+    --sepia: oklch(0.50 0.07 65);
+
+    background: var(--bg);
     min-height: 100vh;
     color: var(--ink);
-    font-family: 'Inter Tight', 'Inter', system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
-    padding-bottom: 96px;
+    padding-bottom: 80px;
     letter-spacing: -0.005em;
   }
 
-  .cpa-display { font-family: 'Inter Tight', system-ui, sans-serif; letter-spacing: -0.025em; font-weight: 600; }
-  .cpa-serif   { font-family: 'Fraunces', serif; letter-spacing: -0.02em; }
-  .cpa-mono    { font-family: 'JetBrains Mono', ui-monospace, monospace; font-feature-settings: "tnum"; }
-  .cpa-label   { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em;
-                 text-transform: uppercase; color: var(--ink-3); font-weight: 500; }
-  .cpa-italic  { font-family: 'Fraunces', serif; font-style: italic; color: var(--emerald); font-weight: 400; }
+  /* ═══ Typographie ═══ */
+  .cpa-display { font-family: 'Fraunces', 'Times New Roman', serif; letter-spacing: -0.025em; font-weight: 500; }
+  .cpa-serif   { font-family: 'Fraunces', serif; letter-spacing: -0.012em; }
+  .cpa-mono    { font-feature-settings: "tnum"; font-variant-numeric: tabular-nums; }
+  .cpa-label   { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+                 color: var(--ink-3); font-weight: 600; }
+  .cpa-italic  { font-family: 'Fraunces', serif; font-style: italic; color: var(--emerald); font-weight: 500; }
 
+  /* ═══ Layout shell ═══ */
   .cpa-shell {
-    max-width: 540px; margin: 0 auto;
-    position: relative;
-    padding: 0 14px;
-  }
-
-  /* GLASS — la primitive du design system */
-  .cpa-glass {
-    background: var(--paper);
-    border: 1px solid var(--line);
-    border-radius: 22px;
-    backdrop-filter: blur(28px) saturate(140%);
-    -webkit-backdrop-filter: blur(28px) saturate(140%);
-    box-shadow:
-      0 1px 0 oklch(0.95 0.01 80 / 0.06) inset,
-      0 28px 60px -20px oklch(0.04 0.02 250 / 0.6);
+    max-width: 1200px; margin: 0 auto;
+    padding: 0 28px;
     position: relative;
   }
-  .cpa-glass::before {
-    content: '';
-    position: absolute; inset: 0;
-    border-radius: inherit;
-    background: linear-gradient(165deg, oklch(0.95 0.01 80 / 0.06), transparent 45%);
-    pointer-events: none;
-  }
 
-  /* Top bar */
+  /* ═══ Topbar (sticky, sober) ═══ */
   .cpa-topbar {
     position: sticky; top: 0; z-index: 40;
-    backdrop-filter: blur(28px) saturate(140%); -webkit-backdrop-filter: blur(28px) saturate(140%);
-    background: oklch(0.10 0.02 250 / 0.5);
-    padding: 14px 18px;
+    background: oklch(0.965 0.014 82 / 0.85);
+    backdrop-filter: blur(14px) saturate(140%); -webkit-backdrop-filter: blur(14px) saturate(140%);
+    padding: 16px 0;
     border-bottom: 1px solid var(--line-2);
     display: flex; align-items: center; justify-content: space-between;
     gap: 12px;
-    margin: 0 -14px;
+    margin-bottom: 12px;
   }
   .cpa-topbar-logo {
-    font-family: 'Fraunces', serif; font-size: 17px; font-weight: 500;
-    color: var(--ink); letter-spacing: -0.01em;
+    font-family: 'Fraunces', serif; font-size: 19px; font-weight: 500;
+    color: var(--ink); letter-spacing: -0.015em;
   }
-  .cpa-topbar-logo em { font-style: italic; color: var(--emerald); font-weight: 400; }
+  .cpa-topbar-logo em { font-style: italic; color: var(--emerald); font-weight: 500; }
 
   .cpa-icon-btn {
     position: relative;
-    width: 38px; height: 38px; border-radius: 999px;
-    background: var(--surface);
+    width: 40px; height: 40px; border-radius: 999px;
+    background: var(--paper);
     border: 1px solid var(--line);
-    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
     display: flex; align-items: center; justify-content: center;
     cursor: pointer; color: var(--ink-2);
     transition: all .2s ease;
   }
   .cpa-icon-btn:hover {
-    border-color: var(--emerald); color: var(--emerald);
-    box-shadow: 0 0 24px var(--emerald-soft);
+    border-color: var(--ink); color: var(--ink);
   }
   .cpa-icon-btn .badge {
     position: absolute; top: -2px; right: -2px;
     min-width: 16px; height: 16px; padding: 0 4px;
     border-radius: 999px;
-    background: var(--rouge); color: oklch(0.10 0.02 250);
-    font-family: 'JetBrains Mono', monospace; font-size: 9px;
-    font-weight: 700; display: flex; align-items: center; justify-content: center;
-    border: 2px solid oklch(0.10 0.02 250);
-    box-shadow: 0 0 12px oklch(0.72 0.20 25 / 0.5);
+    background: var(--rouge); color: white;
+    font-size: 9px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid var(--bg);
   }
 
-  /* Hero dark card (devis) */
-  .cpa-dark {
-    background:
-      radial-gradient(circle at 80% 20%, oklch(0.40 0.18 165 / 0.35), transparent 60%),
-      linear-gradient(165deg, oklch(0.16 0.02 250) 0%, oklch(0.10 0.04 175) 100%);
-    color: var(--ink);
-    border-radius: 24px;
-    padding: 24px 24px;
-    position: relative; overflow: hidden;
-    border: 1px solid var(--line);
-    box-shadow: 0 28px 60px -20px oklch(0.04 0.02 250 / 0.6);
+  /* ═══ Hero greeting (XXL serif) ═══ */
+  .cpa-hero {
+    margin: 32px 0 28px;
   }
-  .cpa-amount {
-    font-family: 'Inter Tight', system-ui, sans-serif; font-weight: 500; line-height: 1;
-    font-size: clamp(52px, 13vw, 80px); letter-spacing: -0.04em;
-    color: var(--ink);
+  .cpa-hero-eyebrow {
+    font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-3); font-weight: 600;
   }
-  .cpa-amount-currency {
+  .cpa-hero-title {
     font-family: 'Fraunces', serif;
-    font-size: 0.4em; color: var(--gold); font-style: italic;
-    margin-left: 6px; letter-spacing: 0; font-weight: 400;
+    font-size: clamp(40px, 8vw, 72px);
+    font-weight: 500; line-height: 1;
+    color: var(--ink); letter-spacing: -0.035em;
+    margin: 14px 0 12px;
+  }
+  .cpa-hero-sub {
+    font-family: 'Fraunces', serif;
+    font-size: 18px; line-height: 1.4; color: var(--ink-3);
+    font-style: italic; max-width: 580px;
   }
 
-  /* CTA — bouton émeraude lumineux */
-  .cpa-cta {
-    width: 100%; display: inline-flex; align-items: center; justify-content: center;
-    gap: 8px; padding: 16px 22px; border-radius: 999px;
-    background: linear-gradient(135deg, oklch(0.72 0.18 165), oklch(0.62 0.16 175));
-    color: oklch(0.10 0.04 175); border: none;
-    font-family: 'JetBrains Mono', monospace; font-size: 12px;
-    letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700;
-    cursor: pointer; transition: all .25s ease;
-    box-shadow:
-      0 0 0 1px oklch(0.85 0.18 165 / 0.4) inset,
-      0 12px 30px -8px oklch(0.62 0.18 165 / 0.6);
-  }
-  .cpa-cta:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow:
-      0 0 0 1px oklch(0.95 0.18 165 / 0.6) inset,
-      0 18px 40px -8px oklch(0.72 0.18 165 / 0.7);
-  }
-  .cpa-cta:disabled { opacity: 0.4; cursor: wait; }
-
-  .cpa-cta-ghost-dark {
-    width: 100%; display: inline-flex; align-items: center; justify-content: center;
-    gap: 6px; padding: 14px 20px; border-radius: 999px;
-    background: var(--surface); color: var(--ink-2);
+  /* ═══ Tabs nav (top center, like reference) ═══ */
+  .cpa-tabs {
+    display: inline-flex; gap: 4px; padding: 5px;
+    background: var(--paper); border-radius: 999px;
     border: 1px solid var(--line);
-    font-family: 'JetBrains Mono', monospace; font-size: 11px;
-    letter-spacing: 0.06em; text-transform: uppercase; font-weight: 500;
-    cursor: pointer; transition: all .2s; backdrop-filter: blur(20px);
   }
-  .cpa-cta-ghost-dark:hover { background: var(--surface-2); color: var(--ink); border-color: var(--emerald); }
-
-  .cpa-cta-dark {
-    display: inline-flex; align-items: center; justify-content: center;
-    gap: 8px; padding: 14px 20px; border-radius: 999px;
-    background: var(--surface); color: var(--ink); border: 1px solid var(--line);
-    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-    font-family: 'JetBrains Mono', monospace; font-size: 11px;
-    letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600;
-    cursor: pointer; transition: all .2s; width: 100%;
+  .cpa-tab {
+    padding: 10px 20px; border-radius: 999px;
+    background: transparent; border: none; cursor: pointer;
+    font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500;
+    color: var(--ink-3); transition: all .2s;
+    display: inline-flex; align-items: center; gap: 6px;
   }
-  .cpa-cta-dark:hover { background: var(--surface-2); border-color: var(--emerald); color: var(--emerald); }
-
-  .cpa-chip-btn {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 7px 12px; border-radius: 999px;
-    background: var(--surface); border: 1px solid var(--line);
-    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-    font-family: 'JetBrains Mono', monospace; font-size: 10px;
-    letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500;
-    color: var(--ink-2); cursor: pointer; transition: all .2s;
-  }
-  .cpa-chip-btn:hover { border-color: var(--emerald); color: var(--emerald); }
-  .cpa-chip-btn.active {
-    background: linear-gradient(135deg, oklch(0.72 0.18 165), oklch(0.62 0.16 175));
-    color: oklch(0.10 0.04 175); border-color: transparent;
+  .cpa-tab:hover { color: var(--ink); }
+  .cpa-tab.active {
+    background: var(--ink); color: var(--paper);
+    box-shadow: 0 4px 12px oklch(0.20 0.04 250 / 0.18);
   }
 
-  /* CARD = glass primitive */
-  .cpa-card {
+  /* ═══ KPI CARDS (4 colonnes pastel) ═══ */
+  .cpa-kpi-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+    margin-bottom: 28px;
+  }
+  .cpa-kpi {
+    padding: 22px 24px;
+    border-radius: 20px;
+    border: 1px solid;
+    transition: transform .25s ease, box-shadow .25s ease;
+  }
+  .cpa-kpi-label {
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    font-weight: 700; opacity: 0.75;
+  }
+  .cpa-kpi-value {
+    font-family: 'Fraunces', serif; font-weight: 500; letter-spacing: -0.03em;
+    font-size: 38px; line-height: 1; margin: 12px 0 8px;
+  }
+  .cpa-kpi-hint {
+    font-size: 12px; opacity: 0.78;
+  }
+  .cpa-kpi.k-blue { background: var(--pastel-blue); border-color: oklch(0.85 0.06 240); color: var(--pastel-blue-fg); }
+  .cpa-kpi.k-sage { background: var(--pastel-sage); border-color: oklch(0.85 0.07 165); color: var(--pastel-sage-fg); }
+  .cpa-kpi.k-rose { background: var(--pastel-rose); border-color: oklch(0.86 0.06 25); color: var(--pastel-rose-fg); }
+  .cpa-kpi.k-ocre { background: var(--pastel-ocre); border-color: oklch(0.86 0.07 80); color: var(--pastel-ocre-fg); }
+  .cpa-kpi.k-lilas{ background: var(--pastel-lilas); border-color: oklch(0.85 0.06 290); color: var(--pastel-lilas-fg); }
+
+  /* ═══ Layout 2 cols (desktop) + stack (mobile) ═══ */
+  .cpa-cols {
+    display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+    gap: 20px; align-items: flex-start;
+  }
+  @media (max-width: 880px) {
+    .cpa-cols { grid-template-columns: 1fr; }
+    .cpa-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .cpa-shell { padding: 0 16px; }
+    .cpa-hero { margin: 22px 0; }
+  }
+  @media (max-width: 480px) {
+    .cpa-kpi-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ═══ Section card (like "Prochaines interventions" container) ═══ */
+  .cpa-section {
     background: var(--paper);
     border: 1px solid var(--line);
-    border-radius: 22px;
-    padding: 18px 20px;
-    backdrop-filter: blur(28px) saturate(140%);
-    -webkit-backdrop-filter: blur(28px) saturate(140%);
-    position: relative;
-    box-shadow:
-      0 1px 0 oklch(0.95 0.01 80 / 0.05) inset,
-      0 20px 50px -20px oklch(0.04 0.02 250 / 0.5);
+    border-radius: 24px;
+    padding: 28px 28px;
+    margin-bottom: 20px;
   }
-  .cpa-card::before {
-    content: '';
-    position: absolute; inset: 0;
-    border-radius: inherit;
-    background: linear-gradient(165deg, oklch(0.95 0.01 80 / 0.05), transparent 45%);
-    pointer-events: none;
+  .cpa-section-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 18px;
   }
-  .cpa-card-click { cursor: pointer; transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }
-  .cpa-card-click:hover {
-    transform: translateY(-2px);
-    border-color: var(--emerald);
-    box-shadow:
-      0 1px 0 oklch(0.95 0.01 80 / 0.05) inset,
-      0 28px 60px -20px oklch(0.62 0.18 165 / 0.4);
+  .cpa-section-title {
+    font-family: 'Fraunces', serif; font-size: 28px; font-weight: 500;
+    color: var(--ink); letter-spacing: -0.02em; line-height: 1;
+  }
+  .cpa-section-link {
+    color: var(--ink-2); text-decoration: none; font-size: 13px;
+    font-weight: 500;
+    transition: color .2s;
+  }
+  .cpa-section-link:hover { color: var(--emerald); }
+
+  /* ═══ Intervention row (style référence) ═══ */
+  .cpa-intv-row {
+    display: grid; grid-template-columns: 86px 1fr auto;
+    gap: 18px; align-items: center;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: border-color .2s, transform .2s;
+  }
+  .cpa-intv-row:hover { border-color: var(--ink); transform: translateY(-1px); }
+  .cpa-intv-date {
+    background: var(--pastel-blue); color: var(--pastel-blue-fg);
+    border-radius: 12px; padding: 10px 6px; text-align: center;
+    font-family: 'Inter', sans-serif;
+  }
+  .cpa-intv-date .day-name {
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    font-weight: 700; opacity: 0.7;
+  }
+  .cpa-intv-date .day-num {
+    font-family: 'Fraunces', serif; font-size: 22px;
+    font-weight: 500; line-height: 1; margin-top: 2px;
   }
 
+  /* ═══ Status pills ═══ */
   .cpa-pill {
     display: inline-flex; align-items: center; gap: 4px;
     padding: 4px 10px; border-radius: 999px;
-    font-family: 'JetBrains Mono', monospace; font-size: 9px;
-    letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600;
+    font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+    font-weight: 700;
     border: 1px solid;
-    backdrop-filter: blur(12px);
+  }
+  .cpa-pill.confirmed { background: var(--pastel-sage); color: var(--pastel-sage-fg); border-color: oklch(0.80 0.10 165); }
+  .cpa-pill.pending   { background: var(--pastel-ocre); color: var(--pastel-ocre-fg); border-color: oklch(0.80 0.10 80); }
+  .cpa-pill.late      { background: var(--pastel-rose); color: var(--pastel-rose-fg); border-color: oklch(0.80 0.12 25); }
+  .cpa-pill.recurrent { background: var(--pastel-lilas); color: var(--pastel-lilas-fg); border-color: oklch(0.80 0.10 290); }
+
+  /* ═══ Hero dark card (devis = preserved magazine) ═══ */
+  .cpa-dark {
+    background: linear-gradient(165deg, oklch(0.16 0.04 250) 0%, oklch(0.20 0.06 165) 100%);
+    color: oklch(0.97 0.005 80);
+    border-radius: 24px;
+    padding: 28px;
+    position: relative; overflow: hidden;
+    box-shadow: 0 14px 36px oklch(0.10 0.04 250 / 0.18);
+  }
+  .cpa-dark::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at 80% 20%, oklch(0.45 0.18 165 / 0.32), transparent 60%);
+    pointer-events: none;
+  }
+  .cpa-amount {
+    font-family: 'Fraunces', serif; font-weight: 500; line-height: 1;
+    font-size: clamp(52px, 11vw, 80px); letter-spacing: -0.04em;
+    color: oklch(0.97 0.005 80);
+  }
+  .cpa-amount-currency {
+    font-size: 0.4em; color: oklch(0.78 0.13 80); font-style: italic;
+    margin-left: 6px; letter-spacing: 0; font-weight: 400;
   }
 
-  /* Bottom nav — glass + accent émeraude */
+  /* ═══ Buttons ═══ */
+  .cpa-cta {
+    width: 100%; display: inline-flex; align-items: center; justify-content: center;
+    gap: 8px; padding: 14px 22px; border-radius: 14px;
+    background: var(--ink); color: var(--paper); border: none;
+    font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600;
+    letter-spacing: 0.01em;
+    cursor: pointer; transition: all .2s;
+    box-shadow: 0 6px 16px oklch(0.20 0.04 250 / 0.18);
+  }
+  .cpa-cta:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px oklch(0.20 0.04 250 / 0.22);
+  }
+  .cpa-cta:disabled { opacity: 0.45; cursor: wait; }
+
+  .cpa-cta-ghost {
+    width: 100%; display: inline-flex; align-items: center; justify-content: center;
+    gap: 8px; padding: 13px 20px; border-radius: 14px;
+    background: var(--paper); color: var(--ink); border: 1.5px solid var(--ink);
+    font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all .2s;
+  }
+  .cpa-cta-ghost:hover { background: var(--ink); color: var(--paper); }
+
+  .cpa-cta-ghost-dark {
+    width: 100%; display: inline-flex; align-items: center; justify-content: center;
+    gap: 6px; padding: 13px 20px; border-radius: 14px;
+    background: transparent; color: oklch(0.92 0.04 85);
+    border: 1px solid oklch(0.40 0.04 60);
+    font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: all .2s;
+  }
+  .cpa-cta-ghost-dark:hover { background: oklch(0.22 0.04 60); }
+
+  .cpa-cta-dark {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 8px; padding: 13px 20px; border-radius: 14px;
+    background: var(--ink); color: var(--paper); border: none;
+    font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: opacity .2s; width: 100%;
+  }
+  .cpa-cta-dark:hover { opacity: 0.88; }
+
+  .cpa-chip-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 8px 14px; border-radius: 999px;
+    background: var(--paper); border: 1px solid var(--line);
+    font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500;
+    color: var(--ink-2); cursor: pointer; transition: all .2s;
+  }
+  .cpa-chip-btn:hover { border-color: var(--ink); color: var(--ink); }
+  .cpa-chip-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+  /* ═══ Card primitive ═══ */
+  .cpa-card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 22px;
+  }
+  .cpa-card-click {
+    cursor: pointer;
+    transition: transform .2s ease, border-color .2s ease;
+  }
+  .cpa-card-click:hover { transform: translateY(-1px); border-color: var(--ink); }
+
+  /* ═══ Bottom nav (mobile only) ═══ */
   .cpa-nav {
     position: fixed; bottom: 0; left: 0; right: 0;
-    background: oklch(0.10 0.02 250 / 0.7);
-    backdrop-filter: blur(28px) saturate(140%); -webkit-backdrop-filter: blur(28px) saturate(140%);
+    background: oklch(0.985 0.008 85 / 0.95);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
     border-top: 1px solid var(--line-2);
-    display: flex; padding: 10px 14px 22px; z-index: 50;
+    display: none; padding: 10px 12px 20px; z-index: 50;
+  }
+  @media (max-width: 880px) {
+    .cpa-nav { display: flex; }
   }
   .cpa-nav-btn {
     flex: 1; display: flex; flex-direction: column; align-items: center;
-    gap: 5px; padding: 8px 4px; background: transparent; border: none;
-    cursor: pointer; color: var(--ink-3); transition: color .2s;
+    gap: 4px; padding: 8px 4px; background: transparent; border: none;
+    cursor: pointer; color: var(--ink-3); transition: color .15s;
     position: relative;
   }
-  .cpa-nav-btn.active { color: var(--emerald); filter: drop-shadow(0 0 8px var(--emerald-soft)); }
-  .cpa-nav-btn span { font-family: 'JetBrains Mono', monospace; font-size: 9px;
-                      letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+  .cpa-nav-btn.active { color: var(--ink); }
+  .cpa-nav-btn span { font-size: 10px; font-weight: 600; }
   .cpa-nav-dot {
-    position: absolute; top: 4px; right: 50%; transform: translateX(14px);
-    width: 7px; height: 7px; border-radius: 999px; background: var(--rouge);
-    box-shadow: 0 0 10px oklch(0.72 0.20 25 / 0.7);
+    position: absolute; top: 4px; right: 50%; transform: translateX(12px);
+    width: 6px; height: 6px; border-radius: 999px; background: var(--rouge);
   }
 
-  /* Map trail (glass grid) */
+  /* ═══ Map trail (preserved) ═══ */
   .cpa-trail {
-    position: relative; height: 140px; border-radius: 18px;
+    position: relative; height: 140px; border-radius: 16px;
     background: var(--surface);
     border: 1px solid var(--line);
-    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
     background-image:
-      repeating-linear-gradient(0deg, oklch(0.30 0.02 250 / 0.4) 0 1px, transparent 1px 22px),
-      repeating-linear-gradient(90deg, oklch(0.30 0.02 250 / 0.4) 0 1px, transparent 1px 22px);
+      repeating-linear-gradient(0deg, oklch(0.92 0.010 78) 0 1px, transparent 1px 22px),
+      repeating-linear-gradient(90deg, oklch(0.92 0.010 78) 0 1px, transparent 1px 22px);
     overflow: hidden;
   }
 
-  /* Drawer */
+  /* ═══ Drawer (notifications) ═══ */
   .cpa-drawer-back {
-    position: fixed; inset: 0; background: oklch(0.05 0.02 250 / 0.65);
-    backdrop-filter: blur(8px); z-index: 90;
+    position: fixed; inset: 0; background: oklch(0.20 0.04 250 / 0.4);
+    backdrop-filter: blur(4px); z-index: 90;
   }
   .cpa-drawer {
     position: fixed; top: 0; right: 0; bottom: 0;
     width: 88vw; max-width: 420px;
-    background: oklch(0.13 0.02 250 / 0.92);
+    background: var(--paper); z-index: 91;
     border-left: 1px solid var(--line);
-    backdrop-filter: blur(28px) saturate(140%);
-    z-index: 91;
     display: flex; flex-direction: column;
-    animation: cpa-slide-in .3s cubic-bezier(.16,1,.3,1);
+    animation: cpa-slide-in .25s cubic-bezier(.16,1,.3,1);
   }
   @keyframes cpa-slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
 
   @keyframes cpa-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-  .cpa-fade { animation: cpa-fade .45s cubic-bezier(.16,1,.3,1); }
+  .cpa-fade { animation: cpa-fade .4s cubic-bezier(.16,1,.3,1); }
 
-  /* ═══ BENTO GRID — la nouvelle structure d'accueil ═══ */
-  .cpa-bento {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 10px;
-    margin-top: 4px;
+  /* ═══ Message bubble ═══ */
+  .cpa-msg {
+    padding: 14px 16px; border-radius: 16px;
+    background: var(--surface); border: 1px solid var(--line-2);
+    margin-bottom: 10px;
   }
-  .cpa-bento > * { min-width: 0; }
-  .cpa-tile {
-    position: relative; overflow: hidden;
-    border-radius: 22px;
-    padding: 16px 18px;
-    border: 1px solid var(--line);
-    backdrop-filter: blur(28px) saturate(140%);
-    -webkit-backdrop-filter: blur(28px) saturate(140%);
-    box-shadow:
-      0 1px 0 oklch(0.95 0.01 80 / 0.05) inset,
-      0 20px 50px -20px oklch(0.04 0.02 250 / 0.5);
-    transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+  .cpa-msg-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 6px;
   }
-  .cpa-tile::before {
-    content: ''; position: absolute; inset: 0; border-radius: inherit;
-    background: linear-gradient(165deg, oklch(0.95 0.01 80 / 0.06), transparent 50%);
-    pointer-events: none;
-  }
-  .cpa-tile.click { cursor: pointer; }
-  .cpa-tile.click:hover { transform: translateY(-2px); border-color: var(--emerald); }
-  .cpa-tile.t-w6 { grid-column: span 6; }
-  .cpa-tile.t-w4 { grid-column: span 4; }
-  .cpa-tile.t-w3 { grid-column: span 3; }
-  .cpa-tile.t-w2 { grid-column: span 2; }
+  .cpa-msg-author { font-weight: 600; font-size: 14px; color: var(--ink); }
+  .cpa-msg-role { font-size: 12px; color: var(--ink-3); margin-top: 1px; }
+  .cpa-msg-time { font-size: 11px; color: var(--ink-3); }
+  .cpa-msg-body { font-size: 13px; color: var(--ink-2); line-height: 1.55; }
 
-  /* Variantes colorées */
-  .cpa-tile.glow-emerald {
-    background:
-      radial-gradient(circle at 90% 0%, oklch(0.45 0.20 165 / 0.45), transparent 60%),
-      var(--paper);
-    border-color: oklch(0.55 0.18 165 / 0.45);
+  /* ═══ Invoice row (sidebar style) ═══ */
+  .cpa-inv-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 0; border-bottom: 1px solid var(--line-2);
+    cursor: pointer; transition: padding-left .2s;
   }
-  .cpa-tile.glow-gold {
-    background:
-      radial-gradient(circle at 90% 0%, oklch(0.55 0.18 85 / 0.40), transparent 60%),
-      var(--paper);
-    border-color: oklch(0.65 0.16 85 / 0.45);
-  }
-  .cpa-tile.glow-violet {
-    background:
-      radial-gradient(circle at 0% 100%, oklch(0.50 0.22 290 / 0.45), transparent 60%),
-      var(--paper);
-    border-color: oklch(0.60 0.20 290 / 0.45);
-  }
-  .cpa-tile.glow-rouge {
-    background:
-      radial-gradient(circle at 90% 0%, oklch(0.52 0.22 25 / 0.50), transparent 60%),
-      var(--paper);
-    border-color: oklch(0.62 0.20 25 / 0.50);
-  }
-  .cpa-tile.glow-cool {
-    background:
-      radial-gradient(circle at 0% 0%, oklch(0.50 0.20 240 / 0.40), transparent 60%),
-      var(--paper);
-    border-color: oklch(0.60 0.18 240 / 0.45);
-  }
-
-  /* Texte sur tuile colorée — léger glow */
-  .cpa-tile-num {
-    font-family: 'Inter Tight', system-ui, sans-serif;
-    font-weight: 500; letter-spacing: -0.04em; line-height: 0.95;
-    color: var(--ink);
-  }
-
-  /* ═══ MEMBERSHIP CARD (animation 3D au login) ═══ */
-  .cpa-mc-overlay {
-    position: fixed; inset: 0; z-index: 200;
-    background: oklch(0.05 0.02 250);
-    display: flex; align-items: center; justify-content: center;
-    perspective: 1600px;
-    overflow: hidden;
-  }
-  .cpa-mc-overlay::before {
-    content: '';
-    position: absolute; inset: -50%;
-    background:
-      radial-gradient(ellipse 50% 40% at 25% 25%, oklch(0.45 0.20 165 / 0.40), transparent 60%),
-      radial-gradient(ellipse 45% 35% at 75% 70%, oklch(0.50 0.22 290 / 0.35), transparent 60%);
-    animation: cpa-mc-rotate 24s linear infinite;
-  }
-  @keyframes cpa-mc-rotate { to { transform: rotate(360deg); } }
-  @keyframes cpa-mc-enter {
-    0%   { opacity: 0; transform: translateZ(-600px) rotateY(180deg) rotateX(-15deg); }
-    60%  { opacity: 1; transform: translateZ(0) rotateY(0deg) rotateX(0deg); }
-    100% { opacity: 1; transform: translateZ(0) rotateY(0deg) rotateX(0deg); }
-  }
-  @keyframes cpa-mc-float {
-    0%,100% { transform: translateY(0) rotateY(-3deg); }
-    50%     { transform: translateY(-6px) rotateY(3deg); }
-  }
-  .cpa-mc-card {
-    position: relative; z-index: 1;
-    width: min(360px, 90vw); aspect-ratio: 1.586/1;
-    border-radius: 22px;
-    background:
-      radial-gradient(circle at 80% 20%, oklch(0.45 0.20 165 / 0.7), transparent 60%),
-      linear-gradient(135deg, oklch(0.18 0.04 175) 0%, oklch(0.10 0.04 240) 100%);
-    border: 1.5px solid oklch(0.55 0.18 165 / 0.6);
-    box-shadow:
-      0 0 0 1px oklch(0.95 0.18 165 / 0.15) inset,
-      0 60px 120px -30px oklch(0.62 0.18 165 / 0.5),
-      0 0 80px oklch(0.55 0.18 165 / 0.25);
-    padding: 24px;
-    color: var(--ink);
-    transform-style: preserve-3d;
-    animation: cpa-mc-enter 1.2s cubic-bezier(.2,.8,.2,1) forwards,
-               cpa-mc-float 5s ease-in-out 1.2s infinite;
-    overflow: hidden;
-  }
-  .cpa-mc-card::after {
-    content: '';
-    position: absolute; inset: 0; border-radius: inherit;
-    background: linear-gradient(115deg, transparent 30%, oklch(0.95 0.05 165 / 0.18) 50%, transparent 70%);
-    transform: translateX(-100%);
-    animation: cpa-mc-shine 3.5s ease-in-out 1.4s infinite;
-  }
-  @keyframes cpa-mc-shine { 0% { transform: translateX(-120%); } 70% { transform: translateX(120%); } 100% { transform: translateX(120%); } }
-  .cpa-mc-skip {
-    position: absolute; top: 24px; right: 24px; z-index: 2;
-    padding: 10px 18px; border-radius: 999px;
-    background: oklch(0.95 0.01 80 / 0.08);
-    border: 1px solid oklch(0.95 0.01 80 / 0.18);
-    color: var(--ink-2);
-    font-family: 'JetBrains Mono', monospace; font-size: 11px;
-    letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600;
-    cursor: pointer; backdrop-filter: blur(20px);
-    transition: all .2s;
-  }
-  .cpa-mc-skip:hover { color: var(--ink); border-color: var(--emerald); }
-
-  @media (max-width: 540px) {
-    .cpa-shell { padding: 0 12px; }
-    .cpa-topbar { margin: 0 -12px; }
-  }
+  .cpa-inv-row:hover { padding-left: 4px; }
+  .cpa-inv-row:last-child { border-bottom: none; }
 `;
 
 /* ═══════════ HELPERS ═══════════ */
@@ -929,315 +910,322 @@ function ViewAccueil({ client, quotes, invoices, interventions, loyalty, onOpenQ
   const points = loyalty?.points || 0;
   const tier = points >= 1000 ? 'Platinum' : points >= 500 ? 'Or' : points >= 100 ? 'Argent' : 'Bronze';
 
-  return (
-    <div className="cpa-fade" style={{ padding: '18px 4px 40px' }}>
-      <div className="cpa-bento">
+  // Score qualité (note moyenne des reviews) — fallback à 9.7/10 par défaut visuel
+  const qualityScore = useMemo(() => {
+    const rated = interventions.filter(i => i.review_rating > 0);
+    if (rated.length === 0) return null;
+    const avg = rated.reduce((s, i) => s + Number(i.review_rating || 0), 0) / rated.length;
+    return { value: (avg * 2).toFixed(1), count: rated.length };
+  }, [interventions]);
 
-        {/* ─── HERO HEADER (col-span-6) ─── */}
-        <div className="cpa-tile t-w6" style={{ padding: '22px 22px 24px', overflow: 'visible' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="cpa-label">{new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
-              <h1 className="cpa-display" style={{ fontSize: 38, lineHeight: 1, margin: '10px 0 6px', color: 'var(--ink)' }}>
-                {greeting()} <em className="cpa-italic">{firstName || 'vous'}</em>.
-              </h1>
-              <div className="cpa-serif" style={{ fontStyle: 'italic', fontSize: 13, color: 'var(--ink-3)' }}>
-                {dash.intvY > 0
-                  ? <>{dash.intvY} intervention{dash.intvY > 1 ? 's' : ''} cette année · membre <span style={{ color: 'var(--emerald)' }}>{tier}</span></>
-                  : <>Bienvenue dans votre espace privé.</>}
+  // 5 prochaines interventions
+  const upcomingList = useMemo(() => interventions
+    .filter(i => i.status !== 'terminée')
+    .sort((a, b) => (a.scheduled_date || '').localeCompare(b.scheduled_date || ''))
+    .slice(0, 5)
+  , [interventions]);
+
+  // 3 dernières factures
+  const recentInvoices = useMemo(() => [...invoices]
+    .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+    .slice(0, 3)
+  , [invoices]);
+
+  const dayLabels = ['DIM.', 'LUN.', 'MAR.', 'MER.', 'JEU.', 'VEN.', 'SAM.'];
+  const fmtIntvDate = (iso) => {
+    if (!iso) return null;
+    try {
+      const d = new Date(iso);
+      return { day: dayLabels[d.getDay()], num: d.getDate(), month: d.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '') };
+    } catch { return null; }
+  };
+
+  return (
+    <div className="cpa-fade" style={{ padding: '0 0 32px' }}>
+      {/* ═══════════ HERO GREETING ═══════════ */}
+      <div className="cpa-hero">
+        <div className="cpa-hero-eyebrow">Tableau de bord</div>
+        <h1 className="cpa-hero-title">
+          {greeting()} {firstName || 'vous'} <span style={{ display: 'inline-block', transformOrigin: '70% 70%', animation: 'cpa-wave 2s ease-in-out 1' }}>👋</span>
+        </h1>
+        <div className="cpa-hero-sub">
+          {dash.intvY > 0
+            ? <>Aperçu de vos interventions, factures et messages — <em style={{ color: 'var(--emerald)' }}>{dash.intvY} passage{dash.intvY > 1 ? 's' : ''} cette année</em>.</>
+            : <>Bienvenue dans votre espace privé.</>}
+        </div>
+        <style>{`@keyframes cpa-wave { 0%,100% { transform: rotate(0); } 25% { transform: rotate(20deg); } 50% { transform: rotate(-12deg); } 75% { transform: rotate(16deg); } }`}</style>
+      </div>
+
+      {/* ═══════════ KPI GRID (4 colonnes pastel) ═══════════ */}
+      <div className="cpa-kpi-grid">
+        <div className="cpa-kpi k-blue">
+          <div className="cpa-kpi-label">Heures ce mois</div>
+          <div className="cpa-kpi-value">{dash.totalHours}<span style={{ fontSize: 18, marginLeft: 6, opacity: 0.7 }}>h</span></div>
+          <div className="cpa-kpi-hint">≈ {Math.round(dash.totalHours / 8)} journées</div>
+        </div>
+        <div className="cpa-kpi k-sage" style={{ cursor: 'pointer' }} onClick={() => onSelectTab('interventions')}>
+          <div className="cpa-kpi-label">Interventions</div>
+          <div className="cpa-kpi-value">{dash.intvY}</div>
+          <div className="cpa-kpi-hint">{dash.intvPY > 0 ? `vs ${dash.intvPY} en ${dash.PY}` : 'cette année'}</div>
+        </div>
+        <div className="cpa-kpi k-rose" style={{ cursor: 'pointer' }} onClick={() => onSelectTab('documents')}>
+          <div className="cpa-kpi-label">Crédit d'impôt</div>
+          <div className="cpa-kpi-value">{fmtEur(dash.taxCredit)}<span style={{ fontSize: 18, marginLeft: 4, opacity: 0.7 }}>€</span></div>
+          <div className="cpa-kpi-hint">sur {fmtEur(dash.spentY)} € réglés</div>
+        </div>
+        <div className="cpa-kpi k-ocre" style={{ cursor: 'pointer' }} onClick={() => onSelectTab('fidelite')}>
+          <div className="cpa-kpi-label">{qualityScore ? 'Score qualité' : 'Statut fidélité'}</div>
+          <div className="cpa-kpi-value">
+            {qualityScore
+              ? <>{qualityScore.value}<span style={{ fontSize: 18, marginLeft: 4, opacity: 0.7 }}>/10</span></>
+              : tier}
+          </div>
+          <div className="cpa-kpi-hint">
+            {qualityScore ? `basé sur ${qualityScore.count} évaluation${qualityScore.count > 1 ? 's' : ''}` : `${points.toLocaleString('fr-FR')} points`}
+          </div>
+        </div>
+      </div>
+
+      {/* ═══════════ Pending quote (full width hero) ═══════════ */}
+      {pendingQuote && (
+        <div onClick={() => onOpenQuote(pendingQuote)} style={{ cursor: 'pointer', marginBottom: 20 }}>
+          <QuoteHeroPreview quote={pendingQuote} />
+        </div>
+      )}
+
+      {/* ═══════════ Urgent invoice (full width) ═══════════ */}
+      {urgentInvoice && (
+        <div className="cpa-card cpa-card-click" style={{
+          marginBottom: 20,
+          borderColor: urgentInvoice.status === 'en_retard' ? 'oklch(0.80 0.12 25)' : 'oklch(0.80 0.10 80)',
+          background: urgentInvoice.status === 'en_retard' ? 'var(--pastel-rose)' : 'var(--pastel-ocre)',
+        }} onClick={() => onOpenInvoice(urgentInvoice)}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div className="cpa-label" style={{ color: urgentInvoice.status === 'en_retard' ? 'var(--pastel-rose-fg)' : 'var(--pastel-ocre-fg)' }}>
+                {urgentInvoice.status === 'en_retard' ? '⚠ Facture en retard' : 'Facture à régler'}
+              </div>
+              <div className="cpa-display" style={{ fontSize: 22, fontWeight: 500, marginTop: 6 }}>
+                {urgentInvoice.invoice_number || 'Facture'}
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 4 }}>
+                Échéance · {fmtDate(urgentInvoice.due_date)}
               </div>
             </div>
-            <button onClick={() => onSelectTab('fidelite')} style={{
-              background: 'oklch(0.95 0.18 165 / 0.10)',
-              border: '1px solid oklch(0.55 0.18 165 / 0.5)',
-              color: 'var(--emerald)',
-              padding: '8px 12px', borderRadius: 999,
-              fontFamily: 'JetBrains Mono, monospace', fontSize: 9, fontWeight: 700,
-              letterSpacing: '0.16em', textTransform: 'uppercase',
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 6,
-            }}>
-              <Award style={{ width: 12, height: 12 }} /> {tier}
+            <div className="cpa-display" style={{ fontSize: 32, fontWeight: 500, color: urgentInvoice.status === 'en_retard' ? 'var(--pastel-rose-fg)' : 'var(--pastel-ocre-fg)' }}>
+              {fmtEur(urgentInvoice.amount_ttc || urgentInvoice.amount)}<span style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 16, color: 'var(--ink-3)', marginLeft: 4 }}>€</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════ LAYOUT 2 COLONNES ═══════════ */}
+      <div className="cpa-cols">
+        {/* ─── COL GAUCHE : Prochaines interventions ─── */}
+        <div>
+          <div className="cpa-section">
+            <div className="cpa-section-head">
+              <h2 className="cpa-section-title">Prochaines interventions</h2>
+              <button onClick={() => onSelectTab('interventions')} className="cpa-section-link">
+                Voir le planning complet →
+              </button>
+            </div>
+
+            {upcomingList.length === 0 ? (
+              <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--ink-3)', fontFamily: 'Fraunces, serif', fontStyle: 'italic' }}>
+                Aucune intervention planifiée.
+              </div>
+            ) : upcomingList.map((i) => {
+              const d = fmtIntvDate(i.scheduled_date);
+              const isPending = i.status === 'planifiée' || i.status === 'planifiee' || !i.status;
+              const isConfirmed = i.status === 'confirmée' || i.status === 'confirmee' || i.status === 'en_cours' || i.status === 'en_route';
+              return (
+                <div key={i.intervention_id} className="cpa-intv-row" onClick={() => onOpenIntv(i)}>
+                  <div className="cpa-intv-date">
+                    <div className="day-name">{d?.day || '—'}</div>
+                    <div className="day-num">{d?.num || '?'}</div>
+                    <div className="day-name" style={{ marginTop: 2, opacity: 0.6 }}>{d?.month || ''}</div>
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                      <span style={{ fontFamily: 'Inter', fontSize: 13, fontWeight: 600, color: 'var(--ink-2)' }}>
+                        {i.scheduled_time || '—'}
+                      </span>
+                      <span className={`cpa-pill ${isConfirmed ? 'confirmed' : 'pending'}`}>
+                        {isConfirmed ? 'Confirmé' : 'À confirmer'}
+                      </span>
+                      {i.is_recurring && <span className="cpa-pill recurrent">Récurrent</span>}
+                    </div>
+                    <div className="cpa-display" style={{ fontSize: 16, fontWeight: 500, lineHeight: 1.3 }}>
+                      {i.title || i.service_type || 'Intervention'}
+                    </div>
+                    {i.agent_name && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4, fontSize: 12, color: 'var(--ink-3)' }}>
+                        <User style={{ width: 11, height: 11 }} /> {i.agent_name}
+                      </div>
+                    )}
+                  </div>
+                  <ChevronRight style={{ width: 18, height: 18, color: 'var(--ink-3)' }} />
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ─── Sparkline 12 mois (data-driven) ─── */}
+          {dash.hasData && (
+            <div className="cpa-section">
+              <div className="cpa-section-head">
+                <h2 className="cpa-section-title">Évolution {dash.Y}</h2>
+                {dash.yoyPct !== null && <YoYBadge pct={dash.yoyPct} prevYear={dash.PY} />}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 16 }}>
+                <div className="cpa-display" style={{ fontSize: 36, fontWeight: 500, lineHeight: 1 }}>
+                  {fmtEur(dash.spentY)}<span style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 16, color: 'var(--ink-3)', marginLeft: 4 }}>€</span>
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>dépensés cette année</div>
+              </div>
+              <div style={{ height: 110 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={dash.monthly} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="curFill2" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="oklch(0.45 0.13 165)" stopOpacity={0.32} />
+                        <stop offset="100%" stopColor="oklch(0.45 0.13 165)" stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis
+                      dataKey="m"
+                      tick={{ fontFamily: 'Inter', fontSize: 10, fill: 'oklch(0.55 0.02 240)', fontWeight: 500 }}
+                      axisLine={false} tickLine={false} interval={1}
+                    />
+                    <YAxis hide />
+                    <Tooltip
+                      contentStyle={{
+                        background: 'oklch(0.985 0.008 85)',
+                        border: '1px solid oklch(0.88 0.012 240)',
+                        borderRadius: 12,
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: 12,
+                        boxShadow: '0 8px 24px oklch(0.20 0.04 250 / 0.12)',
+                        padding: '8px 12px',
+                      }}
+                      cursor={{ stroke: 'oklch(0.88 0.012 240)', strokeWidth: 1, strokeDasharray: '3 3' }}
+                      formatter={(v, k) => [`${fmtEur(v)} €`, k === 'cur' ? dash.Y : dash.PY]}
+                      labelStyle={{ color: 'var(--ink)', fontWeight: 600 }}
+                    />
+                    <Area type="monotone" dataKey="prev" stroke="oklch(0.72 0.014 240)" strokeWidth={1} strokeDasharray="3 3" fill="transparent" dot={false} />
+                    <Area type="monotone" dataKey="cur" stroke="oklch(0.45 0.13 165)" strokeWidth={2.5} fill="url(#curFill2)" dot={false}
+                      activeDot={{ r: 5, fill: 'oklch(0.45 0.13 165)', stroke: 'white', strokeWidth: 2 }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ─── COL DROITE : Conseiller + Factures ─── */}
+        <div>
+          <div className="cpa-section">
+            <div className="cpa-section-head">
+              <h2 className="cpa-section-title">Messagerie</h2>
+              <button onClick={() => onSelectTab('conseiller')} className="cpa-section-link">
+                Tous les messages →
+              </button>
+            </div>
+
+            <div className="cpa-msg">
+              <div className="cpa-msg-head">
+                <div>
+                  <div className="cpa-msg-author">Votre conseiller</div>
+                  <div className="cpa-msg-role">Coordination</div>
+                </div>
+                <div className="cpa-msg-time">en ligne</div>
+              </div>
+              <div className="cpa-msg-body">
+                Une question, une demande spéciale ? Notre équipe vous répond en moyenne en 5 minutes pendant les heures ouvrées.
+              </div>
+            </div>
+
+            <button onClick={() => onSelectTab('conseiller')} className="cpa-cta" style={{ marginTop: 14 }}>
+              <MessageSquare style={{ width: 14, height: 14 }} /> Nouveau message
             </button>
           </div>
-        </div>
 
-        {/* ─── PENDING QUOTE (col-span-6) ─── */}
-        {pendingQuote && (
-          <div className="cpa-tile t-w6 click glow-gold" onClick={() => onOpenQuote(pendingQuote)}
-            style={{ padding: '20px 22px' }}>
-            <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <div className="cpa-label" style={{ color: 'var(--gold)' }}>★ Nouveau devis</div>
-                <div className="cpa-display" style={{ fontSize: 22, marginTop: 6, lineHeight: 1.1 }}>
-                  Votre <em className="cpa-italic" style={{ color: 'var(--gold)' }}>devis</em> est prêt
-                </div>
-                <div className="cpa-tile-num" style={{ fontSize: 36, marginTop: 10, color: 'var(--gold)' }}>
-                  {fmtEur(pendingQuote.amount)}<span style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 16, marginLeft: 4, color: 'var(--ink-3)' }}>€</span>
-                </div>
-              </div>
-              <ArrowRight style={{ width: 18, height: 18, color: 'var(--gold)', marginTop: 8 }} />
+          {/* ─── Factures ─── */}
+          <div className="cpa-section">
+            <div className="cpa-section-head">
+              <h2 className="cpa-section-title">Factures</h2>
+              <button onClick={() => onSelectTab('invoices')} className="cpa-section-link">
+                Toutes les factures →
+              </button>
             </div>
-          </div>
-        )}
 
-        {/* ─── URGENT INVOICE (col-span-6) ─── */}
-        {urgentInvoice && (
-          <div className={`cpa-tile t-w6 click ${urgentInvoice.status === 'en_retard' ? 'glow-rouge' : 'glow-gold'}`}
-            onClick={() => onOpenInvoice(urgentInvoice)}
-            style={{ padding: '18px 22px' }}>
-            <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div className="cpa-label" style={{ color: urgentInvoice.status === 'en_retard' ? 'var(--rouge)' : 'var(--gold)' }}>
-                  {urgentInvoice.status === 'en_retard' ? '⚠ En retard' : 'À régler'}
-                </div>
-                <div className="cpa-display" style={{ fontSize: 16, marginTop: 4 }}>
-                  {urgentInvoice.invoice_number || 'Facture'}
-                </div>
-                <div className="cpa-mono" style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 4 }}>
-                  Échéance · {fmtDate(urgentInvoice.due_date)}
-                </div>
+            {recentInvoices.length === 0 ? (
+              <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--ink-3)', fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 13 }}>
+                Aucune facture pour le moment.
               </div>
-              <div className="cpa-tile-num" style={{ fontSize: 30, color: urgentInvoice.status === 'en_retard' ? 'var(--rouge)' : 'var(--gold)' }}>
-                {fmtEur(urgentInvoice.amount_ttc || urgentInvoice.amount)}<span style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 13, marginLeft: 3, color: 'var(--ink-3)' }}>€</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ─── UPCOMING INTERVENTION (col-span-6) ─── */}
-        {upcoming && (
-          <div className="cpa-tile t-w6 click glow-violet" onClick={() => onOpenIntv(upcoming)}
-            style={{ padding: '20px 22px' }}>
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <div className="cpa-label" style={{ color: 'var(--violet)' }}>Prochaine intervention</div>
-                {upcoming.is_recurring && <span className="cpa-pill" style={{ color: 'var(--emerald)', background: 'oklch(0.45 0.20 165 / 0.18)', borderColor: 'var(--emerald)' }}>Récurrent</span>}
-              </div>
-              <div className="cpa-display" style={{ fontSize: 22, margin: '4px 0 4px', lineHeight: 1.1 }}>
-                {upcoming.title || upcoming.service_type}
-              </div>
-              <div className="cpa-serif" style={{ fontStyle: 'italic', fontSize: 13, color: 'var(--ink-3)', marginBottom: 12 }}>
-                {fmtDate(upcoming.scheduled_date)} · {upcoming.scheduled_time || ''}
-              </div>
-              {upcoming.address && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'Inter Tight', fontSize: 13, color: 'var(--ink-2)', marginBottom: 4 }}>
-                  <MapPin style={{ width: 12, height: 12, color: 'var(--violet)' }} />
-                  {upcoming.address}
-                </div>
-              )}
-              {upcoming.agent_name && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'Inter Tight', fontSize: 13, color: 'var(--ink-2)' }}>
-                  <User style={{ width: 12, height: 12, color: 'var(--violet)' }} />
-                  {upcoming.agent_name}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ─── DASHBOARD ANNUEL ─── */}
-        {dash.hasData && (
-          <>
-            {/* HERO Spent + YoY (col-span-6) */}
-            <div className="cpa-tile t-w6 glow-emerald" style={{ padding: '22px 22px' }}>
-              <div style={{ position: 'relative', zIndex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
-                  <div>
-                    <div className="cpa-label" style={{ color: 'var(--emerald)' }}>Dépenses {dash.Y}</div>
-                    <div className="cpa-tile-num" style={{ fontSize: 48, marginTop: 6 }}>
-                      {fmtEur(dash.spentY)}<span style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 18, color: 'var(--ink-3)', marginLeft: 4 }}>€</span>
+            ) : recentInvoices.map((inv) => {
+              const isPaid = ['payée', 'payee'].includes(inv.status);
+              const isLate = inv.status === 'en_retard';
+              return (
+                <div key={inv.invoice_id} className="cpa-inv-row" onClick={() => onOpenInvoice(inv)}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div className="cpa-display" style={{ fontSize: 15, fontWeight: 500, lineHeight: 1.2 }}>
+                      {inv.month_label || (() => {
+                        try { return new Date(inv.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }); }
+                        catch { return inv.invoice_number; }
+                      })()}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2, fontFamily: 'Inter, sans-serif' }}>
+                      {inv.invoice_number} · {fmtDateShort(inv.created_at)}
                     </div>
                   </div>
-                  {dash.yoyPct !== null && <YoYBadge pct={dash.yoyPct} prevYear={dash.PY} />}
-                </div>
-
-                {/* Sparkline 12 mois */}
-                <div style={{ height: 80, margin: '0 -8px' }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={dash.monthly} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="curFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="oklch(0.78 0.18 165)" stopOpacity={0.55} />
-                          <stop offset="100%" stopColor="oklch(0.78 0.18 165)" stopOpacity={0.02} />
-                        </linearGradient>
-                      </defs>
-                      <XAxis
-                        dataKey="m"
-                        tick={{ fontFamily: 'JetBrains Mono', fontSize: 9, fill: 'oklch(0.58 0.012 80)' }}
-                        axisLine={false} tickLine={false} interval={1}
-                      />
-                      <YAxis hide />
-                      <Tooltip
-                        contentStyle={{
-                          background: 'oklch(0.13 0.02 250 / 0.95)',
-                          border: '1px solid oklch(0.30 0.02 250 / 0.5)',
-                          borderRadius: 12,
-                          fontFamily: 'JetBrains Mono, monospace',
-                          fontSize: 11,
-                          color: 'oklch(0.95 0.01 80)',
-                          backdropFilter: 'blur(20px)',
-                          padding: '8px 12px',
-                        }}
-                        cursor={{ stroke: 'oklch(0.55 0.18 165)', strokeWidth: 1, strokeDasharray: '3 3' }}
-                        formatter={(v, k) => [`${fmtEur(v)} €`, k === 'cur' ? dash.Y : dash.PY]}
-                        labelStyle={{ color: 'oklch(0.78 0.012 80)' }}
-                      />
-                      <Area type="monotone" dataKey="prev" stroke="oklch(0.42 0.014 80)" strokeWidth={1} strokeDasharray="3 3" fill="transparent" dot={false} />
-                      <Area type="monotone" dataKey="cur" stroke="oklch(0.78 0.18 165)" strokeWidth={2.5} fill="url(#curFill)" dot={false}
-                        activeDot={{ r: 5, fill: 'oklch(0.85 0.18 165)', stroke: 'oklch(0.10 0.02 250)', strokeWidth: 2 }} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-
-            {/* KPIs en bento mosaïque */}
-            <div className="cpa-tile t-w3 click glow-violet" onClick={() => onSelectTab('interventions')}>
-              <div style={{ position: 'relative', zIndex: 1 }}>
-                <Activity style={{ width: 18, height: 18, color: 'var(--violet)' }} />
-                <div className="cpa-label" style={{ marginTop: 10 }}>Interventions</div>
-                <div className="cpa-tile-num" style={{ fontSize: 34, marginTop: 6 }}>{dash.intvY}</div>
-                <div className="cpa-mono" style={{ fontSize: 9, color: 'var(--ink-3)', marginTop: 4, letterSpacing: '0.06em' }}>
-                  {dash.intvPY > 0 ? `vs ${dash.intvPY} en ${dash.PY}` : 'Première année'}
-                </div>
-              </div>
-            </div>
-
-            <div className="cpa-tile t-w3 glow-cool">
-              <div style={{ position: 'relative', zIndex: 1 }}>
-                <Clock style={{ width: 18, height: 18, color: 'var(--cool)' }} />
-                <div className="cpa-label" style={{ marginTop: 10 }}>Heures</div>
-                <div className="cpa-tile-num" style={{ fontSize: 34, marginTop: 6 }}>{dash.totalHours}<span style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--ink-3)', marginLeft: 4 }}>h</span></div>
-                <div className="cpa-mono" style={{ fontSize: 9, color: 'var(--ink-3)', marginTop: 4, letterSpacing: '0.06em' }}>
-                  ≈ {Math.round(dash.totalHours / 8)} journées
-                </div>
-              </div>
-            </div>
-
-            <div className="cpa-tile t-w3 glow-gold">
-              <div style={{ position: 'relative', zIndex: 1 }}>
-                <Receipt style={{ width: 18, height: 18, color: 'var(--gold)' }} />
-                <div className="cpa-label" style={{ marginTop: 10, color: 'var(--gold)' }}>Crédit d'impôt</div>
-                <div className="cpa-tile-num" style={{ fontSize: 28, marginTop: 6, color: 'var(--gold)' }}>
-                  {fmtEur(dash.taxCredit)}<span style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 13, color: 'var(--ink-3)', marginLeft: 3 }}>€</span>
-                </div>
-                <div className="cpa-mono" style={{ fontSize: 9, color: 'var(--ink-3)', marginTop: 4, letterSpacing: '0.06em' }}>
-                  50 % automatique
-                </div>
-              </div>
-            </div>
-
-            <div className="cpa-tile t-w3">
-              <div style={{ position: 'relative', zIndex: 1 }}>
-                <Zap style={{ width: 18, height: 18, color: 'var(--emerald)' }} />
-                <div className="cpa-label" style={{ marginTop: 10 }}>Mois de pointe</div>
-                <div className="cpa-tile-num" style={{ fontSize: 24, marginTop: 6 }}>
-                  {dash.peakCur > 0 ? <>{fmtEur(dash.peakCur)}<span style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 12, color: 'var(--ink-3)', marginLeft: 3 }}>€</span></> : '—'}
-                </div>
-                <div className="cpa-mono" style={{ fontSize: 9, color: 'var(--ink-3)', marginTop: 4, letterSpacing: '0.06em' }}>
-                  {dash.peakCur > 0 ? (dash.monthly.find(m => m.cur === dash.peakCur)?.m || '') : 'Aucun paiement'}
-                </div>
-              </div>
-            </div>
-
-            {/* Répartition services */}
-            {dash.serviceList.length > 0 && (
-              <div className="cpa-tile t-w6">
-                <div style={{ position: 'relative', zIndex: 1 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
-                    <div className="cpa-label">Répartition des services</div>
-                    <div className="cpa-mono" style={{ fontSize: 9, color: 'var(--ink-3)' }}>
-                      {dash.serviceList.reduce((s, x) => s + x.count, 0)} passage{dash.serviceList.reduce((s, x) => s + x.count, 0) > 1 ? 's' : ''}
+                  <div style={{ textAlign: 'right' }}>
+                    <div className="cpa-display" style={{ fontSize: 18, fontWeight: 500 }}>
+                      {fmtEur(inv.amount_ttc || inv.amount)}<span style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 12, color: 'var(--ink-3)', marginLeft: 3 }}>€</span>
+                    </div>
+                    <div style={{ marginTop: 2 }}>
+                      <span className={`cpa-pill ${isPaid ? 'confirmed' : isLate ? 'late' : 'pending'}`} style={{ fontSize: 9 }}>
+                        {isPaid ? 'Payée' : isLate ? 'En retard' : 'En attente'}
+                      </span>
                     </div>
                   </div>
-                  {(() => {
-                    const max = Math.max(...dash.serviceList.map(s => s.count), 1);
-                    const palette = ['var(--emerald)', 'var(--gold)', 'var(--violet)', 'var(--cool)', 'var(--rouge)'];
-                    return dash.serviceList.map((s, i) => (
-                      <div key={s.name} style={{ marginBottom: i === dash.serviceList.length - 1 ? 0 : 10 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                          <div style={{ fontFamily: 'Inter Tight', fontSize: 13, color: 'var(--ink)', fontWeight: 500 }}>{s.name}</div>
-                          <div className="cpa-mono" style={{ fontSize: 11, color: 'var(--ink-2)' }}>{s.count}</div>
-                        </div>
-                        <div style={{ height: 5, background: 'oklch(0.20 0.02 250 / 0.6)', borderRadius: 999, overflow: 'hidden' }}>
-                          <div style={{
-                            height: '100%',
-                            width: `${(s.count / max) * 100}%`,
-                            background: palette[i % palette.length],
-                            borderRadius: 999,
-                            transition: 'width .8s cubic-bezier(.16,1,.3,1)',
-                            boxShadow: `0 0 12px ${palette[i % palette.length]}`,
-                          }} />
-                        </div>
-                      </div>
-                    ));
-                  })()}
                 </div>
+              );
+            })}
+          </div>
+
+          {/* ─── Loyalty preview compact ─── */}
+          {points > 0 && (
+            <div className="cpa-section cpa-card-click" onClick={() => onSelectTab('fidelite')} style={{ cursor: 'pointer', background: 'var(--pastel-sage)', borderColor: 'oklch(0.80 0.10 165)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div className="cpa-label" style={{ color: 'var(--pastel-sage-fg)' }}>Fidélité · {tier}</div>
+                  <div className="cpa-display" style={{ fontSize: 32, fontWeight: 500, color: 'var(--pastel-sage-fg)', lineHeight: 1, marginTop: 6 }}>
+                    {points.toLocaleString('fr-FR')}<span style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 14, marginLeft: 6, opacity: 0.7 }}>points</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--pastel-sage-fg)', opacity: 0.78, marginTop: 6 }}>
+                    {loyalty?.next_reward ? `Prochaine récompense à ${loyalty.next_reward} pts` : 'Parrainez un ami pour +50 pts'}
+                  </div>
+                </div>
+                <Gift style={{ width: 32, height: 32, color: 'var(--pastel-sage-fg)' }} />
               </div>
-            )}
-          </>
-        )}
-
-        {/* Loyalty preview */}
-        {points > 0 && (
-          <div className="cpa-tile t-w6 click glow-emerald" onClick={() => onSelectTab('fidelite')}>
-            <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div className="cpa-label" style={{ color: 'var(--emerald)' }}>Programme fidélité · {tier}</div>
-                <div className="cpa-tile-num" style={{ fontSize: 38, color: 'var(--emerald)', marginTop: 6 }}>
-                  {points.toLocaleString('fr-FR')}<span style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--ink-3)', marginLeft: 6 }}>points</span>
-                </div>
-                <div className="cpa-mono" style={{ fontSize: 10, color: 'var(--ink-2)', marginTop: 6, letterSpacing: '0.06em' }}>
-                  {loyalty?.next_reward ? `Prochaine récompense à ${loyalty.next_reward} pts` : 'Parrainez un ami pour +50 pts'}
-                </div>
-              </div>
-              <Gift style={{ width: 36, height: 36, color: 'var(--emerald)', filter: 'drop-shadow(0 0 16px var(--emerald-soft))' }} />
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      </div>
 
-        {/* Accès rapide aux espaces */}
-        <div className="cpa-tile t-w2 click" onClick={() => onSelectTab('quotes')}>
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <FileText style={{ width: 16, height: 16, color: 'var(--emerald)' }} />
-            <div className="cpa-label" style={{ marginTop: 10 }}>Devis</div>
-            <div className="cpa-tile-num" style={{ fontSize: 22, marginTop: 4 }}>{quotes.length}</div>
-          </div>
-        </div>
-        <div className="cpa-tile t-w2 click" onClick={() => onSelectTab('invoices')}>
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <CreditCard style={{ width: 16, height: 16, color: 'var(--gold)' }} />
-            <div className="cpa-label" style={{ marginTop: 10 }}>Factures</div>
-            <div className="cpa-tile-num" style={{ fontSize: 22, marginTop: 4 }}>{invoices.length}</div>
-          </div>
-        </div>
-        <div className="cpa-tile t-w2 click" onClick={() => onSelectTab('documents')}>
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <Folder style={{ width: 16, height: 16, color: 'var(--cool)' }} />
-            <div className="cpa-label" style={{ marginTop: 10 }}>Docs</div>
-            <div className="cpa-tile-num" style={{ fontSize: 22, marginTop: 4 }}>{quotes.length + invoices.length}</div>
-          </div>
-        </div>
-
-        {/* Quick actions chips */}
-        <div className="cpa-tile t-w6" style={{ padding: '14px 16px' }}>
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <div className="cpa-label" style={{ marginBottom: 10 }}>Actions rapides</div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={() => onSelectTab('demande')} className="cpa-chip-btn">
-                <Plus style={{ width: 11, height: 11 }} /> Demander
-              </button>
-              <button onClick={() => onSelectTab('conseiller')} className="cpa-chip-btn">
-                <MessageSquare style={{ width: 11, height: 11 }} /> Conseiller
-              </button>
-              <button onClick={() => onSelectTab('fidelite')} className="cpa-chip-btn">
-                <Gift style={{ width: 11, height: 11 }} /> Parrainer
-              </button>
-            </div>
-          </div>
-        </div>
-
+      {/* ═══════════ Quick actions footer ═══════════ */}
+      <div style={{ marginTop: 28, display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+        <button onClick={() => onSelectTab('demande')} className="cpa-chip-btn">
+          <Plus style={{ width: 12, height: 12 }} /> Demander une intervention
+        </button>
+        <button onClick={() => onSelectTab('conseiller')} className="cpa-chip-btn">
+          <MessageSquare style={{ width: 12, height: 12 }} /> Écrire au conseiller
+        </button>
+        <button onClick={() => onSelectTab('fidelite')} className="cpa-chip-btn">
+          <Gift style={{ width: 12, height: 12 }} /> Parrainer
+        </button>
       </div>
     </div>
   );
@@ -3853,15 +3841,6 @@ function Dashboard({ client, onLogout, onRefreshClient }) {
       {openIntv && <InterventionDetail intervention={openIntv} onClose={() => setOpenIntv(null)} />}
       {reviewIntv && <ReviewModal intervention={reviewIntv} onClose={() => setReviewIntv(null)} onSubmit={handleReview} />}
       {notifOpen && <NotificationsDrawer notifications={notifications} onClose={() => setNotifOpen(false)} onMarkRead={handleMarkNotif} />}
-      {showOnboarding && (
-        <MembershipCardReveal
-          client={client}
-          loyalty={client?.loyalty}
-          interventions={interventions}
-          invoices={invoices}
-          onClose={() => { try { localStorage.setItem('cpa_onboarded', '1'); } catch {} setShowOnboarding(false); }}
-        />
-      )}
     </div>
   );
 }
