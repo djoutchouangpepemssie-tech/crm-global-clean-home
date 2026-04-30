@@ -1406,27 +1406,146 @@ export default function QuoteForm() {
       service_type: l.service_type || '',
       surface: l.surface || null,
       message: l.message || '',
+      frequency: l.frequency || l.preferred_frequency || null,
+      urgency: l.urgency || null,
+      tags: l.tags || [],
     };
   };
 
-  // Pré-remplit formData depuis un lead (non destructif : respecte ce qui est déjà saisi)
+  // ─── Génère un premier poste auto basé sur service + surface
+  const generateInitialPostes = useCallback((lead, brief) => {
+    const postes = [];
+
+    // 1) Si le brief contient une section "calcul" (🧮) avec prix : extraire
+    if (brief && Array.isArray(brief)) {
+      const calcSection = brief.find(s => s.kind === 'calcul');
+      if (calcSection && calcSection.body) {
+        // Cherche des lignes type "label ... 120 €" ou "label : 120€" ou "label - 120 EUR"
+        const lines = calcSection.body.split('\n').map(l => l.trim()).filter(Boolean);
+        for (const line of lines) {
+          const m = line.match(/^[-•·*]?\s*(.+?)\s*[:\-—]\s*([\d\s]+[,.]?\d*)\s*(?:€|EUR)/i);
+          if (m) {
+            const label = m[1].trim().replace(/\s+/g, ' ');
+            const price = parseFloat(m[2].replace(/\s/g, '').replace(',', '.')) || 0;
+            if (label && label.length < 80 && price > 0) {
+              postes.push({
+                ...newPoste(label),
+                qty: 1,
+                unit: 'forfait',
+                price,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // 2) Fallback : poste basé sur service_type + surface
+    if (postes.length === 0) {
+      const svc = lead.service_type || 'Prestation';
+      const surface = Number(lead.surface || 0);
+      const isAreaService = /ménage|menage|vitres|vitrerie|sols|carrelage|tapis/i.test(svc);
+
+      if (isAreaService && surface > 0) {
+        postes.push({
+          ...newPoste(`${svc} — ${surface} m²`),
+          qty: surface,
+          unit: 'm²',
+          price: 0,
+        });
+      } else {
+        postes.push({
+          ...newPoste(svc),
+          qty: 1,
+          unit: 'forfait',
+          price: 0,
+        });
+      }
+    }
+
+    return postes;
+  }, []);
+
+  // Pré-remplit formData + groups depuis un lead (non destructif : respecte ce qui est déjà saisi)
   const prefillFromLead = useCallback((lead) => {
     if (!lead) return;
+    const brief = parseBrief(lead.message);
+
+    // Construire description depuis le brief si parsable, sinon message brut
+    let description = '';
+    let notesAuto = '';
+    if (brief && brief.length > 0) {
+      const services = brief.find(s => s.kind === 'services');
+      const intervention = brief.find(s => s.kind === 'intervention');
+      const client = brief.find(s => s.kind === 'client');
+      const note = brief.find(s => s.kind === 'note');
+      description = [
+        services ? `🧽 Services demandés\n${services.body}` : null,
+        intervention ? `📍 Intervention\n${intervention.body}` : null,
+        note ? note.body : null,
+      ].filter(Boolean).join('\n\n');
+      notesAuto = client ? `Profil client : ${client.body}` : '';
+    } else if (lead.message) {
+      description = lead.message;
+    }
+    if (lead.surface) description += (description ? '\n\n' : '') + `Surface estimée : ${lead.surface} m²`;
+    if (lead.urgency) notesAuto = (notesAuto ? notesAuto + ' · ' : '') + `Urgence : ${lead.urgency}`;
+
+    // Date de validité par défaut J+30
+    const expiry = new Date();
+    expiry.setDate(expiry.getDate() + 30);
+    const expiryISO = expiry.toISOString().slice(0, 10);
+
+    // Fréquence si signalée par le lead
+    const freqMap = {
+      hebdomadaire: 'hebdomadaire',
+      bimensuelle: 'bimensuelle',
+      mensuel: 'mensuel',
+      mensuelle: 'mensuel',
+      trimestriel: 'trimestriel',
+      annuel: 'annuel',
+      ponctuel: 'unique',
+      unique: 'unique',
+    };
+    const detectedFreq = lead.frequency ? freqMap[String(lead.frequency).toLowerCase()] || null : null;
+
     setFormData(d => ({
       ...d,
       lead_id: lead.id,
       service_type: d.service_type || lead.service_type || 'Autre',
       title: d.title?.trim() ? d.title
-        : (lead.service_type ? `${lead.service_type} — ${lead.full_name}` : `Devis — ${lead.full_name}`),
-      description: d.description?.trim() ? d.description
-        : [lead.message, lead.surface ? `Surface : ${lead.surface} m²` : null].filter(Boolean).join('\n'),
+        : (lead.service_type
+            ? `${lead.service_type} — ${lead.full_name}${lead.surface ? ` · ${lead.surface} m²` : ''}`
+            : `Devis — ${lead.full_name}`),
+      description: d.description?.trim() ? d.description : description,
+      notes: d.notes?.trim() ? d.notes : notesAuto,
+      expiry_date: d.expiry_date || expiryISO,
+      frequency: d.frequency && d.frequency !== 'unique' ? d.frequency : (detectedFreq || d.frequency || 'unique'),
       client_name: lead.full_name,
       client_email: lead.email,
       client_phone: lead.phone,
       client_address: lead.address,
       client_city: lead.city,
     }));
-  }, []);
+
+    // Pré-remplir les postes : seulement si le formulaire est encore vierge (un seul groupe avec un seul poste vide)
+    setGroups(currentGroups => {
+      const isEmpty = currentGroups.length === 1
+        && currentGroups[0].postes.length === 1
+        && !currentGroups[0].postes[0].label.trim()
+        && !currentGroups[0].postes[0].price;
+      if (!isEmpty) return currentGroups;
+
+      const initialPostes = generateInitialPostes(lead, brief);
+      if (initialPostes.length === 0) return currentGroups;
+
+      return [{
+        ...currentGroups[0],
+        name: lead.service_type || 'Prestations principales',
+        postes: initialPostes,
+      }];
+    });
+  }, [generateInitialPostes]);
 
   // ⚡ Fetch direct du lead ciblé (rapide) — AVANT le chargement de toute la liste
   useEffect(() => {
