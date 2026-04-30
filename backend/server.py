@@ -4998,54 +4998,7 @@ async def get_financial_stats(request: Request, period: str = "30d"):
         "recent_transactions": recent_tx,
     }
 
-# CORS - Force headers on all responses including errors
-from starlette.requests import Request as StarletteRequest
-from starlette.responses import Response as StarletteResponse
-
-ALLOWED_ORIGINS = [
-    "https://crm.globalcleanhome.com",
-    "https://www.globalcleanhome.com",
-    "https://globalcleanhome.com",
-    "https://crm-global-clean-home-production.up.railway.app",
-    "https://crm-global-clean-home.up.railway.app",
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "http://localhost:4173",
-]
-
-
-@app.middleware("http")
-async def force_cors_middleware(request: StarletteRequest, call_next):
-    origin = request.headers.get("origin", "")
-    is_allowed = origin in ALLOWED_ORIGINS or not origin
-
-    if request.method == "OPTIONS":
-        response = StarletteResponse(status_code=200, content="OK")
-        if is_allowed and origin:
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-            response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-            response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization,X-Portal-Token,X-Requested-With,Accept,Origin"
-            response.headers["Access-Control-Max-Age"] = "86400"
-        return response
-
-    try:
-        response = await call_next(request)
-    except Exception as e:
-        from starlette.responses import JSONResponse
-        logger.error(f"CORS middleware error: {type(e).__name__}: {str(e)[:200]}")
-        response = JSONResponse({"detail": "Une erreur interne est survenue."}, status_code=500)
-
-    if is_allowed and origin:
-        response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Access-Control-Allow-Credentials"] = "true"
-        response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization,X-Portal-Token,X-Requested-With,Accept,Origin"
-        response.headers["Vary"] = "Origin"
-    return response
-
-# Force CORS headers on ALL responses including errors
+# CORS — single source of truth via ForceCORSMiddleware below
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response as StarletteResponse

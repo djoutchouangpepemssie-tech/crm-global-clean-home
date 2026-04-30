@@ -127,7 +127,7 @@ export default function QuoteView() {
       .catch(e => setErr(e?.response?.data?.detail || 'Devis introuvable'))
       .finally(() => setLoading(false));
   };
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
+  useEffect(() => { load();   }, [id]);
 
   const totals = useMemo(() => {
     if (!quote) return { ht: 0, tva: 0, ttc: 0, discount: 0 };

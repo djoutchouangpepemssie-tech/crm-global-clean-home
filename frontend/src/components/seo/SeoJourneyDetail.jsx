@@ -50,7 +50,7 @@ function fmtDelta(sec) {
 }
 function timeAgo(iso) {
   if (!iso) return '—';
-  var diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
   if (diff < 60) return 'à l\'instant';
   if (diff < 3600) return 'il y a ' + Math.round(diff / 60) + ' min';
   if (diff < 86400) return 'il y a ' + Math.round(diff / 3600) + 'h';
@@ -61,8 +61,8 @@ function copyId(text) {
 }
 
 function avatarGradient(id) {
-  var hash = (id || '').split('').reduce(function (a, b) { return a + b.charCodeAt(0); }, 0);
-  var h1 = hash % 360, h2 = (h1 + 40) % 360;
+  const hash = (id || '').split('').reduce(function (a, b) { return a + b.charCodeAt(0); }, 0);
+  const h1 = hash % 360, h2 = (h1 + 40) % 360;
   return 'linear-gradient(135deg, hsl(' + h1 + ', 60%, 55%), hsl(' + h2 + ', 60%, 45%))';
 }
 
@@ -70,7 +70,7 @@ function avatarGradient(id) {
 // EVENT CONFIG
 // ═══════════════════════════════════════════════════════════════
 
-var EVENT_CFG = {
+const EVENT_CFG = {
   session_start:     { icon: '🚀', color: '#8B5CF6', label: 'Début de session' },
   page_view:         { icon: '👁️', color: '#3B82F6', label: 'Page consultée' },
   scroll_deep_75:    { icon: '📜', color: '#06B6D4', label: 'Scroll profond (75%)' },
@@ -97,9 +97,9 @@ function evCfg(type) { return EVENT_CFG[type] || { icon: '•', color: '#94A3B8'
 // ═══════════════════════════════════════════════════════════════
 
 function TimelineEvent({ ev, delta, isLast }) {
-  var cfg = evCfg(ev.event_type);
-  var isConv = cfg.conv;
-  var path = ev.page?.path || ev.page_url || '';
+  const cfg = evCfg(ev.event_type);
+  const isConv = cfg.conv;
+  let path = ev.page?.path || ev.page_url || '';
   try { if (path && path.startsWith('http')) path = new URL(path).pathname; } catch (_e) {}
 
   return (
@@ -148,9 +148,9 @@ function TimelineEvent({ ev, delta, isLast }) {
 // ═══════════════════════════════════════════════════════════════
 
 function SessionGroup({ session, events, index, total, defaultOpen }) {
-  var [open, setOpen] = useState(defaultOpen);
-  var isConvSession = session.converted_in_session;
-  var duration = session.duration_seconds || 0;
+  const [open, setOpen] = useState(defaultOpen);
+  const isConvSession = session.converted_in_session;
+  const duration = session.duration_seconds || 0;
 
   return (
     <div style={{ marginBottom: 16 }}>
@@ -185,8 +185,8 @@ function SessionGroup({ session, events, index, total, defaultOpen }) {
       {open && events.length > 0 && (
         <div style={{ padding: '16px 0 0 20px', borderLeft: '2px solid var(--line)', marginLeft: 18 }}>
           {events.map(function (ev, i) {
-            var prev = events[i - 1];
-            var delta = prev ? (new Date(ev.timestamp) - new Date(prev.timestamp)) / 1000 : 0;
+            const prev = events[i - 1];
+            const delta = prev ? (new Date(ev.timestamp) - new Date(prev.timestamp)) / 1000 : 0;
             return <TimelineEvent key={ev._id || i} ev={ev} delta={delta} isLast={i === events.length - 1} />;
           })}
         </div>
@@ -223,17 +223,17 @@ function InfoRow({ label, value, icon }) {
 // ═══════════════════════════════════════════════════════════════
 
 export default function SeoJourneyDetail() {
-  var { visitor_id } = useParams();
-  var navigate = useNavigate();
-  var deleteVisitor = useDeleteVisitor();
-  var { data, isLoading, error } = useVisitorJourney(visitor_id);
+  const { visitor_id } = useParams();
+  const navigate = useNavigate();
+  const deleteVisitor = useDeleteVisitor();
+  const { data, isLoading, error } = useVisitorJourney(visitor_id);
 
   // Merge sessions + events
-  var sessionsWithEvents = useMemo(function () {
-    var sessions = data?.sessions || [];
-    var events = data?.timeline || data?.events || [];
+  const sessionsWithEvents = useMemo(function () {
+    const sessions = data?.sessions || [];
+    const events = data?.timeline || data?.events || [];
     return sessions.map(function (s) {
-      var sEvents = events.filter(function (e) { return e.session_id === s.session_id; })
+      const sEvents = events.filter(function (e) { return e.session_id === s.session_id; })
         .sort(function (a, b) { return new Date(a.timestamp) - new Date(b.timestamp); });
       return { session: s, events: sEvents };
     }).sort(function (a, b) { return new Date(b.session.started_at) - new Date(a.session.started_at); });
@@ -242,11 +242,11 @@ export default function SeoJourneyDetail() {
   if (isLoading && !data) return <LoadingState message="Chargement du parcours…" />;
   if (error) return <ErrorState message={'Erreur : ' + (error.message || 'inconnue')} />;
 
-  var profile = data?.profile || data?.visitor || {};
-  var lead = data?.lead || {};
-  var loc = data?.location || profile.location || {};
-  var stats = data?.stats || {};
-  var topPages = data?.top_pages || [];
+  const profile = data?.profile || data?.visitor || {};
+  const lead = data?.lead || {};
+  const loc = data?.location || profile.location || {};
+  const stats = data?.stats || {};
+  const topPages = data?.top_pages || [];
 
   if (!profile.visitor_id) {
     return (
@@ -257,11 +257,11 @@ export default function SeoJourneyDetail() {
     );
   }
 
-  var isConverted = !!(profile.lead_id || lead?.lead_id);
-  var identity = lead?.name || profile.lead_name || 'Visiteur ' + (profile.visitor_id || '').slice(0, 10);
-  var cc = (loc.country_code || '').toUpperCase();
-  var sessions = data?.sessions || [];
-  var totalSessions = sessions.length || stats.sessions_count || 0;
+  const isConverted = !!(profile.lead_id || lead?.lead_id);
+  const identity = lead?.name || profile.lead_name || 'Visiteur ' + (profile.visitor_id || '').slice(0, 10);
+  const cc = (loc.country_code || '').toUpperCase();
+  const sessions = data?.sessions || [];
+  const totalSessions = sessions.length || stats.sessions_count || 0;
 
   return (
     <div className="seo-fade">
@@ -442,8 +442,8 @@ export default function SeoJourneyDetail() {
             <EmptyState icon={Eye} title="Aucun événement enregistré" message="Ce visiteur n'a aucun événement dans la base." />
           ) : (
             sessionsWithEvents.map(function (group, i) {
-              var isConvSession = group.session.converted_in_session;
-              var isLast = i === 0; // dernière session = première dans l'ordre desc
+              const isConvSession = group.session.converted_in_session;
+              const isLast = i === 0; // dernière session = première dans l'ordre desc
               return (
                 <SessionGroup
                   key={group.session.session_id || i}

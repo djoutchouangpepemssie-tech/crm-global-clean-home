@@ -123,7 +123,7 @@ const SettingsPage = () => {
       });
       return next;
     });
-  }, [updateTheme]); // eslint-disable-line
+  }, [updateTheme]);  
 
   // Notifications state
   const [notifications, setNotifications] = useState({
@@ -454,13 +454,13 @@ const SettingsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, []); // eslint-disable-line
+  }, []);  
 
   // Charger la section au changement d'onglet
   useEffect(() => {
     loadSection(activeTab);
     contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [activeTab]); // eslint-disable-line
+  }, [activeTab]);  
 
   // Sauvegarder la section active
   const handleSave = async () => {

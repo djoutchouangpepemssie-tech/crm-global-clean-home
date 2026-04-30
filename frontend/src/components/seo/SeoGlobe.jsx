@@ -47,7 +47,7 @@ function isLive(visitor) {
 function isRecent(visitor) {
   if (!visitor?.last_seen) return false;
   try {
-    var diff = Date.now() - new Date(visitor.last_seen).getTime();
+    const diff = Date.now() - new Date(visitor.last_seen).getTime();
     return diff >= LIVE_WINDOW_MS && diff < RECENT_WINDOW_MS;
   } catch (_e) { return false; }
 }
@@ -115,10 +115,10 @@ const NUMERIC_TO_ISO2 = {
 
 // Extrait l'ISO2 d'une geography (topojson world-atlas = ID numérique)
 function geoIso2(geo) {
-  var id = String(geo.id || geo.properties?.id || '');
+  const id = String(geo.id || geo.properties?.id || '');
   if (NUMERIC_TO_ISO2[id]) return NUMERIC_TO_ISO2[id];
   // Fallback : si le topojson change, essaye ISO_A2 / ISO_A3 natifs
-  var a2 = geo.properties?.ISO_A2 || geo.properties?.iso_a2;
+  const a2 = geo.properties?.ISO_A2 || geo.properties?.iso_a2;
   if (a2 && a2 !== '-99') return a2.toUpperCase();
   return null;
 }
@@ -127,7 +127,7 @@ function geoIso2(geo) {
 function rawCoordsFor(visitor) {
   if (visitor.location?.lat && visitor.location?.lon)
     return [Number(visitor.location.lon), Number(visitor.location.lat)];
-  var city = visitor.location?.city;
+  const city = visitor.location?.city;
   if (city && CITY_COORDS[city]) return CITY_COORDS[city];
   return null;
 }
@@ -151,7 +151,7 @@ function coordsFor(visitor) { return rawCoordsFor(visitor); }
 // Le jitter backend (±300m) les sépare déjà visuellement, donc on a
 // seulement besoin de clusteriser à bas zoom (vue monde/continent).
 function clusterGridSize(zoom) {
-  var z = Math.max(zoom || 1, 0.8);
+  const z = Math.max(zoom || 1, 0.8);
   if (z < 2) return 1.5;     // 150km — vue monde, agréger les métropoles
   if (z < 3) return 0.6;     // 60km — vue continentale
   if (z < 4) return 0.15;    // 15km — vue pays, quasi éclaté
@@ -160,14 +160,14 @@ function clusterGridSize(zoom) {
 }
 
 function buildClusters(visitors, zoom) {
-  var list = visitors || [];
-  var grid = clusterGridSize(zoom);
-  var buckets = {};
+  const list = visitors || [];
+  const grid = clusterGridSize(zoom);
+  const buckets = {};
   list.forEach(function (v) {
-    var c = rawCoordsFor(v);
+    const c = rawCoordsFor(v);
     if (!c) return;
     // Clé de bucket : arrondi à la grille courante
-    var key = Math.round(c[0] / grid) * grid + ',' + Math.round(c[1] / grid) * grid;
+    const key = Math.round(c[0] / grid) * grid + ',' + Math.round(c[1] / grid) * grid;
     if (!buckets[key]) {
       buckets[key] = {
         id: key,
@@ -180,17 +180,17 @@ function buildClusters(visitors, zoom) {
         hot: 0,
       };
     }
-    var b = buckets[key];
+    const b = buckets[key];
     b.visitors.push(v);
     b.sumLon += c[0];
     b.sumLat += c[1];
     if (isLive(v)) b.live++;
     if (v.identified) b.identified++;
-    var hot = (v.cta_clicks || 0) + (v.phone_clicks || 0) + (v.email_clicks || 0) + (v.whatsapp_clicks || 0) > 0;
+    const hot = (v.cta_clicks || 0) + (v.phone_clicks || 0) + (v.email_clicks || 0) + (v.whatsapp_clicks || 0) > 0;
     if (hot) b.hot++;
   });
   // Barycentre de chaque bucket (plus visuel que centre de grille)
-  var out = Object.values(buckets).map(function (b) {
+  const out = Object.values(buckets).map(function (b) {
     b.coords = [b.sumLon / b.visitors.length, b.sumLat / b.visitors.length];
     return b;
   });
@@ -205,7 +205,7 @@ function clusterStatus(cluster) {
   return 'anonymous';
 }
 function clusterColor(cluster) {
-  var s = clusterStatus(cluster);
+  const s = clusterStatus(cluster);
   if (s === 'live') return LIVE_COLOR;
   if (s === 'identified') return IDENTIFIED_COLOR;
   if (s === 'hot') return HOT_COLOR;
@@ -213,7 +213,7 @@ function clusterColor(cluster) {
 }
 
 function dotSize(visitor) {
-  var events = visitor.event_count || visitor.events_total || 1;
+  const events = visitor.event_count || visitor.events_total || 1;
   if (events > 50) return 9;
   if (events > 20) return 7.5;
   if (events > 5) return 6;
@@ -223,7 +223,7 @@ function dotSize(visitor) {
 function dotColor(visitor) {
   if (visitor.identified || visitor.lead) return IDENTIFIED_COLOR;
   // "Hot" = visiteur engagé : CTA clické OU beaucoup d'events (hors time_on_page auto)
-  var hot = (visitor.cta_clicks || 0) > 0
+  const hot = (visitor.cta_clicks || 0) > 0
     || (visitor.phone_clicks || 0) > 0
     || (visitor.email_clicks || 0) > 0
     || (visitor.whatsapp_clicks || 0) > 0
@@ -248,17 +248,17 @@ function visitorStatus(visitor) {
 // au count, couleur selon statut dominant, nombre affiché au centre.
 // Halo vert pulsant si ≥1 visiteur LIVE dans le cluster.
 // ═══════════════════════════════════════════════════════════════
-var ClusterMarker = memo(function ClusterMarker({ cluster, onHover, onLeave, onClick, currentZoom }) {
+const ClusterMarker = memo(function ClusterMarker({ cluster, onHover, onLeave, onClick, currentZoom }) {
   if (!cluster || !cluster.coords) return null;
-  var z = currentZoom || 1;
-  var scale = 1 / Math.sqrt(Math.max(z, 1));
-  var count = cluster.visitors.length;
+  const z = currentZoom || 1;
+  const scale = 1 / Math.sqrt(Math.max(z, 1));
+  const count = cluster.visitors.length;
   // Taille du cercle — compacte, ne masque pas la carte
-  var base = count >= 100 ? 18 : count >= 20 ? 15 : count >= 10 ? 13 : count >= 5 ? 11 : 9;
-  var r = Math.max(base * scale, 8);
-  var color = clusterColor(cluster);
-  var hasLive = cluster.live > 0;
-  var label = count >= 99 ? '99+' : String(count);
+  const base = count >= 100 ? 18 : count >= 20 ? 15 : count >= 10 ? 13 : count >= 5 ? 11 : 9;
+  const r = Math.max(base * scale, 8);
+  const color = clusterColor(cluster);
+  const hasLive = cluster.live > 0;
+  const label = count >= 99 ? '99+' : String(count);
 
   return (
     <Marker coordinates={cluster.coords}>
@@ -316,32 +316,32 @@ var ClusterMarker = memo(function ClusterMarker({ cluster, onHover, onLeave, onC
 // tous dans la même ville (impossible à séparer géographiquement).
 // ═══════════════════════════════════════════════════════════════
 function SpiderfiedCluster({ cluster, currentZoom, onDotHover, onDotLeave, onClose }) {
-  var N = cluster.visitors.length;
-  var center = cluster.coords;
-  var z = Math.max(currentZoom || 1, 0.8);
+  const N = cluster.visitors.length;
+  const center = cluster.coords;
+  const z = Math.max(currentZoom || 1, 0.8);
 
   // Rayon en pixels écran du cercle de spiderfy
   // Plus de visiteurs → rayon plus grand pour éviter chevauchement
-  var pixelRadius = N <= 6 ? 55 : N <= 12 ? 75 : N <= 20 ? 95 : 120;
+  const pixelRadius = N <= 6 ? 55 : N <= 12 ? 75 : N <= 20 ? 95 : 120;
 
   // Conversion pixels écran → degrés pour la projection Mercator avec scale 140
   // À l'équateur : 1° lon ≈ (scale * zoom / 180 * PI) pixels SVG — ZoomableGroup
   // multiplie tout par zoom. Donc 1 pixel écran = 1 / (2.44 * zoom) degrés
   // à l'équateur. Ajusté par cos(lat) pour les latitudes plus élevées.
-  var latRad = (center[1] * Math.PI) / 180;
-  var pixelsPerDegreeLat = 2.44 * z; // 140/π ≈ 44.56 / 18 degré Mercator
+  const latRad = (center[1] * Math.PI) / 180;
+  const pixelsPerDegreeLat = 2.44 * z; // 140/π ≈ 44.56 / 18 degré Mercator
   // En réalité pour react-simple-maps scale 140, c'est ~2.44 px SVG par degré.
   // Le ZoomableGroup multiplie par z donc = 2.44 * z pixels écran par degré.
-  var pixelsPerDegreeLon = 2.44 * z * Math.cos(latRad);
+  const pixelsPerDegreeLon = 2.44 * z * Math.cos(latRad);
 
   // Points en spirale/cercle autour du centre
-  var spiderDots = cluster.visitors.map(function (v, i) {
-    var angle = (i / N) * 2 * Math.PI - Math.PI / 2; // commence en haut
-    var dxPx = pixelRadius * Math.cos(angle);
-    var dyPx = pixelRadius * Math.sin(angle);
+  const spiderDots = cluster.visitors.map(function (v, i) {
+    const angle = (i / N) * 2 * Math.PI - Math.PI / 2; // commence en haut
+    const dxPx = pixelRadius * Math.cos(angle);
+    const dyPx = pixelRadius * Math.sin(angle);
     // Conversion en degrés (attention : y SVG inversé = lat diminue quand y monte)
-    var dLon = dxPx / Math.max(pixelsPerDegreeLon, 0.01);
-    var dLat = -dyPx / Math.max(pixelsPerDegreeLat, 0.01);
+    const dLon = dxPx / Math.max(pixelsPerDegreeLon, 0.01);
+    const dLat = -dyPx / Math.max(pixelsPerDegreeLat, 0.01);
     return {
       visitor: v,
       coords: [center[0] + dLon, center[1] + dLat],
@@ -403,24 +403,24 @@ function SpiderfiedCluster({ cluster, currentZoom, onDotHover, onDotLeave, onClo
 // animations (delay différent pour chaque dot) et à garantir le déterminisme
 function hashId(id) {
   if (!id) return 0;
-  var h = 0;
-  for (var i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
   return Math.abs(h) % 1000;
 }
 
-var VisitorDot = memo(function VisitorDot({ visitor, onHover, onLeave, currentZoom, coords }) {
+const VisitorDot = memo(function VisitorDot({ visitor, onHover, onLeave, currentZoom, coords }) {
   if (!coords) return null;
-  var z = currentZoom || 1;
-  var scale = 1 / Math.sqrt(Math.max(z, 1));
-  var base = dotSize(visitor);
+  const z = currentZoom || 1;
+  const scale = 1 / Math.sqrt(Math.max(z, 1));
+  const base = dotSize(visitor);
   // Rayon plus petit pour laisser de l'air entre dots voisins
-  var r = Math.max(base * scale * 0.85, 3);
-  var color = dotColor(visitor);
-  var identified = visitor.identified;
-  var hot = color === HOT_COLOR;
-  var live = isLive(visitor);
+  const r = Math.max(base * scale * 0.85, 3);
+  const color = dotColor(visitor);
+  const identified = visitor.identified;
+  const hot = color === HOT_COLOR;
+  const live = isLive(visitor);
   // Délai d'animation désynchronisé (0-1.8s) basé sur le hash du visitor_id
-  var animDelay = (hashId(visitor.visitor_id) / 1000) * 1.8;
+  const animDelay = (hashId(visitor.visitor_id) / 1000) * 1.8;
   return (
     <Marker coordinates={coords}>
       <g style={{ cursor: 'pointer' }}
@@ -490,7 +490,7 @@ function ConnectionLine({ from }) {
 // Format : "Paris, 75001, Île-de-France, FR" si toutes les infos dispo
 function fullLocation(loc) {
   if (!loc) return '—';
-  var parts = [];
+  const parts = [];
   if (loc.city) parts.push(loc.city);
   if (loc.postal) parts.push(loc.postal);
   if (loc.region && loc.region !== loc.city) parts.push(loc.region);
@@ -500,13 +500,13 @@ function fullLocation(loc) {
 
 function VisitorTooltip({ visitor, x, y }) {
   if (!visitor) return null;
-  var loc = visitor.location || {};
-  var cc = (loc.country_code || '').toUpperCase();
-  var name = visitor.lead?.name || visitor.lead_name;
-  var events = visitor.event_count || visitor.events_total || 0;
-  var color = dotColor(visitor);
-  var precise = visitor.precise_location;
-  var hasPrecise = precise && precise.lat && precise.lon;
+  const loc = visitor.location || {};
+  const cc = (loc.country_code || '').toUpperCase();
+  const name = visitor.lead?.name || visitor.lead_name;
+  const events = visitor.event_count || visitor.events_total || 0;
+  const color = dotColor(visitor);
+  const precise = visitor.precise_location;
+  const hasPrecise = precise && precise.lat && precise.lon;
 
   return (
     <div style={{
@@ -556,22 +556,22 @@ function minutesAgo(iso) {
 function LiveFeed({ visitors, liveCount }) {
   // Tri : LIVE > récents > inactifs. LIVE en tête pour que les visiteurs
   // actuellement sur le site soient immédiatement visibles.
-  var sorted = useMemo(function () {
+  const sorted = useMemo(function () {
     return (visitors || [])
       .map(function (v) {
-        var cc = (v.location?.country_code || '').toUpperCase();
-        var city = v.location?.city || '—';
+        const cc = (v.location?.country_code || '').toUpperCase();
+        const city = v.location?.city || '—';
         return { ...v, city: city, cc: cc, _status: visitorStatus(v), _mAgo: minutesAgo(v.last_seen) };
       })
       .sort(function (a, b) {
-        var order = { live: 0, recent: 1, inactive: 2 };
+        const order = { live: 0, recent: 1, inactive: 2 };
         if (order[a._status] !== order[b._status]) return order[a._status] - order[b._status];
         return new Date(b.last_seen || 0) - new Date(a.last_seen || 0);
       })
       .slice(0, 12);
   }, [visitors]);
 
-  var liveCountInList = sorted.filter(function (v) { return v._status === 'live'; }).length;
+  const liveCountInList = sorted.filter(function (v) { return v._status === 'live'; }).length;
 
   return (
     <div style={{
@@ -625,15 +625,15 @@ function LiveFeed({ visitors, liveCount }) {
             Aucun visiteur récent
           </div>
         ) : sorted.map(function (v) {
-          var live = v._status === 'live';
-          var recent = v._status === 'recent';
-          var isHot = (v.event_count || 0) > 10 || v.cta_clicks > 0 || v.phone_clicks > 0;
-          var borderLeft = live
+          const live = v._status === 'live';
+          const recent = v._status === 'recent';
+          const isHot = (v.event_count || 0) > 10 || v.cta_clicks > 0 || v.phone_clicks > 0;
+          const borderLeft = live
             ? '3px solid ' + LIVE_COLOR
             : v.identified ? '3px solid ' + IDENTIFIED_COLOR
             : isHot ? '3px solid ' + HOT_COLOR
             : '3px solid transparent';
-          var bg = live ? 'rgba(34,197,94,0.06)' : 'white';
+          const bg = live ? 'rgba(34,197,94,0.06)' : 'white';
 
           return (
             <div key={v.visitor_id} style={{
@@ -714,15 +714,15 @@ function LiveFeed({ visitors, liveCount }) {
 // Liste TOUS les pays avec visiteurs sur la période, triée par nb live
 // puis nb total. Voyant vert pulsant pour pays avec ≥1 visiteur LIVE.
 function CountriesLivePanel({ allVisitors, onSelectCountry, selectedCountry, onZoomToCity }) {
-  var [expanded, setExpanded] = useState(new Set());
+  const [expanded, setExpanded] = useState(new Set());
 
   // Agrégation par pays + villes avec métriques enrichies
   // (mondial : fonctionne pour Paris, Tokyo, Dakar, Lima...)
-  var byCountry = useMemo(function () {
-    var map = {};
+  const byCountry = useMemo(function () {
+    const map = {};
     (allVisitors || []).forEach(function (v) {
-      var cc = (v.location?.country_code || '').toUpperCase();
-      var countryName = v.location?.country || cc;
+      const cc = (v.location?.country_code || '').toUpperCase();
+      const countryName = v.location?.country || cc;
       if (!cc) return;
       if (!map[cc]) map[cc] = {
         code: cc, name: countryName,
@@ -732,7 +732,7 @@ function CountriesLivePanel({ allVisitors, onSelectCountry, selectedCountry, onZ
         total_events: 0,
         cities: {},
       };
-      var entry = map[cc];
+      const entry = map[cc];
       entry.total += 1;
       entry.total_events += (v.event_count || 0);
       if (isLive(v)) entry.live += 1;
@@ -742,7 +742,7 @@ function CountriesLivePanel({ allVisitors, onSelectCountry, selectedCountry, onZ
       if ((v.cta_clicks || 0) + (v.phone_clicks || 0) + (v.email_clicks || 0) + (v.whatsapp_clicks || 0) > 0) entry.hot += 1;
 
       // Device dominant
-      var dev = v.device || v.device_type || 'desktop';
+      const dev = v.device || v.device_type || 'desktop';
       if (entry.devices[dev] !== undefined) entry.devices[dev] += 1;
 
       // Dernière activité (max des last_seen)
@@ -751,9 +751,9 @@ function CountriesLivePanel({ allVisitors, onSelectCountry, selectedCountry, onZ
       }
 
       // Regroupement par ville (utilise coords originales si jittered)
-      var city = v.location?.city || '—';
-      var lat = v.location?.lat_original ?? v.location?.lat;
-      var lon = v.location?.lon_original ?? v.location?.lon;
+      const city = v.location?.city || '—';
+      const lat = v.location?.lat_original ?? v.location?.lat;
+      const lon = v.location?.lon_original ?? v.location?.lon;
       if (!entry.cities[city]) {
         entry.cities[city] = {
           name: city, total: 0, live: 0, identified: 0,
@@ -790,25 +790,25 @@ function CountriesLivePanel({ allVisitors, onSelectCountry, selectedCountry, onZ
   // Auto-ouvrir les pays qui ont des visiteurs LIVE (sans forcer ceux
   // fermés manuellement — on ne touche que ceux pas encore décidés)
   React.useEffect(function () {
-    var shouldExpand = byCountry.filter(function (c) { return c.live > 0 && c.citiesList.length > 1; }).map(function (c) { return c.code; });
+    const shouldExpand = byCountry.filter(function (c) { return c.live > 0 && c.citiesList.length > 1; }).map(function (c) { return c.code; });
     if (shouldExpand.length === 0) return;
     setExpanded(function (prev) {
-      var next = new Set(prev);
+      const next = new Set(prev);
       shouldExpand.forEach(function (code) { next.add(code); });
       return next;
     });
-  }, [byCountry.map(function (c) { return c.code + ':' + c.live; }).join(',')]);  // eslint-disable-line
+  }, [byCountry.map(function (c) { return c.code + ':' + c.live; }).join(',')]);   
 
   function toggleExpand(code) {
     setExpanded(function (prev) {
-      var next = new Set(prev);
+      const next = new Set(prev);
       if (next.has(code)) next.delete(code);
       else next.add(code);
       return next;
     });
   }
 
-  var totalLive = byCountry.reduce(function (a, c) { return a + c.live; }, 0);
+  const totalLive = byCountry.reduce(function (a, c) { return a + c.live; }, 0);
 
   return (
     <div style={{
@@ -852,9 +852,9 @@ function CountriesLivePanel({ allVisitors, onSelectCountry, selectedCountry, onZ
             Aucun pays détecté
           </div>
         ) : byCountry.map(function (c) {
-          var active = selectedCountry === c.code;
-          var isOpen = expanded.has(c.code);
-          var hasMultipleCities = c.citiesList.length > 1;
+          const active = selectedCountry === c.code;
+          const isOpen = expanded.has(c.code);
+          const hasMultipleCities = c.citiesList.length > 1;
           return (
             <div key={c.code}>
               {/* Ligne pays */}
@@ -905,7 +905,7 @@ function CountriesLivePanel({ allVisitors, onSelectCountry, selectedCountry, onZ
                   {c.last_seen && (
                     <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 2, fontStyle: 'italic' }}>
                       Dernière activité : {(function () {
-                        var mAgo = Math.round((Date.now() - new Date(c.last_seen).getTime()) / 60000);
+                        const mAgo = Math.round((Date.now() - new Date(c.last_seen).getTime()) / 60000);
                         if (mAgo < 1) return 'à l\'instant';
                         if (mAgo < 60) return 'il y a ' + mAgo + ' min';
                         if (mAgo < 1440) return 'il y a ' + Math.round(mAgo / 60) + 'h';
@@ -981,7 +981,7 @@ function CountriesLivePanel({ allVisitors, onSelectCountry, selectedCountry, onZ
                         {city.last_seen && (
                           <span style={{ fontStyle: 'italic' }}>
                             · {(function () {
-                              var mAgo = Math.round((Date.now() - new Date(city.last_seen).getTime()) / 60000);
+                              const mAgo = Math.round((Date.now() - new Date(city.last_seen).getTime()) / 60000);
                               if (mAgo < 1) return 'maintenant';
                               if (mAgo < 60) return 'il y a ' + mAgo + ' min';
                               if (mAgo < 1440) return 'il y a ' + Math.round(mAgo / 60) + 'h';
@@ -1049,23 +1049,23 @@ function Legend() {
 }
 
 // ── Filtres ──────────────────────────────────────────────────────
-var PERIOD_OPTIONS = [
+const PERIOD_OPTIONS = [
   { value: 1, label: '1 heure' }, { value: 6, label: '6 heures' },
   { value: 24, label: '24 heures' }, { value: 48, label: '48 heures' },
   { value: 168, label: '7 jours' },
 ];
 
 function FilterBar({ visitors, filters, setFilters, visitorHours, setVisitorHours }) {
-  var countryOptions = useMemo(function () {
-    var map = {};
+  const countryOptions = useMemo(function () {
+    const map = {};
     visitors.forEach(function (v) {
-      var cc = v.location?.country_code, cn = v.location?.country;
+      const cc = v.location?.country_code, cn = v.location?.country;
       if (cc && cn) map[cc] = cn;
     });
     return Object.entries(map).sort(function (a, b) { return a[1].localeCompare(b[1]); });
   }, [visitors]);
 
-  var hasFilters = filters.country || filters.device || filters.identified;
+  const hasFilters = filters.country || filters.device || filters.identified;
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
@@ -1105,30 +1105,30 @@ function FilterBar({ visitors, filters, setFilters, visitorHours, setVisitorHour
 
 // ── Composant principal ─────────────────────────────────────────
 export default function SeoGlobe() {
-  var { days } = useSeoFilter();
-  var { data: ga4 } = useGa4Analytics(days);
-  var { data: seo } = useSeoStats(days);
-  var { data: realtime } = useRealtime();
-  var { data: overview } = useJourneyOverview(days);
-  var { data: liveData } = useJourneyRealtime();
+  const { days } = useSeoFilter();
+  const { data: ga4 } = useGa4Analytics(days);
+  const { data: seo } = useSeoStats(days);
+  const { data: realtime } = useRealtime();
+  const { data: overview } = useJourneyOverview(days);
+  const { data: liveData } = useJourneyRealtime();
 
-  var [visitorHours, setVisitorHours] = useState(24);
-  var { data: visitors, isLoading } = useVisitors(visitorHours, 200);
-  var [tooltip, setTooltip] = useState(null);
-  var [filters, setFilters] = useState({ country: '', device: '', identified: '' });
-  var [liveOnly, setLiveOnly] = useState(false);
-  var [hoveredCountry, setHoveredCountry] = useState(null);
-  var [zoom, setZoom] = useState(1.2);
-  var [center, setCenter] = useState([10, 30]);
-  var mapRef = React.useRef(null);
-  var [mouse, setMouse] = useState({ x: 0, y: 0 });
+  const [visitorHours, setVisitorHours] = useState(24);
+  const { data: visitors, isLoading } = useVisitors(visitorHours, 200);
+  const [tooltip, setTooltip] = useState(null);
+  const [filters, setFilters] = useState({ country: '', device: '', identified: '' });
+  const [liveOnly, setLiveOnly] = useState(false);
+  const [hoveredCountry, setHoveredCountry] = useState(null);
+  const [zoom, setZoom] = useState(1.2);
+  const [center, setCenter] = useState([10, 30]);
+  const mapRef = React.useRef(null);
+  const [mouse, setMouse] = useState({ x: 0, y: 0 });
 
   // Tracking : alerte visuelle quand un nouveau visiteur arrive
-  var [newVisitorIds, setNewVisitorIds] = useState(new Set());
-  var knownIdsRef = React.useRef(new Set());
+  const [newVisitorIds, setNewVisitorIds] = useState(new Set());
+  const knownIdsRef = React.useRef(new Set());
 
   React.useEffect(function () {
-    var current = visitors?.visitors || [];
+    const current = visitors?.visitors || [];
     if (!current.length) return;
     // Premier chargement : stocker sans notifier
     if (knownIdsRef.current.size === 0) {
@@ -1136,7 +1136,7 @@ export default function SeoGlobe() {
       return;
     }
     // Nouveaux IDs (arrivés depuis le dernier refetch)
-    var fresh = new Set();
+    const fresh = new Set();
     current.forEach(function (v) {
       if (v.visitor_id && !knownIdsRef.current.has(v.visitor_id) && isLive(v)) {
         fresh.add(v.visitor_id);
@@ -1145,14 +1145,14 @@ export default function SeoGlobe() {
     });
     if (fresh.size > 0) {
       setNewVisitorIds(function (prev) {
-        var merged = new Set(prev);
+        const merged = new Set(prev);
         fresh.forEach(function (id) { merged.add(id); });
         return merged;
       });
       // Retire le flash après 3s
       setTimeout(function () {
         setNewVisitorIds(function (prev) {
-          var next = new Set(prev);
+          const next = new Set(prev);
           fresh.forEach(function (id) { next.delete(id); });
           return next;
         });
@@ -1160,24 +1160,24 @@ export default function SeoGlobe() {
     }
   }, [visitors]);
 
-  var onDotHover = useCallback(function (visitor) { setTooltip(visitor); }, []);
-  var onDotLeave = useCallback(function () { setTooltip(null); }, []);
+  const onDotHover = useCallback(function (visitor) { setTooltip(visitor); }, []);
+  const onDotLeave = useCallback(function () { setTooltip(null); }, []);
 
-  var lastMoveRef = React.useRef(0);
-  var onMapMouseMove = useCallback(function (e) {
-    var now = Date.now();
+  const lastMoveRef = React.useRef(0);
+  const onMapMouseMove = useCallback(function (e) {
+    const now = Date.now();
     if (now - lastMoveRef.current < 50) return;
     lastMoveRef.current = now;
     if (!mapRef.current) return;
-    var rect = mapRef.current.getBoundingClientRect();
+    const rect = mapRef.current.getBoundingClientRect();
     setMouse({ x: e.clientX - rect.left, y: e.clientY - rect.top });
   }, []);
 
-  var allVisitors = visitors?.visitors || [];
+  const allVisitors = visitors?.visitors || [];
 
   // Filtrage
-  var v = useMemo(function () {
-    var list = allVisitors;
+  const v = useMemo(function () {
+    let list = allVisitors;
     if (filters.country) list = list.filter(function (x) { return x.location?.country_code === filters.country; });
     if (filters.device) list = list.filter(function (x) { return (x.device || x.device_type) === filters.device; });
     if (filters.identified === 'true') list = list.filter(function (x) { return x.identified; });
@@ -1187,23 +1187,23 @@ export default function SeoGlobe() {
   }, [allVisitors, filters, liveOnly]);
 
   // Compteur LIVE précis (calculé depuis last_seen des visitors, plus fiable que liveData)
-  var liveVisitorsCount = useMemo(function () {
+  const liveVisitorsCount = useMemo(function () {
     return allVisitors.filter(isLive).length;
   }, [allVisitors]);
 
   // Clusters : regroupe les visiteurs co-localisés en un seul marker agrégé
   // (évite 100% des chevauchements). Grille adaptée au zoom courant.
-  var clusters = useMemo(function () {
+  const clusters = useMemo(function () {
     return buildClusters(v, zoom);
   }, [v, zoom]);
 
   // Singletons (cluster à 1 visiteur) = on rend en VisitorDot individuel
   // Groupes (cluster à 2+) = on rend en ClusterMarker agrégé
-  var singletons = useMemo(function () {
+  const singletons = useMemo(function () {
     // Tri Z-index : anonymes → hot → identified → live (les plus importants
     // rendus en dernier = au-dessus, donc toujours cliquables)
-    var priorityOf = function (c) {
-      var vis = c.visitors[0];
+    const priorityOf = function (c) {
+      const vis = c.visitors[0];
       if (isLive(vis)) return 4;
       if (vis.identified) return 3;
       if ((vis.cta_clicks || 0) + (vis.phone_clicks || 0) > 0) return 2;
@@ -1213,14 +1213,14 @@ export default function SeoGlobe() {
       .slice()
       .sort(function (a, b) { return priorityOf(a) - priorityOf(b); });
   }, [clusters]);
-  var multiClusters = useMemo(function () {
+  const multiClusters = useMemo(function () {
     return clusters.filter(function (c) { return c.visitors.length > 1; });
   }, [clusters]);
 
   // Tooltip cluster (différent du tooltip visiteur unique)
-  var [clusterTooltip, setClusterTooltip] = useState(null);
-  var onClusterHover = useCallback(function (cluster) { setClusterTooltip(cluster); }, []);
-  var onClusterLeave = useCallback(function () { setClusterTooltip(null); }, []);
+  const [clusterTooltip, setClusterTooltip] = useState(null);
+  const onClusterHover = useCallback(function (cluster) { setClusterTooltip(cluster); }, []);
+  const onClusterLeave = useCallback(function () { setClusterTooltip(null); }, []);
 
   // Spiderfy : éclate un cluster en cercle pixel au click (comme Leaflet
   // Markercluster). Permet de voir chaque visiteur individuellement même
@@ -1231,14 +1231,14 @@ export default function SeoGlobe() {
   // pour éviter que les dots "sautent" (la conversion pixel→degré dépend
   // du zoom, donc un changement de zoom sans reset ferait dériver les
   // positions).
-  var [spiderState, setSpiderState] = useState(null); // { id, zoom }
-  var spiderfiedId = spiderState?.id || null;
+  const [spiderState, setSpiderState] = useState(null); // { id, zoom }
+  const spiderfiedId = spiderState?.id || null;
   // Click sur un cluster : logique intelligente
   //  - Si zoom bas (<6) : zoom auto sur la ville pour désagréger naturellement
   //    (Paris reste à Paris, Marseille à Marseille, etc.)
   //  - Si zoom déjà élevé (>=6) : spiderfy car les coords sont identiques
   //    (même ville, impossible de les séparer géographiquement)
-  var onClusterClick = useCallback(function (cluster) {
+  const onClusterClick = useCallback(function (cluster) {
     // Toggle off si déjà spiderfied
     if (spiderState && spiderState.id === cluster.id) {
       setSpiderState(null);
@@ -1261,8 +1261,8 @@ export default function SeoGlobe() {
   // Auto-close si zoom a trop changé OU si le cluster n'existe plus
   React.useEffect(function () {
     if (!spiderState) return;
-    var zoomDelta = Math.abs(zoom - spiderState.zoom);
-    var clusterGone = !clusters.some(function (c) { return c.id === spiderState.id; });
+    const zoomDelta = Math.abs(zoom - spiderState.zoom);
+    const clusterGone = !clusters.some(function (c) { return c.id === spiderState.id; });
     if (zoomDelta > 0.3 || clusterGone) {
       setSpiderState(null);
     }
@@ -1271,8 +1271,8 @@ export default function SeoGlobe() {
   // Connexions vers Paris — memoizées pour éviter la recréation à chaque render
   // On utilise les coords brutes (pas dispersées) pour les connexions, car
   // on ne veut qu'une ligne par ville et pas par visiteur
-  var connectionLines = useMemo(function () {
-    var seen = new Set();
+  const connectionLines = useMemo(function () {
+    const seen = new Set();
     return v
       .map(function (vis) { return { id: vis.visitor_id, coords: rawCoordsFor(vis) }; })
       .filter(function (x) {
@@ -1280,7 +1280,7 @@ export default function SeoGlobe() {
         // Skip si Paris (distance < 0.5°)
         if (Math.abs(x.coords[0] - PARIS[0]) < 0.5 && Math.abs(x.coords[1] - PARIS[1]) < 0.5) return false;
         // Une seule ligne par localisation
-        var key = x.coords[0].toFixed(1) + ',' + x.coords[1].toFixed(1);
+        const key = x.coords[0].toFixed(1) + ',' + x.coords[1].toFixed(1);
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
@@ -1289,25 +1289,25 @@ export default function SeoGlobe() {
   }, [v]);
 
   // Compteurs par pays (pour heatmap)
-  var countryVisitorCounts = useMemo(function () {
-    var map = {};
+  const countryVisitorCounts = useMemo(function () {
+    const map = {};
     allVisitors.forEach(function (vis) {
-      var cc = vis.location?.country_code;
+      const cc = vis.location?.country_code;
       if (cc) map[cc] = (map[cc] || 0) + 1;
     });
     return map;
   }, [allVisitors]);
 
-  var maxCountryCount = useMemo(function () {
+  const maxCountryCount = useMemo(function () {
     return Math.max(1, ...Object.values(countryVisitorCounts));
   }, [countryVisitorCounts]);
 
   // Stats pays enrichies — agrégation complète (tous les pays détectés)
-  var countries = useMemo(function () {
-    var map = {};
+  const countries = useMemo(function () {
+    const map = {};
     allVisitors.forEach(function (vis) {
-      var cc = vis.location?.country_code;
-      var cn = vis.location?.country;
+      const cc = vis.location?.country_code;
+      const cn = vis.location?.country;
       if (cc && cn) {
         if (!map[cc]) map[cc] = {
           code: cc, name: cn, count: 0,
@@ -1333,7 +1333,7 @@ export default function SeoGlobe() {
 
   // On privilégie le compteur calculé depuis la data réelle (les visiteurs
   // avec last_seen < 5min), mais on garde le max avec les sources live externes
-  var liveCount = Math.max(
+  const liveCount = Math.max(
     liveVisitorsCount,
     liveData?.active_visitors || 0,
     realtime?.active_users || 0
@@ -1386,11 +1386,11 @@ export default function SeoGlobe() {
         eyebrow="Globe · Audience"
         title={<>Carte <em>mondiale des visiteurs</em></>}
         subtitle={(function () {
-          var n = v.length;
-          var identified = visitors?.identified || 0;
-          var geoloc = v.filter(function (x) { return x.location?.country_code; }).length;
-          var noLoc = n - geoloc;
-          var parts = [
+          const n = v.length;
+          const identified = visitors?.identified || 0;
+          const geoloc = v.filter(function (x) { return x.location?.country_code; }).length;
+          const noLoc = n - geoloc;
+          const parts = [
             fmt(n) + ' visiteurs sur ' + (visitorHours <= 24 ? visitorHours + 'h' : Math.round(visitorHours / 24) + 'j'),
             fmt(identified) + ' identifiés',
             countries.length + ' pays',
@@ -1435,12 +1435,12 @@ export default function SeoGlobe() {
           <div style={{ fontSize: 11, color: liveCount > 0 ? '#166534' : '#64748b' }}>
             {liveCount === 0 ? (() => {
               // Si personne LIVE, afficher quand même le dernier visiteur pour contextualiser
-              var latest = allVisitors.reduce(function (acc, vis) {
+              const latest = allVisitors.reduce(function (acc, vis) {
                 if (!vis.last_seen) return acc;
                 if (!acc) return vis;
                 return new Date(vis.last_seen) > new Date(acc.last_seen) ? vis : acc;
               }, null);
-              var mAgo = latest ? minutesSince(latest.last_seen) : null;
+              const mAgo = latest ? minutesSince(latest.last_seen) : null;
               if (mAgo === null) return 'Aucun visiteur récent';
               if (mAgo < 60) return 'Dernier visiteur il y a ' + mAgo + ' min';
               if (mAgo < 1440) return 'Dernier visiteur il y a ' + Math.round(mAgo / 60) + 'h';
@@ -1573,20 +1573,20 @@ export default function SeoGlobe() {
             <Geographies geography={WORLD_TOPO}>
               {function ({ geographies }) {
                 return geographies.map(function (geo) {
-                  var iso2 = geoIso2(geo);
-                  var count = iso2 ? (countryVisitorCounts[iso2] || 0) : 0;
+                  const iso2 = geoIso2(geo);
+                  const count = iso2 ? (countryVisitorCounts[iso2] || 0) : 0;
                   // Échelle sqrt pour que les pays avec 1-2 visiteurs soient
                   // quand même bien visibles (pas écrasés par le dominant).
                   // Intensité minimale élevée à 0.35 pour garantir visibilité.
-                  var intensity = count > 0
+                  const intensity = count > 0
                     ? 0.35 + 0.55 * Math.sqrt(count / maxCountryCount)
                     : 0;
-                  var fill = count > 0
+                  const fill = count > 0
                     ? 'rgba(16, 185, 129, ' + intensity + ')'
                     : '#e9edf0';
                   // Contour plus marqué pour les pays avec visiteurs
-                  var strokeColor = count > 0 ? '#10b981' : '#d1d5db';
-                  var strokeW = count > 0 ? 0.8 : 0.4;
+                  const strokeColor = count > 0 ? '#10b981' : '#d1d5db';
+                  const strokeW = count > 0 ? 0.8 : 0.4;
 
                   return (
                     <Geography
@@ -1640,7 +1640,7 @@ export default function SeoGlobe() {
 
             {/* Visiteurs solo (1 seul par zone) */}
             {singletons.map(function (cluster) {
-              var visitor = cluster.visitors[0];
+              const visitor = cluster.visitors[0];
               return <VisitorDot key={visitor.visitor_id} visitor={visitor}
                 coords={cluster.coords}
                 onHover={onDotHover} onLeave={onDotLeave} currentZoom={zoom} />;
@@ -1792,10 +1792,10 @@ export default function SeoGlobe() {
             subtitle="Tous les pays depuis lesquels ton site a été consulté sur la période. Triés par nombre de visiteurs LIVE puis total." />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10, marginBottom: 28 }}>
             {countries.map(function (c) {
-              var pct = Math.round((c.count / Math.max(allVisitors.length, 1)) * 100);
-              var hasLive = c.live > 0;
-              var lastSeenText = c.last_seen ? (function () {
-                var mAgo = Math.round((Date.now() - new Date(c.last_seen).getTime()) / 60000);
+              const pct = Math.round((c.count / Math.max(allVisitors.length, 1)) * 100);
+              const hasLive = c.live > 0;
+              const lastSeenText = c.last_seen ? (function () {
+                const mAgo = Math.round((Date.now() - new Date(c.last_seen).getTime()) / 60000);
                 if (mAgo < 1) return 'à l\'instant';
                 if (mAgo < 60) return mAgo + ' min';
                 if (mAgo < 1440) return Math.round(mAgo / 60) + 'h';
@@ -1950,7 +1950,7 @@ export default function SeoGlobe() {
   );
 }
 
-var th = { padding: '10px 14px', textAlign: 'left', fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-3)', fontWeight: 600 };
-var thR = { ...th, textAlign: 'right' };
-var td = { padding: '10px 14px', fontSize: 12, color: 'var(--ink)' };
-var tdR = { ...td, textAlign: 'right', fontFamily: 'JetBrains Mono, monospace' };
+const th = { padding: '10px 14px', textAlign: 'left', fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-3)', fontWeight: 600 };
+const thR = { ...th, textAlign: 'right' };
+const td = { padding: '10px 14px', fontSize: 12, color: 'var(--ink)' };
+const tdR = { ...td, textAlign: 'right', fontFamily: 'JetBrains Mono, monospace' };

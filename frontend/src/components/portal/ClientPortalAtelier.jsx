@@ -3951,17 +3951,13 @@ function Dashboard({ client, onLogout, onRefreshClient }) {
     } catch { toast.error('Envoi impossible'); }
   };
   const handleDemande = async (form) => {
-    try {
-      await pAxios.post(CHAT_API + '/portal/message', {
-        content: `📋 Demande d'intervention : ${form.service_type}${form.date ? ' · souhaité le ' + form.date : ''}${form.notes ? '\n\n' + form.notes : ''}`,
-      });
-    } catch (e) { throw e; }
+    await pAxios.post(CHAT_API + '/portal/message', {
+      content: `📋 Demande d'intervention : ${form.service_type}${form.date ? ' · souhaité le ' + form.date : ''}${form.notes ? '\n\n' + form.notes : ''}`,
+    });
   };
   const handleSaveProfile = async (data) => {
-    try {
-      const r = await pAxios.patch(`${API_URL}/me`, data);
-      onRefreshClient?.(r.data);
-    } catch (e) { throw e; }
+    const r = await pAxios.patch(`${API_URL}/me`, data);
+    onRefreshClient?.(r.data);
   };
   const handleMarkNotif = async (id) => {
     setNotifications(n => n.map(x => x.id === id ? { ...x, read: true } : x));

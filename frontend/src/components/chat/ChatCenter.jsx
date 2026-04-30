@@ -218,7 +218,7 @@ function IntervenantChat({ agentId, agentName, agentEmail, onRefresh }) {
     loadMessages();
     const t = setInterval(loadMessages, 8000);
     return () => clearInterval(t);
-    // eslint-disable-next-line
+     
   }, [agentId]);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);

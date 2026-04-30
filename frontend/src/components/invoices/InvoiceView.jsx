@@ -126,7 +126,7 @@ export default function InvoiceView() {
       .catch(e => setErr(e?.response?.data?.detail || 'Facture introuvable'))
       .finally(() => setLoading(false));
   };
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
+  useEffect(() => { load();   }, [id]);
 
   const totals = useMemo(() => {
     if (!invoice) return { ht: 0, tva: 0, ttc: 0 };

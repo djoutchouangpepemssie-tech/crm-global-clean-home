@@ -897,7 +897,7 @@ function PlanningAssignModal({ team, defaultTime, defaultDate, onClose, onDone, 
         address: selectedLead.address || '',
       }));
     }
-  }, [selectedLead]); // eslint-disable-line
+  }, [selectedLead]);  
 
   const filteredLeads = useMemo(() => {
     if (!leadSearch.trim()) return leads.slice(0, 30);

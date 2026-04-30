@@ -105,7 +105,7 @@ const InvoicesList = () => {
 
   useEffect(() => {
     return reload();
-  }, [location.key]);  // eslint-disable-line
+  }, [location.key]);   
 
   const downloadPdf = async (id, ref) => {
     const r = await api.get(`/invoices/${id}/pdf`, { responseType: 'blob' });

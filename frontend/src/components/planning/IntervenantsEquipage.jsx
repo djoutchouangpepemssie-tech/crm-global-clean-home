@@ -448,7 +448,7 @@ function AssignMissionModal({ intervenant, onClose, onDone, onError }) {
         address: selectedLead.address || '',
       }));
     }
-  }, [selectedLead]); // eslint-disable-line
+  }, [selectedLead]);  
 
   const filteredLeads = useMemo(() => {
     if (!leadSearch.trim()) return leads.slice(0, 30);
@@ -726,7 +726,7 @@ function compressImage(file, maxSize = 600, quality = 0.85) {
       const img = new Image();
       img.onerror = reject;
       img.onload = () => {
-        let { width, height } = img;
+        const { width, height } = img;
         // Crop carré centré (pour photo de profil ronde)
         const size = Math.min(width, height);
         const sx = (width - size) / 2;

@@ -22,7 +22,7 @@ import { toast } from 'sonner';
 function timeAgo(iso) {
   if (!iso) return '—';
   try {
-    var diff = (Date.now() - new Date(iso).getTime()) / 1000;
+    const diff = (Date.now() - new Date(iso).getTime()) / 1000;
     if (diff < 60) return 'à l\'instant';
     if (diff < 3600) return 'il y a ' + Math.round(diff / 60) + ' min';
     if (diff < 86400) return 'il y a ' + Math.round(diff / 3600) + 'h';
@@ -44,7 +44,7 @@ function copyId(text) {
 // ── Composants atomiques ────────────────────────────────────────
 
 function DeviceIcon({ type }) {
-  var s = { width: 14, height: 14, color: 'var(--ink-3)' };
+  const s = { width: 14, height: 14, color: 'var(--ink-3)' };
   if (type === 'mobile') return <Smartphone style={s} />;
   if (type === 'tablet') return <Tablet style={s} />;
   return <Monitor style={s} />;
@@ -58,10 +58,10 @@ function CFlag({ code }) {
 
 function StatusDot({ visitor }) {
   if (visitor.lead_id) return <span title="Converti" style={{ width: 10, height: 10, borderRadius: 999, background: '#f59e0b', display: 'inline-block', boxShadow: '0 0 0 2px rgba(245,158,11,0.25)' }} />;
-  var isRecent = false;
+  let isRecent = false;
   try { isRecent = (Date.now() - new Date(visitor.last_seen).getTime()) < 5 * 60 * 1000; } catch (_e) {}
   if (isRecent) return <span title="Actif" style={{ width: 10, height: 10, borderRadius: 999, background: '#10b981', display: 'inline-block', animation: 'dotpulse 1.6s ease-in-out infinite' }} />;
-  var isActive30 = false;
+  let isActive30 = false;
   try { isActive30 = (Date.now() - new Date(visitor.last_seen).getTime()) < 30 * 60 * 1000; } catch (_e) {}
   if (isActive30) return <span title="Récent" style={{ width: 10, height: 10, borderRadius: 999, background: '#10b981', display: 'inline-block' }} />;
   return <span title="Inactif" style={{ width: 10, height: 10, borderRadius: 999, background: '#d1d5db', display: 'inline-block' }} />;
@@ -70,7 +70,7 @@ function StatusDot({ visitor }) {
 function ConvBadge({ value }) {
   if (value === null || value === undefined)
     return <span style={{ fontSize: 11, color: 'var(--ink-4)', fontStyle: 'italic', fontFamily: 'JetBrains Mono, monospace' }}>En cours</span>;
-  var color, bg;
+  let color, bg;
   if (value <= 1) { color = '#065f46'; bg = '#d1fae5'; }
   else if (value <= 3) { color = '#047857'; bg = '#ecfdf5'; }
   else if (value <= 6) { color = '#92400e'; bg = '#fef3c7'; }
@@ -79,8 +79,8 @@ function ConvBadge({ value }) {
 }
 
 function SourceCell({ v }) {
-  var src = v.first_utm_source || '';
-  var camp = v.first_utm_campaign || '';
+  const src = v.first_utm_source || '';
+  const camp = v.first_utm_campaign || '';
   if (!src && !v.first_referrer) return <span style={{ fontSize: 12, color: 'var(--ink-4)' }}>Direct</span>;
   return (
     <div style={{ minWidth: 0 }}>
@@ -92,15 +92,15 @@ function SourceCell({ v }) {
 
 // ── Ligne du tableau (memoized) ─────────────────────────────────
 
-var Row = memo(function Row({ v, onOpen }) {
-  var city = v.location?.city || '';
-  var postal = v.location?.postal || '';
-  var country = v.location?.country || '';
-  var cc = (v.location?.country_code || '').toUpperCase();
-  var hasPreciseGps = v.precise_location && v.precise_location.lat;
-  var isConverted = !!v.lead_id;
-  var sessions = v.sessions_count || (v.sessions ? v.sessions.length : 0) || 0;
-  var visitsBeforeConv = isConverted ? (v.visits_before_conversion || sessions || null) : null;
+const Row = memo(function Row({ v, onOpen }) {
+  const city = v.location?.city || '';
+  const postal = v.location?.postal || '';
+  const country = v.location?.country || '';
+  const cc = (v.location?.country_code || '').toUpperCase();
+  const hasPreciseGps = v.precise_location && v.precise_location.lat;
+  const isConverted = !!v.lead_id;
+  const sessions = v.sessions_count || (v.sessions ? v.sessions.length : 0) || 0;
+  const visitsBeforeConv = isConverted ? (v.visits_before_conversion || sessions || null) : null;
   return (
     <tr onClick={onOpen} style={{ cursor: 'pointer', borderBottom: '1px solid var(--line-2)', borderLeft: isConverted ? '3px solid #f59e0b' : '3px solid transparent', transition: 'background 0.12s' }}
       onMouseEnter={function (e) { e.currentTarget.style.background = 'var(--surface-2)'; }}
@@ -142,13 +142,13 @@ var Row = memo(function Row({ v, onOpen }) {
 
 // ── Constantes ──────────────────────────────────────────────────
 
-var SORTS = [
+const SORTS = [
   { value: 'last_seen', label: 'Activité récente' },
   { value: 'pageviews', label: 'Nb pages' },
   { value: 'sessions', label: 'Nb sessions' },
   { value: 'events', label: 'Nb events' },
 ];
-var SEGMENTS = [
+const SEGMENTS = [
   { value: '', label: 'Tous', icon: Users },
   { value: 'converted', label: 'Convertis', icon: UserCheck },
   { value: 'hot', label: 'À contacter', icon: Zap },
@@ -158,22 +158,22 @@ var SEGMENTS = [
 // ── Composant principal ─────────────────────────────────────────
 
 export default function SeoJourneys() {
-  var navigate = useNavigate();
-  var { days } = useSeoFilter();
-  var [segment, setSegment] = useState('');
-  var [sort, setSort] = useState('last_seen');
-  var [minPages, setMinPages] = useState(0);
-  var [search, setSearch] = useState('');
-  var [searchDebounced, setSearchDebounced] = useState('');
-  var searchTimer = React.useRef(null);
-  var handleSearch = useCallback(function (val) {
+  const navigate = useNavigate();
+  const { days } = useSeoFilter();
+  const [segment, setSegment] = useState('');
+  const [sort, setSort] = useState('last_seen');
+  const [minPages, setMinPages] = useState(0);
+  const [search, setSearch] = useState('');
+  const [searchDebounced, setSearchDebounced] = useState('');
+  const searchTimer = React.useRef(null);
+  const handleSearch = useCallback(function (val) {
     setSearch(val);
     clearTimeout(searchTimer.current);
     searchTimer.current = setTimeout(function () { setSearchDebounced(val); }, 400);
   }, []);
 
-  var filters = useMemo(function () {
-    var base = { days: days, sort: sort, limit: 200 };
+  const filters = useMemo(function () {
+    const base = { days: days, sort: sort, limit: 200 };
     if (segment === 'converted') base.converted = true;
     if (segment === 'hot') base.min_sessions = 1;
     if (segment === 'returning') base.min_sessions = 2;
@@ -181,16 +181,16 @@ export default function SeoJourneys() {
     return base;
   }, [days, sort, segment, minPages]);
 
-  var { data, isLoading, error, refetch } = useJourneys(filters);
-  var { data: overview } = useJourneyOverview(days);
-  var { data: realtime } = useJourneyRealtime();
+  const { data, isLoading, error, refetch } = useJourneys(filters);
+  const { data: overview } = useJourneyOverview(days);
+  const { data: realtime } = useJourneyRealtime();
 
-  var filtered = useMemo(function () {
-    var list = data?.visitors || [];
+  const filtered = useMemo(function () {
+    let list = data?.visitors || [];
     if (segment === 'hot') list = list.filter(function (v) { return v.cta_clicks > 0 && !v.lead_id; });
     if (segment === 'returning') list = list.filter(function (v) { return (v.sessions_count || 0) >= 2; });
     if (searchDebounced.trim()) {
-      var q = searchDebounced.toLowerCase();
+      const q = searchDebounced.toLowerCase();
       list = list.filter(function (v) {
         return (v.lead_name || '').toLowerCase().includes(q) || (v.lead_email || '').toLowerCase().includes(q) ||
           (v.lead_phone || '').includes(q) || (v.visitor_id || '').toLowerCase().includes(q) ||
@@ -200,7 +200,7 @@ export default function SeoJourneys() {
     return list;
   }, [data, segment, searchDebounced]);
 
-  var hasFilters = segment || searchDebounced || minPages > 0;
+  const hasFilters = segment || searchDebounced || minPages > 0;
 
   return (
     <div className="seo-fade">
@@ -245,7 +245,7 @@ export default function SeoJourneys() {
       {/* Segments */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
         {SEGMENTS.map(function (s) {
-          var active = segment === s.value;
+          const active = segment === s.value;
           return <button key={s.value} onClick={function () { setSegment(s.value); }}
             className={active ? 'seo-chip active' : 'seo-chip'}
             style={active ? { background: 'var(--ink)', color: 'var(--bg)', borderColor: 'var(--ink)' } : {}}>
@@ -326,6 +326,6 @@ export default function SeoJourneys() {
   );
 }
 
-var th = { padding: '10px 14px', textAlign: 'left', fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-3)', fontWeight: 600, whiteSpace: 'nowrap' };
-var td = { padding: '10px 14px', fontSize: 12, verticalAlign: 'middle' };
-var mono = { fontFamily: 'JetBrains Mono, monospace', fontWeight: 600, textAlign: 'right', color: 'var(--ink)' };
+const th = { padding: '10px 14px', textAlign: 'left', fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-3)', fontWeight: 600, whiteSpace: 'nowrap' };
+const td = { padding: '10px 14px', fontSize: 12, verticalAlign: 'middle' };
+const mono = { fontFamily: 'JetBrains Mono, monospace', fontWeight: 600, textAlign: 'right', color: 'var(--ink)' };

@@ -871,9 +871,9 @@ function latLngToXY(lat, lng, rotY, rotX, radius, cx, cy) {
   const theta = ((lng + rotY) * Math.PI) / 180;
 
   // Coords 3D
-  let x = radius * Math.sin(phi) * Math.cos(theta);
-  let y = radius * Math.cos(phi);
-  let z = radius * Math.sin(phi) * Math.sin(theta);
+  const x = radius * Math.sin(phi) * Math.cos(theta);
+  const y = radius * Math.cos(phi);
+  const z = radius * Math.sin(phi) * Math.sin(theta);
 
   // Rotation X (tilt)
   const rx = (rotX * Math.PI) / 180;

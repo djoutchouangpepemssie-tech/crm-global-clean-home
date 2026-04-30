@@ -622,7 +622,7 @@ const PlanningCalendar = () => {
         if (form.recurrence !== 'none' && form.recurrence_end) {
           const intervals = { hebdo:7, 'bi-hebdo':14, mensuel:30 };
           const step = intervals[form.recurrence];
-          let d = new Date(form.scheduled_date);
+          const d = new Date(form.scheduled_date);
           const end = new Date(form.recurrence_end);
           while (true) {
             d.setDate(d.getDate()+step);
