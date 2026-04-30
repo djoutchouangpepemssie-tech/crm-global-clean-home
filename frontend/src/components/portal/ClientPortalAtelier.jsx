@@ -1110,11 +1110,15 @@ function QuoteHeroPreview({ quote }) {
 /* ═══════════ VUE DEVIS LIST ═══════════ */
 function ViewQuotes({ quotes, onOpen }) {
   const [filter, setFilter] = useState('all');
+  const [comparing, setComparing] = useState(false);
   const filtered = quotes.filter(q => {
     if (filter === 'pending') return ['envoyé', 'envoye'].includes(q.status);
     if (filter === 'accepted') return ['accepté', 'accepte', 'signé'].includes(q.status);
     return true;
   });
+
+  const pendingQuotes = quotes.filter(q => ['envoyé', 'envoye'].includes(q.status));
+  const canCompare = pendingQuotes.length >= 2;
 
   return (
     <div className="cpa-fade" style={{ padding: '20px 20px 40px' }}>
@@ -1126,13 +1130,38 @@ function ViewQuotes({ quotes, onOpen }) {
       <div style={{ display: 'flex', gap: 6, marginBottom: 14, overflowX: 'auto' }}>
         {[
           { k: 'all', label: `Tous (${quotes.length})` },
-          { k: 'pending', label: `À signer (${quotes.filter(q => ['envoyé', 'envoye'].includes(q.status)).length})` },
+          { k: 'pending', label: `À signer (${pendingQuotes.length})` },
           { k: 'accepted', label: `Acceptés (${quotes.filter(q => ['accepté', 'accepte', 'signé'].includes(q.status)).length})` },
         ].map(t => (
           <button key={t.k} onClick={() => setFilter(t.k)}
             className={`cpa-chip-btn ${filter === t.k ? 'active' : ''}`}>{t.label}</button>
         ))}
       </div>
+
+      {canCompare && (
+        <button onClick={() => setComparing(true)} style={{
+          width: '100%', marginBottom: 14, padding: '14px 16px', borderRadius: 14,
+          background: 'linear-gradient(165deg, oklch(0.18 0.04 165) 0%, oklch(0.22 0.05 175) 100%)',
+          color: 'oklch(0.95 0.01 80)', border: '1px solid oklch(0.52 0.13 165)',
+          cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+          font: 'inherit',
+        }}>
+          <div style={{ textAlign: 'left' }}>
+            <div className="cpa-mono" style={{ fontSize: 10, color: 'oklch(0.78 0.13 165)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+              {pendingQuotes.length} devis à signer
+            </div>
+            <div className="cpa-display" style={{ fontSize: 16, fontWeight: 500, marginTop: 4 }}>
+              Comparez côte à côte avant de choisir
+            </div>
+          </div>
+          <ArrowRight style={{ width: 18, height: 18, color: 'oklch(0.72 0.13 85)' }} />
+        </button>
+      )}
+
+      {comparing && (
+        <QuoteComparator quotes={pendingQuotes} onClose={() => setComparing(false)} onSelect={(q) => { setComparing(false); onOpen(q); }} />
+      )}
 
       {filtered.length === 0 ? (
         <div className="cpa-card" style={{ textAlign: 'center', padding: 40, fontStyle: 'italic', color: 'var(--ink-3)', fontFamily: 'Fraunces, serif' }}>
@@ -2431,7 +2460,7 @@ function ViewConseiller({ messages, advisor, onSend }) {
 }
 
 /* ═══════════ VUE PROFIL ═══════════ */
-function ViewProfil({ client, onSave, onLogout }) {
+function ViewProfil({ client, onSave, onLogout, onReplayTour }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     name: client?.name || '',
@@ -2583,6 +2612,17 @@ function ViewProfil({ client, onSave, onLogout }) {
         ))}
       </div>
 
+      {onReplayTour && (
+        <button onClick={onReplayTour} style={{
+          width: '100%', padding: 12, borderRadius: 999, marginBottom: 10,
+          background: 'transparent', border: '1px solid var(--line)', color: 'var(--ink-2)',
+          fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.08em',
+          textTransform: 'uppercase', fontWeight: 600, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        }}>
+          <HelpCircle style={{ width: 12, height: 12 }} /> Revoir la visite
+        </button>
+      )}
       <button onClick={onLogout} style={{
         width: '100%', padding: 14, borderRadius: 999,
         background: 'transparent', border: '1px solid var(--rouge)', color: 'var(--rouge)',
@@ -2915,6 +2955,309 @@ function NotificationsDrawer({ notifications, onClose, onMarkRead }) {
   );
 }
 
+/* ═══════════ COMPARATEUR DE DEVIS ═══════════ */
+function QuoteComparator({ quotes, onClose, onSelect }) {
+  // Collecte de toutes les caractéristiques pour comparaison ligne à ligne
+  const rows = useMemo(() => {
+    const collectInclusions = (q) => {
+      if (Array.isArray(q.line_items) && q.line_items.length) {
+        return q.line_items.slice(0, 8).map(li => li.label || li.description || '').filter(Boolean);
+      }
+      return [];
+    };
+    return quotes.map(q => ({
+      id: q.quote_id,
+      number: q.quote_number || q.quote_id?.slice(-8).toUpperCase(),
+      title: q.title || q.service_type || 'Devis',
+      service: q.service_type || '—',
+      frequency: q.frequency || 'unique',
+      interventions: q.interventions_count || 1,
+      duration: q.duration_hours || (q.line_items?.[0]?.hours) || null,
+      ttc: Number(q.amount || 0),
+      ht: Number(q.amount_ht ?? (q.tva_rate ? q.amount / (1 + q.tva_rate / 100) : q.amount) ?? 0),
+      created: q.created_at,
+      inclusions: collectInclusions(q),
+      raw: q,
+    }));
+  }, [quotes]);
+
+  const cheapest = rows.reduce((min, r) => r.ttc < min.ttc ? r : min, rows[0] || { ttc: Infinity });
+  const minPerHour = rows
+    .filter(r => r.duration && r.ttc)
+    .reduce((min, r) => {
+      const ph = r.ttc / (r.duration * (r.interventions || 1));
+      return ph < min.ph ? { id: r.id, ph } : min;
+    }, { id: null, ph: Infinity });
+
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+      backdropFilter: 'blur(6px)', zIndex: 95,
+      display: 'flex', alignItems: 'flex-end',
+    }}>
+      <div onClick={e => e.stopPropagation()} className="cpa-fade" style={{
+        background: 'var(--paper)', width: '100%',
+        borderRadius: '24px 24px 0 0', maxHeight: '94vh', overflowY: 'auto',
+        padding: '22px 18px 28px',
+      }}>
+        <div style={{ width: 40, height: 4, background: 'var(--line)', borderRadius: 999, margin: '0 auto 14px' }} />
+
+        <div className="cpa-label">Comparateur</div>
+        <h2 className="cpa-display" style={{ fontSize: 26, fontWeight: 300, margin: '4px 0 6px' }}>
+          {rows.length} devis <em className="cpa-italic">côte à côte</em>
+        </h2>
+        <div style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 13, color: 'var(--ink-3)', marginBottom: 18 }}>
+          Comparez prix, fréquence et prestations avant de signer.
+        </div>
+
+        {/* Cartes en colonnes scrollables */}
+        <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 6, marginBottom: 14 }}>
+          {rows.map(r => {
+            const isCheapest = r.id === cheapest.id && rows.length > 1;
+            const isBestRate = r.id === minPerHour.id && minPerHour.ph !== Infinity && rows.length > 1;
+            return (
+              <div key={r.id} style={{
+                flex: '0 0 75%', maxWidth: 320,
+                background: 'var(--surface)',
+                border: `1.5px solid ${isCheapest ? 'var(--emerald)' : 'var(--line)'}`,
+                borderRadius: 16, padding: '14px 16px',
+                position: 'relative',
+              }}>
+                {(isCheapest || isBestRate) && (
+                  <div style={{ display: 'flex', gap: 4, marginBottom: 8, flexWrap: 'wrap' }}>
+                    {isCheapest && <span style={{
+                      padding: '3px 7px', borderRadius: 999,
+                      background: 'var(--emerald-soft)', color: 'var(--emerald-deep)',
+                      border: '1px solid var(--emerald)',
+                      fontFamily: 'JetBrains Mono, monospace', fontSize: 8,
+                      letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600,
+                    }}>★ Le moins cher</span>}
+                    {isBestRate && <span style={{
+                      padding: '3px 7px', borderRadius: 999,
+                      background: 'var(--gold-soft)', color: 'oklch(0.45 0.13 78)',
+                      border: '1px solid var(--gold)',
+                      fontFamily: 'JetBrains Mono, monospace', fontSize: 8,
+                      letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600,
+                    }}>Meilleur €/h</span>}
+                  </div>
+                )}
+
+                <div className="cpa-mono" style={{ fontSize: 9, color: 'var(--ink-3)', letterSpacing: '0.08em' }}>
+                  {r.number}
+                </div>
+                <div className="cpa-display" style={{ fontSize: 15, fontWeight: 500, marginTop: 4, lineHeight: 1.2 }}>
+                  {r.title}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginTop: 12 }}>
+                  <div className="cpa-display" style={{ fontSize: 26, fontWeight: 500, color: isCheapest ? 'var(--emerald-deep)' : 'var(--ink)', lineHeight: 1 }}>
+                    {fmtEur(r.ttc)}
+                  </div>
+                  <div className="cpa-mono" style={{ fontSize: 11, color: 'var(--ink-3)' }}>€ TTC</div>
+                </div>
+
+                {r.duration && r.interventions > 1 && (
+                  <div className="cpa-mono" style={{ fontSize: 9, color: 'var(--ink-3)', marginTop: 3 }}>
+                    {fmtEur(r.ttc / r.interventions)} € / passage
+                  </div>
+                )}
+
+                <div style={{ height: 1, background: 'var(--line-2)', margin: '12px 0' }} />
+
+                <ComparisonRow label="Service" value={r.service} />
+                <ComparisonRow label="Fréquence" value={r.frequency === 'unique' ? 'Ponctuel' : r.frequency} />
+                {r.interventions > 1 && <ComparisonRow label="Passages" value={r.interventions} />}
+                {r.duration && <ComparisonRow label="Durée" value={`${r.duration} h`} />}
+                <ComparisonRow label="Émis le" value={fmtDateShort(r.created)} />
+
+                {r.inclusions.length > 0 && (
+                  <>
+                    <div style={{ height: 1, background: 'var(--line-2)', margin: '10px 0' }} />
+                    <div className="cpa-label" style={{ marginBottom: 6 }}>Inclus</div>
+                    {r.inclusions.slice(0, 5).map((inc, i) => (
+                      <div key={i} style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        fontFamily: 'Fraunces, serif', fontSize: 11, color: 'var(--ink-2)', marginBottom: 3,
+                      }}>
+                        <Check style={{ width: 11, height: 11, color: 'var(--emerald)', flexShrink: 0 }} />
+                        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inc}</span>
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                <button onClick={() => onSelect(r.raw)} style={{
+                  width: '100%', marginTop: 14, padding: '10px 12px', borderRadius: 999,
+                  background: 'var(--ink)', color: 'oklch(0.95 0.01 80)', border: 'none',
+                  fontFamily: 'JetBrains Mono, monospace', fontSize: 10, fontWeight: 600,
+                  letterSpacing: '0.08em', textTransform: 'uppercase',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}>
+                  Voir et signer <ArrowRight style={{ width: 11, height: 11 }} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="cpa-mono" style={{ fontSize: 9, color: 'var(--ink-3)', textAlign: 'center', letterSpacing: '0.08em' }}>
+          ← Faites glisser pour voir tous les devis →
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ComparisonRow({ label, value }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '4px 0' }}>
+      <span className="cpa-mono" style={{ fontSize: 9, color: 'var(--ink-3)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</span>
+      <span style={{ fontFamily: 'Fraunces, serif', fontSize: 12, fontWeight: 500, color: 'var(--ink)' }}>{value}</span>
+    </div>
+  );
+}
+
+/* ═══════════ ONBOARDING — Tour interactif au 1er login ═══════════ */
+function OnboardingTour({ client, onClose }) {
+  const [step, setStep] = useState(0);
+  const firstName = (client?.name || client?.full_name || '').split(' ')[0] || 'vous';
+
+  const slides = [
+    {
+      icon: '✨',
+      eyebrow: 'Bienvenue',
+      title: <>Bonjour <em className="cpa-italic">{firstName}</em>.</>,
+      body: 'Votre portail Global Clean Home — un espace privé pour suivre vos prestations, vos paiements et votre programme fidélité.',
+      cta: 'Commencer la visite',
+    },
+    {
+      icon: '📊',
+      eyebrow: 'Tableau de bord',
+      title: <>Votre <em className="cpa-italic">activité</em> en un coup d'œil.</>,
+      body: "Dépenses cumulées année courante, comparaison avec l'année passée, crédit d'impôt 50 % calculé automatiquement, répartition par service. Tout est mis à jour à chaque facture.",
+      cta: 'Suivant',
+    },
+    {
+      icon: '🚗',
+      eyebrow: 'Suivi temps réel',
+      title: <>Votre intervenant en <em className="cpa-italic">live</em>.</>,
+      body: "Quand votre intervenant part pour votre prestation, vous voyez sa position GPS sur la carte avec une estimation d'arrivée actualisée toutes les 15 secondes.",
+      cta: 'Suivant',
+    },
+    {
+      icon: '🏆',
+      eyebrow: 'Programme fidélité',
+      title: <>4 paliers, 12 <em className="cpa-italic">badges</em> à débloquer.</>,
+      body: 'Bronze, Argent, Or, Platinum : plus vous restez fidèle, plus vous accédez à des avantages premium. Parrainez vos amis pour gagner 50 pts + 20 € à chaque inscription.',
+      cta: 'Suivant',
+    },
+    {
+      icon: '📁',
+      eyebrow: 'Espace pro',
+      title: <>Tout pour votre <em className="cpa-italic">comptabilité</em>.</>,
+      body: 'Bilan fiscal annuel, exports CSV, attestation fiscale imprimable, mailto comptable pré-rempli. Que vous soyez particulier ou indépendant, votre comptable adorera.',
+      cta: 'Suivant',
+    },
+    {
+      icon: '💬',
+      eyebrow: 'Conseiller dédié',
+      title: <>Une question ? <em className="cpa-italic">Écrivez-nous</em>.</>,
+      body: 'Votre conseiller répond en moyenne en 5 minutes pendant les heures ouvrées. Hotline 7j/7 pour les urgences.',
+      cta: "C'est parti !",
+    },
+  ];
+
+  const cur = slides[step];
+  const isLast = step === slides.length - 1;
+
+  const finish = () => {
+    try { localStorage.setItem('cpa_onboarded', '1'); } catch {}
+    onClose();
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 110,
+      background: 'oklch(0.10 0.01 60)',
+      display: 'flex', flexDirection: 'column',
+      animation: 'cpaFadeIn .3s',
+    }}>
+      <style>{`@keyframes cpaFadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
+
+      {/* Progression */}
+      <div style={{
+        display: 'flex', gap: 4, padding: '14px 18px',
+      }}>
+        {slides.map((_, i) => (
+          <div key={i} style={{
+            flex: 1, height: 3, borderRadius: 999,
+            background: i < step ? 'oklch(0.72 0.13 85)' : i === step ? 'oklch(0.95 0.01 80)' : 'oklch(0.30 0.02 60)',
+            transition: 'background .3s',
+          }} />
+        ))}
+      </div>
+
+      <button onClick={finish} style={{
+        position: 'absolute', top: 16, right: 16, zIndex: 2,
+        width: 36, height: 36, borderRadius: 999,
+        background: 'oklch(0.18 0.02 60)', border: '1px solid oklch(0.28 0.02 60)',
+        color: 'oklch(0.85 0.03 80)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer',
+      }}>
+        <X style={{ width: 14, height: 14 }} />
+      </button>
+
+      {/* Contenu */}
+      <div key={step} style={{
+        flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center',
+        padding: '20px 32px', color: 'oklch(0.95 0.01 80)',
+        animation: 'cpaSlideIn .4s ease-out',
+      }}>
+        <style>{`@keyframes cpaSlideIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+
+        <div style={{ fontSize: 72, lineHeight: 1, marginBottom: 24 }}>{cur.icon}</div>
+        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'oklch(0.72 0.13 85)', marginBottom: 10 }}>
+          {cur.eyebrow} · {step + 1} / {slides.length}
+        </div>
+        <h2 className="cpa-display" style={{ fontSize: 38, fontWeight: 300, lineHeight: 1.05, margin: '0 0 18px', color: 'oklch(0.95 0.01 80)' }}>
+          {cur.title}
+        </h2>
+        <p style={{
+          fontFamily: 'Fraunces, serif', fontSize: 16, fontStyle: 'italic',
+          color: 'oklch(0.85 0.03 80)', lineHeight: 1.6, margin: 0, maxWidth: 480,
+        }}>
+          {cur.body}
+        </p>
+      </div>
+
+      {/* Actions */}
+      <div style={{ padding: '20px 24px 32px', display: 'flex', gap: 10 }}>
+        {step > 0 && (
+          <button onClick={() => setStep(s => s - 1)} style={{
+            padding: '14px 20px', borderRadius: 999,
+            background: 'transparent', border: '1px solid oklch(0.30 0.02 60)',
+            color: 'oklch(0.85 0.03 80)',
+            fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 600,
+            letterSpacing: '0.08em', textTransform: 'uppercase',
+            cursor: 'pointer',
+          }}>
+            Retour
+          </button>
+        )}
+        <button onClick={() => isLast ? finish() : setStep(s => s + 1)} style={{
+          flex: 1, padding: '14px 24px', borderRadius: 999,
+          background: 'oklch(0.72 0.13 85)', color: 'oklch(0.10 0.02 60)', border: 'none',
+          fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 700,
+          letterSpacing: '0.08em', textTransform: 'uppercase',
+          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        }}>
+          {cur.cta} <ArrowRight style={{ width: 13, height: 13 }} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ═══════════ DASHBOARD PRINCIPAL ═══════════ */
 function Dashboard({ client, onLogout, onRefreshClient }) {
   const [quotes, setQuotes] = useState([]);
@@ -2929,6 +3272,9 @@ function Dashboard({ client, onLogout, onRefreshClient }) {
   const [reviewIntv, setReviewIntv] = useState(null);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    try { return localStorage.getItem('cpa_onboarded') !== '1'; } catch { return false; }
+  });
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -3090,7 +3436,7 @@ function Dashboard({ client, onLogout, onRefreshClient }) {
         {tab === 'fidelite' && <ViewFidelite client={client} loyalty={loyalty} interventions={interventions} invoices={invoices} />}
         {tab === 'demande' && <ViewDemande client={client} onSubmit={handleDemande} />}
         {tab === 'conseiller' && <ViewConseiller messages={messages} advisor={advisor} onSend={handleSendMsg} />}
-        {tab === 'profil' && <ViewProfil client={client} onSave={handleSaveProfile} onLogout={onLogout} />}
+        {tab === 'profil' && <ViewProfil client={client} onSave={handleSaveProfile} onLogout={onLogout} onReplayTour={() => { try { localStorage.removeItem('cpa_onboarded'); } catch {} setShowOnboarding(true); }} />}
       </div>
 
       {/* Bottom nav */}
@@ -3132,6 +3478,7 @@ function Dashboard({ client, onLogout, onRefreshClient }) {
       {openIntv && <InterventionDetail intervention={openIntv} onClose={() => setOpenIntv(null)} />}
       {reviewIntv && <ReviewModal intervention={reviewIntv} onClose={() => setReviewIntv(null)} onSubmit={handleReview} />}
       {notifOpen && <NotificationsDrawer notifications={notifications} onClose={() => setNotifOpen(false)} onMarkRead={handleMarkNotif} />}
+      {showOnboarding && <OnboardingTour client={client} onClose={() => setShowOnboarding(false)} />}
     </div>
   );
 }
