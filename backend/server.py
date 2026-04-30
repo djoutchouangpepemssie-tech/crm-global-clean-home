@@ -558,6 +558,8 @@ class Quote(BaseModel):
     discount: Optional[float] = 0.0
     notes: Optional[str] = None
     line_items: Optional[List[Dict[str, Any]]] = None
+    transport_fee_enabled: Optional[bool] = False
+    transport_fee_amount: Optional[float] = 0.0
     status: str = "brouillon"  # brouillon, envoyé, accepté, refusé, expiré
     sent_at: Optional[datetime] = None
     opened_at: Optional[datetime] = None
@@ -581,6 +583,8 @@ class QuoteCreate(BaseModel):
     discount: Optional[float] = 0.0
     notes: Optional[str] = None
     line_items: Optional[List[Dict[str, Any]]] = None
+    transport_fee_enabled: Optional[bool] = False
+    transport_fee_amount: Optional[float] = 0.0
     # Récurrence / planification
     status: Optional[str] = None
     frequency: Optional[str] = "unique"  # unique, quotidien, hebdomadaire, bimensuelle, mensuel, trimestriel, annuel
@@ -628,6 +632,8 @@ class QuoteUpdate(BaseModel):
     tva_rate: Optional[float] = None
     discount: Optional[float] = None
     line_items: Optional[List[Dict[str, Any]]] = None
+    transport_fee_enabled: Optional[bool] = None
+    transport_fee_amount: Optional[float] = None
     frequency: Optional[str] = None
     interventions_count: Optional[int] = None
     start_date: Optional[str] = None

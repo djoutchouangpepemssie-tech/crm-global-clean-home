@@ -379,6 +379,8 @@ def generate_quote_pdf(quote_data: dict, lead_data: dict) -> BytesIO:
     line_items = quote_data.get('line_items') or []
     tva_rate = float(quote_data.get('tva_rate') or 0)
     discount_pct = float(quote_data.get('discount') or 0)
+    transport_enabled = bool(quote_data.get('transport_fee_enabled'))
+    transport_amount = float(quote_data.get('transport_fee_amount') or 0)
 
     if line_items:
         # Table avec entête + lignes groupées
@@ -449,8 +451,11 @@ def generate_quote_pdf(quote_data: dict, lead_data: dict) -> BytesIO:
     total_brut_ht = base_ht * multiplier
     remise_amount = total_brut_ht * (discount_pct / 100)
     net_ht = total_brut_ht - remise_amount
-    tva_amount = net_ht * (tva_rate / 100)
-    ttc = net_ht + tva_amount
+    # Frais de transport HT : ajoutés après remise, avant TVA (pratique standard FR)
+    transport_ht = transport_amount if (transport_enabled and transport_amount > 0) else 0.0
+    base_tva = net_ht + transport_ht
+    tva_amount = base_tva * (tva_rate / 100)
+    ttc = base_tva + tva_amount
 
     tot_rows = []
     if multiplier > 1:
@@ -476,6 +481,24 @@ def generate_quote_pdf(quote_data: dict, lead_data: dict) -> BytesIO:
         tot_rows.append([
             Paragraph("Net HT", S('T4', fontSize=9, textColor=DARK, fontName='Helvetica-Bold')),
             Paragraph(f"{net_ht:,.2f} €", S('T4V', fontSize=9, textColor=DARK, fontName='Helvetica-Bold', alignment=TA_RIGHT)),
+        ])
+
+    # Ligne Frais de transport (selon configuration)
+    if transport_enabled:
+        if transport_amount > 0:
+            tot_rows.append([
+                Paragraph("Frais de déplacement", S('TR', fontSize=9, textColor=GRAY, fontName='Helvetica')),
+                Paragraph(f"{transport_amount:,.2f} €", S('TRV', fontSize=9, textColor=DARK, fontName='Helvetica', alignment=TA_RIGHT)),
+            ])
+        else:
+            tot_rows.append([
+                Paragraph("Frais de déplacement", S('TR', fontSize=9, textColor=GREEN, fontName='Helvetica')),
+                Paragraph("Offerts", S('TRV', fontSize=9, textColor=GREEN, fontName='Helvetica-Oblique', alignment=TA_RIGHT)),
+            ])
+    else:
+        tot_rows.append([
+            Paragraph("Frais de déplacement non inclus", S('TR', fontSize=8, textColor=GRAY, fontName='Helvetica-Oblique')),
+            Paragraph("", S('TRV', fontSize=8, textColor=GRAY)),
         ])
 
     if tva_rate > 0:

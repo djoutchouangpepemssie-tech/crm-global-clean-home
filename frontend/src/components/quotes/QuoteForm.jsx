@@ -999,6 +999,70 @@ function Step3Conditions({ data, setData, groups }) {
             <input type="number" min="0" max="100" className="qf-field qf-mono" value={data.discount || 0} onChange={e => setData(d => ({ ...d, discount: parseFloat(e.target.value) || 0 }))} />
           </div>
         </div>
+
+        {/* ═══ Frais de déplacement ═══ */}
+        <div style={{
+          marginTop: 18, padding: 14, borderRadius: 12,
+          background: 'var(--surface, #f8fafc)',
+          border: '1px solid var(--line, #e2e8f0)',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: data.transport_fee_enabled ? 12 : 0 }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>Frais de déplacement</div>
+              <div style={{ fontSize: 12, color: 'var(--ink-3, #64748b)', marginTop: 2 }}>
+                {data.transport_fee_enabled
+                  ? 'Affiché au client dans le PDF'
+                  : 'Mention « non inclus » sur le PDF'}
+              </div>
+            </div>
+            <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', gap: 8 }}>
+              <span className="qf-mono" style={{ fontSize: 11, fontWeight: 600, color: data.transport_fee_enabled ? 'var(--accent, #10b981)' : 'var(--ink-3, #64748b)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                {data.transport_fee_enabled ? 'Oui' : 'Non'}
+              </span>
+              <span style={{
+                position: 'relative',
+                width: 44, height: 24, borderRadius: 999,
+                background: data.transport_fee_enabled ? 'var(--accent, #10b981)' : 'var(--line, #cbd5e1)',
+                transition: 'background .2s',
+              }}>
+                <input
+                  type="checkbox"
+                  checked={!!data.transport_fee_enabled}
+                  onChange={e => setData(d => ({ ...d, transport_fee_enabled: e.target.checked }))}
+                  style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer', margin: 0 }}
+                />
+                <span style={{
+                  position: 'absolute', top: 2, left: data.transport_fee_enabled ? 22 : 2,
+                  width: 20, height: 20, borderRadius: 999, background: '#fff',
+                  transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                }} />
+              </span>
+            </label>
+          </div>
+
+          {data.transport_fee_enabled && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12, alignItems: 'flex-end' }}>
+              <div>
+                <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Montant HT (€)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="qf-field qf-mono"
+                  value={data.transport_fee_amount ?? 0}
+                  onChange={e => setData(d => ({ ...d, transport_fee_amount: parseFloat(e.target.value) || 0 }))}
+                  placeholder="0.00"
+                />
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--ink-3, #64748b)', lineHeight: 1.5, paddingBottom: 8 }}>
+                {(data.transport_fee_amount || 0) === 0
+                  ? <>Affiché en <strong style={{ color: 'var(--accent, #10b981)' }}>« Offerts »</strong> dans le PDF</>
+                  : <>S'ajoute au Net HT, soumis à la TVA</>}
+              </div>
+            </div>
+          )}
+        </div>
+
         <div style={{ marginTop: 16 }}>
           <label className="qf-label" style={{ display: 'block', marginBottom: 6 }}>Notes / conditions particulières</label>
           <textarea className="qf-field" rows={3} placeholder="Conditions particulières, notes au client…" value={data.notes || ''} onChange={e => setData(d => ({ ...d, notes: e.target.value }))} style={{ resize: 'vertical' }} />
@@ -1016,7 +1080,10 @@ function Step4Recap({ formData, groups, leads }) {
     ? Math.max(1, Number(formData.interventions_count) || 1) : 1;
   const totalHT = baseHT * count;
   const discount = ((formData.discount || 0) / 100) * totalHT;
-  const base = totalHT - discount;
+  const netHT = totalHT - discount;
+  const transportEnabled = !!formData.transport_fee_enabled;
+  const transportHT = transportEnabled ? Number(formData.transport_fee_amount || 0) : 0;
+  const base = netHT + transportHT;
   const tva = (parseTva(formData.tva) / 100) * base;
   const ttc = base + tva;
 
@@ -1056,8 +1123,23 @@ function Step4Recap({ formData, groups, leads }) {
             </div>
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--ink-3)', marginBottom: 4 }}>
-            <span>Total HT</span><span className="qf-mono">{fmtEur(base)}</span>
+            <span>Net HT</span><span className="qf-mono">{fmtEur(netHT)}</span>
           </div>
+          {transportEnabled ? (
+            transportHT > 0 ? (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--ink-3)', marginBottom: 4 }}>
+                <span>Frais de déplacement</span><span className="qf-mono">{fmtEur(transportHT)}</span>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--accent, #10b981)', marginBottom: 4, fontStyle: 'italic' }}>
+                <span>Frais de déplacement</span><span className="qf-mono">Offerts</span>
+              </div>
+            )
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--ink-3)', marginBottom: 4, fontStyle: 'italic', opacity: 0.8 }}>
+              <span>Frais de déplacement</span><span className="qf-mono">non inclus</span>
+            </div>
+          )}
           {parseTva(formData.tva) > 0 ? (
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--ink-3)', marginBottom: 8 }}>
               <span>TVA ({parseTva(formData.tva)}%)</span><span className="qf-mono">{fmtEur(tva)}</span>
@@ -1394,6 +1476,8 @@ export default function QuoteForm() {
         payment_delay: q.payment_delay || '30 jours',
         tva: String(q.tva_rate ?? 20),
         discount: q.discount || 0,
+        transport_fee_enabled: !!q.transport_fee_enabled,
+        transport_fee_amount: Number(q.transport_fee_amount || 0),
         notes: q.notes || '',
         frequency: q.frequency || 'unique',
         interventions_count: q.interventions_count || 1,
@@ -1438,8 +1522,11 @@ export default function QuoteForm() {
       : 1;
     const totalHT = baseHT * recurrenceMultiplier;
     const tvaRate = parseTva(formData.tva);
-    const base = totalHT * (1 - (formData.discount || 0) / 100);
-    const amount = base * (1 + tvaRate / 100);
+    const netHT = totalHT * (1 - (formData.discount || 0) / 100);
+    const transportEnabled = !!formData.transport_fee_enabled;
+    const transportHT = transportEnabled ? Number(formData.transport_fee_amount || 0) : 0;
+    const baseTva = netHT + transportHT;
+    const amount = baseTva * (1 + tvaRate / 100);
     const line_items = groups.flatMap(g => g.postes.map(p => ({
       group: g.name, label: p.label, qty: p.qty, unit: p.unit, price: p.price,
     })));
@@ -1454,6 +1541,8 @@ export default function QuoteForm() {
       payment_delay: formData.payment_delay,
       tva_rate: tvaRate,
       discount: formData.discount || 0,
+      transport_fee_enabled: transportEnabled,
+      transport_fee_amount: transportHT,
       notes: formData.notes || '',
       line_items,
       status: andSend ? 'envoyé' : 'brouillon',
