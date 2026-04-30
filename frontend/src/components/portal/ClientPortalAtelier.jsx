@@ -1261,10 +1261,50 @@ function ViewInvoices({ invoices, onOpen, onPay }) {
 }
 
 /* ═══════════ VUE INTERVENTIONS ═══════════ */
-function ViewInterventions({ interventions, onOpen, onReview }) {
+function ViewInterventions({ interventions, onOpen, onReview, onSelectTab }) {
   const upcoming = interventions.filter(i => i.status !== 'terminée')
     .sort((a, b) => (a.scheduled_date || '').localeCompare(b.scheduled_date || ''));
   const past = interventions.filter(i => i.status === 'terminée');
+
+  // ═══ Détection récurrence ═══
+  const recurrenceInfo = useMemo(() => {
+    const recurringIntvs = interventions.filter(i => i.is_recurring || (i.frequency && i.frequency !== 'unique'));
+    if (recurringIntvs.length === 0) return null;
+
+    // Choisir l'intervention récurrente la plus active (la plus récente)
+    const sample = recurringIntvs.sort((a, b) => (b.scheduled_date || '').localeCompare(a.scheduled_date || ''))[0];
+
+    // Inférer le pattern (jour de semaine + heure) depuis l'historique
+    const pastDates = recurringIntvs
+      .map(i => i.scheduled_date)
+      .filter(Boolean)
+      .map(d => new Date(d))
+      .filter(d => !isNaN(d.getTime()))
+      .sort((a, b) => b - a);
+
+    let weekday = null;
+    if (pastDates.length >= 1) weekday = pastDates[0].getDay();
+
+    const freqLabel = {
+      hebdomadaire: 'Tous les',
+      bimensuelle: 'Tous les 15 jours,',
+      mensuel: 'Une fois par mois,',
+      trimestriel: 'Une fois par trimestre,',
+    }[(sample.frequency || '').toLowerCase()] || 'Régulièrement,';
+
+    const weekdayLabel = weekday != null ? ['dimanches', 'lundis', 'mardis', 'mercredis', 'jeudis', 'vendredis', 'samedis'][weekday] : '';
+
+    return {
+      sample,
+      weekday,
+      frequency: sample.frequency || 'récurrente',
+      freqLabel,
+      weekdayLabel,
+      time: sample.scheduled_time || '',
+      service: sample.service_type || sample.title || 'prestation',
+      count: recurringIntvs.length,
+    };
+  }, [interventions]);
 
   return (
     <div className="cpa-fade" style={{ padding: '20px 20px 40px' }}>
@@ -1272,6 +1312,48 @@ function ViewInterventions({ interventions, onOpen, onReview }) {
       <h1 className="cpa-display" style={{ fontSize: 34, fontWeight: 300, margin: '8px 0 18px', lineHeight: 1 }}>
         Les <em className="cpa-italic">interventions</em>
       </h1>
+
+      {/* ═══════════ Rythme récurrent ═══════════ */}
+      {recurrenceInfo && (
+        <div className="cpa-fade" style={{
+          marginBottom: 18, padding: '20px 22px', borderRadius: 18,
+          background: 'linear-gradient(165deg, oklch(0.18 0.04 165) 0%, oklch(0.22 0.05 175) 100%)',
+          color: 'oklch(0.95 0.01 80)',
+          boxShadow: '0 12px 32px oklch(0.18 0.04 165 / 0.22)',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'oklch(0.72 0.04 80)' }}>
+                Votre rythme
+              </div>
+              <div className="cpa-display" style={{ fontSize: 22, fontWeight: 500, lineHeight: 1.15, marginTop: 6, color: 'oklch(0.95 0.01 80)' }}>
+                {recurrenceInfo.freqLabel} <em style={{ color: 'oklch(0.72 0.13 85)', fontStyle: 'italic' }}>{recurrenceInfo.weekdayLabel}</em>
+                {recurrenceInfo.time && <span style={{ fontSize: 16, fontStyle: 'italic', color: 'oklch(0.85 0.03 80)' }}> · {recurrenceInfo.time}</span>}
+              </div>
+              <div style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 13, color: 'oklch(0.78 0.04 80)', marginTop: 4 }}>
+                {recurrenceInfo.service}
+              </div>
+            </div>
+            <RefreshCw style={{ width: 22, height: 22, color: 'oklch(0.72 0.13 85)' }} />
+          </div>
+
+          <RecurrenceCalendar interventions={upcoming} highlightWeekday={recurrenceInfo.weekday} />
+
+          <button
+            onClick={() => onSelectTab && onSelectTab('conseiller')}
+            style={{
+              marginTop: 14, width: '100%', padding: '10px 14px', borderRadius: 999,
+              background: 'transparent', border: '1px solid oklch(0.72 0.13 85 / 0.5)',
+              color: 'oklch(0.72 0.13 85)',
+              fontFamily: 'JetBrains Mono, monospace', fontSize: 10, fontWeight: 600,
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}
+          >
+            <Edit3 style={{ width: 12, height: 12 }} /> Modifier ma récurrence
+          </button>
+        </div>
+      )}
 
       {upcoming.length > 0 && (
         <div style={{ marginBottom: 22 }}>
@@ -1282,15 +1364,19 @@ function ViewInterventions({ interventions, onOpen, onReview }) {
                 padding: '14px 18px',
                 borderBottom: idx < upcoming.length - 1 ? '1px solid var(--line-2)' : 0,
                 cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 12,
               }}>
-                <div className="cpa-mono" style={{ fontSize: 10, color: 'var(--emerald)', letterSpacing: '0.08em', fontWeight: 600, textTransform: 'uppercase' }}>
-                  {fmtDate(i.scheduled_date)} · {i.scheduled_time || ''}
-                </div>
-                <div className="cpa-display" style={{ fontSize: 16, fontWeight: 500, margin: '4px 0' }}>
-                  {i.title || i.service_type}
-                </div>
-                <div style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 12, color: 'var(--ink-3)' }}>
-                  {i.address || ''}{i.agent_name ? ` · ${i.agent_name}` : ''}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="cpa-mono" style={{ fontSize: 10, color: 'var(--emerald)', letterSpacing: '0.08em', fontWeight: 600, textTransform: 'uppercase' }}>
+                    {fmtDate(i.scheduled_date)} · {i.scheduled_time || ''}
+                  </div>
+                  <div className="cpa-display" style={{ fontSize: 16, fontWeight: 500, margin: '4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {i.title || i.service_type}
+                    {i.is_recurring && <RefreshCw style={{ width: 12, height: 12, color: 'var(--emerald)' }} />}
+                  </div>
+                  <div style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 12, color: 'var(--ink-3)' }}>
+                    {i.address || ''}{i.agent_name ? ` · ${i.agent_name}` : ''}
+                  </div>
                 </div>
               </div>
             ))}
@@ -1343,6 +1429,126 @@ function ViewInterventions({ interventions, onOpen, onReview }) {
           Aucune intervention planifiée.
         </div>
       )}
+    </div>
+  );
+}
+
+/* ═══════════ Mini-calendrier 6 semaines (récurrence) ═══════════ */
+function RecurrenceCalendar({ interventions, highlightWeekday }) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  // 6 semaines glissantes (42 jours) à partir du début de la semaine courante
+  const startOfWeek = new Date(today);
+  const dow = (today.getDay() + 6) % 7; // Lundi = 0
+  startOfWeek.setDate(today.getDate() - dow);
+
+  const days = [];
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(startOfWeek);
+    d.setDate(startOfWeek.getDate() + i);
+    days.push(d);
+  }
+
+  // Map des jours avec intervention
+  const intvByDate = new Map();
+  interventions.forEach(intv => {
+    const iso = (intv.scheduled_date || '').slice(0, 10);
+    if (!iso) return;
+    if (!intvByDate.has(iso)) intvByDate.set(iso, []);
+    intvByDate.get(iso).push(intv);
+  });
+
+  const dayLabels = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+  const monthLabel = today.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.12em', color: 'oklch(0.72 0.04 80)' }}>
+          {monthLabel}
+        </div>
+        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: 'oklch(0.72 0.04 80)' }}>
+          6 prochaines semaines
+        </div>
+      </div>
+
+      {/* Header jours */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 4 }}>
+        {dayLabels.map((d, i) => (
+          <div key={i} style={{
+            textAlign: 'center', fontFamily: 'JetBrains Mono, monospace',
+            fontSize: 9, color: 'oklch(0.62 0.03 80)', fontWeight: 600,
+          }}>{d}</div>
+        ))}
+      </div>
+
+      {/* Grille jours */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+        {days.map((d, i) => {
+          const iso = d.toISOString().slice(0, 10);
+          const intvs = intvByDate.get(iso) || [];
+          const isToday = d.getTime() === today.getTime();
+          const isPast = d < today;
+          const isWeekdayMatch = highlightWeekday != null && d.getDay() === highlightWeekday && !isPast && intvs.length === 0;
+          const hasIntv = intvs.length > 0;
+          const hasRecurrent = intvs.some(i => i.is_recurring);
+
+          return (
+            <div key={i} style={{
+              aspectRatio: '1',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              borderRadius: 8,
+              background: isToday
+                ? 'oklch(0.72 0.13 85 / 0.22)'
+                : hasIntv
+                  ? (hasRecurrent ? 'oklch(0.52 0.13 165 / 0.32)' : 'oklch(0.72 0.13 85 / 0.18)')
+                  : isWeekdayMatch
+                    ? 'oklch(0.95 0.01 80 / 0.06)'
+                    : 'transparent',
+              border: isToday
+                ? '1px solid oklch(0.72 0.13 85)'
+                : hasRecurrent
+                  ? '1px solid oklch(0.52 0.13 165 / 0.6)'
+                  : '1px solid transparent',
+              opacity: isPast ? 0.32 : 1,
+              position: 'relative',
+            }}>
+              <div style={{
+                fontFamily: 'JetBrains Mono, monospace', fontSize: 11,
+                color: isToday ? 'oklch(0.86 0.15 85)' : hasIntv ? 'oklch(0.95 0.01 80)' : 'oklch(0.85 0.03 80)',
+                fontWeight: isToday || hasIntv ? 700 : 400,
+              }}>
+                {d.getDate()}
+              </div>
+              {hasIntv && (
+                <div style={{
+                  position: 'absolute', bottom: 3, left: '50%', transform: 'translateX(-50%)',
+                  display: 'flex', gap: 2,
+                }}>
+                  {intvs.slice(0, 3).map((_, j) => (
+                    <span key={j} style={{
+                      width: 3, height: 3, borderRadius: 999,
+                      background: hasRecurrent ? 'oklch(0.78 0.14 165)' : 'oklch(0.86 0.15 85)',
+                    }} />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Légende */}
+      <div style={{ display: 'flex', gap: 14, marginTop: 10, fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: 'oklch(0.72 0.04 80)' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 8, height: 8, borderRadius: 999, background: 'oklch(0.78 0.14 165)' }} /> Récurrent
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 8, height: 8, borderRadius: 999, background: 'oklch(0.86 0.15 85)' }} /> Ponctuel
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 8, height: 8, borderRadius: 2, border: '1px solid oklch(0.72 0.13 85)' }} /> Aujourd'hui
+        </span>
+      </div>
     </div>
   );
 }
@@ -2607,7 +2813,7 @@ function Dashboard({ client, onLogout, onRefreshClient }) {
         )}
         {tab === 'quotes' && <ViewQuotes quotes={quotes} onOpen={setOpenQuote} />}
         {tab === 'invoices' && <ViewInvoices invoices={invoices} onOpen={() => {}} onPay={handlePay} />}
-        {tab === 'interventions' && <ViewInterventions interventions={interventions} onOpen={setOpenIntv} onReview={setReviewIntv} />}
+        {tab === 'interventions' && <ViewInterventions interventions={interventions} onOpen={setOpenIntv} onReview={setReviewIntv} onSelectTab={setTab} />}
         {tab === 'documents' && <ViewDocuments quotes={quotes} invoices={invoices} />}
         {tab === 'fidelite' && <ViewFidelite client={client} loyalty={loyalty} interventions={interventions} invoices={invoices} />}
         {tab === 'demande' && <ViewDemande client={client} onSubmit={handleDemande} />}
