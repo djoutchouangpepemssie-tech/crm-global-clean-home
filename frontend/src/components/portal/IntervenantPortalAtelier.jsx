@@ -10,6 +10,7 @@ import {
   Calendar, Clock, MapPin, LogOut, Play, CheckCircle, Phone, MessageSquare,
   ChevronRight, ArrowRight, RefreshCw, X, Check, Send, FileText, Upload,
   Navigation, Shield, Mail, AlertCircle, Camera, Home, Star, Sparkles, Image as ImageIcon,
+  Car, Square,
 } from 'lucide-react';
 import BACKEND_URL from '../../config.js';
 
@@ -355,7 +356,7 @@ function MapTrail({ distance = '12 m' }) {
 }
 
 /* ═════════════════ DASHBOARD ACCUEIL ═════════════════ */
-function ViewAccueil({ agent, interventions, onStart, onOpenMission, onSelectTab }) {
+function ViewAccueil({ agent, interventions, onStart, onStartRoute, onStopRoute, onOpenMission, onSelectTab, gps }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayStr = today.toISOString().slice(0, 10);
@@ -365,8 +366,9 @@ function ViewAccueil({ agent, interventions, onStart, onOpenMission, onSelectTab
     return d === todayStr && i.status !== 'terminée';
   }).sort((a, b) => (a.scheduled_time || '').localeCompare(b.scheduled_time || '')), [interventions, todayStr]);
 
+  const onRoute = interventions.find(i => i.status === 'en_route');
   const active = interventions.find(i => i.status === 'en_cours');
-  const next = todayMissions.find(i => i !== active);
+  const next = todayMissions.find(i => i !== active && i !== onRoute);
 
   const totalHours = useMemo(() => {
     return todayMissions.reduce((s, i) => s + (Number(i.duration_hours) || 2), 0);
@@ -388,11 +390,23 @@ function ViewAccueil({ agent, interventions, onStart, onOpenMission, onSelectTab
         </div>
       </div>
 
-      {/* MISSION EN COURS (dark card XXL) */}
-      {active ? (
+      {/* MISSION EN COURS / EN ROUTE / À VENIR */}
+      {onRoute ? (
+        <OnRouteCard
+          intervention={onRoute}
+          gps={gps}
+          onStartMission={() => onStart(onRoute)}
+          onStopRoute={() => onStopRoute(onRoute)}
+        />
+      ) : active ? (
         <ActiveMissionCard intervention={active} onCheckout={() => onOpenMission(active, true)} onOpen={() => onOpenMission(active, false)} />
       ) : next ? (
-        <UpcomingHeroCard intervention={next} onStart={() => onStart(next)} onOpen={() => onOpenMission(next, false)} />
+        <UpcomingHeroCard
+          intervention={next}
+          onStart={() => onStart(next)}
+          onStartRoute={onStartRoute ? () => onStartRoute(next) : null}
+          onOpen={() => onOpenMission(next, false)}
+        />
       ) : (
         <div className="ia-card" style={{ textAlign: 'center', padding: '32px 20px' }}>
           <div style={{ fontSize: 30, marginBottom: 8 }}>🎯</div>
@@ -532,8 +546,89 @@ function ActiveMissionCard({ intervention, onCheckout, onOpen }) {
   );
 }
 
+/* ─ Mission EN ROUTE (live tracking GPS actif) ─ */
+function OnRouteCard({ intervention, onStartMission, onStopRoute, gps }) {
+  const name = intervention.lead_name || intervention.client_name || intervention.title || 'Client';
+  const startedAt = intervention.agent_route?.started_at;
+  const [elapsed, setElapsed] = useState('');
+  useEffect(() => {
+    if (!startedAt) return;
+    const tick = () => {
+      const ms = Date.now() - new Date(startedAt).getTime();
+      const min = Math.max(0, Math.round(ms / 60000));
+      setElapsed(min < 1 ? 'à l\'instant' : `${min} min`);
+    };
+    tick();
+    const t = setInterval(tick, 30000);
+    return () => clearInterval(t);
+  }, [startedAt]);
+
+  return (
+    <div className="ia-card ia-fade" style={{
+      padding: 22,
+      background: 'linear-gradient(165deg, oklch(0.96 0.02 220) 0%, oklch(0.97 0.03 200) 100%)',
+      border: '1px solid oklch(0.55 0.08 220)',
+      position: 'relative', overflow: 'hidden',
+    }}>
+      <div style={{
+        position: 'absolute', top: 14, right: 14,
+        width: 12, height: 12, borderRadius: 999,
+        background: 'oklch(0.55 0.08 220)',
+        animation: 'iapulse 1.6s ease-in-out infinite',
+      }} />
+      <style>{`@keyframes iapulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.55;transform:scale(1.4)} }`}</style>
+
+      <div className="ia-label" style={{ color: 'oklch(0.42 0.10 220)', marginBottom: 6 }}>En route · live</div>
+      <h2 className="ia-display" style={{ fontSize: 24, fontWeight: 500, lineHeight: 1.1, margin: '0 0 4px', color: 'var(--ink)' }}>
+        Vers <em className="ia-italic" style={{ color: 'oklch(0.42 0.10 220)' }}>{name}</em>
+      </h2>
+      <div style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 13, color: 'var(--ink-3)', marginBottom: 14 }}>
+        {intervention.address || ''}
+      </div>
+
+      <div style={{
+        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14,
+      }}>
+        <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.65)', borderRadius: 12, border: '1px solid oklch(0.85 0.04 220)' }}>
+          <div className="ia-label">En route depuis</div>
+          <div className="ia-display" style={{ fontSize: 22, fontWeight: 500, color: 'oklch(0.42 0.10 220)', lineHeight: 1, marginTop: 4 }}>
+            {elapsed || '—'}
+          </div>
+        </div>
+        <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.65)', borderRadius: 12, border: '1px solid oklch(0.85 0.04 220)' }}>
+          <div className="ia-label">Position GPS</div>
+          <div className="ia-mono" style={{ fontSize: 11, color: 'var(--ink)', marginTop: 6, lineHeight: 1.4 }}>
+            {gps?.lat != null && gps?.lng != null
+              ? `${gps.lat.toFixed(4)}, ${gps.lng.toFixed(4)}`
+              : 'Acquisition…'}
+            {gps?.accuracy != null && (
+              <div style={{ fontSize: 9, color: 'var(--ink-3)', marginTop: 2 }}>
+                ±{Math.round(gps.accuracy)} m
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <button onClick={onStartMission} className="ia-cta-dark">
+        <Check style={{ width: 13, height: 13 }} /> Je suis arrivé
+      </button>
+      <button onClick={onStopRoute}
+        style={{
+          width: '100%', marginTop: 8, padding: 12, borderRadius: 999,
+          background: 'transparent', border: '1px solid var(--line)',
+          color: 'var(--ink-2)', fontFamily: 'JetBrains Mono, monospace',
+          fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase',
+          cursor: 'pointer',
+        }}>
+        Annuler le tracking
+      </button>
+    </div>
+  );
+}
+
 /* ─ Mission PROCHAINE (claire avec start) ─ */
-function UpcomingHeroCard({ intervention, onStart, onOpen }) {
+function UpcomingHeroCard({ intervention, onStart, onStartRoute, onOpen }) {
   const name = intervention.lead_name || intervention.client_name || intervention.title || 'Mission';
   return (
     <div className="ia-card ia-fade" style={{ padding: 22 }}>
@@ -574,6 +669,19 @@ function UpcomingHeroCard({ intervention, onStart, onOpen }) {
           )}
         </div>
       </div>
+
+      {onStartRoute && (
+        <button onClick={onStartRoute}
+          style={{
+            width: '100%', marginBottom: 8, padding: '14px 18px', borderRadius: 999,
+            background: 'oklch(0.55 0.08 220)', color: 'white', border: 'none',
+            fontFamily: 'JetBrains Mono, monospace', fontSize: 12, fontWeight: 600,
+            letterSpacing: '0.06em', textTransform: 'uppercase',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}>
+          <Car style={{ width: 14, height: 14 }} /> Je pars · activer le tracking
+        </button>
+      )}
 
       <button onClick={onStart} className="ia-cta-dark">
         Démarrer la mission <ArrowRight style={{ width: 13, height: 13 }} />
@@ -1063,10 +1171,104 @@ function Dashboard({ agent, onLogout }) {
 
   const handleStart = async (mission) => {
     try {
-      await iAxios.post(`${API}/interventions/${mission.intervention_id || mission.id}/checkin`, {});
+      const pos = await new Promise((resolve) => {
+        if (!navigator.geolocation) return resolve(null);
+        navigator.geolocation.getCurrentPosition(
+          (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
+          () => resolve(null),
+          { timeout: 4000 }
+        );
+      });
+      await iAxios.post(`${API}/interventions/${mission.intervention_id || mission.id}/checkin`, pos || {});
       toast.success('✅ Arrivée enregistrée');
       fetchData();
     } catch { toast.error('Échec check-in'); }
+  };
+
+  // ═══ Live tracking GPS — push position toutes les 30s pendant que l'agent est en route ═══
+  const [gps, setGps] = useState({ lat: null, lng: null, accuracy: null });
+  const gpsRef = useRef({ lat: null, lng: null, accuracy: null });
+  const watchIdRef = useRef(null);
+  const pushTimerRef = useRef(null);
+  const onRouteId = useMemo(() => {
+    const m = interventions.find(i => i.status === 'en_route');
+    return m ? (m.intervention_id || m.id) : null;
+  }, [interventions]);
+
+  useEffect(() => {
+    if (!onRouteId) {
+      if (watchIdRef.current != null) navigator.geolocation?.clearWatch?.(watchIdRef.current);
+      if (pushTimerRef.current) clearInterval(pushTimerRef.current);
+      watchIdRef.current = null;
+      pushTimerRef.current = null;
+      return;
+    }
+    if (!navigator.geolocation) {
+      toast.error('GPS indisponible sur cet appareil');
+      return;
+    }
+    let lastSent = 0;
+    const sendIfFresh = (lat, lng, accuracy) => {
+      const now = Date.now();
+      if (now - lastSent < 25000) return;
+      lastSent = now;
+      iAxios.post(`${API}/interventions/${onRouteId}/location`, { lat, lng, accuracy }).catch(() => {});
+    };
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (p) => {
+        const { latitude: lat, longitude: lng, accuracy } = p.coords;
+        gpsRef.current = { lat, lng, accuracy };
+        setGps({ lat, lng, accuracy });
+        sendIfFresh(lat, lng, accuracy);
+      },
+      (err) => { console.warn('GPS error', err); },
+      { enableHighAccuracy: true, maximumAge: 15000, timeout: 25000 }
+    );
+
+    pushTimerRef.current = setInterval(() => {
+      const cur = gpsRef.current;
+      if (cur.lat != null) {
+        lastSent = 0;
+        sendIfFresh(cur.lat, cur.lng, cur.accuracy);
+      }
+    }, 30000);
+
+    return () => {
+      if (watchIdRef.current != null) navigator.geolocation?.clearWatch?.(watchIdRef.current);
+      if (pushTimerRef.current) clearInterval(pushTimerRef.current);
+    };
+  }, [onRouteId]);
+
+  const handleStartRoute = async (mission) => {
+    if (!navigator.geolocation) {
+      toast.error('GPS indisponible sur cet appareil');
+      return;
+    }
+    try {
+      const pos = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy }),
+          (err) => reject(err),
+          { enableHighAccuracy: true, timeout: 10000 }
+        );
+      });
+      setGps(pos);
+      await iAxios.post(`${API}/interventions/${mission.intervention_id || mission.id}/start-route`, pos);
+      toast.success('🚗 Tracking actif · le client suit votre progression');
+      fetchData();
+    } catch (err) {
+      console.warn(err);
+      toast.error('Impossible d\'activer le GPS — autorisez la géolocalisation');
+    }
+  };
+
+  const handleStopRoute = async (mission) => {
+    try {
+      await iAxios.post(`${API}/interventions/${mission.intervention_id || mission.id}/stop-route`, {});
+      toast.success('Tracking GPS arrêté');
+      fetchData();
+    } catch { toast.error('Erreur'); }
   };
 
   const handleComplete = async (checked, notes, rating) => {
@@ -1123,7 +1325,7 @@ function Dashboard({ agent, onLogout }) {
     <div className="ia-root">
       <style>{tokenStyle}</style>
       <div className="ia-shell">
-        {tab === 'accueil' && <ViewAccueil agent={agent} interventions={interventions} onStart={handleStart} onOpenMission={openMission} onSelectTab={setTab} />}
+        {tab === 'accueil' && <ViewAccueil agent={agent} interventions={interventions} onStart={handleStart} onStartRoute={handleStartRoute} onStopRoute={handleStopRoute} onOpenMission={openMission} onSelectTab={setTab} gps={gps} />}
         {tab === 'planning' && <ViewPlanning interventions={interventions} onOpen={openMission} />}
         {tab === 'messages' && <ViewMessages messages={messages} onSend={handleSend} onRefresh={fetchData} />}
         {tab === 'profil' && <ViewProfil agent={agent} onLogout={onLogout} />}

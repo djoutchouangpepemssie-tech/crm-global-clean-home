@@ -221,6 +221,8 @@ async def check_in(intervention_id: str, request: Request):
                 "lat": body.get("lat"),
                 "lng": body.get("lng"),
             },
+            "agent_route.active": False,
+            "agent_route.stopped_at": now.isoformat(),
             "updated_at": now.isoformat(),
         }}
     )
@@ -623,3 +625,106 @@ async def send_admin_message(agent_id: str, request: Request):
         logger.warning(f"Admin message email failed: {e}")
 
     return {"success": True, "message_id": msg["message_id"]}
+
+
+# ═══════════════════════════════════════════════════════════════════
+# LIVE TRACKING GPS — Intervenant en route vers le client
+# ═══════════════════════════════════════════════════════════════════
+
+@intervenant_router.post("/interventions/{intervention_id}/start-route")
+async def start_route(intervention_id: str, request: Request):
+    """L'intervenant démarre sa route vers le client : statut → en_route + tracking GPS actif."""
+    agent, agent_id = await _get_agent(request)
+    body = await request.json()
+    lat = body.get("lat")
+    lng = body.get("lng")
+
+    now = datetime.now(timezone.utc).isoformat()
+    await _db.interventions.update_one(
+        {"intervention_id": intervention_id},
+        {"$set": {
+            "status": "en_route",
+            "agent_route": {
+                "agent_id": agent_id,
+                "agent_name": agent.get("name", ""),
+                "agent_phone": agent.get("phone", ""),
+                "started_at": now,
+                "updated_at": now,
+                "lat": lat,
+                "lng": lng,
+                "active": True,
+            },
+            "updated_at": now,
+        }}
+    )
+
+    # Notifier le client (email)
+    try:
+        intv = await _db.interventions.find_one({"intervention_id": intervention_id}, {"_id": 0})
+        if intv:
+            lead = await _db.leads.find_one({"lead_id": intv.get("lead_id")}, {"_id": 0}) if intv.get("lead_id") else None
+            if lead and lead.get("email"):
+                from gmail_service import _get_any_active_token, _send_gmail_message
+                token, _ = await _get_any_active_token()
+                if token:
+                    html = f"""<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f1f5f9;padding:20px;">
+<div style="max-width:500px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;">
+  <div style="background:linear-gradient(135deg,#0ea5e9,#0284c7);padding:24px;text-align:center;">
+    <div style="font-size:48px;">🚗</div>
+    <h2 style="color:white;margin:8px 0 0;">Votre intervenant est en route</h2>
+  </div>
+  <div style="padding:24px;">
+    <p style="color:#1e293b;font-size:15px;">Bonjour <strong>{(lead.get("name") or "").split()[0]}</strong>,</p>
+    <p style="color:#64748b;font-size:14px;line-height:1.8;">
+      <strong style="color:#0ea5e9;">{agent.get("name","")}</strong> vient de partir pour votre prestation.
+      Suivez sa progression en temps réel depuis votre portail.
+    </p>
+    <a href="https://crm.globalcleanhome.com/portail" style="display:inline-block;background:linear-gradient(135deg,#0ea5e9,#0284c7);color:white;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:700;font-size:13px;margin-top:8px;">
+      📍 Suivre sur le portail
+    </a>
+  </div>
+</div></body></html>"""
+                    await _send_gmail_message(token, lead["email"], f"🚗 {agent.get('name','')} est en route — Global Clean Home", html)
+    except Exception as e:
+        logger.warning(f"start-route notif failed: {e}")
+
+    return {"success": True, "started_at": now}
+
+
+@intervenant_router.post("/interventions/{intervention_id}/location")
+async def push_location(intervention_id: str, request: Request):
+    """Push position GPS toutes les 30s pendant que l'intervenant est en route."""
+    agent, agent_id = await _get_agent(request)
+    body = await request.json()
+    lat = body.get("lat")
+    lng = body.get("lng")
+    accuracy = body.get("accuracy")
+    if lat is None or lng is None:
+        raise HTTPException(status_code=400, detail="lat/lng requis")
+
+    now = datetime.now(timezone.utc).isoformat()
+    res = await _db.interventions.update_one(
+        {"intervention_id": intervention_id, "agent_route.active": True},
+        {"$set": {
+            "agent_route.lat": lat,
+            "agent_route.lng": lng,
+            "agent_route.accuracy": accuracy,
+            "agent_route.updated_at": now,
+        }}
+    )
+    return {"success": True, "updated": res.modified_count > 0, "updated_at": now}
+
+
+@intervenant_router.post("/interventions/{intervention_id}/stop-route")
+async def stop_route(intervention_id: str, request: Request):
+    """Arrête le tracking GPS (l'intervenant est arrivé / a annulé sa route)."""
+    await _get_agent(request)
+    now = datetime.now(timezone.utc).isoformat()
+    await _db.interventions.update_one(
+        {"intervention_id": intervention_id},
+        {"$set": {
+            "agent_route.active": False,
+            "agent_route.stopped_at": now,
+        }}
+    )
+    return {"success": True, "stopped_at": now}

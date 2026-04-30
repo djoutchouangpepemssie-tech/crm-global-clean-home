@@ -1877,19 +1877,191 @@ function ViewProfil({ client, onSave, onLogout }) {
   );
 }
 
+/* ═══════════ LIVE TRACKING PANEL — agent en route, vu côté client ═══════════ */
+function LiveTrackingPanel({ interventionId }) {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(false);
+  const [destCoords, setDestCoords] = useState(null);
+
+  // Polling toutes les 15s
+  useEffect(() => {
+    if (!interventionId) return;
+    let cancelled = false;
+    const fetchLoc = async () => {
+      try {
+        const r = await pAxios.get(`${API_URL}/interventions/${interventionId}/agent-location`);
+        if (!cancelled) { setData(r.data); setError(false); }
+      } catch {
+        if (!cancelled) setError(true);
+      }
+    };
+    fetchLoc();
+    const t = setInterval(fetchLoc, 15000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [interventionId]);
+
+  // Géocoder l'adresse client (Nominatim, mémoïsé localStorage)
+  useEffect(() => {
+    const addr = data?.destination?.address;
+    if (!addr) return;
+    if (data?.destination?.lat != null && data?.destination?.lng != null) {
+      setDestCoords({ lat: data.destination.lat, lng: data.destination.lng });
+      return;
+    }
+    const cacheKey = `geo:${addr}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      try { setDestCoords(JSON.parse(cached)); return; } catch {}
+    }
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&limit=1`)
+      .then(r => r.json())
+      .then(arr => {
+        if (Array.isArray(arr) && arr[0]) {
+          const c = { lat: parseFloat(arr[0].lat), lng: parseFloat(arr[0].lon) };
+          setDestCoords(c);
+          try { localStorage.setItem(cacheKey, JSON.stringify(c)); } catch {}
+        }
+      })
+      .catch(() => {});
+  }, [data?.destination?.address, data?.destination?.lat, data?.destination?.lng]);
+
+  if (error || !data || !data.active) return null;
+  const { agent } = data;
+  if (!agent || agent.lat == null || agent.lng == null) return null;
+
+  // Distance haversine si on a la destination
+  let distanceKm = null, etaMin = null;
+  if (destCoords) {
+    const R = 6371;
+    const toRad = (d) => d * Math.PI / 180;
+    const dLat = toRad(destCoords.lat - agent.lat);
+    const dLng = toRad(destCoords.lng - agent.lng);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(agent.lat)) * Math.cos(toRad(destCoords.lat)) * Math.sin(dLng / 2) ** 2;
+    distanceKm = 2 * R * Math.asin(Math.sqrt(a));
+    etaMin = Math.max(1, Math.round((distanceKm / 28) * 60));  // 28 km/h moyenne urbaine
+  }
+
+  // Durée depuis le départ
+  let elapsedLabel = '';
+  if (agent.started_at) {
+    const min = Math.max(0, Math.round((Date.now() - new Date(agent.started_at).getTime()) / 60000));
+    elapsedLabel = min < 1 ? 'à l\'instant' : `${min} min`;
+  }
+
+  // OSM iframe centré sur la position de l'agent
+  const span = 0.012;
+  const bbox = `${agent.lng - span},${agent.lat - span * 0.7},${agent.lng + span},${agent.lat + span * 0.7}`;
+  const osmSrc = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${agent.lat},${agent.lng}`;
+
+  return (
+    <div className="cpa-fade" style={{
+      marginBottom: 18, borderRadius: 18, overflow: 'hidden',
+      background: 'linear-gradient(165deg, oklch(0.95 0.04 220) 0%, oklch(0.97 0.02 200) 100%)',
+      border: '1px solid oklch(0.55 0.08 220)',
+      boxShadow: '0 8px 24px oklch(0.55 0.08 220 / 0.15)',
+    }}>
+      {/* Header live */}
+      <div style={{ padding: '14px 18px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{
+            display: 'inline-block', width: 8, height: 8, borderRadius: 999,
+            background: 'oklch(0.55 0.08 220)',
+            animation: 'cpalive 1.6s ease-in-out infinite',
+          }} />
+          <div className="cpa-label" style={{ color: 'oklch(0.42 0.10 220)' }}>En route · live</div>
+        </div>
+        <div className="cpa-mono" style={{ fontSize: 10, color: 'oklch(0.42 0.10 220)' }}>
+          MAJ il y a {agent.updated_at ? Math.max(0, Math.round((Date.now() - new Date(agent.updated_at).getTime()) / 1000)) : 0}s
+        </div>
+      </div>
+      <style>{`@keyframes cpalive { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.6)} }`}</style>
+
+      {/* Carte */}
+      <div style={{ position: 'relative', height: 200, background: 'oklch(0.92 0.01 220)' }}>
+        <iframe
+          title="Position intervenant"
+          src={osmSrc}
+          style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+          loading="lazy"
+        />
+      </div>
+
+      {/* Infos agent + ETA */}
+      <div style={{ padding: '14px 18px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12 }}>
+          <div>
+            <div className="cpa-label">Intervenant en chemin</div>
+            <div className="cpa-display" style={{ fontSize: 22, fontWeight: 500, color: 'var(--ink)', lineHeight: 1, marginTop: 4 }}>
+              {agent.name || 'Votre intervenant'}
+            </div>
+            {elapsedLabel && (
+              <div style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 12, color: 'var(--ink-3)', marginTop: 4 }}>
+                Parti il y a {elapsedLabel}
+              </div>
+            )}
+          </div>
+          {etaMin != null && (
+            <div style={{ textAlign: 'right' }}>
+              <div className="cpa-display" style={{ fontSize: 28, fontWeight: 500, color: 'oklch(0.42 0.10 220)', lineHeight: 1 }}>
+                ~{etaMin}<span style={{ fontSize: 14, fontStyle: 'italic', color: 'var(--ink-3)' }}> min</span>
+              </div>
+              <div className="cpa-mono" style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 2 }}>
+                {distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m` : `${distanceKm.toFixed(1)} km`}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          {agent.phone && (
+            <a href={`tel:${agent.phone}`} style={{
+              flex: 1, padding: '12px 14px', borderRadius: 12,
+              background: 'oklch(0.42 0.10 220)', color: 'white',
+              border: 'none', textDecoration: 'none',
+              fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 600,
+              letterSpacing: '0.06em', textTransform: 'uppercase',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}>
+              <Phone style={{ width: 13, height: 13 }} /> Appeler
+            </a>
+          )}
+          <a
+            href={`https://www.openstreetmap.org/?mlat=${agent.lat}&mlon=${agent.lng}#map=15/${agent.lat}/${agent.lng}`}
+            target="_blank" rel="noopener noreferrer"
+            style={{
+              flex: 1, padding: '12px 14px', borderRadius: 12,
+              background: 'transparent', color: 'oklch(0.42 0.10 220)',
+              border: '1px solid oklch(0.55 0.08 220)', textDecoration: 'none',
+              fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 600,
+              letterSpacing: '0.06em', textTransform: 'uppercase',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}>
+            <Navigation style={{ width: 13, height: 13 }} /> Voir en grand
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ═══════════ INTERVENTION DETAIL ═══════════ */
 function InterventionDetail({ intervention, onClose }) {
   const isUpcoming = intervention.status !== 'terminée';
+  const isOnRoute = intervention.status === 'en_route';
   return (
     <BottomSheet onClose={onClose}>
       <div className="cpa-label" style={{ marginBottom: 4 }}>
-        {isUpcoming ? 'Intervention planifiée' : 'Intervention terminée'}
+        {isOnRoute ? 'Intervenant en route' : isUpcoming ? 'Intervention planifiée' : 'Intervention terminée'}
       </div>
       <h2 className="cpa-display" style={{ fontSize: 26, fontWeight: 300, lineHeight: 1.1, margin: '0 0 18px' }}>
         Bienvenue chez <em className="cpa-italic">{intervention.lead_name || intervention.address?.split(',')[0] || 'vous'}</em>
       </h2>
 
-      {isUpcoming && <MapTrail distance="à venir" />}
+      {isOnRoute && (
+        <LiveTrackingPanel interventionId={intervention.intervention_id || intervention.id} />
+      )}
+
+      {isUpcoming && !isOnRoute && <MapTrail distance="à venir" />}
 
       <div className="cpa-card" style={{ marginTop: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>

@@ -479,3 +479,49 @@ async def sign_quote_portal(quote_id: str, request: Request):
         }}
     )
     return {"success": True, "message": "Devis signe avec succes"}
+
+
+# ═══════════════════════════════════════════════════════════════════
+# LIVE TRACKING — Position de l'intervenant en route (côté client)
+# ═══════════════════════════════════════════════════════════════════
+
+@portal_router.get("/interventions/{intervention_id}/agent-location")
+async def get_agent_location(intervention_id: str, request: Request):
+    """Retourne la position courante de l'intervenant si en route, sinon 404."""
+    session = await _get_portal_session(request)
+    intv = await _db.interventions.find_one(
+        {"intervention_id": intervention_id, "lead_id": session["lead_id"]},
+        {"_id": 0, "agent_route": 1, "address": 1, "address_lat": 1, "address_lng": 1, "scheduled_date": 1, "scheduled_time": 1, "status": 1}
+    )
+    if not intv:
+        raise HTTPException(status_code=404, detail="Intervention introuvable")
+
+    route = intv.get("agent_route") or {}
+    if not route.get("active") or route.get("lat") is None or route.get("lng") is None:
+        return {
+            "active": False,
+            "status": intv.get("status"),
+        }
+
+    return {
+        "active": True,
+        "status": intv.get("status"),
+        "agent": {
+            "name": route.get("agent_name", ""),
+            "phone": route.get("agent_phone", ""),
+            "lat": route.get("lat"),
+            "lng": route.get("lng"),
+            "accuracy": route.get("accuracy"),
+            "started_at": route.get("started_at"),
+            "updated_at": route.get("updated_at"),
+        },
+        "destination": {
+            "address": intv.get("address", ""),
+            "lat": intv.get("address_lat"),
+            "lng": intv.get("address_lng"),
+        },
+        "scheduled": {
+            "date": intv.get("scheduled_date"),
+            "time": intv.get("scheduled_time"),
+        },
+    }
