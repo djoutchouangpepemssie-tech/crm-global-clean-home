@@ -483,104 +483,281 @@ const greeting = () => {
 };
 
 /* ═══════════ LOGIN MAGIC LINK ═══════════ */
-function PortalLogin({ onAuth, magicError }) {
+function PortalLogin({ onAuth, magicError, initialMode = 'login', initialResetToken = null }) {
+  // mode: 'login' | 'register' | 'forgot' | 'reset' | 'forgot-sent'
+  const [mode, setMode] = useState(initialResetToken ? 'reset' : initialMode);
   const [email, setEmail] = useState('');
-  const [sent, setSent] = useState(false);
-  const [token, setToken] = useState('');
+  const [password, setPassword] = useState('');
+  const [password2, setPassword2] = useState('');
+  const [name, setName] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const requestLink = async (e) => {
+  // Persist session token + auth user
+  const persistAuth = (data) => {
+    if (data?.token) {
+      localStorage.setItem('portal_token', data.token);
+      pAxios.defaults.headers.common['X-Portal-Token'] = data.token;
+    }
+    onAuth({ lead_id: data.lead_id, lead_name: data.lead_name, name: data.lead_name, email: data.email });
+  };
+
+  const submitLogin = async (e) => {
     e.preventDefault();
+    setError(null);
     setLoading(true);
     try {
-      const res = await axios.post(`${API_URL}/magic-link`, { email });
-      setSent(true);
-      if (res.data.magic_token) setToken(res.data.magic_token);
-      toast.success('Lien de connexion envoyé');
+      const res = await axios.post(`${API_URL}/login`, { email, password }, { withCredentials: true });
+      persistAuth(res.data);
+      toast.success('Bienvenue');
+    } catch (err) {
+      const detail = err?.response?.data?.detail;
+      setError(typeof detail === 'string' ? detail : 'Connexion impossible');
+    }
+    setLoading(false);
+  };
+
+  const submitRegister = async (e) => {
+    e.preventDefault();
+    setError(null);
+    if (password.length < 8) { setError('Le mot de passe doit faire au moins 8 caractères'); return; }
+    if (password !== password2) { setError('Les mots de passe ne correspondent pas'); return; }
+    setLoading(true);
+    try {
+      const res = await axios.post(`${API_URL}/register`, { email, password, name: name || null }, { withCredentials: true });
+      persistAuth(res.data);
+      toast.success('Compte sécurisé — bienvenue');
+    } catch (err) {
+      const detail = err?.response?.data?.detail;
+      setError(typeof detail === 'string' ? detail : 'Création impossible');
+    }
+    setLoading(false);
+  };
+
+  const submitForgot = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      await axios.post(`${API_URL}/forgot`, { email });
+      setMode('forgot-sent');
+    } catch (err) {
+      setError('Erreur réseau — réessayez');
+    }
+    setLoading(false);
+  };
+
+  const submitReset = async (e) => {
+    e.preventDefault();
+    setError(null);
+    if (password.length < 8) { setError('Le mot de passe doit faire au moins 8 caractères'); return; }
+    if (password !== password2) { setError('Les mots de passe ne correspondent pas'); return; }
+    setLoading(true);
+    try {
+      const res = await axios.post(`${API_URL}/reset`, { token: initialResetToken, password }, { withCredentials: true });
+      persistAuth(res.data);
+      toast.success('Mot de passe défini — bienvenue');
+    } catch (err) {
+      const detail = err?.response?.data?.detail;
+      setError(typeof detail === 'string' ? detail : 'Lien invalide ou expiré');
+    }
+    setLoading(false);
+  };
+
+  const requestMagicLink = async () => {
+    if (!email) { setError('Saisissez votre email d\'abord'); return; }
+    setLoading(true);
+    try {
+      await axios.post(`${API_URL}/magic-link`, { email });
+      toast.success('Lien envoyé — vérifiez votre boîte mail');
     } catch { toast.error('Envoi impossible'); }
     setLoading(false);
   };
 
-  const authenticate = async () => {
-    if (!token) return;
-    setLoading(true);
-    try {
-      const res = await axios.post(`${API_URL}/auth/${token}`, {}, { withCredentials: true });
-      localStorage.setItem('portal_token', token);
-      pAxios.defaults.headers.common['X-Portal-Token'] = token;
-      onAuth(res.data);
-    } catch { toast.error('Lien invalide ou expiré'); }
-    setLoading(false);
+  const titles = {
+    login: { eyebrow: 'Espace Client', title: <>Votre <em className="cpa-italic">espace</em></>, sub: 'Connectez-vous pour accéder à vos devis, factures et suivi d\'intervention.' },
+    register: { eyebrow: 'Première connexion', title: <>Créez votre <em className="cpa-italic">accès</em></>, sub: 'Définissez un mot de passe pour sécuriser votre espace personnel.' },
+    forgot: { eyebrow: 'Mot de passe oublié', title: <>On vous <em className="cpa-italic">aide</em></>, sub: 'Saisissez votre email — nous vous envoyons un lien pour choisir un nouveau mot de passe.' },
+    'forgot-sent': { eyebrow: 'Email envoyé', title: <>C'est <em className="cpa-italic">parti</em></>, sub: 'Si un compte existe pour cet email, vous recevrez un lien sous quelques secondes. Vérifiez aussi vos spams.' },
+    reset: { eyebrow: 'Nouveau mot de passe', title: <>Choisissez votre <em className="cpa-italic">mot de passe</em></>, sub: 'Au moins 8 caractères. Vous serez automatiquement connecté ensuite.' },
+  };
+  const t = titles[mode] || titles.login;
+
+  const inputBox = {
+    display: 'flex', alignItems: 'center', gap: 10,
+    background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12,
+    padding: '12px 14px', marginBottom: 12,
+  };
+  const inputStyle = { flex: 1, border: 0, outline: 0, background: 'transparent', fontSize: 14, color: 'var(--ink)' };
+  const linkBtn = {
+    background: 'transparent', border: 'none', color: 'var(--emerald)',
+    fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 500,
+    cursor: 'pointer', padding: 0, textDecoration: 'underline', textUnderlineOffset: 2,
   };
 
   return (
-    <div className="cpa-root" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+    <div className="cpa-root" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, minHeight: '100vh' }}>
       <style>{tokenStyle}</style>
-      <div style={{ width: '100%', maxWidth: 380 }}>
+      <div style={{ width: '100%', maxWidth: 420 }}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div className="cpa-label" style={{ marginBottom: 12 }}>Espace Client</div>
-          <h1 className="cpa-display" style={{ fontSize: 44, fontWeight: 300, lineHeight: 1, margin: 0 }}>
-            Votre <em className="cpa-italic">espace</em>
+          <div className="cpa-label" style={{ marginBottom: 12 }}>{t.eyebrow}</div>
+          <h1 className="cpa-display" style={{ fontSize: 44, fontWeight: 500, lineHeight: 1, margin: 0, letterSpacing: '-0.03em' }}>
+            {t.title}
           </h1>
-          <p style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--ink-3)', marginTop: 8 }}>
-            Consultez vos devis, suivez vos interventions, signez et payez en ligne.
+          <p style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--ink-3)', marginTop: 10, lineHeight: 1.5 }}>
+            {t.sub}
           </p>
         </div>
 
         <div className="cpa-card" style={{ padding: '24px 22px' }}>
-          {magicError && (
-            <div style={{ padding: 12, borderRadius: 10, background: 'var(--rouge-soft)', color: 'var(--rouge)', fontSize: 12, marginBottom: 14 }}>
-              {magicError}
+          {(error || magicError) && (
+            <div style={{ padding: '12px 14px', borderRadius: 10, background: 'var(--pastel-rose)', color: 'var(--pastel-rose-fg)', fontSize: 13, marginBottom: 14, fontWeight: 500 }}>
+              {error || magicError}
             </div>
           )}
 
-          {!sent ? (
-            <form onSubmit={requestLink}>
-              <label className="cpa-label" style={{ display: 'block', marginBottom: 8 }}>Votre email</label>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12,
-                padding: '12px 14px', marginBottom: 16,
-              }}>
+          {/* ─── LOGIN ─── */}
+          {mode === 'login' && (
+            <form onSubmit={submitLogin}>
+              <label className="cpa-label" style={{ display: 'block', marginBottom: 8 }}>Email</label>
+              <div style={inputBox}>
                 <Mail style={{ width: 16, height: 16, color: 'var(--ink-3)' }} />
-                <input
-                  type="email" required autoFocus
-                  value={email} onChange={e => setEmail(e.target.value)}
-                  placeholder="vous@exemple.com"
-                  style={{ flex: 1, border: 0, outline: 0, background: 'transparent', fontSize: 14, color: 'var(--ink)' }}
-                />
+                <input type="email" required autoFocus value={email} onChange={e => setEmail(e.target.value)} placeholder="vous@exemple.com" style={inputStyle} />
               </div>
-              <button type="submit" disabled={loading} className="cpa-cta">
-                {loading ? 'Envoi…' : 'Recevoir mon lien'} <ArrowRight style={{ width: 14, height: 14 }} />
+              <label className="cpa-label" style={{ display: 'block', marginBottom: 8, marginTop: 4 }}>Mot de passe</label>
+              <div style={inputBox}>
+                <Shield style={{ width: 16, height: 16, color: 'var(--ink-3)' }} />
+                <input type={showPwd ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" style={inputStyle} />
+                <button type="button" onClick={() => setShowPwd(s => !s)} style={{ background: 'transparent', border: 0, color: 'var(--ink-3)', cursor: 'pointer', fontSize: 11, padding: 4 }}>
+                  {showPwd ? 'Cacher' : 'Voir'}
+                </button>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
+                <button type="button" onClick={() => { setError(null); setMode('forgot'); }} style={linkBtn}>Mot de passe oublié ?</button>
+              </div>
+              <button type="submit" disabled={loading || !email || !password} className="cpa-cta">
+                {loading ? 'Connexion…' : 'Se connecter'} <ArrowRight style={{ width: 14, height: 14 }} />
               </button>
-              <div style={{
-                marginTop: 14, padding: '10px 12px', borderRadius: 10,
-                background: 'var(--emerald-soft)', border: '1px dashed var(--emerald)',
-                fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 11,
-                color: 'var(--emerald-deep)', lineHeight: 1.5,
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 14px' }}>
+                <div style={{ flex: 1, height: 1, background: 'var(--line-2)' }} />
+                <span style={{ fontFamily: 'Inter', fontSize: 11, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}>ou</span>
+                <div style={{ flex: 1, height: 1, background: 'var(--line-2)' }} />
+              </div>
+              <button type="button" onClick={() => { setError(null); setMode('register'); }} className="cpa-cta-ghost" style={{ marginBottom: 10 }}>
+                Première connexion ? Créer mon mot de passe
+              </button>
+              <button type="button" onClick={requestMagicLink} disabled={loading || !email} style={{
+                width: '100%', padding: '11px 14px', borderRadius: 12,
+                background: 'transparent', border: '1px dashed var(--line)',
+                color: 'var(--ink-3)', cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 500,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               }}>
-                <Shield style={{ width: 11, height: 11, display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-                Connexion sécurisée sans mot de passe. Le lien reçu expire en 24 h.
+                <Mail style={{ width: 12, height: 12 }} /> Recevoir un lien magique à la place
+              </button>
+            </form>
+          )}
+
+          {/* ─── REGISTER ─── */}
+          {mode === 'register' && (
+            <form onSubmit={submitRegister}>
+              <label className="cpa-label" style={{ display: 'block', marginBottom: 8 }}>Email</label>
+              <div style={inputBox}>
+                <Mail style={{ width: 16, height: 16, color: 'var(--ink-3)' }} />
+                <input type="email" required autoFocus value={email} onChange={e => setEmail(e.target.value)} placeholder="vous@exemple.com" style={inputStyle} />
+              </div>
+              <label className="cpa-label" style={{ display: 'block', marginBottom: 8 }}>Nom (optionnel)</label>
+              <div style={inputBox}>
+                <User style={{ width: 16, height: 16, color: 'var(--ink-3)' }} />
+                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Prénom Nom" style={inputStyle} />
+              </div>
+              <label className="cpa-label" style={{ display: 'block', marginBottom: 8 }}>Mot de passe (8 caractères min.)</label>
+              <div style={inputBox}>
+                <Shield style={{ width: 16, height: 16, color: 'var(--ink-3)' }} />
+                <input type={showPwd ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" style={inputStyle} />
+                <button type="button" onClick={() => setShowPwd(s => !s)} style={{ background: 'transparent', border: 0, color: 'var(--ink-3)', cursor: 'pointer', fontSize: 11, padding: 4 }}>
+                  {showPwd ? 'Cacher' : 'Voir'}
+                </button>
+              </div>
+              <label className="cpa-label" style={{ display: 'block', marginBottom: 8 }}>Confirmer</label>
+              <div style={inputBox}>
+                <Shield style={{ width: 16, height: 16, color: 'var(--ink-3)' }} />
+                <input type={showPwd ? 'text' : 'password'} required value={password2} onChange={e => setPassword2(e.target.value)} placeholder="••••••••" style={inputStyle} />
+              </div>
+              <button type="submit" disabled={loading || !email || !password || !password2} className="cpa-cta" style={{ marginTop: 4 }}>
+                {loading ? 'Création…' : 'Créer mon accès'} <Check style={{ width: 14, height: 14 }} />
+              </button>
+              <div style={{ textAlign: 'center', marginTop: 14 }}>
+                <button type="button" onClick={() => { setError(null); setMode('login'); }} style={linkBtn}>← Retour à la connexion</button>
               </div>
             </form>
-          ) : (
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ width: 56, height: 56, borderRadius: 999, background: 'var(--emerald-soft)', color: 'var(--emerald-deep)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-                <Check style={{ width: 24, height: 24 }} />
+          )}
+
+          {/* ─── FORGOT ─── */}
+          {mode === 'forgot' && (
+            <form onSubmit={submitForgot}>
+              <label className="cpa-label" style={{ display: 'block', marginBottom: 8 }}>Votre email</label>
+              <div style={inputBox}>
+                <Mail style={{ width: 16, height: 16, color: 'var(--ink-3)' }} />
+                <input type="email" required autoFocus value={email} onChange={e => setEmail(e.target.value)} placeholder="vous@exemple.com" style={inputStyle} />
               </div>
-              <h3 className="cpa-display" style={{ fontSize: 22, fontStyle: 'italic', margin: '0 0 6px' }}>
-                Lien envoyé
-              </h3>
-              <p style={{ fontFamily: 'Fraunces, serif', fontSize: 13, color: 'var(--ink-3)', marginBottom: 18 }}>
-                Ouvrez votre email et cliquez sur le lien pour accéder à l'espace.
+              <button type="submit" disabled={loading || !email} className="cpa-cta">
+                {loading ? 'Envoi…' : 'Envoyer le lien de réinitialisation'} <ArrowRight style={{ width: 14, height: 14 }} />
+              </button>
+              <div style={{ textAlign: 'center', marginTop: 14 }}>
+                <button type="button" onClick={() => { setError(null); setMode('login'); }} style={linkBtn}>← Retour à la connexion</button>
+              </div>
+            </form>
+          )}
+
+          {/* ─── FORGOT SENT ─── */}
+          {mode === 'forgot-sent' && (
+            <div style={{ textAlign: 'center', padding: '12px 0' }}>
+              <div style={{ width: 56, height: 56, borderRadius: 999, background: 'var(--pastel-sage)', color: 'var(--pastel-sage-fg)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+                <Mail style={{ width: 24, height: 24 }} />
+              </div>
+              <p style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--ink-2)', margin: 0 }}>
+                Lien envoyé à <strong style={{ color: 'var(--ink)' }}>{email}</strong>.<br/>
+                Cliquez dans l'email pour choisir votre nouveau mot de passe.
               </p>
-              {token && (
-                <button onClick={authenticate} disabled={loading} className="cpa-cta">
-                  Accéder directement (démo) <ArrowRight style={{ width: 14, height: 14 }} />
-                </button>
-              )}
+              <button onClick={() => { setError(null); setMode('login'); }} className="cpa-cta-ghost" style={{ marginTop: 18 }}>
+                ← Retour à la connexion
+              </button>
             </div>
           )}
+
+          {/* ─── RESET (via reset link) ─── */}
+          {mode === 'reset' && (
+            <form onSubmit={submitReset}>
+              <label className="cpa-label" style={{ display: 'block', marginBottom: 8 }}>Nouveau mot de passe (8 caractères min.)</label>
+              <div style={inputBox}>
+                <Shield style={{ width: 16, height: 16, color: 'var(--ink-3)' }} />
+                <input type={showPwd ? 'text' : 'password'} required autoFocus value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" style={inputStyle} />
+                <button type="button" onClick={() => setShowPwd(s => !s)} style={{ background: 'transparent', border: 0, color: 'var(--ink-3)', cursor: 'pointer', fontSize: 11, padding: 4 }}>
+                  {showPwd ? 'Cacher' : 'Voir'}
+                </button>
+              </div>
+              <label className="cpa-label" style={{ display: 'block', marginBottom: 8 }}>Confirmer</label>
+              <div style={inputBox}>
+                <Shield style={{ width: 16, height: 16, color: 'var(--ink-3)' }} />
+                <input type={showPwd ? 'text' : 'password'} required value={password2} onChange={e => setPassword2(e.target.value)} placeholder="••••••••" style={inputStyle} />
+              </div>
+              <button type="submit" disabled={loading || !password || !password2} className="cpa-cta">
+                {loading ? 'Enregistrement…' : 'Définir et se connecter'} <ArrowRight style={{ width: 14, height: 14 }} />
+              </button>
+            </form>
+          )}
+        </div>
+
+        <div style={{
+          marginTop: 14, padding: '10px 14px', borderRadius: 12,
+          background: 'var(--pastel-sage)', border: '1px solid oklch(0.80 0.10 165)',
+          fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 12,
+          color: 'var(--pastel-sage-fg)', lineHeight: 1.5, textAlign: 'center',
+        }}>
+          <Shield style={{ width: 12, height: 12, display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+          Espace 100 % sécurisé — chiffrement bcrypt, sessions 30 jours
         </div>
       </div>
     </div>
@@ -4076,10 +4253,29 @@ export default function ClientPortalAtelier() {
   const [client, setClient] = useState(null);
   const [checking, setChecking] = useState(true);
   const [magicError, setMagicError] = useState(null);
+  const [resetToken, setResetToken] = useState(null);
+  const [initialMode, setInitialMode] = useState('login');
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const magic = params.get('token') || params.get('magic');
+    const reset = params.get('reset');
+    const action = params.get('action'); // ex: ?action=register pour ouvrir directement la création
+
+    if (reset) {
+      // Mode reset password — on saute la création de session
+      setResetToken(reset);
+      setChecking(false);
+      window.history.replaceState({}, '', window.location.pathname);
+      return;
+    }
+
+    if (action === 'register' || action === 'signup') {
+      setInitialMode('register');
+    } else if (action === 'forgot') {
+      setInitialMode('forgot');
+    }
+
     if (magic) {
       axios.post(`${API_URL}/auth/${magic}`, {}, { withCredentials: true })
         .then(r => {
@@ -4103,6 +4299,8 @@ export default function ClientPortalAtelier() {
   const logout = () => {
     localStorage.removeItem('portal_token');
     setClient(null);
+    setResetToken(null);
+    setInitialMode('login');
   };
 
   if (checking) return (
@@ -4111,6 +4309,13 @@ export default function ClientPortalAtelier() {
     </div>
   );
 
-  if (!client) return <PortalLogin onAuth={setClient} magicError={magicError} />;
+  if (!client) return (
+    <PortalLogin
+      onAuth={setClient}
+      magicError={magicError}
+      initialMode={initialMode}
+      initialResetToken={resetToken}
+    />
+  );
   return <Dashboard client={client} onLogout={logout} onRefreshClient={setClient} />;
 }

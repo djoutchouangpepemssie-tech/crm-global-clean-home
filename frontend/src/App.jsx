@@ -452,6 +452,8 @@ function AppRouter() {
       <Route path="/login" element={<Login />} />
       <Route path="/auth/join" element={<InvitationJoin />} />
       <Route path="/portal" element={<ClientPortalAtelier />} />
+      <Route path="/portail" element={<ClientPortalAtelier />} />
+      <Route path="/espace-client" element={<ClientPortalAtelier />} />
       <Route path="/portal/legacy" element={<ClientPortal />} />
       <Route path="/intervenant" element={<IntervenantPortalAtelier />} />
       <Route path="/intervenant/legacy" element={<IntervenantPortal />} />

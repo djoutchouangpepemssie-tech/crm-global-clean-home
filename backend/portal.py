@@ -53,6 +53,31 @@ class MagicLinkRequest(BaseModel):
     email: str
 
 
+class PortalLoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class PortalRegisterRequest(BaseModel):
+    email: str
+    password: str
+    name: Optional[str] = None  # optionnel : si fourni, met à jour le lead
+
+
+class PortalForgotRequest(BaseModel):
+    email: str
+
+
+class PortalResetRequest(BaseModel):
+    token: str
+    password: str
+
+
+class PortalChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
 class ReviewSubmit(BaseModel):
     rating: int  # 1-5
     comment: Optional[str] = None
@@ -200,6 +225,349 @@ async def request_magic_link(body: MagicLinkRequest):
         logger.error(f"Magic link could NOT be delivered to {_mask_email(email)} — no email backend available")
 
     return {"message": "Si un compte existe, un lien d'accès vous sera envoyé par email."}
+
+
+# ═══════════════════════════════════════════════════════════════════
+# AUTHENTIFICATION EMAIL + MOT DE PASSE (système principal)
+# ═══════════════════════════════════════════════════════════════════
+
+async def _create_portal_session_for_lead(lead: dict) -> dict:
+    """Crée une session portail (7 jours) pour un lead donné."""
+    session_token = _generate_token()
+    now = datetime.now(timezone.utc)
+    session = {
+        "token": session_token,
+        "email": lead["email"],
+        "lead_id": lead["lead_id"],
+        "lead_name": lead.get("name", ""),
+        "created_at": now.isoformat(),
+        "expires_at": (now + timedelta(days=30)).isoformat(),  # 30 jours pour le confort
+    }
+    await _db.portal_sessions.insert_one(session)
+    return {
+        "token": session_token,
+        "email": session["email"],
+        "lead_id": session["lead_id"],
+        "lead_name": session["lead_name"],
+    }
+
+
+@portal_router.post("/login")
+async def portal_login(body: PortalLoginRequest, response: Response):
+    """Connexion classique email + mot de passe."""
+    email = (body.email or "").strip().lower()
+    password = body.password or ""
+
+    if not email or not password:
+        raise HTTPException(status_code=400, detail="Email et mot de passe requis")
+
+    lead = await _db.leads.find_one({"email": email}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=401, detail="Identifiants incorrects")
+
+    if not lead.get("password_hash"):
+        # Lead existe mais aucun mot de passe défini → guider vers création
+        raise HTTPException(
+            status_code=403,
+            detail="Aucun mot de passe défini. Cliquez sur « Première connexion » pour en créer un."
+        )
+
+    # Vérification bcrypt (import local pour éviter les cycles)
+    try:
+        from server import verify_password
+    except Exception:
+        import bcrypt as _bcrypt
+
+        def verify_password(p, h):
+            try:
+                return _bcrypt.checkpw(p.encode('utf-8'), h.encode('utf-8'))
+            except Exception:
+                return False
+
+    if not verify_password(password, lead["password_hash"]):
+        # Compteur d'échecs (rudimentaire — empêche brute force basique)
+        try:
+            await _db.leads.update_one(
+                {"lead_id": lead["lead_id"]},
+                {"$inc": {"portal_failed_attempts": 1},
+                 "$set": {"portal_last_failed_at": datetime.now(timezone.utc).isoformat()}}
+            )
+        except Exception:
+            pass
+        raise HTTPException(status_code=401, detail="Identifiants incorrects")
+
+    # Reset compteur d'échecs après login réussi
+    await _db.leads.update_one(
+        {"lead_id": lead["lead_id"]},
+        {"$set": {
+            "portal_failed_attempts": 0,
+            "portal_last_login_at": datetime.now(timezone.utc).isoformat(),
+        }}
+    )
+
+    sess = await _create_portal_session_for_lead(lead)
+
+    response.set_cookie(
+        key="portal_token",
+        value=sess["token"],
+        httponly=True,
+        max_age=30 * 24 * 3600,
+        samesite="none",
+        secure=True,
+    )
+
+    return {
+        "message": "Connexion réussie",
+        "token": sess["token"],
+        "lead_id": sess["lead_id"],
+        "lead_name": sess["lead_name"],
+        "email": sess["email"],
+    }
+
+
+@portal_router.post("/register")
+async def portal_register(body: PortalRegisterRequest, response: Response):
+    """Création d'un mot de passe pour un lead existant (1ʳᵉ connexion).
+
+    Le lead doit déjà exister (créé via formulaire de contact ou par l'admin).
+    Ne crée PAS un nouveau lead — sécurise l'accès d'un lead existant.
+    """
+    email = (body.email or "").strip().lower()
+    password = body.password or ""
+
+    if not email or not password:
+        raise HTTPException(status_code=400, detail="Email et mot de passe requis")
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="Le mot de passe doit faire au moins 8 caractères")
+
+    lead = await _db.leads.find_one({"email": email}, {"_id": 0})
+    if not lead:
+        # Ne pas révéler si l'email existe — message générique
+        raise HTTPException(
+            status_code=404,
+            detail="Aucun compte trouvé pour cet email. Demandez à votre conseiller un accès."
+        )
+
+    if lead.get("password_hash"):
+        raise HTTPException(
+            status_code=409,
+            detail="Un mot de passe existe déjà pour ce compte. Utilisez « Mot de passe oublié » si besoin."
+        )
+
+    try:
+        from server import hash_password
+    except Exception:
+        import bcrypt as _bcrypt
+
+        def hash_password(p):
+            return _bcrypt.hashpw(p.encode('utf-8'), _bcrypt.gensalt(rounds=12)).decode('utf-8')
+
+    pw_hash = hash_password(password)
+    update_doc = {
+        "password_hash": pw_hash,
+        "portal_password_set_at": datetime.now(timezone.utc).isoformat(),
+        "portal_failed_attempts": 0,
+    }
+    if body.name and not lead.get("name"):
+        update_doc["name"] = body.name.strip()
+
+    await _db.leads.update_one({"lead_id": lead["lead_id"]}, {"$set": update_doc})
+
+    # Refresh lead + créer session
+    lead = await _db.leads.find_one({"lead_id": lead["lead_id"]}, {"_id": 0})
+    sess = await _create_portal_session_for_lead(lead)
+
+    response.set_cookie(
+        key="portal_token",
+        value=sess["token"],
+        httponly=True,
+        max_age=30 * 24 * 3600,
+        samesite="none",
+        secure=True,
+    )
+
+    return {
+        "message": "Compte sécurisé — bienvenue",
+        "token": sess["token"],
+        "lead_id": sess["lead_id"],
+        "lead_name": sess["lead_name"],
+        "email": sess["email"],
+    }
+
+
+@portal_router.post("/forgot")
+async def portal_forgot(body: PortalForgotRequest):
+    """Demande de réinitialisation du mot de passe.
+
+    Envoie un magic link à usage unique qui permettra de définir un nouveau
+    mot de passe via /portal/reset.
+    """
+    email = (body.email or "").strip().lower()
+    if not email or "@" not in email:
+        return {"message": "Si un compte existe, un email vous sera envoyé."}
+
+    lead = await _db.leads.find_one({"email": email}, {"_id": 0})
+    if not lead:
+        return {"message": "Si un compte existe, un email vous sera envoyé."}
+
+    # Génère un token de reset valable 1h
+    token = _generate_token()
+    expires = datetime.now(timezone.utc) + timedelta(hours=1)
+    await _db.password_resets.insert_one({
+        "token": token,
+        "email": email,
+        "lead_id": lead["lead_id"],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "expires_at": expires.isoformat(),
+        "used": False,
+    })
+
+    portal_base_url = str(os.environ.get("FRONTEND_URL", "")) or "https://crm.globalcleanhome.com"
+    reset_link = f"{portal_base_url.rstrip('/')}/portail?reset={token}"
+
+    # Envoi email (Gmail OAuth en priorité)
+    sent = False
+    try:
+        from gmail_service import _get_any_active_token, _send_gmail_message
+        gmail_token, _ = await _get_any_active_token()
+        if gmail_token:
+            first_name = (lead.get("name") or "").split()[0] if lead.get("name") else "vous"
+            html = f"""<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f5f1ea;padding:40px;">
+<div style="max-width:520px;margin:0 auto;background:white;border-radius:18px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.08);">
+  <div style="background:linear-gradient(135deg,#0f766e,#10b981);padding:36px;text-align:center;">
+    <div style="font-size:42px;margin-bottom:8px;">🔑</div>
+    <h1 style="color:white;margin:0;font-size:22px;font-weight:600;">Réinitialisation du mot de passe</h1>
+  </div>
+  <div style="padding:32px;">
+    <p style="color:#1e293b;font-size:16px;margin:0 0 14px;">Bonjour <strong>{first_name}</strong>,</p>
+    <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px;">
+      Vous avez demandé à réinitialiser votre mot de passe. Cliquez sur le bouton ci-dessous
+      pour en choisir un nouveau.
+    </p>
+    <p style="text-align:center;margin:28px 0;">
+      <a href="{reset_link}" style="display:inline-block;background:linear-gradient(135deg,#0f766e,#10b981);color:white;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px;box-shadow:0 8px 22px rgba(16,185,129,0.35);">
+        Choisir un nouveau mot de passe
+      </a>
+    </p>
+    <div style="background:#fff7ed;border-left:3px solid #f59e0b;padding:14px 16px;border-radius:0 10px 10px 0;margin:20px 0;">
+      <p style="color:#9a3412;font-size:12px;margin:0;line-height:1.5;">
+        ⏱ Lien valable <strong>1 heure</strong>. Si vous n'êtes pas à l'origine de cette demande, ignorez ce mail.
+      </p>
+    </div>
+  </div>
+</div></body></html>"""
+            await _send_gmail_message(gmail_token, email, "🔑 Réinitialiser votre mot de passe — Global Clean Home", html)
+            sent = True
+    except Exception as e:
+        logger.warning(f"Forgot password email via Gmail failed: {e}")
+
+    if sent:
+        logger.info(f"Password reset email sent to {_mask_email(email)}")
+    else:
+        logger.error(f"Password reset email could NOT be delivered to {_mask_email(email)}")
+
+    return {"message": "Si un compte existe, un email vous sera envoyé."}
+
+
+@portal_router.post("/reset")
+async def portal_reset(body: PortalResetRequest, response: Response):
+    """Définit un nouveau mot de passe via un token de reset."""
+    if not body.token or not body.password:
+        raise HTTPException(status_code=400, detail="Token et mot de passe requis")
+    if len(body.password) < 8:
+        raise HTTPException(status_code=400, detail="Le mot de passe doit faire au moins 8 caractères")
+
+    reset_doc = await _db.password_resets.find_one(
+        {"token": body.token, "used": False, "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()}},
+        {"_id": 0}
+    )
+    if not reset_doc:
+        raise HTTPException(status_code=400, detail="Lien invalide ou expiré")
+
+    lead = await _db.leads.find_one({"lead_id": reset_doc["lead_id"]}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Compte introuvable")
+
+    try:
+        from server import hash_password
+    except Exception:
+        import bcrypt as _bcrypt
+
+        def hash_password(p):
+            return _bcrypt.hashpw(p.encode('utf-8'), _bcrypt.gensalt(rounds=12)).decode('utf-8')
+
+    pw_hash = hash_password(body.password)
+    now = datetime.now(timezone.utc).isoformat()
+
+    await _db.leads.update_one(
+        {"lead_id": lead["lead_id"]},
+        {"$set": {
+            "password_hash": pw_hash,
+            "portal_password_set_at": now,
+            "portal_failed_attempts": 0,
+        }}
+    )
+    await _db.password_resets.update_one({"token": body.token}, {"$set": {"used": True, "used_at": now}})
+
+    # Connexion automatique après reset
+    sess = await _create_portal_session_for_lead(lead)
+    response.set_cookie(
+        key="portal_token",
+        value=sess["token"],
+        httponly=True,
+        max_age=30 * 24 * 3600,
+        samesite="none",
+        secure=True,
+    )
+
+    return {
+        "message": "Mot de passe réinitialisé",
+        "token": sess["token"],
+        "lead_id": sess["lead_id"],
+        "lead_name": sess["lead_name"],
+        "email": sess["email"],
+    }
+
+
+@portal_router.post("/change-password")
+async def portal_change_password(body: PortalChangePasswordRequest, request: Request):
+    """Change le mot de passe d'un client connecté."""
+    session = await _get_portal_session(request)
+    lead = await _db.leads.find_one({"lead_id": session["lead_id"]}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Compte introuvable")
+
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Le mot de passe doit faire au moins 8 caractères")
+
+    try:
+        from server import hash_password, verify_password
+    except Exception:
+        import bcrypt as _bcrypt
+
+        def hash_password(p):
+            return _bcrypt.hashpw(p.encode('utf-8'), _bcrypt.gensalt(rounds=12)).decode('utf-8')
+
+        def verify_password(p, h):
+            try:
+                return _bcrypt.checkpw(p.encode('utf-8'), h.encode('utf-8'))
+            except Exception:
+                return False
+
+    # Si un mot de passe existe déjà, vérifier l'ancien
+    if lead.get("password_hash"):
+        if not verify_password(body.current_password, lead["password_hash"]):
+            raise HTTPException(status_code=401, detail="Mot de passe actuel incorrect")
+
+    new_hash = hash_password(body.new_password)
+    await _db.leads.update_one(
+        {"lead_id": lead["lead_id"]},
+        {"$set": {
+            "password_hash": new_hash,
+            "portal_password_set_at": datetime.now(timezone.utc).isoformat(),
+        }}
+    )
+    return {"message": "Mot de passe modifié"}
 
 
 @portal_router.post("/auth/{token}")
