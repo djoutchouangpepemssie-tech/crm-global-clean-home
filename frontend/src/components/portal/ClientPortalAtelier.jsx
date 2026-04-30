@@ -622,126 +622,313 @@ function MapTrail({ distance = '12 m' }) {
 
 /* ═══════════ QUOTE HERO ═══════════ */
 function QuoteHeroFull({ quote, advisor, onSign, onRefuse, onChat, onDownload }) {
-  const inclusions = useMemo(() => {
+  // Items détaillés (line_items) ou liste générique
+  const lineItems = useMemo(() => {
     if (Array.isArray(quote.line_items) && quote.line_items.length) {
-      return quote.line_items.slice(0, 6).map(li => li.label || li.description || '').filter(Boolean);
+      return quote.line_items.map(li => ({
+        group: li.group || 'Prestations',
+        label: li.label || li.description || '',
+        qty: Number(li.qty || li.quantity || 1),
+        unit: li.unit || 'forfait',
+        price: Number(li.price || li.unit_price || 0),
+      })).filter(li => li.label);
     }
-    const list = [];
-    if (quote.service_type) list.push(quote.service_type);
-    if (quote.frequency && quote.frequency !== 'unique') {
-      list.push(`${quote.frequency}${quote.interventions_count > 1 ? ` · ${quote.interventions_count} passages` : ''}`);
-    }
-    list.push('Matériel & produits écolabel fournis');
-    list.push('Équipe formée · RC Pro');
-    list.push('Résultat garanti');
-    return list.slice(0, 5);
+    return [];
   }, [quote]);
 
-  const ht = Number(quote.amount_ht ?? (quote.tva_rate ? quote.amount / (1 + quote.tva_rate / 100) : quote.amount) ?? 0);
-  const ttc = Number(quote.amount ?? 0);
-  const tva = Math.max(0, ttc - ht);
+  const totals = useMemo(() => {
+    const ttc = Number(quote.amount ?? 0);
+    const tvaRate = Number(quote.tva_rate ?? 0);
+    const discount = Number(quote.discount ?? 0);
+    const transportEnabled = !!quote.transport_fee_enabled;
+    const transportAmount = Number(quote.transport_fee_amount ?? 0);
+    const ht = quote.amount_ht != null
+      ? Number(quote.amount_ht)
+      : (tvaRate > 0 ? ttc / (1 + tvaRate / 100) : ttc);
+    const tva = Math.max(0, ttc - ht);
+    return { ht, tva, ttc, tvaRate, discount, transportEnabled, transportAmount };
+  }, [quote]);
+
   const isPending = ['envoyé', 'envoye'].includes(quote.status);
   const isDone = ['accepté', 'accepte', 'signé'].includes(quote.status);
+  const isRefused = ['refusé', 'refuse'].includes(quote.status);
+  const validity = quote.expiry_date
+    ? new Date(quote.expiry_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
+    : null;
+
+  // Groupage des line_items par section
+  const groupedItems = useMemo(() => {
+    const groups = {};
+    lineItems.forEach(li => {
+      if (!groups[li.group]) groups[li.group] = [];
+      groups[li.group].push(li);
+    });
+    return groups;
+  }, [lineItems]);
 
   return (
-    <div className="cpa-dark cpa-fade">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, position: 'relative' }}>
-        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'oklch(0.72 0.04 80)' }}>
-          Devis {quote.quote_number || quote.quote_id?.slice(-8).toUpperCase()}
+    <div className="cpa-fade" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* ─── Header : numéro + statut ─── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+        <div>
+          <div className="cpa-label">Devis {quote.quote_number || quote.quote_id?.slice(-8).toUpperCase()}</div>
+          <h2 className="cpa-display" style={{ fontSize: 28, fontWeight: 500, margin: '6px 0 0', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
+            Votre <em className="cpa-italic">devis</em> est prêt
+          </h2>
         </div>
-        {quote.frequency && quote.frequency !== 'unique' && (
-          <span style={{ padding: '3px 9px', borderRadius: 999, background: 'oklch(0.52 0.13 165)', color: 'white', fontFamily: 'JetBrains Mono, monospace', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-            Récurrent
-          </span>
-        )}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {quote.frequency && quote.frequency !== 'unique' && (
+            <span className="cpa-pill recurrent">Récurrent</span>
+          )}
+          {isPending && <span className="cpa-pill pending">À signer</span>}
+          {isDone && <span className="cpa-pill confirmed">✓ Accepté</span>}
+          {isRefused && <span className="cpa-pill late">Refusé</span>}
+        </div>
       </div>
 
-      <h1 className="cpa-display" style={{ fontSize: 32, fontWeight: 300, lineHeight: 1.05, margin: '0 0 20px', color: 'oklch(0.95 0.01 80)', position: 'relative' }}>
-        Votre <em className="cpa-italic" style={{ color: 'oklch(0.72 0.13 85)' }}>devis</em> est prêt.
-      </h1>
-
+      {/* ─── Hero TOTAL TTC pastel sage ─── */}
       <div style={{
-        border: '1px solid oklch(0.30 0.02 60)', borderRadius: 16, padding: '16px 18px',
-        background: 'oklch(0.12 0.015 60)', position: 'relative', marginBottom: 16,
+        padding: '24px 24px',
+        borderRadius: 20,
+        background: 'var(--pastel-sage)',
+        border: '1px solid oklch(0.80 0.10 165)',
+        position: 'relative', overflow: 'hidden',
       }}>
-        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'oklch(0.72 0.04 80)', marginBottom: 8 }}>
-          Total TTC
+        <div className="cpa-label" style={{ color: 'var(--pastel-sage-fg)' }}>Total TTC</div>
+        <div className="cpa-display" style={{
+          fontSize: 'clamp(48px, 12vw, 76px)', fontWeight: 500,
+          color: 'var(--pastel-sage-fg)', lineHeight: 0.95, letterSpacing: '-0.04em',
+          marginTop: 6,
+        }}>
+          {fmtEur(totals.ttc)}<span style={{ fontSize: '0.42em', fontFamily: 'Fraunces, serif', fontStyle: 'italic', marginLeft: 8, opacity: 0.65 }}>€</span>
         </div>
-        <div className="cpa-amount">
-          {fmtEur(ttc)}<span className="cpa-amount-currency">€</span>
-        </div>
-        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: 'oklch(0.70 0.03 80)', letterSpacing: '0.08em', marginTop: 6 }}>
-          {fmtEur(ht)} € HT · TVA {fmtEur(tva)} €
+        <div style={{
+          marginTop: 8,
+          fontSize: 13,
+          color: 'var(--pastel-sage-fg)',
+          opacity: 0.8,
+          fontFamily: 'Inter, sans-serif',
+        }}>
+          {fmtEur(totals.ht)} € HT
+          {totals.tvaRate > 0 ? ` · TVA ${totals.tvaRate}% (${fmtEur(totals.tva)} €)` : ' · TVA non applicable'}
         </div>
       </div>
 
-      <div style={{ border: '1px solid oklch(0.30 0.02 60)', borderRadius: 16, padding: '6px 18px', marginBottom: 18, position: 'relative' }}>
-        {inclusions.map((t, i) => (
-          <div key={i} style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid oklch(0.28 0.02 60)',
-            fontFamily: 'Fraunces, serif', fontSize: 14, color: 'oklch(0.92 0.04 85)',
-          }}>
-            <span>{t}</span>
-            <Check style={{ width: 16, height: 16, color: 'oklch(0.65 0.13 165)' }} />
+      {/* ─── Détail des prestations (line_items groupés) ─── */}
+      {lineItems.length > 0 ? (
+        <div style={{
+          padding: '20px 22px', borderRadius: 18,
+          background: 'var(--paper)', border: '1px solid var(--line)',
+        }}>
+          <div className="cpa-label" style={{ marginBottom: 14 }}>Détail des prestations</div>
+          {Object.entries(groupedItems).map(([groupName, items]) => (
+            <div key={groupName} style={{ marginBottom: 14 }}>
+              {Object.keys(groupedItems).length > 1 && (
+                <div className="cpa-mono" style={{ fontSize: 10, fontWeight: 700, color: 'var(--pastel-sage-fg)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>
+                  {groupName}
+                </div>
+              )}
+              {items.map((li, i) => (
+                <div key={i} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+                  padding: '10px 0',
+                  borderBottom: i < items.length - 1 ? '1px solid var(--line-2)' : 'none',
+                  gap: 14,
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: 'Inter', fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>
+                      {li.label}
+                    </div>
+                    <div className="cpa-mono" style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>
+                      {li.qty} {li.unit} × {fmtEur(li.price)} €
+                    </div>
+                  </div>
+                  <div className="cpa-display" style={{ fontSize: 16, fontWeight: 500, color: 'var(--ink)' }}>
+                    {fmtEur(li.qty * li.price)} €
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+
+          {/* Sous-totaux */}
+          <div style={{ paddingTop: 14, borderTop: '1.5px solid var(--line)', marginTop: 4 }}>
+            {totals.discount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--pastel-sage-fg)', marginBottom: 4 }}>
+                <span>Remise {totals.discount}%</span>
+                <span className="cpa-mono">−{fmtEur(totals.ht * totals.discount / 100)} €</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--ink-3)', marginBottom: 4 }}>
+              <span>Sous-total HT</span>
+              <span className="cpa-mono">{fmtEur(totals.ht - (totals.transportEnabled ? totals.transportAmount : 0))} €</span>
+            </div>
+            {totals.transportEnabled ? (
+              totals.transportAmount > 0 ? (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--ink-3)', marginBottom: 4 }}>
+                  <span>Frais de déplacement</span>
+                  <span className="cpa-mono">{fmtEur(totals.transportAmount)} €</span>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--pastel-sage-fg)', fontStyle: 'italic', marginBottom: 4 }}>
+                  <span>Frais de déplacement</span>
+                  <span className="cpa-mono">Offerts</span>
+                </div>
+              )
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--ink-3)', fontStyle: 'italic', opacity: 0.75, marginBottom: 4 }}>
+                <span>Frais de déplacement</span>
+                <span className="cpa-mono">non inclus</span>
+              </div>
+            )}
+            {totals.tvaRate > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--ink-3)' }}>
+                <span>TVA {totals.tvaRate}%</span>
+                <span className="cpa-mono">{fmtEur(totals.tva)} €</span>
+              </div>
+            )}
           </div>
-        ))}
-      </div>
+        </div>
+      ) : (
+        // Fallback : liste simple si pas de line_items
+        <div style={{
+          padding: '20px 22px', borderRadius: 18,
+          background: 'var(--paper)', border: '1px solid var(--line)',
+        }}>
+          <div className="cpa-label" style={{ marginBottom: 12 }}>Inclus dans votre prestation</div>
+          {[
+            quote.service_type,
+            quote.frequency && quote.frequency !== 'unique' ? `${quote.frequency}${quote.interventions_count > 1 ? ` · ${quote.interventions_count} passages` : ''}` : null,
+            'Matériel & produits écolabel fournis',
+            'Équipe formée · RC Pro',
+            'Résultat garanti',
+          ].filter(Boolean).map((t, i, arr) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '10px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--line-2)' : 'none',
+              fontFamily: 'Inter', fontSize: 14, color: 'var(--ink-2)',
+            }}>
+              <span>{t}</span>
+              <Check style={{ width: 16, height: 16, color: 'var(--pastel-sage-fg)' }} />
+            </div>
+          ))}
+        </div>
+      )}
 
+      {/* ─── Validité + Conditions de paiement ─── */}
+      {(validity || quote.payment_mode || quote.payment_delay) && (
+        <div style={{
+          padding: '14px 18px', borderRadius: 14,
+          background: 'var(--pastel-ocre)',
+          border: '1px solid oklch(0.80 0.10 80)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          flexWrap: 'wrap', gap: 12,
+        }}>
+          {validity && (
+            <div>
+              <div className="cpa-label" style={{ color: 'var(--pastel-ocre-fg)' }}>Valable jusqu'au</div>
+              <div className="cpa-display" style={{ fontSize: 16, fontWeight: 500, color: 'var(--pastel-ocre-fg)', marginTop: 2 }}>
+                {validity}
+              </div>
+            </div>
+          )}
+          {(quote.payment_mode || quote.payment_delay) && (
+            <div style={{ textAlign: 'right' }}>
+              <div className="cpa-label" style={{ color: 'var(--pastel-ocre-fg)' }}>Paiement</div>
+              <div style={{ fontFamily: 'Inter', fontSize: 13, fontWeight: 500, color: 'var(--pastel-ocre-fg)', marginTop: 2 }}>
+                {quote.payment_mode || '—'}{quote.payment_delay ? ` · ${quote.payment_delay}` : ''}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ─── Notes / conditions particulières ─── */}
+      {quote.notes && (
+        <div style={{
+          padding: '14px 18px', borderRadius: 14,
+          background: 'var(--surface)',
+          border: '1px solid var(--line-2)',
+          fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 13,
+          color: 'var(--ink-2)', lineHeight: 1.6,
+        }}>
+          {quote.notes}
+        </div>
+      )}
+
+      {/* ─── Actions ─── */}
       {isPending && (
-        <>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
           <button onClick={onSign} className="cpa-cta">
-            Accepter et signer <ArrowRight style={{ width: 14, height: 14 }} />
+            <Check style={{ width: 16, height: 16 }} /> Accepter et signer
           </button>
-          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-            <button onClick={onChat} className="cpa-cta-ghost-dark" style={{ flex: 1 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={onChat} className="cpa-cta-ghost" style={{ flex: 1 }}>
               <MessageSquare style={{ width: 13, height: 13 }} /> Discuter
             </button>
-            <button onClick={onRefuse} className="cpa-cta-ghost-dark" style={{ flex: 1, borderColor: 'oklch(0.35 0.12 25)', color: 'oklch(0.85 0.12 25)' }}>
+            <button onClick={onRefuse} className="cpa-cta-ghost" style={{ flex: 1, borderColor: 'oklch(0.65 0.18 25)', color: 'oklch(0.42 0.18 25)' }}>
               <X style={{ width: 13, height: 13 }} /> Refuser
             </button>
           </div>
-          <button onClick={onDownload} className="cpa-cta-ghost-dark" style={{ marginTop: 8 }}>
+          <button onClick={onDownload} style={{
+            width: '100%', padding: '12px', borderRadius: 14,
+            background: 'transparent', border: '1px dashed var(--line)',
+            color: 'var(--ink-3)', cursor: 'pointer',
+            fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 500,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            transition: 'all .2s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderStyle = 'solid'; e.currentTarget.style.color = 'var(--ink)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderStyle = 'dashed'; e.currentTarget.style.color = 'var(--ink-3)'; }}>
+            <Download style={{ width: 13, height: 13 }} /> Télécharger en PDF
+          </button>
+        </div>
+      )}
+      {(isDone || isRefused) && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
+          <div style={{
+            padding: '16px 20px', borderRadius: 14,
+            background: isDone ? 'var(--pastel-sage)' : 'var(--pastel-rose)',
+            color: isDone ? 'var(--pastel-sage-fg)' : 'var(--pastel-rose-fg)',
+            border: `1px solid ${isDone ? 'oklch(0.80 0.10 165)' : 'oklch(0.80 0.12 25)'}`,
+            fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 15, textAlign: 'center',
+            fontWeight: 500,
+          }}>
+            {isDone ? '✓ Devis accepté — merci de votre confiance.' : 'Devis refusé.'}
+          </div>
+          <button onClick={onDownload} className="cpa-cta-ghost">
             <Download style={{ width: 13, height: 13 }} /> Télécharger le PDF
           </button>
-        </>
-      )}
-      {isDone && (
-        <div style={{
-          padding: '14px 18px', borderRadius: 14,
-          background: 'oklch(0.22 0.07 165)', color: 'oklch(0.85 0.10 165)',
-          fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 14, textAlign: 'center',
-        }}>
-          ✓ Devis {quote.status === 'signé' ? 'signé' : 'accepté'} — merci de votre confiance.
         </div>
       )}
 
+      {/* ─── Conseiller ─── */}
       {advisor && (
         <div style={{
-          marginTop: 18, padding: '12px 16px', borderRadius: 14,
-          background: 'oklch(0.14 0.018 60)', border: '1px solid oklch(0.28 0.02 60)',
-          display: 'flex', alignItems: 'center', gap: 12, position: 'relative',
+          padding: '14px 16px', borderRadius: 14,
+          background: 'var(--pastel-blue)',
+          border: '1px solid oklch(0.85 0.06 240)',
+          display: 'flex', alignItems: 'center', gap: 12,
         }}>
           <div style={{
-            width: 36, height: 36, borderRadius: 999,
-            background: 'oklch(0.38 0.14 160)', color: 'oklch(0.95 0.05 165)',
+            width: 40, height: 40, borderRadius: 999,
+            background: 'var(--pastel-blue-fg)', color: 'var(--pastel-blue)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'Fraunces, serif', fontSize: 14, fontWeight: 500,
+            fontFamily: 'Fraunces, serif', fontSize: 16, fontWeight: 500,
+            flexShrink: 0,
           }}>
             {(advisor.name || 'C').charAt(0).toUpperCase()}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'oklch(0.72 0.04 80)' }}>
-              Votre conseiller
-            </div>
-            <div style={{ fontFamily: 'Fraunces, serif', fontSize: 14, fontWeight: 500, color: 'oklch(0.95 0.01 80)' }}>
+            <div className="cpa-label" style={{ color: 'var(--pastel-blue-fg)' }}>Votre conseiller</div>
+            <div style={{ fontFamily: 'Inter', fontSize: 14, fontWeight: 600, color: 'var(--pastel-blue-fg)', marginTop: 2 }}>
               {advisor.name || 'Global Clean Home'}
             </div>
-            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: 'oklch(0.72 0.04 80)', letterSpacing: '0.06em' }}>
+            <div style={{ fontSize: 11, color: 'var(--pastel-blue-fg)', opacity: 0.78, marginTop: 1 }}>
               {advisor.status || 'Répond en ~5 min'}
             </div>
           </div>
-          <div style={{ width: 8, height: 8, borderRadius: 999, background: 'oklch(0.65 0.15 145)' }} />
+          <div style={{ width: 8, height: 8, borderRadius: 999, background: 'var(--pastel-sage-fg)', boxShadow: '0 0 8px var(--pastel-sage-fg)' }} />
         </div>
       )}
     </div>
@@ -3678,22 +3865,65 @@ function Dashboard({ client, onLogout, onRefreshClient }) {
   }, [tab, loadMessages]);
 
   const handleSign = async (fullName) => {
+    const quoteId = signQuote?.quote_id || signQuote?.id;
+    if (!quoteId) {
+      toast.error('Identifiant du devis introuvable');
+      return;
+    }
     try {
-      await pAxios.post(`${API_URL}/quotes/${signQuote.quote_id}/sign`, { signature: fullName });
-      toast.success('✓ Devis signé — merci !');
-      setSignQuote(null); setOpenQuote(null); fetchData();
-    } catch { toast.error('Signature impossible'); }
+      const r = await pAxios.post(`${API_URL}/quotes/${quoteId}/sign`, { signature: fullName });
+      if (r.data?.success) {
+        toast.success('✓ Devis signé — merci !');
+        setSignQuote(null); setOpenQuote(null); fetchData();
+      } else {
+        toast.error(r.data?.message || 'Réponse inattendue du serveur');
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Erreur réseau';
+      toast.error(`Signature impossible · ${typeof msg === 'string' ? msg : 'erreur'}`);
+      console.error('Sign error', err);
+    }
   };
   const handleRefuse = async (quote) => {
+    const quoteId = quote?.quote_id || quote?.id;
+    if (!quoteId) return toast.error('Identifiant du devis introuvable');
     if (!window.confirm('Refuser ce devis ?')) return;
     try {
-      await pAxios.post(`${API_URL}/quotes/${quote.quote_id}/respond`, { action: 'refuse' });
+      await pAxios.post(`${API_URL}/quotes/${quoteId}/respond`, { action: 'refuse' });
       setOpenQuote(null); fetchData();
       toast.success('Devis refusé');
-    } catch { toast.error('Erreur'); }
+    } catch (err) {
+      const msg = err?.response?.data?.detail || err?.message || 'Erreur';
+      toast.error(typeof msg === 'string' ? msg : 'Erreur');
+    }
   };
-  const handleDownloadQuote = (quote) => {
-    window.open(`${BACKEND_URL}/api/quotes/${quote.quote_id}/pdf`, '_blank');
+  const handleDownloadQuote = async (quote) => {
+    const quoteId = quote?.quote_id || quote?.id;
+    if (!quoteId) return toast.error('Identifiant du devis introuvable');
+    const portalToken = localStorage.getItem('portal_token');
+    if (!portalToken) return toast.error('Session expirée — reconnectez-vous');
+
+    try {
+      const r = await pAxios.get(`${API_URL}/quotes/${quoteId}/pdf`, { responseType: 'blob' });
+      const blob = new Blob([r.data], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      // Ouvre dans un nouvel onglet (preview navigateur) + lien direct si bloqué
+      const win = window.open(url, '_blank');
+      if (!win) {
+        // Pop-up bloquée → forcer un téléchargement
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `devis_${quote.quote_number || quoteId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (err) {
+      const msg = err?.response?.data?.detail || err?.message || 'Téléchargement impossible';
+      toast.error(typeof msg === 'string' ? msg : 'Téléchargement impossible');
+      console.error('Download PDF error', err);
+    }
   };
   const handlePay = async (invoice) => {
     try {

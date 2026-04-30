@@ -90,21 +90,81 @@ async def _get_portal_session(request: Request):
 # ============= MAGIC LINK AUTH =============
 
 
+async def _send_magic_link_via_gmail(email: str, name: str, link: str) -> bool:
+    """Fallback : envoi du magic link via Gmail OAuth (utilisé partout dans le projet)."""
+    try:
+        from gmail_service import _get_any_active_token, _send_gmail_message
+    except Exception as e:
+        logger.warning(f"gmail_service unavailable: {e}")
+        return False
+
+    try:
+        token, _ = await _get_any_active_token()
+    except Exception as e:
+        logger.warning(f"No active Gmail token: {e}")
+        return False
+
+    if not token:
+        return False
+
+    first_name = (name or "").split()[0] if name else "vous"
+    html = f"""<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f1f5f9;padding:40px;">
+<div style="max-width:520px;margin:0 auto;background:white;border-radius:18px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.08);">
+  <div style="background:linear-gradient(135deg,#0f766e,#10b981);padding:40px;text-align:center;">
+    <div style="font-size:42px;margin-bottom:8px;">🔐</div>
+    <h1 style="color:white;margin:0;font-size:22px;font-weight:600;letter-spacing:-0.01em;">Votre espace client</h1>
+    <p style="color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;">Global Clean Home</p>
+  </div>
+  <div style="padding:36px 32px;">
+    <p style="color:#1e293b;font-size:16px;margin:0 0 14px;">Bonjour <strong>{first_name}</strong>,</p>
+    <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px;">
+      Vous avez demandé l'accès à votre espace client. Cliquez sur le bouton ci-dessous
+      pour vous connecter en toute sécurité — sans mot de passe.
+    </p>
+    <p style="text-align:center;margin:28px 0;">
+      <a href="{link}" style="display:inline-block;background:linear-gradient(135deg,#0f766e,#10b981);color:white;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:0.02em;box-shadow:0 8px 22px rgba(16,185,129,0.35);">
+        Accéder à mon espace
+      </a>
+    </p>
+    <div style="background:#f0fdf4;border-left:3px solid #10b981;padding:14px 16px;border-radius:0 10px 10px 0;margin:20px 0;">
+      <p style="color:#166534;font-size:12px;margin:0;line-height:1.5;">
+        🛡 Lien valable <strong>24 heures</strong>. Si vous n'avez pas demandé cet accès, ignorez ce mail.
+      </p>
+    </div>
+    <p style="color:#94a3b8;font-size:11px;line-height:1.5;margin:24px 0 0;word-break:break-all;">
+      Ou copiez ce lien dans votre navigateur :<br/>
+      <a href="{link}" style="color:#10b981;text-decoration:none;">{link}</a>
+    </p>
+  </div>
+  <div style="background:#0f172a;padding:18px;text-align:center;">
+    <p style="color:rgba(255,255,255,0.5);font-size:11px;margin:0;">Global Clean Home · 231 rue Saint-Honoré, 75001 Paris</p>
+  </div>
+</div></body></html>"""
+    try:
+        await _send_gmail_message(token, email, "🔐 Votre accès Global Clean Home", html)
+        return True
+    except Exception as e:
+        logger.warning(f"Gmail send_magic_link failed: {e}")
+        return False
+
+
 @portal_router.post("/magic-link")
 async def request_magic_link(body: MagicLinkRequest):
-    """Send a magic link to client email. For now, returns the link directly."""
-    email = body.email.strip().lower()
+    """Envoie un lien magique de connexion par email."""
+    email = (body.email or "").strip().lower()
+    if not email or "@" not in email:
+        # Pas d'erreur explicite pour ne pas révéler de comptes
+        return {"message": "Si un compte existe, un lien d'accès vous sera envoyé par email."}
 
-    # Find lead with this email
+    # Recherche du lead correspondant
     lead = await _db.leads.find_one({"email": email}, {"_id": 0})
     if not lead:
-        # Don't reveal if email exists
         return {"message": "Si un compte existe, un lien d'accès vous sera envoyé par email."}
 
     token = _generate_token()
     expires = datetime.now(timezone.utc) + timedelta(hours=24)
 
-    magic_link = {
+    magic_link_doc = {
         "token": token,
         "email": email,
         "lead_id": lead["lead_id"],
@@ -113,27 +173,33 @@ async def request_magic_link(body: MagicLinkRequest):
         "expires_at": expires.isoformat(),
         "used": False,
     }
+    await _db.magic_links.insert_one(magic_link_doc)
 
-    await _db.magic_links.insert_one(magic_link)
+    # URL de redirection (frontend)
+    portal_base_url = str(os.environ.get("FRONTEND_URL", "")) or "https://crm.globalcleanhome.com"
+    link = f"{portal_base_url.rstrip('/')}/portail?token={token}"
 
-    # Send magic link via email
+    # Tentative 1 : SendGrid
+    email_sent = False
     try:
         from email_service import send_magic_link
-        portal_base_url = str(os.environ.get("FRONTEND_URL", ""))
-        if not portal_base_url:
-            portal_base_url = "https://www.globalcleanhome.com"
         email_sent = send_magic_link(email, lead.get("name", "Client"), token, portal_base_url)
         if email_sent:
-            logger.info(f"Magic link email sent to {_mask_email(email)}")
-        else:
-            logger.info(f"Magic link generated for {_mask_email(email)} (email not sent - SendGrid not configured)")
+            logger.info(f"Magic link sent via SendGrid to {_mask_email(email)}")
     except Exception as e:
-        logger.warning(f"Failed to send magic link email: {e}")
+        logger.warning(f"SendGrid send failed: {e}")
 
-    return {
-        "message": "Si un compte existe, un lien d'acces vous sera envoye par email.",
-        "magic_token": token,
-    }
+    # Tentative 2 : Gmail OAuth (fallback)
+    if not email_sent:
+        gmail_sent = await _send_magic_link_via_gmail(email, lead.get("name", "Client"), link)
+        if gmail_sent:
+            email_sent = True
+            logger.info(f"Magic link sent via Gmail OAuth to {_mask_email(email)}")
+
+    if not email_sent:
+        logger.error(f"Magic link could NOT be delivered to {_mask_email(email)} — no email backend available")
+
+    return {"message": "Si un compte existe, un lien d'accès vous sera envoyé par email."}
 
 
 @portal_router.post("/auth/{token}")
@@ -455,8 +521,66 @@ async def auto_send_portal_access(lead: dict, context: str = "quote") -> bool:
 
 @portal_router.post("/quotes/{quote_id}/sign")
 async def sign_quote_portal(quote_id: str, request: Request):
-    """Signer un devis depuis le portail client."""
-    portal_token = request.headers.get("X-Portal-Token")
+    """Signer un devis depuis le portail client.
+
+    - Vérifie le portal_token
+    - Vérifie que le devis appartient bien au lead du portail (sécurité)
+    - Marque le devis comme accepté + signé
+    - Met à jour le lead status → gagné
+    """
+    session = await _get_portal_session(request)
+
+    # Vérification d'appartenance au lead du portail
+    quote = await _db.quotes.find_one(
+        {"quote_id": quote_id, "lead_id": session["lead_id"]},
+        {"_id": 0}
+    )
+    if not quote:
+        raise HTTPException(status_code=404, detail="Devis introuvable")
+
+    body = await request.json()
+    signature = (body.get("signature") or "").strip()
+    if not signature:
+        raise HTTPException(status_code=400, detail="Signature requise")
+    signed_at = body.get("signed_at") or datetime.now(timezone.utc).isoformat()
+    now = datetime.now(timezone.utc).isoformat()
+
+    await _db.quotes.update_one(
+        {"quote_id": quote_id},
+        {"$set": {
+            "status": "accepté",
+            "signed": True,
+            "signature_name": signature,
+            "signed_at": signed_at,
+            "responded_at": now,
+            "updated_at": now,
+        }}
+    )
+
+    # Update lead status si pas déjà gagné
+    try:
+        await _db.leads.update_one(
+            {"lead_id": session["lead_id"], "status": {"$ne": "gagné"}},
+            {"$set": {"status": "gagné", "updated_at": now}}
+        )
+    except Exception as e:
+        logger.warning(f"Lead status update after sign failed: {e}")
+
+    return {"success": True, "message": "Devis signé avec succès", "quote_id": quote_id}
+
+
+@portal_router.get("/quotes/{quote_id}/pdf")
+async def download_quote_pdf_portal(quote_id: str, request: Request, token: Optional[str] = None):
+    """Téléchargement du PDF d'un devis depuis le portail client.
+
+    Authentification : soit header X-Portal-Token, soit query param ?token=...
+    (le query param est nécessaire car window.open ne permet pas d'envoyer
+    un header personnalisé).
+    """
+    from fastapi.responses import Response as FastAPIResponse
+
+    # Récupération du token depuis header OU query
+    portal_token = request.headers.get("X-Portal-Token") or token
     if not portal_token:
         raise HTTPException(status_code=401, detail="Token requis")
 
@@ -464,21 +588,42 @@ async def sign_quote_portal(quote_id: str, request: Request):
     if not session:
         raise HTTPException(status_code=401, detail="Session invalide")
 
-    body = await request.json()
-    signature = body.get("signature", "")
-    signed_at = body.get("signed_at", datetime.now(timezone.utc).isoformat())
-
-    await _db.quotes.update_one(
-        {"quote_id": quote_id},
-        {"$set": {
-            "status": "accepte",
-            "signed": True,
-            "signature_name": signature,
-            "signed_at": signed_at,
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }}
+    # Vérification d'appartenance
+    quote = await _db.quotes.find_one(
+        {"quote_id": quote_id, "lead_id": session["lead_id"]},
+        {"_id": 0}
     )
-    return {"success": True, "message": "Devis signe avec succes"}
+    if not quote:
+        raise HTTPException(status_code=404, detail="Devis introuvable")
+
+    # Enrichir avec les données du lead pour le PDF
+    lead = await _db.leads.find_one({"lead_id": session["lead_id"]}, {"_id": 0}) or {}
+    quote_data = {
+        **quote,
+        "lead_name": lead.get("name") or session.get("lead_name") or quote.get("lead_name"),
+        "lead_email": lead.get("email") or session.get("email"),
+        "lead_phone": lead.get("phone"),
+        "lead_address": lead.get("address"),
+        "lead_city": lead.get("city"),
+    }
+
+    # Génération du PDF
+    try:
+        from integrations import generate_quote_pdf
+        pdf_bytes = generate_quote_pdf(quote_data)
+    except Exception as e:
+        logger.error(f"PDF generation failed for quote {quote_id}: {e}")
+        raise HTTPException(status_code=500, detail="Génération PDF impossible")
+
+    filename = f"devis_{quote.get('quote_number') or quote_id}.pdf"
+    return FastAPIResponse(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="{filename}"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════

@@ -5050,53 +5050,93 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response as StarletteResponse
 
+_CORS_ALLOWED_ORIGINS = [
+    "https://crm.globalcleanhome.com",
+    "https://www.globalcleanhome.com",
+    "https://globalcleanhome.com",
+    "https://crm-global-clean-home-production.up.railway.app",
+    "https://crm-global-clean-home.up.railway.app",
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:4173",
+]
+
+_CORS_ALLOWED_HEADERS = (
+    "Authorization, Content-Type, X-Portal-Token, X-Intervenant-Token, "
+    "Accept, Origin, X-Requested-With, X-CSRF-Token, X-Tracker-Token"
+)
+_CORS_ALLOWED_METHODS = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+
+
 class ForceCORSMiddleware(BaseHTTPMiddleware):
+    """Middleware CORS robuste qui:
+    - répond explicitement aux preflights OPTIONS avec TOUS les headers nécessaires
+    - attache les headers même en cas d'exception backend (sinon CORS error masque la vraie erreur)
+    - liste les headers explicitement (le wildcard '*' avec credentials=true est rejeté par le navigateur)
+    """
     async def dispatch(self, request: StarletteRequest, call_next):
         origin = request.headers.get("origin", "")
-        allowed = [
-            "https://crm.globalcleanhome.com",
-            "https://www.globalcleanhome.com", 
-            "https://globalcleanhome.com",
-            "https://crm-global-clean-home-production.up.railway.app",
-            "http://localhost:3000",
-            "http://localhost:5173",
-        ]
+        is_allowed = origin in _CORS_ALLOWED_ORIGINS
+
+        # Preflight OPTIONS — répondre directement avec tous les headers
         if request.method == "OPTIONS":
-            response = StarletteResponse(status_code=200)
-        else:
-            try:
-                response = await call_next(request)
-            except Exception as e:
-                response = StarletteResponse(status_code=500, content=str(e))
-        
-        if origin in allowed:
+            response = StarletteResponse(status_code=204)
+            if is_allowed:
+                response.headers["Access-Control-Allow-Origin"] = origin
+                response.headers["Access-Control-Allow-Credentials"] = "true"
+                response.headers["Access-Control-Allow-Methods"] = _CORS_ALLOWED_METHODS
+                response.headers["Access-Control-Allow-Headers"] = _CORS_ALLOWED_HEADERS
+                response.headers["Access-Control-Max-Age"] = "86400"
+                response.headers["Vary"] = "Origin"
+            return response
+
+        # Requête normale — laisser passer puis attacher les headers à la réponse
+        try:
+            response = await call_next(request)
+        except Exception as e:
+            logger.exception(f"Unhandled error processing {request.method} {request.url.path}: {e}")
+            response = StarletteResponse(
+                content=f'{{"detail": "Internal server error: {str(e)[:200]}"}}',
+                status_code=500,
+                media_type="application/json",
+            )
+
+        if is_allowed:
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Access-Control-Allow-Credentials"] = "true"
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-            response.headers["Access-Control-Allow-Headers"] = "*, Authorization, Content-Type, X-Portal-Token"
+            response.headers["Access-Control-Expose-Headers"] = "Content-Length, Content-Type, Content-Disposition"
+            response.headers["Vary"] = "Origin"
         return response
+
 
 app.add_middleware(ForceCORSMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://crm.globalcleanhome.com",
-        "https://www.globalcleanhome.com",
-        "https://globalcleanhome.com",
-        "https://crm-global-clean-home-production.up.railway.app",
-        "https://crm-global-clean-home.up.railway.app",
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://localhost:4173"
-    ],
+    allow_origins=_CORS_ALLOWED_ORIGINS,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_credentials=True,
-    allow_headers=["*", "X-Portal-Token", "Content-Type", "Authorization", "Accept", "Origin"],
-    expose_headers=["Content-Length", "Content-Type"],
+    allow_headers=[
+        "Authorization", "Content-Type", "X-Portal-Token", "X-Intervenant-Token",
+        "Accept", "Origin", "X-Requested-With", "X-CSRF-Token", "X-Tracker-Token",
+    ],
+    expose_headers=["Content-Length", "Content-Type", "Content-Disposition"],
     max_age=86400,
 )
+
+
+# ── DIAGNOSTIC : endpoint pour débugger CORS et auth portal ──
+@app.get("/api/cors-debug")
+async def cors_debug(request: StarletteRequest):
+    """Retourne ce que le serveur voit (origin, headers, etc.) pour aider à débugger CORS."""
+    return {
+        "your_origin": request.headers.get("origin", ""),
+        "is_allowed": request.headers.get("origin", "") in _CORS_ALLOWED_ORIGINS,
+        "allowed_origins": _CORS_ALLOWED_ORIGINS,
+        "your_user_agent": request.headers.get("user-agent", "")[:120],
+        "method": request.method,
+        "path": request.url.path,
+    }
 
 # ── PURGE DATA ENDPOINTS (must be before include_router) ──
 PURGE_CATEGORIES = {
