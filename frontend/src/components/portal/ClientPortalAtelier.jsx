@@ -11,6 +11,7 @@ import {
   Star, Gift, LogOut, Edit3, Sparkles, Plus, RefreshCw, ExternalLink,
   Shield, Award, Clock, CheckCircle, AlertCircle, HelpCircle, Folder,
   Settings, Copy, TrendingUp, TrendingDown, Navigation, Activity, Zap, Receipt,
+  Menu,
 } from 'lucide-react';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip,
@@ -499,6 +500,62 @@ const tokenStyle = `
     animation: cpa-slide-in .25s cubic-bezier(.16,1,.3,1);
   }
   @keyframes cpa-slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+  /* ═══ Burger menu desktop (slide-in depuis la gauche) ═══ */
+  .cpa-burger-back {
+    position: fixed; inset: 0; background: oklch(0.20 0.04 250 / 0.45);
+    backdrop-filter: blur(6px); z-index: 90;
+    animation: cpa-fade-bg .25s ease;
+  }
+  @keyframes cpa-fade-bg { from { opacity: 0; } to { opacity: 1; } }
+  .cpa-burger {
+    position: fixed; top: 0; left: 0; bottom: 0;
+    width: 320px; max-width: 88vw;
+    background: var(--paper); z-index: 91;
+    border-right: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    box-shadow: 6px 0 28px oklch(0.20 0.04 250 / 0.12);
+    animation: cpa-slide-from-left .3s cubic-bezier(.16,1,.3,1);
+  }
+  @keyframes cpa-slide-from-left { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+
+  .cpa-burger-btn {
+    width: 40px; height: 40px; border-radius: 12px;
+    background: var(--paper); border: 1px solid var(--line);
+    display: none; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--ink-2);
+    transition: all .15s;
+  }
+  .cpa-burger-btn:hover { border-color: var(--ink); color: var(--ink); }
+  @media (min-width: 881px) {
+    .cpa-burger-btn { display: inline-flex; }
+  }
+
+  .cpa-burger-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 13px 18px; border-radius: 12px;
+    background: transparent; border: 1px solid transparent;
+    color: var(--ink-2); cursor: pointer;
+    font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500;
+    text-align: left; width: 100%;
+    transition: all .15s; position: relative;
+  }
+  .cpa-burger-item:hover {
+    background: var(--surface);
+    color: var(--ink);
+  }
+  .cpa-burger-item.active {
+    background: var(--ink); color: var(--paper);
+    box-shadow: 0 6px 16px oklch(0.20 0.04 250 / 0.20);
+  }
+  .cpa-burger-item.active svg { color: var(--paper); }
+  .cpa-burger-item .cpa-burger-dot {
+    position: absolute; top: 50%; right: 14px;
+    transform: translateY(-50%);
+    width: 8px; height: 8px; border-radius: 999px;
+    background: var(--rouge);
+    box-shadow: 0 0 8px oklch(0.50 0.16 25 / 0.6);
+  }
 
   @keyframes cpa-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   .cpa-fade { animation: cpa-fade .4s cubic-bezier(.16,1,.3,1); }
@@ -4127,6 +4184,147 @@ function MembershipCardReveal({ client, loyalty, interventions = [], invoices = 
   );
 }
 
+/* ═══════════ BURGER MENU — desktop only (drawer latéral gauche) ═══════════ */
+function BurgerMenu({ open, onClose, tab, onSelectTab, client, onLogout, hasUnreadMessages }) {
+  if (!open) return null;
+
+  const sections = [
+    { k: 'accueil',       icon: Home,          label: 'Accueil',                  hint: 'Tableau de bord' },
+    { k: 'quotes',        icon: FileText,      label: 'Devis',                    hint: 'Propositions' },
+    { k: 'invoices',      icon: CreditCard,    label: 'Factures',                 hint: 'Paiements' },
+    { k: 'interventions', icon: Calendar,      label: 'Interventions',            hint: 'Passages planifiés' },
+    { k: 'documents',     icon: Folder,        label: 'Documents',                hint: 'Bibliothèque PDF' },
+    { k: 'fidelite',      icon: Award,         label: 'Programme fidélité',       hint: 'Points & récompenses' },
+    { k: 'demande',       icon: Plus,          label: 'Demander une intervention', hint: 'Nouvelle prestation' },
+    { k: 'conseiller',    icon: MessageSquare, label: 'Conseiller',               hint: 'Messagerie',      unread: hasUnreadMessages },
+    { k: 'profil',        icon: User,          label: 'Mon profil',               hint: 'Coordonnées & sécurité' },
+  ];
+
+  const select = (k) => {
+    onSelectTab(k);
+    onClose();
+  };
+
+  const firstName = (client?.name || client?.full_name || client?.lead_name || '').split(' ')[0] || 'Bonjour';
+  const fullName = client?.name || client?.full_name || client?.lead_name || '—';
+  const email = client?.email || '';
+
+  return (
+    <>
+      <div className="cpa-burger-back" onClick={onClose} />
+      <aside className="cpa-burger" role="dialog" aria-label="Menu de navigation">
+        {/* Header */}
+        <div style={{
+          padding: '20px 22px 18px',
+          borderBottom: '1px solid var(--line-2)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 12,
+        }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="cpa-label" style={{ marginBottom: 6 }}>Espace Client</div>
+            <div className="cpa-display" style={{
+              fontSize: 24, fontWeight: 500, lineHeight: 1, color: 'var(--ink)',
+              letterSpacing: '-0.02em',
+            }}>
+              Bonjour <em className="cpa-italic">{firstName}</em>
+            </div>
+          </div>
+          <button onClick={onClose} aria-label="Fermer" style={{
+            width: 36, height: 36, borderRadius: 999,
+            background: 'var(--surface)', border: '1px solid var(--line)',
+            color: 'var(--ink-2)', cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <X style={{ width: 14, height: 14 }} />
+          </button>
+        </div>
+
+        {/* Mini profil */}
+        {(fullName !== '—' || email) && (
+          <div style={{
+            padding: '12px 22px',
+            borderBottom: '1px solid var(--line-2)',
+            display: 'flex', alignItems: 'center', gap: 12,
+          }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 999,
+              background: 'var(--pastel-sage)', color: 'var(--pastel-sage-fg)',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: 'Fraunces, serif', fontSize: 15, fontWeight: 600,
+              flexShrink: 0,
+            }}>
+              {fullName.charAt(0).toUpperCase()}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontFamily: 'Inter', fontSize: 13, fontWeight: 600, color: 'var(--ink)',
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>{fullName}</div>
+              {email && (
+                <div style={{
+                  fontFamily: 'Inter', fontSize: 11, color: 'var(--ink-3)',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>{email}</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Liste des sections */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '14px 14px' }}>
+          {sections.map(s => {
+            const Icon = s.icon;
+            const active = tab === s.k;
+            return (
+              <button
+                key={s.k}
+                className={`cpa-burger-item ${active ? 'active' : ''}`}
+                onClick={() => select(s.k)}
+                style={{ marginBottom: 4 }}
+              >
+                <Icon style={{ width: 18, height: 18, color: active ? 'var(--paper)' : 'var(--ink-3)', flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                  <div style={{
+                    fontFamily: 'Inter', fontSize: 14, fontWeight: 600,
+                    color: active ? 'var(--paper)' : 'var(--ink)',
+                    lineHeight: 1.2,
+                  }}>{s.label}</div>
+                  <div style={{
+                    fontFamily: 'Inter', fontSize: 11, fontWeight: 400,
+                    color: active ? 'oklch(0.78 0.012 80)' : 'var(--ink-3)',
+                    marginTop: 2,
+                  }}>{s.hint}</div>
+                </div>
+                {s.unread && <span className="cpa-burger-dot" />}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: '14px 18px',
+          borderTop: '1px solid var(--line-2)',
+        }}>
+          <button onClick={() => { onClose(); onLogout(); }} style={{
+            width: '100%', padding: 12, borderRadius: 12,
+            background: 'transparent', border: '1px solid oklch(0.85 0.06 25)',
+            color: 'var(--rouge)', cursor: 'pointer',
+            fontFamily: 'Inter', fontSize: 12, fontWeight: 600,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            transition: 'all .15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--pastel-rose)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+            <LogOut style={{ width: 13, height: 13 }} /> Se déconnecter
+          </button>
+        </div>
+      </aside>
+    </>
+  );
+}
+
 /* ═══════════ DASHBOARD PRINCIPAL ═══════════ */
 function Dashboard({ client, onLogout, onRefreshClient }) {
   const [quotes, setQuotes] = useState([]);
@@ -4141,6 +4339,7 @@ function Dashboard({ client, onLogout, onRefreshClient }) {
   const [reviewIntv, setReviewIntv] = useState(null);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [burgerOpen, setBurgerOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(() => {
     try { return localStorage.getItem('cpa_onboarded') !== '1'; } catch { return false; }
   });
@@ -4333,7 +4532,17 @@ function Dashboard({ client, onLogout, onRefreshClient }) {
       <div className="cpa-shell">
         {/* Top bar */}
         <div className="cpa-topbar">
-          <div className="cpa-topbar-logo">Global <em>Clean</em> Home</div>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <button
+              onClick={() => setBurgerOpen(true)}
+              className="cpa-burger-btn"
+              aria-label="Ouvrir le menu"
+              title="Menu"
+            >
+              <Menu style={{ width: 18, height: 18 }} />
+            </button>
+            <div className="cpa-topbar-logo">Global <em>Clean</em> Home</div>
+          </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <button onClick={() => setNotifOpen(true)} className="cpa-icon-btn">
               <Bell style={{ width: 16, height: 16 }} />
@@ -4400,6 +4609,15 @@ function Dashboard({ client, onLogout, onRefreshClient }) {
       {openIntv && <InterventionDetail intervention={openIntv} onClose={() => setOpenIntv(null)} />}
       {reviewIntv && <ReviewModal intervention={reviewIntv} onClose={() => setReviewIntv(null)} onSubmit={handleReview} />}
       {notifOpen && <NotificationsDrawer notifications={notifications} onClose={() => setNotifOpen(false)} onMarkRead={handleMarkNotif} />}
+      <BurgerMenu
+        open={burgerOpen}
+        onClose={() => setBurgerOpen(false)}
+        tab={tab}
+        onSelectTab={setTab}
+        client={client}
+        onLogout={onLogout}
+        hasUnreadMessages={messages.some(m => !m.read && m.from !== 'client')}
+      />
     </div>
   );
 }
