@@ -1476,10 +1476,8 @@ async def funnel_conversion(
     try:
         from server import require_auth
         await require_auth(request)
-    except HTTPException:
-        raise
     except Exception:
-        pass
+        pass  # best-effort auth (cohérent avec /journeys, /visitors, /stats)
     if _db is None:
         raise HTTPException(status_code=500, detail="DB non initialisee")
 
