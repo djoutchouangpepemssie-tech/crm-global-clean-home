@@ -1741,18 +1741,23 @@ async def legacy_script_js(request: Request):
 audience_router = APIRouter(prefix="/api/audience", tags=["audience"])
 
 def _mirror_tracker_routes_to_audience():
-    """Re-monte chaque route GET/DELETE de tracker_router sous /api/audience."""
+    """Re-monte chaque route GET/POST/DELETE de tracker_router sous /api/audience.
+    Exception : /api/tracking/event (POST public du tracker.min.js) reste
+    UNIQUEMENT sous /tracking pour ne pas duppliquer le endpoint d'ingestion.
+    """
     TRACKING_PREFIX = "/api/tracking"
-    SKIP_PATHS = {"/api/tracking/script.js", "/api/tracking/snippet"}
+    # Ne pas mirror : event (ingestion publique), script.js et snippet (admin tools)
+    SKIP_PATHS = {
+        "/api/tracking/event",
+        "/api/tracking/script.js",
+        "/api/tracking/snippet",
+    }
     for route in list(tracker_router.routes):
         # APIRoute stocke le path complet (prefix + path local)
         full_path = getattr(route, "path", None)
         if not full_path or full_path in SKIP_PATHS:
             continue
         methods = set(getattr(route, "methods", set()) or set()) - {"HEAD", "OPTIONS"}
-        # Le tracker public (POST /event) garde /api/tracking — ne pas dupliquer
-        if "POST" in methods:
-            continue
         if not methods:
             continue
         # Strip le prefix /api/tracking pour ne garder que le sous-chemin
