@@ -448,6 +448,10 @@ class Lead(BaseModel):
     geocoding_label: Optional[str] = None
     geocoded_at: Optional[str] = None
     deleted_at: Optional[str] = None
+    # Tracking : relie le lead à son parcours visiteur (page LeadDetail
+    # affiche la timeline complète d'avant conversion via /audience/journeys/:id)
+    visitor_id: Optional[str] = None
+    session_id: Optional[str] = None
 
 
 class LeadCreate(BaseModel):

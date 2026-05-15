@@ -279,6 +279,18 @@ export function useJourneyRealtime() {
   });
 }
 
+export function useFunnelConversion(days = 30, filters = {}) {
+  const qs = new URLSearchParams({
+    days: String(days),
+    ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== undefined && v !== '' && v !== null)),
+  }).toString();
+  return useQuery({
+    queryKey: ['audience', 'funnel-conversion', days, filters],
+    queryFn: async () => (await api.get(`/audience/funnel-conversion?${qs}`)).data,
+    staleTime: 60_000,
+  });
+}
+
 export function useDeleteVisitor() {
   const qc = useQueryClient();
   return useMutation({

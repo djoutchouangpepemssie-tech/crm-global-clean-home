@@ -209,6 +209,7 @@ const SeoInternalLinks = lazy(() => import('./components/seo/SeoInternalLinks'))
 const SeoActions = lazy(() => import('./components/seo/SeoActions'));
 const SeoJourneys = lazy(() => import('./components/seo/SeoJourneys'));
 const SeoJourneyDetail = lazy(() => import('./components/seo/SeoJourneyDetail'));
+const SeoFunnel = lazy(() => import('./components/seo/SeoFunnel'));
 const MapTerritoire = lazy(() => import('./components/map/MapTerritoire'));
 const AdsAffichage = lazy(() => import('./components/ads/AdsAffichage'));
 const RentabiliteBalance = lazy(() => import('./components/rentabilite/RentabiliteBalance'));
@@ -504,6 +505,7 @@ function AppRouter() {
                       <Route path="ai/actions" element={<SeoActions />} />
                       <Route path="journeys" element={<SeoJourneys />} />
                       <Route path="journeys/:visitor_id" element={<SeoJourneyDetail />} />
+                      <Route path="funnel" element={<SeoFunnel />} />
                       <Route path="settings" element={<SeoSettings />} />
                       <Route path="exploration" element={<SeoCockpit />} />
                     </Route>

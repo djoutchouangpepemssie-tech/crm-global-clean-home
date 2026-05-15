@@ -311,6 +311,147 @@ function Panel({ title, em, action, children }) {
 }
 
 // ————————————————————————————————————————————————
+// VISITOR JOURNEY PANEL — parcours du visiteur AVANT conversion
+// Affiche le funnel personnel : combien de visites, quelles pages,
+// quels CTAs, première/dernière source, avant que le lead ne soumette.
+// ————————————————————————————————————————————————
+function VisitorJourneyPanel({ visitorId, sessionId }) {
+  const [data, setData] = React.useState(null);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState(null);
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (!visitorId) return;
+    let alive = true;
+    setLoading(true);
+    setError(null);
+    api.get(`/audience/journeys/${visitorId}`)
+      .then((r) => { if (alive) setData(r.data); })
+      .catch((e) => { if (alive) setError(e?.message || 'Parcours indisponible'); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [visitorId]);
+
+  // Pas de visitor_id → ne pas afficher la Panel du tout
+  if (!visitorId) return null;
+
+  const profile = data?.profile || {};
+  const stats = data?.stats || {};
+  const sessions = data?.sessions || [];
+  const topPages = (data?.top_pages || []).slice(0, 5);
+  const loc = data?.location;
+
+  const sessionsCount = sessions.length || 0;
+  const pageviews = stats.pageviews || profile.pageviews || 0;
+  const ctaTotal = (stats.cta_clicks || 0) + (stats.phone_clicks || 0) +
+                   (stats.email_clicks || 0) + (stats.whatsapp_clicks || 0);
+  const firstSource = profile.first_utm_source || profile.first_referrer || 'Direct';
+  const firstSeen = profile.first_seen ? new Date(profile.first_seen) : null;
+  const lastSeen = profile.last_seen ? new Date(profile.last_seen) : null;
+  const daysBetween = firstSeen && lastSeen
+    ? Math.max(0, Math.round((lastSeen - firstSeen) / 86400000))
+    : 0;
+
+  return (
+    <Panel
+      title="Parcours"
+      em=" avant conversion"
+      action={<span onClick={() => navigate(`/seo/journeys/${visitorId}`)} style={{ cursor: 'pointer' }}>→ Détail complet</span>}
+    >
+      {loading && (
+        <div style={{ padding: 16, textAlign: 'center', color: 'var(--ink-3)', fontSize: 12 }}>
+          Chargement du parcours…
+        </div>
+      )}
+      {error && (
+        <div style={{ padding: 12, background: 'var(--surface-2)', borderRadius: 8, fontSize: 11, color: 'var(--ink-3)' }}>
+          ⚠ Aucun parcours trouvé pour ce visiteur (ID : {visitorId.slice(0, 12)}…)
+        </div>
+      )}
+      {!loading && !error && data && (
+        <>
+          {/* KPIs : sessions / pages / CTA / durée parcours */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
+            <KpiTile label="Sessions" value={sessionsCount} />
+            <KpiTile label="Pages vues" value={pageviews} />
+            <KpiTile label="CTA cliqués" value={ctaTotal} tone={ctaTotal > 0 ? 'var(--accent)' : undefined} />
+            <KpiTile label="Durée" value={daysBetween > 0 ? `${daysBetween}j` : '< 1j'} />
+          </div>
+
+          {/* Source d'acquisition */}
+          <div style={{ padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 8, marginBottom: 14 }}>
+            <div className="ld-mono" style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 4 }}>
+              Première source d'acquisition
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 500 }}>
+              {firstSource}
+              {profile.first_utm_campaign && (
+                <span style={{ color: 'var(--ink-3)', fontSize: 11, marginLeft: 8 }}>
+                  · campagne « {profile.first_utm_campaign} »
+                </span>
+              )}
+            </div>
+            {firstSeen && (
+              <div className="ld-mono" style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 4 }}>
+                {firstSeen.toLocaleString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </div>
+            )}
+          </div>
+
+          {/* Top pages visitées */}
+          {topPages.length > 0 && (
+            <div>
+              <div className="ld-mono" style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 8 }}>
+                Pages les plus visitées
+              </div>
+              {topPages.map((p, i) => (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '6px 0', borderBottom: i < topPages.length - 1 ? '1px solid var(--line-2)' : 0,
+                  fontSize: 12,
+                }}>
+                  <span style={{ color: 'var(--ink-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+                    {p.path || p.url || '/'}
+                  </span>
+                  <span className="ld-mono" style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600, marginLeft: 8 }}>
+                    {p.views || p.count || 0}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Localisation IP */}
+          {loc && loc.city && (
+            <div className="ld-mono" style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--line-2)' }}>
+              📍 {loc.city}{loc.postal && ` (${loc.postal})`}{loc.country_code && `, ${loc.country_code}`}
+            </div>
+          )}
+        </>
+      )}
+    </Panel>
+  );
+}
+
+// Mini KPI tile pour le parcours
+function KpiTile({ label, value, tone }) {
+  return (
+    <div style={{
+      padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 8,
+      border: '1px solid var(--line-2)',
+    }}>
+      <div className="ld-mono" style={{ fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 2 }}>
+        {label}
+      </div>
+      <div className="ld-display" style={{ fontSize: 18, fontWeight: 500, color: tone || 'var(--ink)', letterSpacing: '-0.01em', lineHeight: 1 }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+// ————————————————————————————————————————————————
 // LEAD HEADER
 // ————————————————————————————————————————————————
 function LeadHeader({ lead }) {
@@ -1237,6 +1378,8 @@ const LeadDetail = () => {
               <MiniMap lead={lead} />
               <DistanceStats leadId={id} />
             </Panel>
+
+            <VisitorJourneyPanel visitorId={lead?.visitor_id} sessionId={lead?.session_id} />
 
             <Panel title="Devis" em=" associés" action="+ Nouveau">
               {quotes.map((q, i) => {

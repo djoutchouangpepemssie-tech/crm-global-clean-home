@@ -1454,6 +1454,142 @@ async def tracker_stats_realtime(request: Request):
     }
 
 
+# ════════════════════════════════════════════════════════════════════
+# FUNNEL DE CONVERSION
+# Visiteurs → CTA cliqué → Form soumis → Lead → Devis → Facture
+# Avec drop-off % à chaque étape + filtres UTM source/medium/campaign.
+# ════════════════════════════════════════════════════════════════════
+
+@tracker_router.get("/funnel-conversion")
+async def funnel_conversion(
+    request: Request,
+    days: int = 30,
+    utm_source: Optional[str] = None,
+    utm_medium: Optional[str] = None,
+    utm_campaign: Optional[str] = None,
+):
+    """Funnel complet : Visiteurs → CTA → Form → Lead → Devis → Facture.
+
+    Chaque étape : count + % du total visiteurs + drop-off vs étape précédente.
+    Filtres UTM optionnels pour analyser un canal d'acquisition spécifique.
+    """
+    try:
+        from server import require_auth
+        await require_auth(request)
+    except HTTPException:
+        raise
+    except Exception:
+        pass
+    if _db is None:
+        raise HTTPException(status_code=500, detail="DB non initialisee")
+
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+
+    # Filtres communs sur visitor_profiles
+    base_q: dict = {"last_seen": {"$gte": since}}
+    if utm_source:   base_q["first_utm_source"] = utm_source
+    if utm_medium:   base_q["first_utm_medium"] = utm_medium
+    if utm_campaign: base_q["first_utm_campaign"] = utm_campaign
+
+    # ── Étape 1 : Total visiteurs uniques (visitor_profiles avec activité) ──
+    visitors = await _db.visitor_profiles.count_documents(base_q)
+
+    # ── Étape 2 : Visiteurs avec >=1 CTA cliqué (cta/phone/email/whatsapp) ──
+    cta_q = dict(base_q)
+    cta_q["$or"] = [
+        {"cta_clicks":      {"$gt": 0}},
+        {"phone_clicks":    {"$gt": 0}},
+        {"email_clicks":    {"$gt": 0}},
+        {"whatsapp_clicks": {"$gt": 0}},
+    ]
+    cta_clicked = await _db.visitor_profiles.count_documents(cta_q)
+
+    # ── Étape 3 : Visiteurs ayant atteint /devis ou /contact ──
+    form_reached_q = dict(base_q)
+    form_reached_q["pages_visited"] = {"$elemMatch": {"$regex": "/devis|/contact", "$options": "i"}}
+    form_reached = await _db.visitor_profiles.count_documents(form_reached_q)
+
+    # ── Étape 4 : Visiteurs ayant SOUMIS un form ──
+    form_submitted_q = dict(base_q)
+    form_submitted_q["form_submits"] = {"$gt": 0}
+    form_submitted = await _db.visitor_profiles.count_documents(form_submitted_q)
+
+    # ── Étape 5 : Leads créés (visitor_profiles avec lead_id OU leads dans la période) ──
+    # On compte les visitor_profiles "identified" (= ayant déclenché form_submit
+    # avec lead_data, ce qui crée un lead côté backend)
+    leads_q = dict(base_q)
+    leads_q["lead_id"] = {"$exists": True, "$ne": None}
+    leads_created = await _db.visitor_profiles.count_documents(leads_q)
+
+    # Pour devis/factures : on récupère les lead_ids des profils convertis
+    lead_ids = []
+    try:
+        async for p in _db.visitor_profiles.find(leads_q, {"_id": 0, "lead_id": 1}):
+            if p.get("lead_id"):
+                lead_ids.append(p["lead_id"])
+    except Exception as e:
+        logger.debug(f"funnel lead_ids fetch: {e}")
+
+    # ── Étape 6 : Leads avec au moins 1 devis ──
+    leads_with_quote = 0
+    if lead_ids:
+        try:
+            quoted_leads = await _db.quotes.distinct("lead_id", {"lead_id": {"$in": lead_ids}})
+            leads_with_quote = len(quoted_leads)
+        except Exception as e:
+            logger.debug(f"funnel quotes count: {e}")
+
+    # ── Étape 7 : Leads avec au moins 1 facture ──
+    leads_with_invoice = 0
+    if lead_ids:
+        try:
+            invoiced_leads = await _db.invoices.distinct("lead_id", {"lead_id": {"$in": lead_ids}})
+            leads_with_invoice = len(invoiced_leads)
+        except Exception as e:
+            logger.debug(f"funnel invoices count: {e}")
+
+    # ── Construction du funnel avec drop-off % ──
+    def step(label: str, count: int, prev_count: int, total: int):
+        pct_total = round((count / total * 100), 1) if total > 0 else 0
+        drop_off = round(((prev_count - count) / prev_count * 100), 1) if prev_count > 0 else 0
+        return {
+            "label": label,
+            "count": count,
+            "pct_of_total": pct_total,
+            "drop_off_from_prev": drop_off,
+        }
+
+    funnel = [
+        step("Visiteurs uniques",     visitors,           visitors,        visitors),
+        step("CTA cliqué",            cta_clicked,        visitors,        visitors),
+        step("Page formulaire",       form_reached,       cta_clicked,     visitors),
+        step("Formulaire soumis",     form_submitted,     form_reached,    visitors),
+        step("Lead créé",             leads_created,      form_submitted,  visitors),
+        step("Devis envoyé",          leads_with_quote,   leads_created,   visitors),
+        step("Facture émise",         leads_with_invoice, leads_with_quote, visitors),
+    ]
+
+    # Taux de conversion global
+    conversion_rate = round((leads_created / visitors * 100), 2) if visitors > 0 else 0
+
+    return {
+        "period_days": days,
+        "filters": {
+            "utm_source": utm_source,
+            "utm_medium": utm_medium,
+            "utm_campaign": utm_campaign,
+        },
+        "totals": {
+            "visitors": visitors,
+            "leads": leads_created,
+            "quotes": leads_with_quote,
+            "invoices": leads_with_invoice,
+            "conversion_rate_pct": conversion_rate,
+        },
+        "funnel": funnel,
+    }
+
+
 # ============= DROIT À L'OUBLI RGPD =============
 
 @tracker_router.delete("/visitors/{visitor_id}")
