@@ -279,6 +279,36 @@ export function useJourneyRealtime() {
   });
 }
 
+// ─── HOT ALERTS — visiteurs chauds (CTA cliqué, form soumis, 5+ min) ───
+export function useHotAlerts(limit = 30, opts = {}) {
+  return useQuery({
+    queryKey: ['audience', 'hot-alerts', limit],
+    queryFn: async () => (await api.get(`/audience/hot-alerts?limit=${limit}`)).data,
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+    ...opts,
+  });
+}
+
+export function useHotAlertsConfig() {
+  return useQuery({
+    queryKey: ['audience', 'hot-alerts', 'config'],
+    queryFn: async () => (await api.get('/audience/hot-alerts/config')).data,
+    staleTime: 60_000,
+  });
+}
+
+export function useTestHotAlert() {
+  return useMutation({
+    mutationFn: async () => (await api.post('/audience/hot-alerts/test')).data,
+    onSuccess: (d) => {
+      if (d?.ok) toast.success('Message Telegram envoyé !');
+      else toast.error(d?.message || 'Configuration Telegram manquante');
+    },
+    onError: (e) => toast.error(e?.message || 'Erreur envoi test'),
+  });
+}
+
 export function useFunnelConversion(days = 30, filters = {}) {
   const qs = new URLSearchParams({
     days: String(days),

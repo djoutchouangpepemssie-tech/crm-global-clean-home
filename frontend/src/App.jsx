@@ -11,6 +11,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import PWAInstallBanner, { OfflineIndicator } from './components/pwa/PWAInstallBanner';
 import CommandPalette from './components/shared/CommandPalette';
 import VoiceFab from './components/shared/VoiceFab';
+import HotAlertNotifier from './components/shared/HotAlertNotifier';
 
 import { startKeepAlive } from './lib/keepAlive.js';
 
@@ -210,6 +211,7 @@ const SeoActions = lazy(() => import('./components/seo/SeoActions'));
 const SeoJourneys = lazy(() => import('./components/seo/SeoJourneys'));
 const SeoJourneyDetail = lazy(() => import('./components/seo/SeoJourneyDetail'));
 const SeoFunnel = lazy(() => import('./components/seo/SeoFunnel'));
+const SeoHotAlerts = lazy(() => import('./components/seo/SeoHotAlerts'));
 const MapTerritoire = lazy(() => import('./components/map/MapTerritoire'));
 const AdsAffichage = lazy(() => import('./components/ads/AdsAffichage'));
 const RentabiliteBalance = lazy(() => import('./components/rentabilite/RentabiliteBalance'));
@@ -472,6 +474,7 @@ function AppRouter() {
                   <PWAInstallBanner />
                   <CommandPalette />
                   <VoiceFab />
+                  <HotAlertNotifier />
         <ErrorBoundary>
         <Suspense fallback={
           <div style={{padding:'24px',minHeight:'100vh',opacity:0.5}} />
@@ -506,6 +509,7 @@ function AppRouter() {
                       <Route path="journeys" element={<SeoJourneys />} />
                       <Route path="journeys/:visitor_id" element={<SeoJourneyDetail />} />
                       <Route path="funnel" element={<SeoFunnel />} />
+                      <Route path="hot-alerts" element={<SeoHotAlerts />} />
                       <Route path="settings" element={<SeoSettings />} />
                       <Route path="exploration" element={<SeoCockpit />} />
                     </Route>

@@ -4203,6 +4203,140 @@ async def track_event(request: Request):
         return {"status": "error", "detail": str(e)[:200]}
 
 
+# ════════════════════════════════════════════════════════════════════
+# HOT ALERTS — détection visiteur "chaud" + dispatch Telegram
+# Trigger : CTA cliqué / form soumis / 5+ min sur le site.
+# Anti-spam : 1 alerte max par visiteur / 1h (cooldown MongoDB).
+# ════════════════════════════════════════════════════════════════════
+
+HOT_ALERT_COOLDOWN_SECONDS = 3600  # 1h entre 2 alertes pour le même visiteur
+
+async def _send_telegram_message(text: str) -> bool:
+    """Envoie un message Telegram via bot HTTP API. Retourne True si succès.
+    Nécessite les env vars TELEGRAM_BOT_TOKEN et TELEGRAM_CHAT_ID.
+    """
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+    if not bot_token or not chat_id:
+        return False
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=4) as c:
+            r = await c.post(
+                f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                json={"chat_id": chat_id, "text": text, "parse_mode": "HTML", "disable_web_page_preview": True},
+            )
+            return r.status_code == 200
+    except Exception as e:
+        logger.warning(f"Telegram send failed: {e}")
+        return False
+
+
+async def _maybe_dispatch_hot_alert(visitor_id: str, event_type: str, path: str, data: dict, page_url: str):
+    """Crée une hot_alert + dispatch Telegram si pas déjà notifié récemment."""
+    if not visitor_id:
+        return
+
+    now = datetime.now(timezone.utc)
+    cutoff = (now - timedelta(seconds=HOT_ALERT_COOLDOWN_SECONDS)).isoformat()
+
+    # Anti-spam : a-t-on déjà envoyé une alerte pour ce visiteur dans la dernière heure ?
+    try:
+        recent = await db.hot_alerts.find_one(
+            {"visitor_id": visitor_id, "created_at": {"$gte": cutoff}},
+            {"_id": 1},
+        )
+        if recent:
+            return  # cooldown actif
+    except Exception:
+        pass
+
+    # Récupérer le profil pour enrichir l'alerte (nom lead, source, location)
+    profile = None
+    try:
+        profile = await db.visitor_profiles.find_one({"visitor_id": visitor_id}, {"_id": 0})
+    except Exception:
+        pass
+    profile = profile or {}
+
+    # Géoloc (lookup cache uniquement, pas d'appel API ici)
+    location = None
+    ip = profile.get("ip") or data.get("ip")
+    if ip:
+        try:
+            cached = await db.ip_geocache.find_one({"ip": ip}, {"_id": 0, "location": 1})
+            if cached:
+                location = cached.get("location")
+        except Exception:
+            pass
+
+    trigger_label = {
+        "cta_click":      "🎯 CTA cliqué",
+        "phone_click":    "📞 Numéro de téléphone cliqué",
+        "email_click":    "✉️ Email cliqué",
+        "whatsapp_click": "💬 WhatsApp cliqué",
+        "form_submit":    "📝 Formulaire soumis",
+        "time_on_page":   "⏱️ 5+ minutes sur le site",
+        "time_on_page_2min": "⏱️ 5+ minutes sur le site",
+    }.get(event_type, f"🔥 {event_type}")
+
+    alert = {
+        "alert_id": f"hot_{uuid.uuid4().hex[:12]}",
+        "visitor_id": visitor_id,
+        "event_type": event_type,
+        "trigger_label": trigger_label,
+        "page": path or page_url or "",
+        "page_url": page_url or "",
+        "lead_id": profile.get("lead_id"),
+        "lead_name": profile.get("lead_name"),
+        "lead_email": profile.get("lead_email"),
+        "first_utm_source": profile.get("first_utm_source"),
+        "first_utm_campaign": profile.get("first_utm_campaign"),
+        "city": (location or {}).get("city"),
+        "postal": (location or {}).get("postal"),
+        "country_code": (location or {}).get("country_code"),
+        "pageviews": profile.get("pageviews", 0),
+        "events_total": profile.get("events_total", 0),
+        "device_type": profile.get("device_type"),
+        "created_at": now.isoformat(),
+        "telegram_sent": False,
+    }
+
+    # Compose le message Telegram
+    location_str = ""
+    if alert["city"]:
+        location_str = f" · 📍 {alert['city']}"
+        if alert["postal"]:
+            location_str += f" {alert['postal']}"
+    source_str = ""
+    if alert["first_utm_source"]:
+        source_str = f"\n🔗 Source : {alert['first_utm_source']}"
+        if alert["first_utm_campaign"]:
+            source_str += f" / {alert['first_utm_campaign']}"
+
+    identity = ""
+    if alert["lead_name"]:
+        identity = f"\n👤 <b>{alert['lead_name']}</b>"
+        if alert["lead_email"]:
+            identity += f" ({alert['lead_email']})"
+
+    msg = (
+        f"<b>{trigger_label}</b>{location_str}\n"
+        f"📄 Page : {alert['page'] or '/'}\n"
+        f"📊 {alert['pageviews']} pages vues · {alert['events_total']} events"
+        f"{identity}{source_str}\n\n"
+        f"🔍 Voir le parcours :\nhttps://crm.globalcleanhome.com/seo/journeys/{visitor_id}"
+    )
+
+    sent = await _send_telegram_message(msg)
+    alert["telegram_sent"] = sent
+
+    try:
+        await db.hot_alerts.insert_one(alert)
+    except Exception as e:
+        logger.debug(f"hot_alerts insert: {e}")
+
+
 async def _process_single_tracking_event(data: dict, request):
     """Traite un seul événement de tracking.
     Accepte 2 formats :
@@ -4356,6 +4490,22 @@ async def _process_single_tracking_event(data: dict, request):
                 await db.visitor_profiles.update_one({"visitor_id": vid}, update_ops, upsert=True)
             except Exception as e:
                 logger.debug(f"visitor_profiles update: {e}")
+
+            # ───── DÉTECTION VISITEUR "HOT" + DISPATCH ALERTE ─────
+            # Trigger : CTA cliqué (cta/phone/email/whatsapp), form_submit,
+            # ou time_on_page >= 300s (5 minutes).
+            # Anti-spam : 1 alerte max par visiteur / 1 heure (cooldown).
+            HOT_TRIGGERS = {"cta_click", "phone_click", "email_click", "whatsapp_click", "form_submit"}
+            is_hot = (
+                etype in HOT_TRIGGERS
+                or (etype == "time_on_page" and int(data.get("seconds") or 0) >= 300)
+                or (etype == "time_on_page_2min" and (data.get("event_data") or {}).get("total_time_seconds", 0) >= 300)
+            )
+            if is_hot:
+                try:
+                    await _maybe_dispatch_hot_alert(vid, etype, path, data, page_url)
+                except Exception as e:
+                    logger.debug(f"hot_alert dispatch: {e}")
 
         # If it's a form submit with lead data, create lead automatically
         if data.get("event_type") == "form_submit" and data.get("lead_data"):

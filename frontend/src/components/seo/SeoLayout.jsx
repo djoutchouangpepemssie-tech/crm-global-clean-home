@@ -37,6 +37,7 @@ const NAV = [
   { to: '/seo/globe',        label: 'Globe 3D',      icon: Globe2 },
   { to: '/seo/journeys',     label: 'Parcours',      icon: Footprints, highlight: true },
   { to: '/seo/funnel',       label: 'Funnel',        icon: Filter, highlight: true },
+  { to: '/seo/hot-alerts',   label: 'Visiteurs hot', icon: Zap, highlight: true },
   { to: '/seo/ai',           label: 'IA & Recos',    icon: Sparkles },
   { to: '/seo/alerts',       label: 'Alertes',       icon: AlertTriangle },
   { to: '/seo/connect',      label: 'Connexion',     icon: Cable, highlight: true },

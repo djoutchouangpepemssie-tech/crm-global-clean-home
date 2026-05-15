@@ -1588,6 +1588,90 @@ async def funnel_conversion(
     }
 
 
+# ════════════════════════════════════════════════════════════════════
+# HOT ALERTS — endpoints d'historique et test
+# Le dispatch est fait au moment de l'event dans server.py
+# (_maybe_dispatch_hot_alert). Ici on expose juste la lecture.
+# ════════════════════════════════════════════════════════════════════
+
+@tracker_router.get("/hot-alerts")
+async def list_hot_alerts(request: Request, limit: int = 30):
+    """Historique des dernières alertes 'visiteur hot' déclenchées."""
+    try:
+        from server import require_auth
+        await require_auth(request)
+    except Exception:
+        pass
+    if _db is None:
+        raise HTTPException(status_code=500, detail="DB non initialisee")
+    limit = max(1, min(200, int(limit)))
+    try:
+        rows = await _db.hot_alerts.find({}, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    except Exception as e:
+        logger.warning(f"hot_alerts list: {e}")
+        rows = []
+    # Compte des alertes des dernières 24h
+    last24 = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+    try:
+        count_24h = await _db.hot_alerts.count_documents({"created_at": {"$gte": last24}})
+    except Exception:
+        count_24h = 0
+    return {"count": len(rows), "count_24h": count_24h, "alerts": rows}
+
+
+@tracker_router.post("/hot-alerts/test")
+async def test_hot_alert(request: Request):
+    """Envoie un message Telegram de test pour valider la config."""
+    try:
+        from server import require_auth
+        await require_auth(request)
+    except Exception:
+        pass
+    try:
+        from server import _send_telegram_message
+    except Exception:
+        return {"ok": False, "error": "module non disponible"}
+    msg = (
+        f"<b>🧪 Test notification CRM</b>\n"
+        f"Si tu vois ce message, ta config Telegram fonctionne.\n"
+        f"Tu recevras une alerte à chaque visiteur 'hot' (CTA cliqué, "
+        f"formulaire soumis, ou 5+ min sur le site).\n\n"
+        f"⏰ {datetime.now(timezone.utc).isoformat()}"
+    )
+    sent = await _send_telegram_message(msg)
+    return {
+        "ok": sent,
+        "configured": bool(os.environ.get("TELEGRAM_BOT_TOKEN") and os.environ.get("TELEGRAM_CHAT_ID")),
+        "message": "Message envoyé sur Telegram" if sent else "Configuration manquante (TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID dans Railway env vars)",
+    }
+
+
+@tracker_router.get("/hot-alerts/config")
+async def hot_alerts_config(request: Request):
+    """Retourne l'état de configuration Telegram (sans exposer les secrets)."""
+    try:
+        from server import require_auth
+        await require_auth(request)
+    except Exception:
+        pass
+    bot_set = bool(os.environ.get("TELEGRAM_BOT_TOKEN"))
+    chat_set = bool(os.environ.get("TELEGRAM_CHAT_ID"))
+    return {
+        "telegram_configured": bot_set and chat_set,
+        "bot_token_set": bot_set,
+        "chat_id_set": chat_set,
+        "cooldown_seconds": 3600,
+        "triggers": [
+            "CTA cliqué (cta_click)",
+            "Téléphone cliqué (phone_click)",
+            "Email cliqué (email_click)",
+            "WhatsApp cliqué (whatsapp_click)",
+            "Formulaire soumis (form_submit)",
+            "5+ minutes sur le site (time_on_page)",
+        ],
+    }
+
+
 # ============= DROIT À L'OUBLI RGPD =============
 
 @tracker_router.delete("/visitors/{visitor_id}")
