@@ -5408,6 +5408,176 @@ app.include_router(planning_router)
 from advanced import advanced_router
 app.include_router(advanced_router)
 
+# ════════════════════════════════════════════════════════════════════
+# REPORTING — agrégation pour rapports mensuels exportables PDF
+# ════════════════════════════════════════════════════════════════════
+
+@api_router.get("/reporting/monthly")
+async def reporting_monthly(request: Request, month: Optional[str] = None):
+    """Rapport mensuel : KPIs, top leads/zones/sources, comparé au mois N-1.
+
+    `month` : format YYYY-MM (ex: "2026-04"). Si absent, mois courant.
+    """
+    await require_auth(request)
+
+    # Période demandée
+    today = datetime.now(timezone.utc)
+    if month:
+        try:
+            year, mo = month.split("-")
+            year = int(year)
+            mo = int(mo)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Format mois attendu : YYYY-MM")
+    else:
+        year = today.year
+        mo = today.month
+
+    # Bornes ISO du mois demandé + mois précédent
+    start_curr = datetime(year, mo, 1, tzinfo=timezone.utc)
+    if mo == 12:
+        start_next = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
+    else:
+        start_next = datetime(year, mo + 1, 1, tzinfo=timezone.utc)
+    if mo == 1:
+        start_prev = datetime(year - 1, 12, 1, tzinfo=timezone.utc)
+    else:
+        start_prev = datetime(year, mo - 1, 1, tzinfo=timezone.utc)
+
+    curr_lo, curr_hi = start_curr.isoformat(), start_next.isoformat()
+    prev_lo, prev_hi = start_prev.isoformat(), curr_lo
+
+    not_deleted = {"$or": [{"deleted_at": {"$exists": False}}, {"deleted_at": {"$in": [None, "", False]}}]}
+
+    # ─── Helpers : agréger sur une période ───
+    async def stats_for_period(lo, hi):
+        leads_q = {"created_at": {"$gte": lo, "$lt": hi}, **not_deleted}
+        try:
+            leads = await db.leads.find(leads_q, {"_id": 0}).to_list(5000)
+        except Exception:
+            leads = []
+        leads_count = len(leads)
+
+        try:
+            quotes = await db.quotes.find({"created_at": {"$gte": lo, "$lt": hi}}, {"_id": 0}).to_list(5000)
+        except Exception:
+            quotes = []
+        quotes_count = len(quotes)
+        quotes_amount = sum(float(q.get("amount") or q.get("total_ttc") or 0) for q in quotes)
+        quotes_accepted = [q for q in quotes if q.get("status") in ("accepté", "accepted", "gagne", "gagné", "won")]
+
+        try:
+            invoices = await db.invoices.find({"created_at": {"$gte": lo, "$lt": hi}}, {"_id": 0}).to_list(5000)
+        except Exception:
+            invoices = []
+        invoices_count = len(invoices)
+        invoices_amount = sum(float(i.get("amount_ttc") or i.get("amount") or 0) for i in invoices)
+        invoices_paid = [i for i in invoices if i.get("status") in ("payée", "payee", "paid")]
+        revenue_collected = sum(float(i.get("amount_ttc") or i.get("amount") or 0) for i in invoices_paid)
+
+        return {
+            "leads_count": leads_count,
+            "quotes_count": quotes_count,
+            "quotes_amount": round(quotes_amount, 2),
+            "quotes_accepted_count": len(quotes_accepted),
+            "invoices_count": invoices_count,
+            "invoices_amount": round(invoices_amount, 2),
+            "revenue_collected": round(revenue_collected, 2),
+            "leads": leads,  # pour analyses détaillées sur le mois courant
+            "quotes": quotes,
+            "invoices": invoices,
+        }
+
+    curr = await stats_for_period(curr_lo, curr_hi)
+    prev = await stats_for_period(prev_lo, prev_hi)
+
+    def delta_pct(c, p):
+        if not p:
+            return None if not c else 100.0
+        return round((c - p) / p * 100, 1)
+
+    # ─── Analyses détaillées sur le mois courant ───
+    # Top zones (ville extraite de l'adresse)
+    from collections import Counter
+    zones_counter = Counter()
+    for ld in curr["leads"]:
+        addr = (ld.get("address") or "").strip()
+        if not addr:
+            continue
+        # Heuristique : la ville est souvent le dernier mot avant le code postal
+        # ou après "75008" type "75008 Paris" → on prend Paris
+        parts = addr.split(",")
+        city = parts[-1].strip() if parts else addr
+        # Strip code postal en début si présent
+        words = city.split()
+        if words and words[0].isdigit() and len(words[0]) == 5:
+            city = " ".join(words[1:])
+        if city:
+            zones_counter[city[:40]] += 1
+    top_zones = [{"city": c, "leads_count": n} for c, n in zones_counter.most_common(5)]
+
+    # Top sources (utm_source)
+    sources_counter = Counter()
+    for ld in curr["leads"]:
+        src = ld.get("utm_source") or ld.get("source") or "Direct"
+        sources_counter[src] += 1
+    top_sources = [{"source": s, "leads_count": n} for s, n in sources_counter.most_common(5)]
+
+    # Top leads par valeur de devis
+    lead_value = {}
+    for q in curr["quotes"]:
+        lid = q.get("lead_id")
+        if not lid:
+            continue
+        amt = float(q.get("amount") or q.get("total_ttc") or 0)
+        lead_value[lid] = lead_value.get(lid, 0) + amt
+    # Joindre nom du lead
+    lead_names = {ld.get("lead_id"): ld.get("name") for ld in curr["leads"]}
+    # Aussi récupérer pour les leads créés avant le mois mais ayant un devis ce mois
+    missing_lead_ids = [lid for lid in lead_value if lid not in lead_names]
+    if missing_lead_ids:
+        try:
+            extra = await db.leads.find({"lead_id": {"$in": missing_lead_ids}}, {"_id": 0, "lead_id": 1, "name": 1}).to_list(100)
+            for ld in extra:
+                lead_names[ld.get("lead_id")] = ld.get("name")
+        except Exception:
+            pass
+    top_leads = sorted(
+        [{"lead_id": lid, "name": lead_names.get(lid, lid), "total_quoted": round(amt, 2)} for lid, amt in lead_value.items()],
+        key=lambda x: -x["total_quoted"]
+    )[:5]
+
+    # Service types (répartition leads)
+    services_counter = Counter()
+    for ld in curr["leads"]:
+        services_counter[(ld.get("service_type") or "Autre")[:40]] += 1
+    services_breakdown = [{"service": s, "count": n} for s, n in services_counter.most_common()]
+
+    return {
+        "period": {
+            "month": f"{year:04d}-{mo:02d}",
+            "label_fr": start_curr.strftime("%B %Y"),
+            "start": curr_lo,
+            "end": curr_hi,
+        },
+        "kpis": {
+            "leads": {"value": curr["leads_count"], "prev": prev["leads_count"], "delta_pct": delta_pct(curr["leads_count"], prev["leads_count"])},
+            "quotes": {"value": curr["quotes_count"], "prev": prev["quotes_count"], "delta_pct": delta_pct(curr["quotes_count"], prev["quotes_count"])},
+            "quotes_amount": {"value": curr["quotes_amount"], "prev": prev["quotes_amount"], "delta_pct": delta_pct(curr["quotes_amount"], prev["quotes_amount"])},
+            "invoices": {"value": curr["invoices_count"], "prev": prev["invoices_count"], "delta_pct": delta_pct(curr["invoices_count"], prev["invoices_count"])},
+            "revenue_collected": {"value": curr["revenue_collected"], "prev": prev["revenue_collected"], "delta_pct": delta_pct(curr["revenue_collected"], prev["revenue_collected"])},
+            "conversion_rate": {
+                "value": round((curr["quotes_accepted_count"] / max(curr["leads_count"], 1)) * 100, 1),
+                "prev": round((prev["quotes_accepted_count"] / max(prev["leads_count"], 1)) * 100, 1),
+            },
+        },
+        "top_zones": top_zones,
+        "top_sources": top_sources,
+        "top_leads": top_leads,
+        "services_breakdown": services_breakdown,
+    }
+
+
 # Include external integrations router
 from external_integrations import ext_router
 app.include_router(ext_router)

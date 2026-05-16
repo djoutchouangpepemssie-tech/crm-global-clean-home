@@ -71,6 +71,7 @@ const NAV_GROUPS = [
     items: [
       { to: '/analytics',    icon: TrendingUp,      label: 'Analytics' },
       { to: '/rentabilite',  icon: BarChart2,       label: 'Rentabilité' },
+      { to: '/reporting',    icon: FileText,        label: 'Reporting · PDF' },
       { to: '/ads',          icon: Globe,           label: 'Publicités' },
       { to: '/seo',          icon: Search,          label: 'SEO' },
     ],
