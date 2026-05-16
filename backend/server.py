@@ -4211,25 +4211,36 @@ async def track_event(request: Request):
 
 HOT_ALERT_COOLDOWN_SECONDS = 3600  # 1h entre 2 alertes pour le même visiteur
 
-async def _send_telegram_message(text: str) -> bool:
-    """Envoie un message Telegram via bot HTTP API. Retourne True si succès.
+async def _send_telegram_message(text: str) -> dict:
+    """Envoie un message Telegram via bot HTTP API.
+    Retourne dict {ok: bool, status: int, error: str|None} pour diagnostic.
     Nécessite les env vars TELEGRAM_BOT_TOKEN et TELEGRAM_CHAT_ID.
     """
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
     if not bot_token or not chat_id:
-        return False
+        return {"ok": False, "status": 0, "error": "env vars manquantes"}
     try:
         import httpx
-        async with httpx.AsyncClient(timeout=4) as c:
+        async with httpx.AsyncClient(timeout=6) as c:
             r = await c.post(
                 f"https://api.telegram.org/bot{bot_token}/sendMessage",
                 json={"chat_id": chat_id, "text": text, "parse_mode": "HTML", "disable_web_page_preview": True},
             )
-            return r.status_code == 200
+            ok = r.status_code == 200
+            err = None
+            if not ok:
+                try:
+                    body = r.json()
+                    err = body.get("description") or body.get("error", str(body))[:200]
+                except Exception:
+                    err = (r.text or "")[:200]
+                logger.warning(f"Telegram API {r.status_code}: {err}")
+            return {"ok": ok, "status": r.status_code, "error": err}
     except Exception as e:
-        logger.warning(f"Telegram send failed: {e}")
-        return False
+        msg = f"{type(e).__name__}: {str(e)[:200]}"
+        logger.warning(f"Telegram send exception: {msg}")
+        return {"ok": False, "status": 0, "error": msg}
 
 
 async def _maybe_dispatch_hot_alert(visitor_id: str, event_type: str, path: str, data: dict, page_url: str):
@@ -4328,8 +4339,10 @@ async def _maybe_dispatch_hot_alert(visitor_id: str, event_type: str, path: str,
         f"🔍 Voir le parcours :\nhttps://crm.globalcleanhome.com/seo/journeys/{visitor_id}"
     )
 
-    sent = await _send_telegram_message(msg)
-    alert["telegram_sent"] = sent
+    sent_result = await _send_telegram_message(msg)
+    alert["telegram_sent"] = bool(sent_result.get("ok"))
+    if not sent_result.get("ok"):
+        alert["telegram_error"] = sent_result.get("error")
 
     try:
         await db.hot_alerts.insert_one(alert)

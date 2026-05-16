@@ -1638,11 +1638,30 @@ async def test_hot_alert(request: Request):
         f"formulaire soumis, ou 5+ min sur le site).\n\n"
         f"⏰ {datetime.now(timezone.utc).isoformat()}"
     )
-    sent = await _send_telegram_message(msg)
+    result = await _send_telegram_message(msg)
+    configured = bool(os.environ.get("TELEGRAM_BOT_TOKEN") and os.environ.get("TELEGRAM_CHAT_ID"))
+    if result.get("ok"):
+        message = "Message envoyé sur Telegram ✓"
+    elif not configured:
+        message = "Env vars manquantes : ajoute TELEGRAM_BOT_TOKEN et TELEGRAM_CHAT_ID dans Railway → Variables"
+    else:
+        # Configurés mais l'envoi a échoué — diagnostic Telegram
+        err = result.get("error") or "raison inconnue"
+        # Messages d'erreur Telegram classiques traduits
+        if "chat not found" in err.lower():
+            message = f"❌ chat_id invalide ou bot pas démarré. Va sur t.me/ton_bot puis clique 'Démarrer'. (Telegram: {err})"
+        elif "unauthorized" in err.lower() or "bot was blocked" in err.lower():
+            message = f"❌ Bot token invalide OU bot bloqué par l'utilisateur. (Telegram: {err})"
+        elif "bot was kicked" in err.lower():
+            message = f"❌ Bot retiré du groupe — réinvite-le. (Telegram: {err})"
+        else:
+            message = f"❌ Échec envoi : {err}"
     return {
-        "ok": sent,
-        "configured": bool(os.environ.get("TELEGRAM_BOT_TOKEN") and os.environ.get("TELEGRAM_CHAT_ID")),
-        "message": "Message envoyé sur Telegram" if sent else "Configuration manquante (TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID dans Railway env vars)",
+        "ok": bool(result.get("ok")),
+        "configured": configured,
+        "telegram_status": result.get("status"),
+        "telegram_error": result.get("error"),
+        "message": message,
     }
 
 
