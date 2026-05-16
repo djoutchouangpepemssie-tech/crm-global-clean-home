@@ -1639,7 +1639,7 @@ async def test_hot_alert(request: Request):
         f"⏰ {datetime.now(timezone.utc).isoformat()}"
     )
     result = await _send_telegram_message(msg)
-    configured = bool(os.environ.get("TELEGRAM_BOT_TOKEN") and os.environ.get("TELEGRAM_CHAT_ID"))
+    configured = bool((os.environ.get("TELEGRAM_BOT_TOKEN") or "").strip() and (os.environ.get("TELEGRAM_CHAT_ID") or "").strip())
     if result.get("ok"):
         message = "Message envoyé sur Telegram ✓"
     elif not configured:

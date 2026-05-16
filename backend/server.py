@@ -4216,8 +4216,10 @@ async def _send_telegram_message(text: str) -> dict:
     Retourne dict {ok: bool, status: int, error: str|None} pour diagnostic.
     Nécessite les env vars TELEGRAM_BOT_TOKEN et TELEGRAM_CHAT_ID.
     """
-    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+    # Strip whitespace/newlines : Railway copy-paste depuis BotFather peut
+    # ajouter un \n à la fin du token, ce qui casse l'URL HTTP.
+    bot_token = (os.environ.get("TELEGRAM_BOT_TOKEN") or "").strip()
+    chat_id = (os.environ.get("TELEGRAM_CHAT_ID") or "").strip()
     if not bot_token or not chat_id:
         return {"ok": False, "status": 0, "error": "env vars manquantes"}
     try:
