@@ -93,6 +93,7 @@ const NAV_GROUPS = [
       { to: '/workflows',    icon: Zap,             label: 'Workflows' },
       { to: '/ai',           icon: Star,            label: 'Centre IA' },
       { to: '/chat',         icon: MessageSquare,   label: 'Messages' },
+      { to: '/templates',    icon: FileText,        label: 'Templates email' },
       { to: '/satisfaction', icon: Heart,           label: 'Satisfaction' },
       { to: '/documents',    icon: FolderOpen,      label: 'Documents' },
       { to: '/integrations', icon: Plug,            label: 'Intégrations' },
